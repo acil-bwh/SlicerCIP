@@ -6,13 +6,12 @@ Slicer extension for the Chest Imaging Platform
 
 Compilation
 ===========
-set the SLICER_FOLDER variable
 
-mkdir ../SlicerCIP-build
-cd ../SlicerCIP-build
-cmake -DSlicer_DIR=${SLICER_FOLDER}/Slicer4-SuperBuild/Slicer-build ../SlicerCIP
-make
-
+1. set the SLICER_FOLDER variable, for instance to $HOME/slicer/Slicer4-SuperBuild/Slicer-build
+2. mkdir ../SlicerCIP-build
+3. cd ../SlicerCIP-build
+4. cmake -DSlicer_DIR=${SLICER_FOLDER}/Slicer4-SuperBuild/Slicer-build ../SlicerCIP
+5. make
 
 
 Run Example
