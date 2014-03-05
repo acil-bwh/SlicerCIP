@@ -24,7 +24,7 @@ OPTION(SLICERCIP_ENABLE_EXPERIMENTAL_MODULES "Enable the building of work-in-pro
 ##
 set(inner_DEPENDENCIES "CIP")
 
-SlicerMacroCheckExternalProjectDependency(inner)
+#SlicerMacroCheckExternalProjectDependency(inner)
 
 set(ep_cmake_args)
 foreach(dep ${EXTENSION_DEPENDS})
