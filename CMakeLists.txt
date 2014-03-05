@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 2.8.9)
 
 #-----------------------------------------------------------------------------
+project(SlicerCIP)
+
+#-----------------------------------------------------------------------------
 set(EXTENSION_NAME SlicerCIP)
 
 # ------------------------------------------------------------------------
@@ -18,20 +21,23 @@ set(EXTENSION_DESCRIPTION "Potential extension module")
 set(EXTENSION_ICONURL "http://viewvc.slicer.org/viewvc.cgi/Slicer4/trunk/Extensions/Testing/AirwayModule/AirwayModule.png?revision=21746&view=co")
 set(EXTENSION_SCREENSHOTURLS "http://wiki.slicer.org/slicerWiki/images/4/42/Slicer-r19441-AirwayModule-screenshot.png")
 
+
 #-----------------------------------------------------------------------------
-project(SlicerCIP)
+option(${EXTENSION_NAME}_SUPERBUILD "Build ${EXTENSION_NAME} and the projects it depends on via SuperBuild.cmake." OFF)
+#mark_as_advanced(${EXTENSION_NAME}_SUPERBUILD)
+if(${EXTENSION_NAME}_SUPERBUILD)
+  include("${CMAKE_CURRENT_SOURCE_DIR}/SuperBuild.cmake")
+  return()
+endif()
+
 
 #-----------------------------------------------------------------------------
 find_package(Slicer REQUIRED)
 include(${Slicer_USE_FILE})
 
-#-----------------------------------------------------------------------------
-option(${EXTENSION_NAME}_SUPERBUILD "Build ${EXTENSION_NAME} and the projects it depends on via SuperBuild.cmake." ON)
-mark_as_advanced(${EXTENSION_NAME}_SUPERBUILD)
-if(${EXTENSION_NAME}_SUPERBUILD)
-  include("${CMAKE_CURRENT_SOURCE_DIR}/SuperBuild.cmake")
-  return()
-endif()
+find_package(CIP REQUIRED)
+include(${CIP_USE_FILE})
+
 
 
 #-----------------------------------------------------------------------------
@@ -40,16 +46,19 @@ set(MODULE_TITLE ${MODULE_NAME})
 
 string(TOUPPER ${MODULE_NAME} MODULE_NAME_UPPER)
 
+set(MODULE_EXPORT_DIRECTIVE "Q_SLICER_QTMODULES_${MODULE_NAME_UPPER}_EXPORT")
+
+
 #-----------------------------------------------------------------------------
 OPTION(SLICERCIP_ENABLE_EXPERIMENTAL_MODULES "Enable the building of work-in-progress, experimental modules." OFF)
 
 
 #-----------------------------------------------------------------------------
-add_subdirectory(Loadable)
 add_subdirectory(Scripted)
 
 if (SLICERCIP_ENABLE_EXPERIMENTAL_MODULES)
   #Add modules in development
+  add_subdirectory(Loadable)
 
 endif()
 
