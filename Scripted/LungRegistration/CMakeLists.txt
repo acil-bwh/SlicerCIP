@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 2.8.9)
+#cmake_minimum_required(VERSION 2.8.9)
 
-find_package(Slicer COMPONENTS ConfigurePrerequisites) 
+#find_package(Slicer COMPONENTS ConfigurePrerequisites) 
 
-project(LungRegistration) 
+#project(LungRegistration) 
 
 #-----------------------------------------------------------------------------
 set(MODULE_NAME LungRegistration)
@@ -10,16 +10,18 @@ set(MODULE_NAME LungRegistration)
 string(TOUPPER ${MODULE_NAME} MODULE_NAME_UPPER)
 
 #-----------------------------------------------------------------------------
+set(MODULE_EXPORT_DIRECTIVE "Q_SLICER_QTMODULES_${MODULE_NAME_UPPER}_EXPORT")
+
+
+#-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
   )
 
-find_package(Slicer REQUIRED)  
-include(${Slicer_USE_FILE}) 
+#find_package(Slicer REQUIRED)  
+#include(${Slicer_USE_FILE}) 
  
 
-#-----------------------------------------------------------------------------
-set(MODULE_EXPORT_DIRECTIVE "Q_SLICER_QTMODULES_${MODULE_NAME_UPPER}_EXPORT")
 
 
 set(MODULE_PYTHON_RESOURCES
