@@ -1,12 +1,17 @@
 
 include(SlicerMacroBuildScriptedModule)
 
+#add_subdirectory(Example)
 set(modules
-  Example
+  #Example
+  InteractiveLobeSegmentation
+  LungRegistration
+  ParenchymaAnalysis
+  EmphysemaSubtypes
   )
 
 foreach (module ${modules})
-  add_subdirectory($modules)
+  add_subdirectory(${module})
 endforeach()
 
 
