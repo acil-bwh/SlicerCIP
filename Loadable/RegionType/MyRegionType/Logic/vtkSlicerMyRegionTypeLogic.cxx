@@ -25,6 +25,7 @@
 #include <vtkMRMLChestRTColorTableNode.h>
 
 // VTK includes
+#include <vtkObjectFactory.h>
 #include <vtkNew.h>
 #include <vtkImageData.h>
 #include <vtkImageThreshold.h>
@@ -75,7 +76,7 @@ void vtkSlicerMyRegionTypeLogic::PrintSelf(ostream& os, vtkIndent indent)
 //-----------------------------------------------------------------------------
 void vtkSlicerMyRegionTypeLogic::DisplaySelectedRegionType(vtkMRMLMyRegionTypeNode* rtNode, const char* reg, const char* typ)
 {
-  if (!rtNode) 
+  if (!rtNode)
   {
 	  return;
   }
@@ -91,11 +92,11 @@ void vtkSlicerMyRegionTypeLogic::DisplaySelectedRegionType(vtkMRMLMyRegionTypeNo
 //---------------------------------------------------------------------------
 void vtkSlicerMyRegionTypeLogic::DisplayAllRegionType(vtkMRMLMyRegionTypeNode* rtNode)
 {
-  if (!rtNode) 
+  if (!rtNode)
   {
 	  return;
   }
-  
+
   this->GetMRMLScene()->StartState(vtkMRMLScene::BatchProcessState);
 
   vtkMRMLMyRegionTypeDisplayNode* displayNode = vtkMRMLMyRegionTypeDisplayNode::SafeDownCast( rtNode->GetDisplayNode() );

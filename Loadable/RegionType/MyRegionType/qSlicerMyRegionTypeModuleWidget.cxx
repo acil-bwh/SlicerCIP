@@ -28,7 +28,7 @@
 #include "ui_qSlicerMyRegionTypeModuleWidget.h"
 
 #include <vtkSlicerMyRegionTypeLogic.h>
-
+#include <vtkMRMLScene.h>
 #include <vtkMRMLMyRegionTypeNode.h>
 #include <vtkMRMLMyRegionTypeDisplayNode.h>
 #include <vtkMRMLScalarVolumeNode.h>
@@ -58,7 +58,6 @@ public:
   vtkSlicerMyRegionTypeLogic* logic() const;
 
   bool checkForVolumeParentTransform() const;
-
 };
 
 //-----------------------------------------------------------------------------
@@ -85,7 +84,6 @@ vtkSlicerMyRegionTypeLogic* qSlicerMyRegionTypeModuleWidgetPrivate::logic() cons
 bool qSlicerMyRegionTypeModuleWidgetPrivate::checkForVolumeParentTransform() const
 {
   Q_ASSERT(this->InputVolumeComboBox);
-
 
   vtkSmartPointer<vtkMRMLVolumeNode> inputVolume = vtkMRMLVolumeNode::SafeDownCast(this->InputVolumeComboBox->currentNode());
 
@@ -128,7 +126,7 @@ void qSlicerMyRegionTypeModuleWidget::setup()
 
   this->Superclass::setup();
 
-  connect( d->ShowButton, SIGNAL( clicked() ), 
+  connect( d->ShowButton, SIGNAL( clicked() ),
 	  this, SLOT( onApply() ) );
   connect( d->InputVolumeComboBox, SIGNAL( currentNodeChanged(vtkMRMLNode*) ),
 	  this, SLOT( onInputVolumeChanged() ) );
@@ -138,14 +136,13 @@ void qSlicerMyRegionTypeModuleWidget::setup()
 void qSlicerMyRegionTypeModuleWidget::enter()
 {
   this->Superclass::enter();
-this->initialize = 0;	
+this->initialize = 0;
   this->onInputVolumeChanged();
 }
 
 //-----------------------------------------------------------------------------
 void qSlicerMyRegionTypeModuleWidget::setMRMLScene(vtkMRMLScene* scene)
 {
-
   this->Superclass::setMRMLScene(scene);
   if(scene == NULL)
     {
@@ -169,17 +166,17 @@ std::cout<<"in initializeRegionTypeNode"<<std::endl;
 		this->regionTypeNode->CopyWithScene(scalarNode);
 		scene->AddNode(this->regionTypeNode);
   		this->regionTypeNode->RemoveAllDisplayNodeIDs();
-  		this->regionTypeNode->SetAndObserveStorageNodeID(NULL);		
+  		this->regionTypeNode->SetAndObserveStorageNodeID(NULL);
 
                 vtkNew<vtkImageData> imageData;
   		imageData->DeepCopy( scalarNode->GetImageData() );
   		this->regionTypeNode->SetAndObserveImageData( imageData.GetPointer() );
 		this->regionTypeNode->SetName( scalarNode->GetName() );
 		this->regionTypeNode->SetAndObserveStorageNodeID( scalarNode->GetStorageNodeID() );
-		
+
                 vtkMRMLMyRegionTypeDisplayNode* displayNode = vtkMRMLMyRegionTypeDisplayNode::New();
 		displayNode->CopyWithScene(scalarNode->GetDisplayNode());
-		scene->AddNode( displayNode ); 
+		scene->AddNode( displayNode );
 
 		vtkMRMLChestRTColorTableNode* colorTableNode = vtkMRMLChestRTColorTableNode::New();
 		colorTableNode->SetTypeToChestRTLabels();
@@ -188,12 +185,12 @@ std::cout<<"in initializeRegionTypeNode"<<std::endl;
  		displayNode->SetAndObserveColorNodeID( colorTableNode->GetID() );
 		displayNode->SetInterpolation( scalarNode->GetDisplayNode()->GetInterpolation() );
 		//displayNode->GetImageData()->CopyStructure( scalarNode->GetImageData() );
-		
+
                 this->regionTypeNode->SetAndObserveDisplayNodeID( displayNode->GetID() );
 
                 scene->RemoveNode( scalarNode->GetDisplayNode() );
 		scene->RemoveNode( scalarNode );
-      		
+
 		displayNode->Delete();
 		colorTableNode->Delete();
 
@@ -215,7 +212,7 @@ std::cout<<"in initializeRegionTypeNode"<<std::endl;
   regionTypeNodes->Delete();
   if( this->initialize != 1 )
   {
-	this->initialize = 0;	
+	this->initialize = 0;
   }
   std::cout<<this->initialize<<std::endl;
 }
@@ -232,15 +229,14 @@ void qSlicerMyRegionTypeModuleWidget::onInputVolumeChanged()
 
   std::cout<<"in onInputVolumeChanged"<<std::endl;
   if( node )
-  {	  
+  {
 	  std::cout<<this->initialize<<std::endl;
 	  if( node->IsA( "vtkMRMLMyRegionTypeNode" ) && d->InputVolumeComboBox->nodes().count() > 1 )
-	  {		  
-
+	  {
 		  d->TypeLabelsComboBox->clear();
-  		  d->RegionLabelsComboBox->clear(); 		
+  		  d->RegionLabelsComboBox->clear();
 		  this->regionTypeNode = vtkMRMLMyRegionTypeNode::SafeDownCast( node );
-          logic->DisplayAllRegionType( this->regionTypeNode );  
+          logic->DisplayAllRegionType( this->regionTypeNode );
 		  this->updateWidget();
 	  }
 	  else if( node->IsA( "vtkMRMLScalarVolumeNode" ) && d->InputVolumeComboBox->nodes().count() > 1)
@@ -254,7 +250,7 @@ void qSlicerMyRegionTypeModuleWidget::onInputVolumeChanged()
 		  }
 	  }
 	  else if( d->InputVolumeComboBox->nodes().count() == 1 && this->initialize == 0 && node->IsA( "vtkMRMLScalarVolumeNode" ) )
-	 {      	
+	 {
 		vtkMRMLScalarVolumeNode* scalarNode = vtkMRMLScalarVolumeNode::SafeDownCast( node );
 		if( scalarNode->GetLabelMap() )
 		{
@@ -262,15 +258,15 @@ void qSlicerMyRegionTypeModuleWidget::onInputVolumeChanged()
 			{
 				this->initialize = 1;
 				d->TypeLabelsComboBox->clear();
-  		  		d->RegionLabelsComboBox->clear(); 		
+  		  		d->RegionLabelsComboBox->clear();
                 this->regionTypeNode = vtkMRMLMyRegionTypeNode::SafeDownCast( node );
 				this->updateWidget();
 			}
 			else
 			{
 		 		this->convertToRegionTypeNode(scalarNode);
-			}		  
-		}		
+			}
+		}
 	 }
   }
 }
@@ -279,7 +275,7 @@ void qSlicerMyRegionTypeModuleWidget::onInputVolumeChanged()
 void qSlicerMyRegionTypeModuleWidget::convertToRegionTypeNode(vtkMRMLScalarVolumeNode* scalarVolume)
 {
 	std::cout<<"in convertToRegionTypeNode"<<std::endl;
-    this->regionTypeNode = vtkMRMLMyRegionTypeNode::New();			
+    this->regionTypeNode = vtkMRMLMyRegionTypeNode::New();
 	this->regionTypeNode->CopyWithScene(scalarVolume);
     scalarVolume->GetScene()->AddNode(this->regionTypeNode);
   	this->regionTypeNode->RemoveAllDisplayNodeIDs();
@@ -290,10 +286,9 @@ void qSlicerMyRegionTypeModuleWidget::convertToRegionTypeNode(vtkMRMLScalarVolum
   	this->regionTypeNode->SetAndObserveImageData( imageData.GetPointer() );
 	this->regionTypeNode->SetName( scalarVolume->GetName() );
 	this->regionTypeNode->SetAndObserveStorageNodeID( scalarVolume->GetStorageNodeID() );
-	
 
 	/*vtkMRMLMyRegionTypeDisplayNode* displayNode = vtkMRMLMyRegionTypeDisplayNode::New();
-	displayNode->CopyWithScene(scalarVolume->GetDisplayNode()); 
+	displayNode->CopyWithScene(scalarVolume->GetDisplayNode());
 	scalarVolume->GetScene()->AddNode( displayNode );
 
 	vtkMRMLChestRTColorTableNode* colorTableNode = vtkMRMLChestRTColorTableNode::New();
@@ -303,20 +298,19 @@ void qSlicerMyRegionTypeModuleWidget::convertToRegionTypeNode(vtkMRMLScalarVolum
  	displayNode->SetAndObserveColorNodeID( colorTableNode->GetID() );
 
         scalarVolume->GetScene()->RemoveNode( scalarVolume->GetDisplayNode() );
-        this->regionTypeNode->SetAndObserveDisplayNodeID( displayNode->GetID() );*/                
+        this->regionTypeNode->SetAndObserveDisplayNodeID( displayNode->GetID() );*/
 
         scalarVolume->GetScene()->RemoveNode( scalarVolume );
-		
+
 	if(!this->regionTypeNode->GetID())
 	{
 		qCritical() << "FATAL ERROR: Cannot instantiate RegionTypeNode";
 		Q_ASSERT(this->regionTypeNode);
 	}
 	//this->regionTypeNode->Delete();
-	
+
 //	displayNode->Delete();
 //	colorTableNode->Delete();
-	
 }
 
 //-----------------------------------------------------------------------------
@@ -326,11 +320,11 @@ void qSlicerMyRegionTypeModuleWidget::updateRegionList()
   if( this->regionTypeNode ) //node
   {
           if( !this->regionTypeNode->GetDisplayNode() )
-	  {		
+	  {
 		return;
 	  }
 	  if( this->regionTypeNode->GetDisplayNode()->IsA( "vtkMRMLMyRegionTypeDisplayNode" ) )
-	  {	  
+	  {
 		  vtkMRMLMyRegionTypeDisplayNode* labelMapNode = vtkMRMLMyRegionTypeDisplayNode::SafeDownCast( this->regionTypeNode->GetDisplayNode() );
 		  vtkImageData* im = labelMapNode->GetInputImageData();
 		  vtkMRMLChestRTColorTableNode* colorNode = vtkMRMLChestRTColorTableNode::SafeDownCast( labelMapNode->GetColorNode() );
@@ -369,7 +363,7 @@ void qSlicerMyRegionTypeModuleWidget::updateTypeList()
   if( this->regionTypeNode )
   {
 	  if( !this->regionTypeNode->GetDisplayNode() )
-	  {		
+	  {
 		return;
 	  }
 	  if( this->regionTypeNode->GetDisplayNode()->IsA( "vtkMRMLMyRegionTypeDisplayNode" ) )
@@ -436,7 +430,7 @@ void qSlicerMyRegionTypeModuleWidget::onApply()
   	QString tname = d->TypeLabelsComboBox->itemText(tindex);
   	QByteArray ta = tname.toLatin1();
   	const char* typeName = ta.data();
-	
+
 	logic->DisplaySelectedRegionType( this->regionTypeNode, regionName, typeName );
   }
   else if( d->RegionLabelsComboBox->count() != 0)
@@ -454,10 +448,9 @@ void qSlicerMyRegionTypeModuleWidget::onApply()
   	QString tname = d->TypeLabelsComboBox->itemText(tindex);
   	QByteArray ta = tname.toLatin1();
   	const char* typeName = ta.data();
-	
+
 	logic->DisplaySelectedRegionType( this->regionTypeNode, NULL, typeName );
   }
-
 }
 
 //-----------------------------------------------------------------------------
@@ -467,7 +460,7 @@ void qSlicerMyRegionTypeModuleWidget::updateWidget()
     	{
     		qDebug()<<"No RegionType node in updateWidget";
     		return;
-    	}      
+    	}
 
         this->regionTypeNode->RegionNamesList.clear();
   	this->regionTypeNode->RegionValuesList.clear();
@@ -477,6 +470,4 @@ void qSlicerMyRegionTypeModuleWidget::updateWidget()
    	this->updateRegionList();
     	this->updateTypeList();
 }
-
-
 
