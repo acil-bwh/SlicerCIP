@@ -50,6 +50,7 @@ class VTK_SLICER_MYREGIONTYPE_MODULE_MRML_EXPORT vtkMRMLMyRegionTypeDisplayNode 
   virtual void ShowSelectedLabels(vtkMRMLMyRegionTypeNode*, const char*, const char*);
   virtual void ShowAllRegions();
   virtual void ShowAllTypes();
+  virtual void HideAllTypes();
   virtual void SetRegionToShow(const char*);
   virtual void SetTypeToShow(const char*);
   //virtual void SetPairToShow(REGIONANDTYPE); 

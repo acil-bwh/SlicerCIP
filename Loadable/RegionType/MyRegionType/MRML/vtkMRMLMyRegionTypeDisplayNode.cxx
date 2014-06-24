@@ -123,6 +123,7 @@ void vtkMRMLMyRegionTypeDisplayNode::ShowSelectedLabels(vtkMRMLMyRegionTypeNode*
 	std::vector<unsigned int> r;
 	this->SetRegionToShow(region);
 	rlistIt = node->RegionValuesList.begin();
+
 	for( unsigned int i = 0; i < this->regionsToShow.size(); i++ )
 	{    
 		for( unsigned int j = 0; j < node->RegionNamesList.size(); j++)
@@ -170,12 +171,11 @@ void vtkMRMLMyRegionTypeDisplayNode::ShowSelectedLabels(vtkMRMLMyRegionTypeNode*
 		}
 	}
   }
-
   else 
   {
 	if( region != NULL )
 	{
-	        std::list<unsigned int>::iterator rlistIt;
+	    std::list<unsigned int>::iterator rlistIt;
 		rlistIt = node->RegionValuesList.begin();  
 	  	vtkMRMLColorNode* colorNode = vtkMRMLColorNode::SafeDownCast( this->GetColorNode() );
 	  	this->LUT = colorNode->GetLookupTable();
@@ -193,7 +193,11 @@ void vtkMRMLMyRegionTypeDisplayNode::ShowSelectedLabels(vtkMRMLMyRegionTypeNode*
 		{
 			if( std::string(region) == std::string("ALL REGIONS") )
 			{
-				this->ShowAllRegions();
+				if( std::string(type) == std::string("NO TYPES") ) 
+				{
+					this->HideAllTypes();
+					this->ShowAllRegions();
+				}
 			}
 			else
 			{
@@ -229,7 +233,7 @@ void vtkMRMLMyRegionTypeDisplayNode::ShowSelectedLabels(vtkMRMLMyRegionTypeNode*
   		while( tlistIt != node->TypeValuesList.end() )
   		{ 
     			unsigned int index = (unsigned int) *tlistIt; 
-   			this->LUT->GetTableValue(index,c);
+   				this->LUT->GetTableValue(index,c);
     			c[3] = 0;
     			this->LUT->SetTableValue(index,c);
     			this->LUT->Modified();
@@ -239,7 +243,10 @@ void vtkMRMLMyRegionTypeDisplayNode::ShowSelectedLabels(vtkMRMLMyRegionTypeNode*
 		{
 			if( std::string(type) == std::string("ALL TYPES") )
 			{
-				this->ShowAllTypes();
+				if( std::string(region) == std::string("ALL REGIONS") )
+				{
+					this->ShowAllTypes();
+				}
 			}
 			else
 			{
@@ -284,8 +291,8 @@ void vtkMRMLMyRegionTypeDisplayNode::ShowAllRegions()
  			if( c[3] == 0 )
 			{
 				c[3] = 1;
-    				this->LUT->SetTableValue(i,c);
-    				this->LUT->Modified();
+    			this->LUT->SetTableValue(i,c);
+    			this->LUT->Modified();
 			}   
   		} 
 	}
@@ -312,29 +319,70 @@ void vtkMRMLMyRegionTypeDisplayNode::ShowAllTypes()
 		{
 			int power = static_cast< int >( vcl_pow( static_cast< float >(2), static_cast< float >(j) ) );
 			if ( power <= nOfColors )
-       			{
+       		{
        				typePlaces[j] = 1;
-				nOfColors = nOfColors % power;
-
+					nOfColors = nOfColors % power;
 			}
-      		}
+      	}
 		for(int k = 8; k < 16; k++ )
-      		{
+      	{
 			binaryValue += static_cast< unsigned short >( typePlaces[k-8] )*static_cast< unsigned short >( vcl_pow( static_cast< float >(2), static_cast< float >(k) ) );
-      		}
-
-
+      	}
   		this->LUT = colorNode->GetLookupTable();
-      
+		std::cout<<"binaryValue"<<binaryValue<<std::endl;
   		for( int i = 256; i < binaryValue; i++ )
   		{ 
    			this->LUT->GetTableValue(i,c);
  			if( c[3] == 0 )
 			{
-				c[3] = 1;
+					c[3] = 1;
     				this->LUT->SetTableValue(i,c);
     				this->LUT->Modified();
 			}   
   		} 
+	}
+}
+//----------------------------------------------------------------------------
+void vtkMRMLMyRegionTypeDisplayNode::HideAllTypes()	
+{
+	vtkMRMLColorNode* colorNode = vtkMRMLColorNode::SafeDownCast( this->GetColorNode() );
+	double c[4];	
+	std::cout<<"in HideAllTypes"<<std::endl;
+	if( colorNode )
+	{
+		int nOfColors = 80;
+		int typePlaces[8];
+		unsigned short binaryValue = 0;
+
+		for ( int i=0; i<8; i++ )
+		{
+   			typePlaces[i] = 0;
+		}
+
+		for ( int j=7; j>=0; j-- )
+		{
+			int power = static_cast< int >( vcl_pow( static_cast< float >(2), static_cast< float >(j) ) );
+			if ( power <= nOfColors )
+   			{
+   					typePlaces[j] = 1;
+					nOfColors = nOfColors % power;
+			}
+  		}
+		for(int k = 8; k < 16; k++ )
+  		{
+			binaryValue += static_cast< unsigned short >( typePlaces[k-8] )*static_cast< unsigned short >( vcl_pow( static_cast< float >(2), static_cast< float >(k) ) );
+  		}
+		this->LUT = colorNode->GetLookupTable();
+		std::cout<<"binaryValue"<<binaryValue<<std::endl;
+		for( int i = 256; i < binaryValue; i++ )
+		{ 
+			this->LUT->GetTableValue(i,c);
+			if( c[3] == 0 )
+			{
+					c[3] = 0;
+					this->LUT->SetTableValue(i,c);
+					this->LUT->Modified();
+			}   
+		} 		
 	}
 }

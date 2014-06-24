@@ -239,13 +239,13 @@ void qSlicerMyRegionTypeModuleWidget::onInputVolumeChanged()
 
 		  d->TypeLabelsComboBox->clear();
   		  d->RegionLabelsComboBox->clear(); 		
-                  this->regionTypeNode = vtkMRMLMyRegionTypeNode::SafeDownCast( node );
-                  logic->DisplayAllRegionType( this->regionTypeNode );  
+		  this->regionTypeNode = vtkMRMLMyRegionTypeNode::SafeDownCast( node );
+          logic->DisplayAllRegionType( this->regionTypeNode );  
 		  this->updateWidget();
 	  }
 	  else if( node->IsA( "vtkMRMLScalarVolumeNode" ) && d->InputVolumeComboBox->nodes().count() > 1)
 	  {
-                  d->TypeLabelsComboBox->clear();
+          d->TypeLabelsComboBox->clear();
   		  d->RegionLabelsComboBox->clear();
 		  vtkMRMLScalarVolumeNode* scalarNode = vtkMRMLScalarVolumeNode::SafeDownCast( node );
 		  if( scalarNode->GetLabelMap() )
@@ -263,7 +263,7 @@ void qSlicerMyRegionTypeModuleWidget::onInputVolumeChanged()
 				this->initialize = 1;
 				d->TypeLabelsComboBox->clear();
   		  		d->RegionLabelsComboBox->clear(); 		
-                 		this->regionTypeNode = vtkMRMLMyRegionTypeNode::SafeDownCast( node );
+                this->regionTypeNode = vtkMRMLMyRegionTypeNode::SafeDownCast( node );
 				this->updateWidget();
 			}
 			else
