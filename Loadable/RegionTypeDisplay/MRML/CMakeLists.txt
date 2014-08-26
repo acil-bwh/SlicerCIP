@@ -14,7 +14,7 @@ set(${KIT}_SRCS
   vtkMRML${MODULE_NAME}DisplayNode.h
   vtkMRMLChestRTColorTableNode.cxx
   vtkMRMLChestRTColorTableNode.h
-  cipConventions.h
+  cipChestConventions.h
   cipChestConventions.cxx
   )
 

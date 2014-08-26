@@ -20,7 +20,7 @@
 
 // ITK includes
 
-#include "cipConventions.h"
+#include "cipChestConventions.h"
 
 //class cip::Conventions;
 class vtkMRMLRegionTypeNode;

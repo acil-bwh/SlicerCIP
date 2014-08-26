@@ -30,7 +30,7 @@ Version:   $Revision: 1.3 $
 #include <vtkCallbackCommand.h>
 #include <vtkAlgorithmOutput.h>
 
-#include <cipConventions.h>
+#include <cipChestConventions.h>
 
 // STD includes
 #include <cassert>

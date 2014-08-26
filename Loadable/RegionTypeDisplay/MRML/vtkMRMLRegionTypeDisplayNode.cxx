@@ -116,24 +116,8 @@ void vtkMRMLRegionTypeDisplayNode::ShowSelectedRegionType(vtkMRMLRegionTypeNode*
                                                             double regionTypeColorBlend)
 {
   this->HideAllRegionTypes(node);
-
-  if( region != cip::UNDEFINEDREGION && type != cip::UNDEFINEDTYPE)
-  {
-    this->SetRegionTypeVisibility(region, type, 1, regionTypeColorBlend);
-    this->Modified();
-  }
-  else if (region == cip::UNDEFINEDREGION)
-  {
-    this->ShowAllRegions(node, type, regionTypeColorBlend);
-  }
-  else if (type == cip::UNDEFINEDTYPE)
-  {
-    this->ShowAllTypes(node, region, regionTypeColorBlend);
-  }
-  else
-  {
-    this->ShowAllRegionTypes(node, regionTypeColorBlend);
-  }
+  this->SetRegionTypeVisibility(region, type, 1, regionTypeColorBlend);
+  this->Modified();
 }
 
 //-------------------------------------------
@@ -141,6 +125,7 @@ void vtkMRMLRegionTypeDisplayNode::ShowAllRegions(vtkMRMLRegionTypeNode* node,
                                                     unsigned char type,
                                                     double regionTypeColorBlend)
 {
+  this->HideAllRegionTypes(node);
   std::vector<unsigned char> regions = node->GetAvailableRegions();
   for (int r=0; r<regions.size(); r++)
   {
@@ -154,8 +139,8 @@ void vtkMRMLRegionTypeDisplayNode::ShowAllTypes(vtkMRMLRegionTypeNode* node,
                                                   unsigned char region,
                                                   double regionTypeColorBlend)
 {
+  this->HideAllRegionTypes(node);
   std::vector<unsigned char> types = node->GetAvailableTypes();
-
   for (int t=0; t<types.size(); t++)
   {
     this->SetRegionTypeVisibility(region, types[t], 1, regionTypeColorBlend);

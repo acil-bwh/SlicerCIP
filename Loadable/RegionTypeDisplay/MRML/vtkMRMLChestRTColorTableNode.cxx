@@ -20,7 +20,7 @@ Version:   $Revision: 1.0 $
 #include <vtkLookupTable.h>
 #include <vtkObjectFactory.h>
 
-#include <cipConventions.h>
+#include <cipChestConventions.h>
 
 #include <math.h>
 #include <vnl/vnl_math.h>

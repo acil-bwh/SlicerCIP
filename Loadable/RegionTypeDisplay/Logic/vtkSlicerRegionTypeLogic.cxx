@@ -20,7 +20,7 @@
 #include "vtkSlicerVolumesLogic.h"
 
 // MRML includes
-#include <cipConventions.h>
+#include <cipChestConventions.h>
 
 #include <vtkMRMLRegionTypeNode.h>
 #include <vtkMRMLRegionTypeDisplayNode.h>

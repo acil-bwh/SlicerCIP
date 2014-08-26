@@ -38,7 +38,7 @@
 
 #include <vtkMRMLVolumeNode.h>
 
-#include <cipConventions.h>
+#include <cipChestConventions.h>
 
 #include <vtkMatrix4x4.h>
 #include <vtkSmartPointer.h>
@@ -139,8 +139,8 @@ void qSlicerRegionTypeModuleWidget::updateRegionList()
 
   std::vector<std::string>&regions = this->regionTypeNode->GetAvailableRegionNames();
 
-	//const char* allName = "ALL REGIONS";
-  //d->RegionLabelsComboBox->addItem(allName);
+	const char* allName = "ALL REGIONS";
+  d->RegionLabelsComboBox->addItem(allName);
 
 	//populate the combo-box here
 	for( unsigned int i = 0; i < regions.size(); i++ )
@@ -165,8 +165,8 @@ void qSlicerRegionTypeModuleWidget::updateTypeList()
 
   std::vector<std::string>&types = this->regionTypeNode->GetAvailableTypeNames();
 
-	//const char* allName = "ALL TYPES";
-  //d->TypeLabelsComboBox->addItem(allName);
+	const char* allName = "ALL TYPES";
+  d->TypeLabelsComboBox->addItem(allName);
 
 	//populate the combo-box here
 	for( unsigned int i = 0; i < types.size(); i++ )
@@ -256,10 +256,30 @@ void qSlicerRegionTypeModuleWidget::updateDisplay()
   if (this->regionTypeNode && this->regionTypeNode->GetRegionTypeDisplayNode())
     {
     cip::ChestConventions cc;
-    unsigned char region = cc.GetChestRegionValueFromName(d->RegionLabelsComboBox->currentText().toStdString());
-    unsigned char type = cc.GetChestTypeValueFromName(d->TypeLabelsComboBox->currentText().toStdString());
+    std::string regionString = d->RegionLabelsComboBox->currentText().toStdString();
+    std::string typeString = d->TypeLabelsComboBox->currentText().toStdString();
     double colorBlend = d->RegionTypeSlider->value()/100.0;
-    this->regionTypeNode->GetRegionTypeDisplayNode()->ShowSelectedRegionType(this->regionTypeNode, region, type, colorBlend);
+    if (regionString == std::string("ALL REGIONS") && typeString == std::string("ALL TYPES"))
+      {
+      this->regionTypeNode->GetRegionTypeDisplayNode()->ShowAllRegionTypes(this->regionTypeNode, colorBlend);
+      }
+    else if (regionString == std::string("ALL REGIONS"))
+      {
+      unsigned char type = cc.GetChestTypeValueFromName(typeString);
+      this->regionTypeNode->GetRegionTypeDisplayNode()->ShowAllRegions(this->regionTypeNode, type, colorBlend);
+      }
+    else if (typeString == std::string("ALL TYPES"))
+      {
+      unsigned char region = cc.GetChestRegionValueFromName(regionString);
+      this->regionTypeNode->GetRegionTypeDisplayNode()->ShowAllTypes(this->regionTypeNode, region, colorBlend);
+      }
+    else
+      {
+      unsigned char region = cc.GetChestRegionValueFromName(regionString);
+      unsigned char type = cc.GetChestTypeValueFromName(typeString);
+      this->regionTypeNode->GetRegionTypeDisplayNode()->ShowSelectedRegionType(this->regionTypeNode,
+                                                        region, type, colorBlend);
+      }
     }
 }
 
