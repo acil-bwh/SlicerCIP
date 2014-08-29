@@ -51,42 +51,73 @@ public:
   /// Get node XML tag name (like Volume, Model)
   virtual const char* GetNodeTagName() {return "RegionType";};
 
+  ///
+  /// Returns RegionType Display node
   vtkMRMLRegionTypeDisplayNode* GetRegionTypeDisplayNode();
 
+  ///
+  /// In addition to Supercalss SetAndObserveImageData also
+  /// call UpdateAvailableRegionsAndTypes
+  virtual void SetAndObserveImageData(vtkImageData *ImageData);
+
+  ///
+  /// Call UpdateAvailableRegionsAndTypes when image data changes
   virtual void ProcessMRMLEvents ( vtkObject * /*caller*/,
                                    unsigned long /*event*/,
                                    void * /*callData*/ );
 
+  ///
+  /// Returns vector of all regions encoded in ImageData
   std::vector<unsigned char> &  GetAvailableRegions()
   {
     return AvailableRegions;
   }
 
+  ///
+  /// Returns vector of all types encoded in ImageData
   std::vector<unsigned char> &  GetAvailableTypes()
   {
     return AvailableTypes;
   }
 
+  ///
+  /// Returns vector of all region names encoded in ImageData
   std::vector<std::string>&  GetAvailableRegionNames()
   {
     return AvailableRegionNames;
   }
 
+  ///
+  /// Returns vector of all type names encoded in ImageData
   std::vector<std::string>&  GetAvailableTypeNames()
   {
     return AvailableTypeNames;
   }
 
+  ///
+  /// Returns region given a voxel image value
   unsigned char GetChestRegionFromValue(unsigned short value)
   {
     return value - ((value >> 8) << 8);
   }
 
+  ///
+  /// Returns type given a voxel image value
   unsigned char GetChestTypeFromValue(unsigned short value)
   {
     return (value >> 8);
   }
 
+  ///
+  /// Returns range of region values encoded in ImageData
+  void GetAvailableRegionsRange(unsigned char &min, unsigned char &max);
+
+  ///
+  /// Returns range of type values encoded in ImageData
+  void GetAvailableTypesRange(unsigned char &min, unsigned char &max);
+
+  ///
+  /// Updates all internal caches of regions and types
   void UpdateAvailableRegionsAndTypes();
 
 protected:

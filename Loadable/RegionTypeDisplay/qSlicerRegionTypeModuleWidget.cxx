@@ -29,6 +29,7 @@
 
 #include <vtkSlicerRegionTypeLogic.h>
 #include <vtkMRMLScene.h>
+#include <vtkMRMLSelectionNode.h>
 #include <vtkMRMLRegionTypeNode.h>
 #include <vtkMRMLRegionTypeDisplayNode.h>
 #include <vtkMRMLScalarVolumeNode.h>
@@ -227,6 +228,12 @@ void qSlicerRegionTypeModuleWidget::onOutputVolumeChanged(vtkMRMLNode* node)
   vtkMRMLRegionTypeNode* regionTypeNode = vtkMRMLRegionTypeNode::SafeDownCast( node );
 
   this->regionTypeNode = regionTypeNode;
+
+  if (this->regionTypeNode && vtkMRMLScalarVolumeNode::SafeDownCast(d->InputVolumeComboBox->currentNode()))
+    {
+    this->regionTypeNode->CopyOrientation(vtkMRMLScalarVolumeNode::SafeDownCast(d->InputVolumeComboBox->currentNode()));
+    }
+
   this->updateRegionTypeNode(vtkMRMLScalarVolumeNode::SafeDownCast(d->InputVolumeComboBox->currentNode()));
 }
 
@@ -362,6 +369,16 @@ void qSlicerRegionTypeModuleWidget::updateRegionTypeNode(vtkMRMLScalarVolumeNode
 
     displayNode->InitializeLookupTable(this->regionTypeNode, colorBlend);
     displayNode->ShowAllRegionTypes(this->regionTypeNode, colorBlend);
+    }
+
+  // make output node active label map node
+  std::vector<vtkMRMLNode *> nodes;
+  this->regionTypeNode->GetScene()->GetNodesByClass("vtkMRMLSelectionNode", nodes);
+  if (nodes.size() > 0)
+    {
+    vtkMRMLSelectionNode *selectionNode = vtkMRMLSelectionNode::SafeDownCast(nodes[0]);
+    selectionNode->SetReferenceActiveLabelVolumeID(this->regionTypeNode->GetID());
+    selectionNode->Modified();
     }
 }
 

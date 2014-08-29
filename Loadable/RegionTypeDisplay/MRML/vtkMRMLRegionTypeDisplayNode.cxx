@@ -72,8 +72,8 @@ void vtkMRMLRegionTypeDisplayNode::SetRegionTypeVisibility(unsigned char region,
   cc.GetChestRegionColor(region, regionColor);
   for (int i=0; i<4; i++)
   {
-    color[i] = regionTypeColorBlend * regionColor[i] +
-               (1.0 - regionTypeColorBlend) * typeColor[i];
+    color[i] = (1.0 - regionTypeColorBlend) * regionColor[i] +
+                      regionTypeColorBlend * typeColor[i];
   }
   color[3] = visibility;
   int index = this->GetLUTIndex(region, type);

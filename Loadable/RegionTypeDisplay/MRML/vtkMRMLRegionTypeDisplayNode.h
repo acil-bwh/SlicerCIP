@@ -42,38 +42,39 @@ class VTK_SLICER_REGIONTYPE_MODULE_MRML_EXPORT vtkMRMLRegionTypeDisplayNode   : 
   virtual const char* GetNodeTagName() {return "RegionTypeDisplayNode";};
 
   ///
-  /// sets visibility for specific region/type combination.
+  /// Sets visibility for specific region/type combination.
   /// specifies color blend: 1 use region color, 0 use type color
   virtual void SetRegionTypeVisibility(unsigned char region, unsigned char type,
                                       int visibility, double regionTypeColorBlend);
   ///
-  /// sets  all regions/types visible.
+  /// Sets  all regions/types visible.
   virtual void HideAllRegionTypes(vtkMRMLRegionTypeNode* node);
 
   ///
-  /// sets  all regions/types visible.
+  /// Sets  all regions/types visible.
   /// specifies color blend: 1 use region color, 0 use type color
   virtual void ShowAllRegionTypes(vtkMRMLRegionTypeNode* node, double regionTypeColorBlend);
 
   ///
-  /// sets  all types visible for a specified region
+  /// Sets  all types visible for a specified region
   /// specifies color blend: 1 use region color, 0 use type color
   virtual void ShowAllRegions(vtkMRMLRegionTypeNode* node,
                               unsigned char type, double regionTypeColorBlend);
 
   ///
-  /// sets  all regions visible for a specified type
+  /// Sets  all regions visible for a specified type
   /// specifies color blend: 1 use region color, 0 use type color
   virtual void ShowAllTypes(vtkMRMLRegionTypeNode* node,
                             unsigned char region, double regionTypeColorBlend);
 
   ///
-  /// sets  specified region/type visible
+  /// Sets  specified region/type visible
   /// specifies color blend: 1 use region color, 0 use type color
   virtual void ShowSelectedRegionType(vtkMRMLRegionTypeNode* node,
                                       unsigned char region, unsigned char type,
                                       double regionTypeColorBlend);
-
+  ///
+  /// Initialize lookup table from region/type values in ImageData
   virtual void InitializeLookupTable(vtkMRMLRegionTypeNode* node, double regionTypeColorBlend);
 
 protected:
@@ -83,10 +84,14 @@ protected:
   vtkMRMLRegionTypeDisplayNode(const vtkMRMLRegionTypeDisplayNode&);
   void operator=(const vtkMRMLRegionTypeDisplayNode&);
 
+  ///
+  /// returns LUT index for a given region and type
   int GetLUTIndex(unsigned char region, unsigned char type)
   {
     return  type*256 + region;
   };
+
+  int DisplayContours;
 };
 
 #endif

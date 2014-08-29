@@ -73,13 +73,73 @@ void vtkMRMLRegionTypeNode::ProcessMRMLEvents ( vtkObject *caller,
   if (this->ImageDataConnection != 0 &&
       this->ImageDataConnection->GetProducer() == vtkAlgorithm::SafeDownCast(caller) &&
 #endif
-    event ==  vtkCommand::ModifiedEvent)
+      (event ==  vtkCommand::ModifiedEvent || event == vtkMRMLVolumeNode::ImageDataModifiedEvent) )
     {
     this->UpdateAvailableRegionsAndTypes();
     }
 
   return;
 }
+
+//----------------------------------------------------------------------------
+void vtkMRMLRegionTypeNode::SetAndObserveImageData(vtkImageData *ImageData)
+{
+  Superclass::SetAndObserveImageData(ImageData);
+
+  if (ImageData)
+    {
+    double range[2];
+    unsigned char minRegion, maxRegion, minType, maxType;
+
+    ImageData->GetScalarRange(range);
+
+    this->GetAvailableRegionsRange(minRegion, maxRegion);
+    this->GetAvailableTypesRange(minType, maxType);
+
+    if (this->AvailableRegions.size() == 0 || this->AvailableTypes.size() == 0 ||
+        this->GetChestRegionFromValue(range[0]) < minRegion ||
+        this->GetChestRegionFromValue(range[1]) > maxRegion ||
+        this->GetChestTypeFromValue(range[0]) < minType ||
+        this->GetChestTypeFromValue(range[1]) > maxType )
+      {
+      this->UpdateAvailableRegionsAndTypes();
+      vtkMRMLRegionTypeDisplayNode *dnode = this->GetRegionTypeDisplayNode();
+      if (dnode)
+        {
+        dnode->ShowAllRegionTypes(this, 0.0);
+        }
+      }
+    }
+  else
+    {
+    this->UpdateAvailableRegionsAndTypes();
+    }
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLRegionTypeNode::GetAvailableRegionsRange(unsigned char &min, unsigned char &max)
+{
+  min = 0;
+  max = 0;
+  for (unsigned int i=0; i<this->AvailableRegions.size(); i++)
+    {
+    min = this->AvailableRegions[i] < min ? this->AvailableRegions[i] : min;
+    max = this->AvailableRegions[i] > max ? this->AvailableRegions[i] : max;
+    }
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLRegionTypeNode::GetAvailableTypesRange(unsigned char &min, unsigned char &max)
+{
+  min = 0;
+  max = 0;
+  for (unsigned int i=0; i<this->AvailableTypes.size(); i++)
+    {
+    min = this->AvailableTypes[i] < min ? this->AvailableTypes[i] : min;
+    max = this->AvailableTypes[i] > max ? this->AvailableTypes[i] : max;
+    }
+}
+
 //----------------------------------------------------------------------------
 void vtkMRMLRegionTypeNode::UpdateAvailableRegionsAndTypes()
 {
