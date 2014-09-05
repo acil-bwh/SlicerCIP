@@ -1,22 +1,23 @@
 import os
 import unittest
 from __main__ import vtk, qt, ctk, slicer
-
-#
+import cip_python.segmentation.pectoralis_segmentor as pectoralis_segmentor
+import numpy as np ##temporary for debugging
+from vtk.util import numpy_support as VN
 # PectoralisSegmentation
 #
 
 class PectoralisSegmentation:
   def __init__(self, parent):
     parent.title = "PectoralisSegmentation" # TODO make this more human readable by adding spaces
-    parent.categories = ["Examples"]
+    parent.categories = ["Chest Imaging Platform"]
     parent.dependencies = []
-    parent.contributors = ["Jean-Christophe Fillion-Robin (Kitware), Steve Pieper (Isomics)"] # replace with "Firstname Lastname (Org)"
+    parent.contributors = ["Applied Chest Imaging Laboratory, Brigham and Women's Hopsital"] # replace with "Firstname Lastname (Org)"
     parent.helpText = """
     This is an example of scripted loadable module bundled in an extension.
     """
     parent.acknowledgementText = """
-    This file was originally developed by Jean-Christophe Fillion-Robin, Kitware Inc. and Steve Pieper, Isomics, Inc.  and was partially funded by NIH grant 3P41RR013218-12S1.
+       This work is funded by the National Heart, Lung, And Blood Institute of the National Institutes of Health under Award Number R01HL116931. The content is solely the responsibility of the authors and does not necessarily represent the official views of the National Institutes of Health.
 """ # replace with organization, grant and thanks.
     self.parent = parent
 
@@ -61,7 +62,7 @@ class PectoralisSegmentationWidget:
     self.layout.addWidget(reloadCollapsibleButton)
     reloadFormLayout = qt.QFormLayout(reloadCollapsibleButton)
 
-    # reload button
+    # reload buttonino
     # (use this during development, but remove it when delivering
     #  your module to users)
     self.reloadButton = qt.QPushButton("Reload")
@@ -93,7 +94,6 @@ class PectoralisSegmentationWidget:
     #
     self.inputSelector = slicer.qMRMLNodeComboBox()
     self.inputSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.inputSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
     self.inputSelector.selectNodeUponCreation = True
     self.inputSelector.addEnabled = False
     self.inputSelector.removeEnabled = False
@@ -103,9 +103,10 @@ class PectoralisSegmentationWidget:
     self.inputSelector.setMRMLScene( slicer.mrmlScene )
     self.inputSelector.setToolTip( "Pick the input to the algorithm." )
     parametersFormLayout.addRow("Input Volume: ", self.inputSelector)
-
+    
+      
     #
-    # output volume selector
+    # output segmentation selector
     #
     self.outputSelector = slicer.qMRMLNodeComboBox()
     self.outputSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
@@ -120,30 +121,42 @@ class PectoralisSegmentationWidget:
     self.outputSelector.setToolTip( "Pick the output to the algorithm." )
     parametersFormLayout.addRow("Output Volume: ", self.outputSelector)
 
-    #
-    # check box to trigger taking screen shots for later use in tutorials
-    #
-    self.enableScreenshotsFlagCheckBox = qt.QCheckBox()
-    self.enableScreenshotsFlagCheckBox.checked = 0
-    self.enableScreenshotsFlagCheckBox.setToolTip("If checked, take screen shots for tutorials. Use Save Data to write them to disk.")
-    parametersFormLayout.addRow("Enable Screenshots", self.enableScreenshotsFlagCheckBox)
+    #text file with all the labelmaps
+      #self.labelMapFileSelector = qt.QFileDialog()
+        #label_file = self.labelMapFileSelector.getOpenFileNames(
+        #                            self.labelMapFileSelector,
+        #                            "Select files to open",
+        #                            "/home",
+      #                            "text (*.txt)");
+      #text = str(combobox1.currentText())
 
-    #
-    # scale factor for screen shots
-    #
-    self.screenshotScaleFactorSliderWidget = ctk.ctkSliderWidget()
-    self.screenshotScaleFactorSliderWidget.singleStep = 1.0
-    self.screenshotScaleFactorSliderWidget.minimum = 1.0
-    self.screenshotScaleFactorSliderWidget.maximum = 50.0
-    self.screenshotScaleFactorSliderWidget.value = 1.0
-    self.screenshotScaleFactorSliderWidget.setToolTip("Set scale factor for the screen shots.")
-    parametersFormLayout.addRow("Screenshot scale factor", self.screenshotScaleFactorSliderWidget)
+      #parametersFormLayout.addRow("Text file with labelmap names: ", self.labelMapFileSelector)
+      
+      
+    self.descriptionEdit = qt.QLineEdit("/Users/rolaharmouche/Documents/Caselists/INSP_STD_PECS_training_atlas_filename.txt")
+    parametersFormLayout.addRow("Training Labelmaps file name:", self.descriptionEdit)
+    #Add parameters:
+      
+    self.similarityThreshold = qt.QDoubleSpinBox()
+    self.similarityThreshold.setRange(0,1)
+    self.similarityThreshold.setSingleStep(0.1)
+    self.similarityThreshold.setValue(1)
+    self.similarityThreshold.setToolTip( "Maximum NCC similarity value to include." )
+    parametersFormLayout.addRow("Maximum NCC similarity value to include: ", self.similarityThreshold)
+      
 
+    self.numTrainingLabels = qt.QSpinBox()
+    self.numTrainingLabels.setRange(1,100)
+    self.numTrainingLabels.setValue(10)
+    self.numTrainingLabels.setToolTip( "Specify the number of training labels used to build the atlas." )
+    parametersFormLayout.addRow("Number of labels for atlas generation: ", self.numTrainingLabels)
+
+   
     #
     # Apply Button
     #
-    self.applyButton = qt.QPushButton("Apply")
-    self.applyButton.toolTip = "Run the algorithm."
+    self.applyButton = qt.QPushButton("Segment")
+    self.applyButton.toolTip = "Run the segmentation algorithm."
     self.applyButton.enabled = False
     parametersFormLayout.addRow(self.applyButton)
 
@@ -159,14 +172,13 @@ class PectoralisSegmentationWidget:
     pass
 
   def onSelect(self):
-    self.applyButton.enabled = self.inputSelector.currentNode() and self.outputSelector.currentNode()
+    self.applyButton.enabled = self.inputSelector.currentNode() and self.outputSelector.currentNode() 
 
   def onApplyButton(self):
+    print(self.descriptionEdit.text)
     logic = PectoralisSegmentationLogic()
-    enableScreenshotsFlag = self.enableScreenshotsFlagCheckBox.checked
-    screenshotScaleFactor = int(self.screenshotScaleFactorSliderWidget.value)
     print("Run the algorithm")
-    logic.run(self.inputSelector.currentNode(), self.outputSelector.currentNode(), enableScreenshotsFlag,screenshotScaleFactor)
+    logic.run(self.inputSelector.currentNode(), self.outputSelector.currentNode(), self.descriptionEdit.text)
 
   def onReload(self,moduleName="PectoralisSegmentation"):
     """Generic reload method for any scripted module.
@@ -265,18 +277,70 @@ class PectoralisSegmentationLogic:
     annotationLogic = slicer.modules.annotations.logic()
     annotationLogic.CreateSnapShot(name, description, type, self.screenshotScaleFactor, imageData)
 
-  def run(self,inputVolume,outputVolume,enableScreenshots=0,screenshotScaleFactor=1):
+  def rev(self, a, axis = -1):
+        a = np.asarray(a).swapaxes(axis, 0)
+        a = a[::-1,...]
+        a = a.swapaxes(0, axis)
+        return a
+        
+  def run(self,inputVolume,outputVolume,labelmaps_filename):
     """
     Run the actual algorithm
     """
+    # get the shape     
+    input_image = inputVolume.GetImageData()
+    shape = list(input_image.GetDimensions())
+    shape.reverse()
+    input_array = vtk.util.numpy_support.vtk_to_numpy(input_image.GetPointData().GetScalars()).reshape(shape)
+    
+    outputVolume_temp = np.ones(shape)
+    print("input volume shape")
+    print(np.shape(input_array))
+    #self.delayDisplay('Running the aglorithm '+str(shape))
 
-    self.delayDisplay('Running the aglorithm')
+    #outputArray = slicer.util.array(outputVolume.GetID())
+    
+    #call a function that takes as input the volume and a list of labelmaps
+    my_pectoralis_segmentor = pectoralis_segmentor.pectoralis_segmentor(input_array, labelmaps_filename)
+    outputVolume_temp = my_pectoralis_segmentor.execute()
 
-    self.enableScreenshots = enableScreenshots
-    self.screenshotScaleFactor = screenshotScaleFactor
+    #outputVolume_temp2 = np.asarray(outputVolume_temp).swapaxes(0, 0)
+    #outputVolume_temp2 = outputVolume_temp[::-1,...]
+    #outputVolume_temp2 = outputVolume_temp.swapaxes(0, 0)
+        
+    outputVolume_temp2 = self.rev(outputVolume_temp, 0)
+    print("out volume shape")
+    print(np.shape(outputVolume_temp2))
+    outputVolume_temp2 = outputVolume_temp
+    shape = list(input_image.GetDimensions())
+    
+    volumesLogic = slicer.modules.volumes.logic()
+    outputVolume = volumesLogic.CloneVolume(slicer.mrmlScene, inputVolume, 'Volume_Out')
+    outputArray = slicer.util.array(outputVolume.GetID())
+    print(np.shape(outputArray))
+    outputArray[:]  = outputVolume_temp2.squeeze().reshape()
+    outputVolume.GetImageData().Modified()
+    #print(outputVolume) #vtkMRMLScalarVolumeNode
+    #outputVolume.SetDimensions(shape)
+    outputVolume.Modified()
+    
+    #set the vtk volume information
 
-    self.takeScreenshot('PectoralisSegmentation-Start','Start',-1)
-
+    print("output_shape")
+    print(np.shape(outputVolume_temp))
+    print(np.amax(outputVolume_temp))
+    print(shape)
+    #create a vtk volume to return
+    #dataImporter = vtk.vtkImageImport()
+    #dataImporter.CopyImportVoidPointer(outputVolume_temp,outputVolume_temp.nbytes)
+    #dataImporter.SetDataScalarTypeToInt()
+    #dataImporter.SetNumberOfScalarComponents(1)
+    #dataImporter.SetDataExtent(0,shape[0], 0, shape[1], 0, shape[2])
+    #dataImporter.SetWholeExtent(0,shape[0], 0, shape[1], 0, shape[2])
+    
+    
+    #outputVolume.SetImageDataConnection() = inputVolume.GetImageDataConnection()
+    
     return True
 
 

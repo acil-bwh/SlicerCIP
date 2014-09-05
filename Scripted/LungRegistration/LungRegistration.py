@@ -11,12 +11,12 @@ class LungRegistration:
     parent.title = "LungRegistration" # TODO make this more human readable by adding spaces
     parent.categories = ["Chest Imaging Platform"]
     parent.dependencies = []
-    parent.contributors = ["Jean-Christophe Fillion-Robin (Kitware), Steve Pieper (Isomics)"] # replace with "Firstname Lastname (Org)"
+    parent.contributors = ["Applied Chest Imaging Laboratory, Brigham and Women's Hopsital"] # replace with "Firstname Lastname (Org)"
     parent.helpText = """
-    This is an example of scripted loadable module bundled in an extension.
+    Simple Lung registration module
     """
     parent.acknowledgementText = """
-    This file was originally developed by Jean-Christophe Fillion-Robin, Kitware Inc. and Steve Pieper, Isomics, Inc.  and was partially funded by NIH grant 3P41RR013218-12S1.
+        This work is funded by the National Heart, Lung, And Blood Institute of the National Institutes of Health under Award Number R01HL116931. The content is solely the responsibility of the authors and does not necessarily represent the official views of the National Institutes of Health.
 """ # replace with organization, grant and thanks.
     self.parent = parent
 

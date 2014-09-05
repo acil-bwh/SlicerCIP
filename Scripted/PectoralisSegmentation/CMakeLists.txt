@@ -1,10 +1,17 @@
 #-----------------------------------------------------------------------------
 set(MODULE_NAME PectoralisSegmentation)
 
+string(TOUPPER ${MODULE_NAME} MODULE_NAME_UPPER)
+
+#-----------------------------------------------------------------------------
+set(MODULE_EXPORT_DIRECTIVE "Q_SLICER_QTMODULES_${MODULE_NAME_UPPER}_EXPORT")
+
+
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
   )
+
 
 set(MODULE_PYTHON_RESOURCES
   )
@@ -27,4 +34,3 @@ if(BUILD_TESTING)
   # Additional build-time testing
   add_subdirectory(Testing)
 endif()
-
