@@ -14,6 +14,7 @@
   limitations under the License.
 
 ==============================================================================*/
+#include <sstream>
 
 // Qt includes
 #include <QDebug>
@@ -37,9 +38,9 @@
 
 #include <vtkMatrix4x4.h>
 #include <vtkSmartPointer.h>
-#include <vtkImageData.h>
 #include <vtkNew.h>
-#include <vtkImageThreshold.h>
+#include <vtkPointData.h>
+#include <vtkPolyData.h>
 
 //-----------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_ExtensionTemplate
@@ -139,9 +140,25 @@ void qSlicerParticlesDisplayModuleWidget::onInputChanged(vtkMRMLNode* node)
     return;
     }
 
+  this->updateParticlesDisplayNode();
+
+  std::vector<std::string> scalars;
+  this->getAvailableScalarNames(scalars);
+
+  for (int i=0; i< scalars.size(); i++)
+    {
+    d->ColorComboBox->addItem(QString(scalars[i].c_str()));
+    }
+
+  std::vector<std::string> vectors;
+  this->getAvailableScalarNames(vectors);
+
   d->RegionComboBox->setCurrentIndex(0);
   d->TypeComboBox->setCurrentIndex(0);
-  this->updateParticlesDisplayNode();
+  if (scalars.size())
+    {
+    this->onColorByChanged(QString(scalars[0].c_str()));
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -163,22 +180,29 @@ void qSlicerParticlesDisplayModuleWidget::onOutputChanged(vtkMRMLNode* node)
     }
 
   this->createParticlesDisplayNode(vtkMRMLModelNode::SafeDownCast(node));
+
+   this->onColorByChanged(d->ColorComboBox->currentText());
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerParticlesDisplayModuleWidget::onGlyphTypeChanged(const QString & regionName)
+void qSlicerParticlesDisplayModuleWidget::onGlyphTypeChanged(const QString & glyph)
 {
   Q_D(qSlicerParticlesDisplayModuleWidget);
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerParticlesDisplayModuleWidget::onColorByChanged(const QString & regionName)
+void qSlicerParticlesDisplayModuleWidget::onColorByChanged(const QString & color)
 {
   Q_D(qSlicerParticlesDisplayModuleWidget);
+  vtkMRMLParticlesDisplayNode* particlesDisplayNode = this->getParticlesDisplayNode();
+  if (particlesDisplayNode)
+    {
+    particlesDisplayNode->SetParticlesColorBy(d->ColorComboBox->currentText().toStdString().c_str());
+    }
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerParticlesDisplayModuleWidget::onTypeChanged(const QString & regionName)
+void qSlicerParticlesDisplayModuleWidget::onTypeChanged(const QString & type)
 {
   Q_D(qSlicerParticlesDisplayModuleWidget);
   vtkMRMLParticlesDisplayNode* particlesDisplayNode = this->getParticlesDisplayNode();
@@ -278,4 +302,75 @@ vtkMRMLParticlesDisplayNode* qSlicerParticlesDisplayModuleWidget::getParticlesDi
                             particleNode->GetModelDisplayNode());
     }
   return particlesDisplayNode;
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerParticlesDisplayModuleWidget::getAvailableScalarNames(std::vector<std::string> &names)
+{
+  Q_D(qSlicerParticlesDisplayModuleWidget);
+
+  names.clear();
+
+  vtkMRMLModelNode *model = vtkMRMLModelNode::SafeDownCast(d->InputModelComboBox->currentNode());
+  vtkPolyData *poly = 0;
+  if (model)
+    {
+    poly = model->GetPolyData();
+    }
+  if (poly == 0 || poly->GetPointData() == 0)
+    {
+    return;
+    }
+
+  for (int i=0; i<poly->GetPointData()->GetNumberOfArrays(); i++)
+    {
+    if (poly->GetPointData()->GetArray(i)->GetNumberOfComponents() == 1)
+      {
+      if (poly->GetPointData()->GetArrayName(i))
+        {
+        names.push_back(std::string(poly->GetPointData()->GetArrayName(i)));
+        }
+      else
+        {
+        std::stringstream ss;
+        ss << "Scalar " << i;
+        names.push_back(ss.str());
+        }
+      }
+    }
+}
+//-----------------------------------------------------------------------------
+void qSlicerParticlesDisplayModuleWidget::getAvailableVectorNames(std::vector<std::string> &names)
+{
+  Q_D(qSlicerParticlesDisplayModuleWidget);
+
+  names.clear();
+
+  vtkMRMLModelNode *model = vtkMRMLModelNode::SafeDownCast(d->InputModelComboBox->currentNode());
+  vtkPolyData *poly = 0;
+  if (model)
+    {
+    poly = model->GetPolyData();
+    }
+  if (poly == 0 || poly->GetPointData() == 0)
+    {
+    return;
+    }
+
+  for (int i=0; i<poly->GetPointData()->GetNumberOfArrays(); i++)
+    {
+    if (poly->GetPointData()->GetArray(i)->GetNumberOfComponents() == 3)
+      {
+      if (poly->GetPointData()->GetArrayName(i))
+        {
+        names.push_back(std::string(poly->GetPointData()->GetArrayName(i)));
+        }
+      else
+        {
+        std::stringstream ss;
+        ss << "Vector " << i;
+        names.push_back(ss.str());
+        }
+      }
+    }
 }

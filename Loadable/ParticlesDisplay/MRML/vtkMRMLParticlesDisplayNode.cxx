@@ -22,6 +22,7 @@ Version:   $Revision: 1.2 $
 #include <vtkPointData.h>
 #include <vtkGlyph3DWithScaling.h>
 #include <vtkCylinderSource.h>
+#include <vtkAssignAttribute.h>
 
 // STD includes
 #include <cassert>
@@ -34,9 +35,16 @@ vtkMRMLNodeNewMacro(vtkMRMLParticlesDisplayNode);
 //----------------------------------------------------------------------------
 vtkMRMLParticlesDisplayNode::vtkMRMLParticlesDisplayNode()
 {
+  this->AssignScalar = vtkAssignAttribute::New();
+  this->AssignVector = vtkAssignAttribute::New();
   this->Glypher = vtkGlyph3DWithScaling::New();
   this->GlyphSource = vtkCylinderSource::New();
   this->ParticlesType = vtkMRMLParticlesDisplayNode::ParticlesTypeAirway;
+  this->ParticlesColorBy = 0;
+
+  this->AssignVector->SetInputConnection(this->AssignScalar->GetOutputPort());
+  this->Glypher->SetInputConnection(this->AssignVector->GetOutputPort());
+  this->Glypher->SetSourceConnection(this->GlyphSource->GetOutputPort());
 }
 
 //----------------------------------------------------------------------------
@@ -44,6 +52,9 @@ vtkMRMLParticlesDisplayNode::~vtkMRMLParticlesDisplayNode()
 {
   this->Glypher->Delete();
   this->GlyphSource->Delete();
+  this->AssignScalar->Delete();
+  this->AssignVector->Delete();
+  this->SetParticlesColorBy(0);
 }
 
 //----------------------------------------------------------------------------
@@ -78,28 +89,36 @@ void vtkMRMLParticlesDisplayNode::UpdatePolyDataPipeline()
     vectorName = std::string("hevec1");
     }
 
-  vtkPolyData *poly = this->GetInputPolyData();
-
-  if (poly == 0)
+  std::string colorByName;
+  if (this->GetParticlesColorBy())
     {
-    return;
+    colorByName = std::string(this->GetParticlesColorBy());
     }
 
-  if (poly->GetPointData())
-    {
-    vtkDataArray *vectorData = poly->GetPointData()->GetArray(vectorName.c_str());
-    poly->GetPointData()->SetVectors(vectorData);
-    poly->Modified();
-    }
+  this->AssignScalar->Assign(
+      colorByName.c_str(),
+      colorByName.c_str() ? vtkDataSetAttributes::SCALARS : -1,
+      vtkAssignAttribute::POINT_DATA);
 
-  this->Glypher->SetInputConnection(this->GetInputPolyDataConnection());
+  this->AssignVector->Assign(
+      vectorName.c_str(),
+      vectorName.c_str() ? vtkDataSetAttributes::VECTORS : -1,
+      vtkAssignAttribute::POINT_DATA);
 
-  this->Glypher->SetSourceConnection(this->GlyphSource->GetOutputPort());
+  this->AssignScalar->SetInputConnection(this->GetInputPolyDataConnection());
+
+  this->AssignScalar->Update();
+  this->AssignVector->Update();
 
   this->Glypher->SetColorModeToColorByScalar();
   this->Glypher->SetOrient(1);
   this->Glypher->SetScaleModeToScaleByScalar();
   this->Glypher->SetVectorModeToUseVector();
 
+  if ( colorByName.c_str() )
+    {
+    this->SetScalarVisibility(1);
+    }
+  //this->Glypher->Modified();
   this->Glypher->Update();
 }

@@ -51,6 +51,8 @@ protected:
   void createParticlesDisplayNode(vtkMRMLModelNode* modelNode);
   void updateParticlesDisplayNode();
   vtkMRMLParticlesDisplayNode* getParticlesDisplayNode();
+  void getAvailableScalarNames(std::vector<std::string> &names);
+  void getAvailableVectorNames(std::vector<std::string> &names);
 
 protected slots:
   void onInputChanged(vtkMRMLNode*);

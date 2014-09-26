@@ -25,6 +25,7 @@
 //class cip::Conventions;
 class vtkGlyph3DWithScaling;
 class vtkCylinderSource;
+class vtkAssignAttribute;
 
 /// \brief MRML node for representing a volume display attributes.
 ///
@@ -52,10 +53,23 @@ class VTK_SLICER_PARTICLESDISPLAY_MODULE_MRML_EXPORT vtkMRMLParticlesDisplayNode
     ParticlesTypeFissure = 2,
   };
 
+  enum
+  {
+    ParticlesColorByScale = 0,
+    ParticlesColorByStrength = 1,
+    ParticlesColorByType = 2,
+    ParticlesColorByRegion = 3,
+  };
+
   /// Description:
   /// Particles Type to dispaly from the enum above. The Particles Types are mutually exclusive.
   vtkGetMacro ( ParticlesType, int );
   vtkSetMacro ( ParticlesType, int );
+
+  /// Description:
+  /// Particles ColorBy to dispaly from the enum above. The Particles ColorBy are mutually exclusive.
+  vtkGetStringMacro ( ParticlesColorBy );
+  vtkSetStringMacro ( ParticlesColorBy );
 
 protected:
 
@@ -75,9 +89,12 @@ protected:
   };
 
   int ParticlesType;
+  char* ParticlesColorBy;
 
   vtkGlyph3DWithScaling        *Glypher;
-  vtkCylinderSource *GlyphSource;
+  vtkCylinderSource            *GlyphSource;
+  vtkAssignAttribute           *AssignScalar;
+  vtkAssignAttribute           *AssignVector;
 };
 
 #endif
