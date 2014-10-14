@@ -191,7 +191,7 @@ void qSlicerParticlesDisplayModuleWidget::onGlyphTypeChanged(const QString & gly
   vtkMRMLParticlesDisplayNode* particlesDisplayNode = this->getParticlesDisplayNode();
   if (particlesDisplayNode)
     {
-    particlesDisplayNode->SetGlyphType(d->ColorComboBox->currentIndex());
+    particlesDisplayNode->SetGlyphType(d->GlyphTypeComboBox->currentIndex());
     }
 }
 
