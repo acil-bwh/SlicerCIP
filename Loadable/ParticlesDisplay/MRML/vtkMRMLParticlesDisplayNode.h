@@ -25,7 +25,11 @@
 //class cip::Conventions;
 class vtkGlyph3DWithScaling;
 class vtkCylinderSource;
+class vtkSphereSource;
+class vtkPolyDataAlgorithm;
 class vtkAssignAttribute;
+class vtkTransformPolyDataFilter;
+class vtkTransform;
 
 /// \brief MRML node for representing a volume display attributes.
 ///
@@ -42,6 +46,17 @@ class VTK_SLICER_PARTICLESDISPLAY_MODULE_MRML_EXPORT vtkMRMLParticlesDisplayNode
   ///
   /// Get node XML tag name (like Volume, Model)
   virtual const char* GetNodeTagName() {return "ParticlesDisplayNode";};
+
+  /// Read node attributes from XML file.
+  /// \sa vtkMRMLParser
+  virtual void ReadXMLAttributes( const char** atts);
+
+  /// Write this node's information to a MRML file in XML format.
+  /// \sa vtkMRMLScene::Commit()
+  virtual void WriteXML(ostream& of, int indent);
+
+  /// Copy the node's attributes to this object.
+  virtual void Copy(vtkMRMLNode *node);
 
   /// Update the pipeline based on this node attributes
   virtual void UpdatePolyDataPipeline();
@@ -67,6 +82,16 @@ class VTK_SLICER_PARTICLESDISPLAY_MODULE_MRML_EXPORT vtkMRMLParticlesDisplayNode
   vtkSetMacro ( ParticlesType, int );
 
   /// Description:
+  /// Glyph Type, 0 cylinder, 1 sphere
+  vtkGetMacro ( GlyphType, int );
+  vtkSetMacro ( GlyphType, int );
+
+  /// Description:
+  /// Particles ScaleFactor along the X axis.
+  vtkGetMacro ( ScaleFactor, double );
+  vtkSetMacro ( ScaleFactor, double );
+
+  /// Description:
   /// Particles ColorBy to dispaly from the enum above. The Particles ColorBy are mutually exclusive.
   vtkGetStringMacro ( ParticlesColorBy );
   vtkSetStringMacro ( ParticlesColorBy );
@@ -88,13 +113,19 @@ protected:
     return  type*256 + region;
   };
 
-  int ParticlesType;
-  char* ParticlesColorBy;
+  int     ParticlesType;
+  char*   ParticlesColorBy;
+  int     GlyphType;
+  double  ScaleFactor;
 
   vtkGlyph3DWithScaling        *Glypher;
-  vtkCylinderSource            *GlyphSource;
+  vtkSphereSource              *SphereSource;
+  vtkCylinderSource            *CylinderSource;
+  vtkPolyDataAlgorithm         *GlyphSource;
   vtkAssignAttribute           *AssignScalar;
   vtkAssignAttribute           *AssignVector;
+  vtkTransformPolyDataFilter   *TransformPolyData;
+  vtkTransform                 *CylinderRotator;
 };
 
 #endif

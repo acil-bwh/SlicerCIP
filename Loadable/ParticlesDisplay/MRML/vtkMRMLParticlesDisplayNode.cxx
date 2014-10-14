@@ -22,12 +22,17 @@ Version:   $Revision: 1.2 $
 #include <vtkPointData.h>
 #include <vtkGlyph3DWithScaling.h>
 #include <vtkCylinderSource.h>
+#include <vtkSphereSource.h>
 #include <vtkAssignAttribute.h>
+#include <vtkTransformPolyDataFilter.h>
+#include <vtkTransform.h>
 
 // STD includes
 #include <cassert>
 #include <math.h>
 #include <vnl/vnl_math.h>
+
+#include <sstream>
 
 //----------------------------------------------------------------------------
 vtkMRMLNodeNewMacro(vtkMRMLParticlesDisplayNode);
@@ -38,13 +43,40 @@ vtkMRMLParticlesDisplayNode::vtkMRMLParticlesDisplayNode()
   this->AssignScalar = vtkAssignAttribute::New();
   this->AssignVector = vtkAssignAttribute::New();
   this->Glypher = vtkGlyph3DWithScaling::New();
-  this->GlyphSource = vtkCylinderSource::New();
+  this->SphereSource = vtkSphereSource::New();
+  this->SphereSource->SetRadius( 0.4 );
+  this->SphereSource->SetCenter( 0, 0, 0 );
+
+  this->CylinderSource = vtkCylinderSource::New();
+  this->CylinderSource->SetHeight( 0.4 ); //25
+  this->CylinderSource->SetRadius( 1.0 );
+  this->CylinderSource->SetCenter( 0, 0, 0 );
+  this->CylinderSource->SetResolution( 20 );
+  this->CylinderSource->CappingOn();
+
+  this->CylinderRotator = vtkTransform::New();
+  this->CylinderRotator->RotateZ( 90 );
+
+  this->TransformPolyData = vtkTransformPolyDataFilter::New();
+  this->TransformPolyData->SetInputConnection(this->CylinderSource->GetOutputPort() );
+  this->TransformPolyData->SetTransform( this->CylinderRotator );
+  this->TransformPolyData->Update();
+
   this->ParticlesType = vtkMRMLParticlesDisplayNode::ParticlesTypeAirway;
   this->ParticlesColorBy = 0;
+
+  this->GlyphType = 0; //cylinder
+  this->GlyphSource = this->CylinderSource;
 
   this->AssignVector->SetInputConnection(this->AssignScalar->GetOutputPort());
   this->Glypher->SetInputConnection(this->AssignVector->GetOutputPort());
   this->Glypher->SetSourceConnection(this->GlyphSource->GetOutputPort());
+
+  this->Glypher->ScalingXOff();
+  this->Glypher->ScalingYOn();
+  this->Glypher->ScalingZOn();
+  this->ScaleFactor = 1.0;
+  this->Glypher->SetScaleFactor( this->ScaleFactor );
 }
 
 //----------------------------------------------------------------------------
@@ -61,6 +93,11 @@ vtkMRMLParticlesDisplayNode::~vtkMRMLParticlesDisplayNode()
 void vtkMRMLParticlesDisplayNode::PrintSelf(ostream& os, vtkIndent indent)
 {
   Superclass::PrintSelf(os,indent);
+
+  os << indent << "ParticlesType:             " << this->ParticlesType << "\n";
+  os << indent << "GlyphType:                 " << this->GlyphType << "\n";
+  os << indent << "ScaleFactor:               " << this->ScaleFactor << "\n";
+  os << indent << "ParticlesColorBy:          " << this->ParticlesColorBy << "\n";
 }
 
 //----------------------------------------------------------------------------
@@ -70,9 +107,100 @@ vtkAlgorithmOutput* vtkMRMLParticlesDisplayNode::GetOutputPolyDataConnection()
 }
 
 //----------------------------------------------------------------------------
+void vtkMRMLParticlesDisplayNode::ReadXMLAttributes(const char** atts)
+{
+  int disabledModify = this->StartModify();
+
+  Superclass::ReadXMLAttributes(atts);
+
+  const char* attName;
+  const char* attValue;
+  while (*atts != NULL)
+    {
+    attName = *(atts++);
+    attValue = *(atts++);
+
+    if (!strcmp(attName, "particlesType"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> ParticlesType;
+      }
+    else if (!strcmp(attName, "glyphType"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> GlyphType;
+      }
+    else if (!strcmp(attName, "scaleFactor"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> ScaleFactor;
+      }
+
+    else if (!strcmp(attName, "particlesColorBy"))
+      {
+      this->SetParticlesColorBy(attValue);
+      }
+    }
+  this->EndModify(disabledModify);
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLParticlesDisplayNode::WriteXML(ostream& of, int nIndent)
+{
+  // Write all attributes not equal to their defaults
+
+  Superclass::WriteXML(of, nIndent);
+
+  vtkIndent indent(nIndent);
+
+  of << indent << " particlesType=\"" << this->ParticlesType << "\"";
+
+  of << indent << " glyphType=\"" << this->GlyphType << "\"";
+
+  of << indent << " scaleFactor=\"" << this->ScaleFactor << "\"";
+
+  of << indent << " particlesColorBy=\"" << this->ParticlesColorBy << "\"";
+
+  of << " ";
+}
+
+//----------------------------------------------------------------------------
+// Copy the node's attributes to this object.
+// Does NOT copy: ID, FilePrefix, Name, ID
+void vtkMRMLParticlesDisplayNode::Copy(vtkMRMLNode *anode)
+{
+  int disabledModify = this->StartModify();
+
+  Superclass::Copy(anode);
+  vtkMRMLParticlesDisplayNode *node = vtkMRMLParticlesDisplayNode::SafeDownCast(anode);
+
+  if (node)
+    {
+    this->SetParticlesColorBy(node->ParticlesColorBy);
+    this->SetParticlesType(node->ParticlesType);
+    this->SetGlyphType(node->GlyphType);
+    this->SetScaleFactor(node->ScaleFactor);
+    }
+
+  this->EndModify(disabledModify);
+}
+
+//----------------------------------------------------------------------------
 void vtkMRMLParticlesDisplayNode::UpdatePolyDataPipeline()
 {
   //this->Superclass::UpdatePolyDataPipeline();
+
+  if (this->GetGlyphType() == 0)
+    {
+    this->GlyphSource = this->CylinderSource;
+    }
+  else if (this->GetGlyphType() == 1)
+    {
+    this->GlyphSource = this->SphereSource;
+    }
 
   int type = this->GetParticlesType();
   std::string vectorName;
@@ -110,10 +238,12 @@ void vtkMRMLParticlesDisplayNode::UpdatePolyDataPipeline()
   this->AssignScalar->Update();
   this->AssignVector->Update();
 
+  this->Glypher->SetSourceConnection(this->GlyphSource->GetOutputPort());
   this->Glypher->SetColorModeToColorByScalar();
   this->Glypher->SetOrient(1);
   this->Glypher->SetScaleModeToScaleByScalar();
   this->Glypher->SetVectorModeToUseVector();
+  this->Glypher->SetScaleFactor(this->GetScaleFactor());
 
   if ( colorByName.c_str() )
     {

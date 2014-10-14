@@ -134,7 +134,18 @@
        </widget>
       </item>
       <item row="5" column="1">
-       <widget class="QComboBox" name="GlyphTypeComboBox"/>
+       <widget class="QComboBox" name="GlyphTypeComboBox">
+        <item>
+         <property name="text">
+          <string>Cylinder</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Sphere</string>
+         </property>
+        </item>
+      </widget>
       </item>
 
       <item row="7" column="0">
@@ -144,17 +155,20 @@
         </property>
        </widget>
       </item>
-      <item row="7" column="1">y
-       <widget class="QSlider" name="ParticlesScaleSlider">
-        <property name="maximum">
-         <number>100</number>
-        </property>
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
+      <item row="7" column="1">
+       <widget class="ctkSliderWidget" name="ParticlesScaleSlider" native="true">
+         <property name="singleStep" stdset="0">
+           <double>0.010000000000000</double>
+         </property>
+         <property name="maximum" stdset="0">
+           <double>10.000000000000000</double>
+         </property>
+         <property name="value" stdset="0">
+           <double>2.500000000000000</double>
+         </property>
        </widget>
       </item>
-
+      
      </layout>
     </widget>
    </item>

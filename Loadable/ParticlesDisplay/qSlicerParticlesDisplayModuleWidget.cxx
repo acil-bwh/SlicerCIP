@@ -121,8 +121,8 @@ void qSlicerParticlesDisplayModuleWidget::setup()
   connect( d->ColorComboBox, SIGNAL( currentIndexChanged(const QString &) ),
 	  this, SLOT( onColorByChanged(const QString &) ) );
 
-  connect( d->ParticlesScaleSlider, SIGNAL( valueChanged(int) ),
-	  this, SLOT( onScaleChanged(int) ) );
+  connect( d->ParticlesScaleSlider, SIGNAL(valueChanged(double)),
+	  this, SLOT( onScaleChanged(double) ) );
 
   d->TypeComboBox->addItem("Airway");
   d->TypeComboBox->addItem("Vessels");
@@ -188,6 +188,11 @@ void qSlicerParticlesDisplayModuleWidget::onOutputChanged(vtkMRMLNode* node)
 void qSlicerParticlesDisplayModuleWidget::onGlyphTypeChanged(const QString & glyph)
 {
   Q_D(qSlicerParticlesDisplayModuleWidget);
+  vtkMRMLParticlesDisplayNode* particlesDisplayNode = this->getParticlesDisplayNode();
+  if (particlesDisplayNode)
+    {
+    particlesDisplayNode->SetGlyphType(d->ColorComboBox->currentIndex());
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -219,9 +224,14 @@ void qSlicerParticlesDisplayModuleWidget::onRegionChanged(const QString & region
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerParticlesDisplayModuleWidget::onScaleChanged(int value)
+void qSlicerParticlesDisplayModuleWidget::onScaleChanged(double value)
 {
   Q_D(qSlicerParticlesDisplayModuleWidget);
+  vtkMRMLParticlesDisplayNode* particlesDisplayNode = this->getParticlesDisplayNode();
+  if (particlesDisplayNode)
+    {
+    particlesDisplayNode->SetScaleFactor(value);
+    }
 }
 
 //-----------------------------------------------------------------------------
