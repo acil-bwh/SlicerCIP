@@ -124,6 +124,12 @@ void qSlicerParticlesDisplayModuleWidget::setup()
   connect( d->ParticlesScaleSlider, SIGNAL(valueChanged(double)),
 	  this, SLOT( onScaleChanged(double) ) );
 
+  connect( d->ParticlesSizeSlider, SIGNAL(valueChanged(double)),
+	  this, SLOT( onSizeChanged(double) ) );
+
+  d->ParticlesScaleSlider->setDecimals(1);
+  d->ParticlesSizeSlider->setDecimals(1);
+
   d->TypeComboBox->addItem("Airway");
   d->TypeComboBox->addItem("Vessels");
   d->TypeComboBox->addItem("Fissures");
@@ -175,8 +181,8 @@ void qSlicerParticlesDisplayModuleWidget::onOutputChanged(vtkMRMLNode* node)
  // do not overwrite the input node
   if (node == d->InputModelComboBox->currentNode())
     {
-    //d->OutputModelComboBox->setCurrentNode(0);
-    //return;
+    d->OutputModelComboBox->setCurrentNode(0);
+    return;
     }
 
   this->createParticlesDisplayNode(vtkMRMLModelNode::SafeDownCast(node));
@@ -235,6 +241,17 @@ void qSlicerParticlesDisplayModuleWidget::onScaleChanged(double value)
 }
 
 //-----------------------------------------------------------------------------
+void qSlicerParticlesDisplayModuleWidget::onSizeChanged(double value)
+{
+  Q_D(qSlicerParticlesDisplayModuleWidget);
+  vtkMRMLParticlesDisplayNode* particlesDisplayNode = this->getParticlesDisplayNode();
+  if (particlesDisplayNode)
+    {
+    particlesDisplayNode->SetParticleSize(value);
+    }
+}
+
+//-----------------------------------------------------------------------------
 void qSlicerParticlesDisplayModuleWidget::createParticlesDisplayNode(vtkMRMLModelNode* modelNode)
 {
   if (modelNode == 0)
@@ -285,17 +302,15 @@ void qSlicerParticlesDisplayModuleWidget::updateParticlesDisplayNode()
     {
     return;
     }
-  particleNode->CopyWithSceneWithSingleModifiedEvent(modelNode);
-
-  vtkMRMLModelDisplayNode *dnode = modelNode->GetModelDisplayNode();
   vtkMRMLParticlesDisplayNode *particlesDisplayNode = vtkMRMLParticlesDisplayNode::SafeDownCast(
     particleNode->GetModelDisplayNode());
 
-  if (dnode == 0 || particlesDisplayNode == 0)
-    {
-    return;
-    }
-	particlesDisplayNode->CopyWithScene(dnode);
+  particleNode->SetAndObservePolyData(modelNode->GetPolyData());
+
+  vtkMRMLModelDisplayNode *dnode = modelNode->GetModelDisplayNode();
+
+  dnode->SetVisibility(0);
+  particlesDisplayNode->SetVisibility(1);
 }
 
 //-----------------------------------------------------------------------------

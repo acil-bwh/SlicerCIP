@@ -40,15 +40,17 @@ vtkMRMLNodeNewMacro(vtkMRMLParticlesDisplayNode);
 //----------------------------------------------------------------------------
 vtkMRMLParticlesDisplayNode::vtkMRMLParticlesDisplayNode()
 {
+  this->ParticleSize = 0.4;
+
   this->AssignScalar = vtkAssignAttribute::New();
   this->AssignVector = vtkAssignAttribute::New();
   this->Glypher = vtkGlyph3DWithScaling::New();
   this->SphereSource = vtkSphereSource::New();
-  this->SphereSource->SetRadius( 0.4 );
+  this->SphereSource->SetRadius( this->ParticleSize );
   this->SphereSource->SetCenter( 0, 0, 0 );
 
   this->CylinderSource = vtkCylinderSource::New();
-  this->CylinderSource->SetHeight( 0.4 ); //25
+  this->CylinderSource->SetHeight( this->ParticleSize); //25
   this->CylinderSource->SetRadius( 1.0 );
   this->CylinderSource->SetCenter( 0, 0, 0 );
   this->CylinderSource->SetResolution( 20 );
@@ -77,6 +79,8 @@ vtkMRMLParticlesDisplayNode::vtkMRMLParticlesDisplayNode()
   this->Glypher->ScalingZOn();
   this->ScaleFactor = 1.0;
   this->Glypher->SetScaleFactor( this->ScaleFactor );
+
+  this->SetScalarVisibility(1);
 }
 
 //----------------------------------------------------------------------------
@@ -97,6 +101,7 @@ void vtkMRMLParticlesDisplayNode::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "ParticlesType:             " << this->ParticlesType << "\n";
   os << indent << "GlyphType:                 " << this->GlyphType << "\n";
   os << indent << "ScaleFactor:               " << this->ScaleFactor << "\n";
+  os << indent << "ParticleSize:              " << this->ParticleSize << "\n";
   os << indent << "ParticlesColorBy:          " << this->ParticlesColorBy << "\n";
 }
 
@@ -138,6 +143,12 @@ void vtkMRMLParticlesDisplayNode::ReadXMLAttributes(const char** atts)
       ss << attValue;
       ss >> ScaleFactor;
       }
+    else if (!strcmp(attName, "particleSize"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> ParticleSize;
+      }
 
     else if (!strcmp(attName, "particlesColorBy"))
       {
@@ -162,6 +173,8 @@ void vtkMRMLParticlesDisplayNode::WriteXML(ostream& of, int nIndent)
 
   of << indent << " scaleFactor=\"" << this->ScaleFactor << "\"";
 
+  of << indent << " particleSize=\"" << this->ParticleSize << "\"";
+
   of << indent << " particlesColorBy=\"" << this->ParticlesColorBy << "\"";
 
   of << " ";
@@ -183,6 +196,7 @@ void vtkMRMLParticlesDisplayNode::Copy(vtkMRMLNode *anode)
     this->SetParticlesType(node->ParticlesType);
     this->SetGlyphType(node->GlyphType);
     this->SetScaleFactor(node->ScaleFactor);
+    this->SetParticleSize(node->ParticleSize);
     }
 
   this->EndModify(disabledModify);
@@ -191,7 +205,8 @@ void vtkMRMLParticlesDisplayNode::Copy(vtkMRMLNode *anode)
 //----------------------------------------------------------------------------
 void vtkMRMLParticlesDisplayNode::UpdatePolyDataPipeline()
 {
-  //this->Superclass::UpdatePolyDataPipeline();
+  this->SphereSource->SetRadius( this->ParticleSize );
+  this->CylinderSource->SetHeight( this->ParticleSize);
 
   if (this->GetGlyphType() == 0)
     {

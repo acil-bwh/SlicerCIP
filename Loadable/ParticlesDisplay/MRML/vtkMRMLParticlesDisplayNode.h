@@ -87,9 +87,14 @@ class VTK_SLICER_PARTICLESDISPLAY_MODULE_MRML_EXPORT vtkMRMLParticlesDisplayNode
   vtkSetMacro ( GlyphType, int );
 
   /// Description:
-  /// Particles ScaleFactor along the X axis.
+  /// Particles ScaleFactor along the Y and Z axis.
   vtkGetMacro ( ScaleFactor, double );
   vtkSetMacro ( ScaleFactor, double );
+
+  /// Description:
+  /// Particles size along the X axis.
+  vtkGetMacro ( ParticleSize, double );
+  vtkSetMacro ( ParticleSize, double );
 
   /// Description:
   /// Particles ColorBy to dispaly from the enum above. The Particles ColorBy are mutually exclusive.
@@ -117,6 +122,7 @@ protected:
   char*   ParticlesColorBy;
   int     GlyphType;
   double  ScaleFactor;
+  double  ParticleSize;
 
   vtkGlyph3DWithScaling        *Glypher;
   vtkSphereSource              *SphereSource;

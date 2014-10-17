@@ -158,13 +158,40 @@
       <item row="7" column="1">
        <widget class="ctkSliderWidget" name="ParticlesScaleSlider" native="true">
          <property name="singleStep" stdset="0">
-           <double>0.010000000000000</double>
+           <double>0.10000000000000</double>
          </property>
          <property name="maximum" stdset="0">
            <double>10.000000000000000</double>
          </property>
          <property name="value" stdset="0">
-           <double>2.500000000000000</double>
+           <double>1.000000000000000</double>
+         </property>
+         <property name="singleStep" stdset="0">
+           <double>0.2</double>
+         </property>
+       </widget>
+      </item>
+      
+      <item row="8" column="0">
+       <widget class="QLabel" name="sizeLabel">
+        <property name="text">
+         <string>Size </string>
+        </property>
+       </widget>
+      </item>
+      <item row="8" column="1">
+       <widget class="ctkSliderWidget" name="ParticlesSizeSlider" native="true">
+         <property name="singleStep" stdset="0">
+           <double>0.10000000000000</double>
+         </property>
+         <property name="maximum" stdset="0">
+           <double>10.000000000000000</double>
+         </property>
+         <property name="value" stdset="0">
+           <double>0.4</double>
+         </property>
+         <property name="singleStep" stdset="0">
+           <double>0.1</double>
          </property>
        </widget>
       </item>

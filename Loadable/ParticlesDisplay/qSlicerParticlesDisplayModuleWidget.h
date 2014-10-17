@@ -62,6 +62,7 @@ protected slots:
   void onGlyphTypeChanged(const QString &);
   void onColorByChanged(const QString &);
   void onScaleChanged(double);
+  void onSizeChanged(double);
 
 private:
   Q_DECLARE_PRIVATE(qSlicerParticlesDisplayModuleWidget);
