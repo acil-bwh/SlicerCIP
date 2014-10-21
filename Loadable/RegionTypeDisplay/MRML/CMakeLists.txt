@@ -14,18 +14,19 @@ set(${KIT}_SRCS
   vtkMRML${MODULE_NAME}DisplayNode.h
   vtkMRMLChestRTColorTableNode.cxx
   vtkMRMLChestRTColorTableNode.h
-  cipChestConventions.h
-  cipChestConventions.cxx
+  #cipChestConventions.h
+  #cipChestConventions.cxx
   )
 
-SET_SOURCE_FILES_PROPERTIES(
- cipChestConventions.cxx
-  WRAP_EXCLUDE
-)
+#SET_SOURCE_FILES_PROPERTIES(
+# cipChestConventions.cxx
+#  WRAP_EXCLUDE
+#)
 
 set(${KIT}_TARGET_LIBRARIES
   ${ITK_LIBRARIES}
   ${MRML_LIBRARIES}
+  ${CIP_LIBRARIES}
   )
 
 #-----------------------------------------------------------------------------
