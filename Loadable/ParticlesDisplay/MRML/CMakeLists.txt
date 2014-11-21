@@ -10,6 +10,8 @@ set(${KIT}_INCLUDE_DIRECTORIES
 set(${KIT}_SRCS
   vtkMRML${MODULE_NAME}Node.cxx
   vtkMRML${MODULE_NAME}Node.h
+  vtkMRMLParticlesNode.cxx
+  vtkMRMLParticlesNode.h
   vtkGlyph3DWithScaling.cxx
   vtkGlyph3DWithScaling.h
   )

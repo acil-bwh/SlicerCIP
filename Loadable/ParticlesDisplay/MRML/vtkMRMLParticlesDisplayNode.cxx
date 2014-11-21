@@ -81,6 +81,8 @@ vtkMRMLParticlesDisplayNode::vtkMRMLParticlesDisplayNode()
   this->Glypher->SetScaleFactor( this->ScaleFactor );
 
   this->SetScalarVisibility(1);
+
+  this->ParticlesColorBy = 0;
 }
 
 //----------------------------------------------------------------------------

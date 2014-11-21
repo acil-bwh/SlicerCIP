@@ -36,10 +36,8 @@
 #include "vtkSlicerParticlesDisplayModuleLogicExport.h"
 
 class vtkSlicerVolumesLogic;
+class vtkMRMLParticlesNode;
 class vtkMRMLParticlesDisplayNode;
-class vtkMRMLScalarVolumeDisplayNode;
-class vtkMRMLVolumeHeaderlessStorageNode;
-//class vtkStringArray;
 
 /// \ingroup Slicer_QtModules_ExtensionTemplate
 class VTK_SLICER_PARTICLESDISPLAY_MODULE_LOGIC_EXPORT vtkSlicerParticlesDisplayLogic :
@@ -51,7 +49,10 @@ public:
   vtkTypeMacro(vtkSlicerParticlesDisplayLogic, vtkSlicerModuleLogic);
   void PrintSelf(ostream& os, vtkIndent indent);
 
-  //int Apply(vtkMRMLParticlesDisplayNode*);
+  // Description:
+  // Create new mrml fiber bundle node and read its polydata from a specified file.
+  // Also create the logic object for its display.
+  vtkMRMLParticlesNode* AddParticlesNode (const char* filename);
 
 protected:
   vtkSlicerParticlesDisplayLogic();

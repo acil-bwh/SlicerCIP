@@ -21,7 +21,9 @@
 // MRML includes
 #include <cipChestConventions.h>
 
+#include <vtkMRMLParticlesNode.h>
 #include <vtkMRMLParticlesDisplayNode.h>
+#include <vtkMRMLModelStorageNode.h>
 #include <vtkMRMLScene.h>
 
 // VTK includes
@@ -33,6 +35,9 @@
 #include <vtkWeakPointer.h>
 
 // STD includes
+#include <itksys/SystemTools.hxx>
+#include <itksys/Directory.hxx>
+
 #include <cassert>
 #include <iostream>
 
@@ -87,9 +92,13 @@ void vtkSlicerParticlesDisplayLogic::RegisterNodes()
   {
     return;
   }
+  vtkMRMLParticlesNode* pNode = vtkMRMLParticlesNode::New();
+  this->GetMRMLScene()->RegisterNodeClass(pNode);
+
   vtkMRMLParticlesDisplayNode* pdNode = vtkMRMLParticlesDisplayNode::New();
   this->GetMRMLScene()->RegisterNodeClass(pdNode);
 
+  pNode->Delete();
   pdNode->Delete();
 }
 
@@ -111,3 +120,56 @@ void vtkSlicerParticlesDisplayLogic
 {
 }
 
+//----------------------------------------------------------------------------
+vtkMRMLParticlesNode* vtkSlicerParticlesDisplayLogic::AddParticlesNode (const char* filename)
+{
+  vtkDebugMacro("Adding particles from filename " << filename);
+
+  vtkMRMLParticlesNode        *particlesNode = vtkMRMLParticlesNode::New();
+  vtkMRMLParticlesDisplayNode *particlesDisplayNode = vtkMRMLParticlesDisplayNode::New();
+  vtkMRMLModelStorageNode     *storageNode = vtkMRMLModelStorageNode::New();
+
+  storageNode->SetFileName(filename);
+  if (storageNode->ReadData(particlesNode) != 0)
+    {
+    const itksys_stl::string fname(filename);
+    itksys_stl::string name = itksys::SystemTools::GetFilenameWithoutExtension(fname);
+    std::string uname( this->GetMRMLScene()->GetUniqueNameByString(name.c_str()));
+    particlesNode->SetName(uname.c_str());
+
+    particlesDisplayNode->SetVisibility(1);
+    particlesNode->SetScene(this->GetMRMLScene());
+    storageNode->SetScene(this->GetMRMLScene());
+    particlesDisplayNode->SetScene(this->GetMRMLScene());
+
+    std::vector<std::string> scalars;
+    particlesNode->GetAvailableScalarNames(scalars);
+    if (scalars.size())
+      {
+      particlesDisplayNode->SetParticlesColorBy(scalars[0].c_str());
+      }
+
+    this->GetMRMLScene()->SaveStateForUndo();
+
+    this->GetMRMLScene()->AddNode(storageNode);
+    this->GetMRMLScene()->AddNode(particlesDisplayNode);
+
+    particlesNode->SetAndObserveStorageNodeID(storageNode->GetID());
+
+    particlesNode->SetAndObserveDisplayNodeID(particlesDisplayNode->GetID());
+
+    this->GetMRMLScene()->AddNode(particlesNode);
+
+    particlesNode->Delete();
+    }
+  else
+    {
+    vtkErrorMacro("Couldn't read file, returning null particles node: " << filename);
+    particlesNode->Delete();
+    particlesNode = NULL;
+    }
+  storageNode->Delete();
+  particlesDisplayNode->Delete();
+
+  return particlesNode;
+}

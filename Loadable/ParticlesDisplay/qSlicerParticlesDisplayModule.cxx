@@ -22,6 +22,8 @@
 // Slicer includes
 #include <qSlicerCoreApplication.h>
 #include <qSlicerModuleManager.h>
+#include <qSlicerCoreIOManager.h>
+#include <qSlicerNodeWriter.h>
 
 // ParticlesDisplay Logic includes
 #include <vtkSlicerCLIModuleLogic.h>
@@ -31,7 +33,9 @@
 // ParticlesDisplay includes
 #include "qSlicerParticlesDisplayModule.h"
 #include "qSlicerParticlesDisplayModuleWidget.h"
+#include "qSlicerParticlesReader.h"
 
+#include <vtkMRMLThreeDViewDisplayableManagerFactory.h>
 //-----------------------------------------------------------------------------
 Q_EXPORT_PLUGIN2(qSlicerParticlesDisplayModule, qSlicerParticlesDisplayModule);
 
@@ -111,8 +115,19 @@ void qSlicerParticlesDisplayModule::setup()
 {
   this->Superclass::setup();
 
+  vtkMRMLThreeDViewDisplayableManagerFactory::GetInstance()->
+    RegisterDisplayableManager("vtkMRMLTractographyDisplayDisplayableManager");
+
   vtkSlicerParticlesDisplayLogic* particlesDisplayLogic =
     vtkSlicerParticlesDisplayLogic::SafeDownCast(this->logic());
+
+  qSlicerCoreIOManager* coreIOManager =
+    qSlicerCoreApplication::application()->coreIOManager();
+  coreIOManager->registerIO(
+    new qSlicerParticlesReader(particlesDisplayLogic, this));
+  coreIOManager->registerIO(new qSlicerNodeWriter(
+    "Particles", QString("ParticlesFile"),
+    QStringList() << "vtkMRMLParticlesNode", this));
 }
 
 //-----------------------------------------------------------------------------

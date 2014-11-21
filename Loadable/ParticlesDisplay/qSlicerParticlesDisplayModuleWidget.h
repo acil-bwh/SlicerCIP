@@ -48,15 +48,12 @@ protected:
   QScopedPointer<qSlicerParticlesDisplayModuleWidgetPrivate> d_ptr;
 
   virtual void setup();
-  void createParticlesDisplayNode(vtkMRMLModelNode* modelNode);
-  void updateParticlesDisplayNode();
   vtkMRMLParticlesDisplayNode* getParticlesDisplayNode();
-  void getAvailableScalarNames(std::vector<std::string> &names);
+  void GetAvailableScalarNames(std::vector<std::string> &names);
   void getAvailableVectorNames(std::vector<std::string> &names);
 
 protected slots:
   void onInputChanged(vtkMRMLNode*);
-  void onOutputChanged(vtkMRMLNode*);
   void onRegionChanged(const QString &);
   void onTypeChanged(const QString &);
   void onGlyphTypeChanged(const QString &);
