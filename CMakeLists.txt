@@ -30,6 +30,8 @@ if(${EXTENSION_NAME}_SUPERBUILD)
   return()
 endif()
 
+add_definitions(-DUSE_STATIC_CIP_LIBS)
+#option(BUILD_SHARED_LIBS "Build the shared library" OFF)
 
 #-----------------------------------------------------------------------------
 find_package(Slicer REQUIRED)
@@ -63,7 +65,7 @@ if (SLICERCIP_ENABLE_EXPERIMENTAL_MODULES)
 endif()
 
 if(BUILD_TESTING)
-  add_subdirectory(Testing)
+#  add_subdirectory(Testing)
 endif()
 
 

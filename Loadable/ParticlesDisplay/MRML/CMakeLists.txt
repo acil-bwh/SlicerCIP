@@ -12,8 +12,6 @@ set(${KIT}_SRCS
   vtkMRML${MODULE_NAME}Node.h
   vtkMRMLParticlesNode.cxx
   vtkMRMLParticlesNode.h
-  vtkGlyph3DWithScaling.cxx
-  vtkGlyph3DWithScaling.h
   )
 
 #SET_SOURCE_FILES_PROPERTIES(
@@ -24,6 +22,7 @@ set(${KIT}_SRCS
 set(${KIT}_TARGET_LIBRARIES
   ${ITK_LIBRARIES}
   ${MRML_LIBRARIES}
+  ${CIP_LIBRARIES}
   )
 
 #-----------------------------------------------------------------------------

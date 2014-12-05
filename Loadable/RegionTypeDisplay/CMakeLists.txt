@@ -47,6 +47,8 @@ set(MODULE_TARGET_LIBRARIES
   vtkSlicer${MODULE_NAME}ModuleLogic
 #  qSlicer${MODULE_NAME}ModuleWidgets
   vtkSlicerVolumesModuleLogic
+  ${CIPCommon}
+  ${CIPUtilities}
   )
 
 set(MODULE_RESOURCES
