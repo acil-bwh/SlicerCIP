@@ -148,15 +148,15 @@ class VolumeProbeWidget:
 
     self.histogram = ctk.ctkVTKHistogram()
     self.histogram.setDataArray(self.histogramArray)
+    self.histogram.setNumberOfBins(12)
 
     self.histogramView = ctk.ctkTransferFunctionView()
-    #histogramItem = ctk.ctkTransferFunctionBarsItem()
-    #histogramItem.setTransferFunction(histogram.data())
-    #histogramItem.setBarWidth(1.)
+    self.histogramItem = ctk.ctkTransferFunctionBarsItem(self.histogram)
+    #self.histogramItem.setBarWidth(1.)
 
-    #self.histogramView.scene().addItem(histogramItem)
+    self.histogramView.scene().addItem(self.histogramItem)
     parametersFormLayout.addRow("Histogram", self.histogramView)
-    self.histogramView.show();
+    self.histogramView.show()
 
 
     self.minField = qt.QSpinBox()
@@ -187,15 +187,20 @@ class VolumeProbeWidget:
     min = 0
     max = 0
     mean = 0
+    self.histogramArray.SetNumberOfTuples(0)
     if len(pixelArray):
       pixels = np.array(pixelArray)
       min = pixels.min()
       max = pixels.max()
       mean = pixels.mean()
+      for i in range(len(pixelArray)):
+        self.histogramArray.InsertNextTuple1(pixels[i])
 
     self.minField.setValue(min)
     self.maxField.setValue(max)
     self.meanField.setValue(mean)
+    self.histogram.build()
+    self.histogramView.show()
     
   def onDrawROIToggled(self):
     if self.drawROICheck.checked:
