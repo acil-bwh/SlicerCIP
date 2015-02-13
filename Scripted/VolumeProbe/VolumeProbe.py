@@ -148,11 +148,11 @@ class VolumeProbeWidget:
 
     self.histogram = ctk.ctkVTKHistogram()
     self.histogram.setDataArray(self.histogramArray)
-    self.histogram.setNumberOfBins(12)
+    self.histogram.numberOfBins = 12
 
     self.histogramView = ctk.ctkTransferFunctionView()
     self.histogramItem = ctk.ctkTransferFunctionBarsItem(self.histogram)
-    #self.histogramItem.setBarWidth(1.)
+    self.histogramItem.barWidth = 1
 
     self.histogramView.scene().addItem(self.histogramItem)
     parametersFormLayout.addRow("Histogram", self.histogramView)
