@@ -142,17 +142,23 @@ class VolumeProbeWidget:
 
     #
     # Add Histogram
+    self.numBins = qt.QSpinBox()
+    self.numBins.setRange(0, 200)
+    self.numBins.setEnabled(1)
+    self.numBins.setValue(20)
+    parametersFormLayout.addRow("Number of Bins", self.numBins)
+
     self.histogramArray = vtk.vtkDoubleArray()
     self.histogramArray.SetNumberOfComponents(1)
     self.histogramArray.SetNumberOfTuples(0)
 
     self.histogram = ctk.ctkVTKHistogram()
     self.histogram.setDataArray(self.histogramArray)
-    self.histogram.numberOfBins = 12
+    self.histogram.numberOfBins = self.numBins.value
 
     self.histogramView = ctk.ctkTransferFunctionView()
     self.histogramItem = ctk.ctkTransferFunctionBarsItem(self.histogram)
-    self.histogramItem.barWidth = 1
+    self.histogramItem.barWidth = 0.7
 
     self.histogramView.scene().addItem(self.histogramItem)
     parametersFormLayout.addRow("Histogram", self.histogramView)
@@ -187,21 +193,45 @@ class VolumeProbeWidget:
     min = 0
     max = 0
     mean = 0
+    med = 0
     self.histogramArray.SetNumberOfTuples(0)
     if len(pixelArray):
       pixels = np.array(pixelArray)
       min = pixels.min()
       max = pixels.max()
       mean = pixels.mean()
+      med = self.median(pixelArray)
       for i in range(len(pixelArray)):
         self.histogramArray.InsertNextTuple1(pixels[i])
 
     self.minField.setValue(min)
     self.maxField.setValue(max)
     self.meanField.setValue(mean)
+    self.medianField.setValue(med)
+    self.histogram.numberOfBins = self.numBins.value
     self.histogram.build()
     self.histogramView.show()
     
+  def median(self, data):
+    """Return the median (middle value) of numeric data.
+    When the number of data points is odd, return the middle data point.
+    When the number of data points is even, the median is interpolated by
+    taking the average of the two middle values:
+    >>> median([1, 3, 5])
+    3
+    >>> median([1, 3, 5, 7])
+    4.0
+    """
+    data = sorted(data)
+    n = len(data)
+    if n == 0:
+        return 0
+    if n%2 == 1:
+        return data[n//2]
+    else:
+        i = n//2
+        return (data[i - 1] + data[i])/2
+
   def onDrawROIToggled(self):
     if self.drawROICheck.checked:
       self.roiManager = ROIManager()
