@@ -27,7 +27,8 @@ foreach(dep ${EXTENSION_DEPENDS})
 endforeach()
 
 set(proj ${SUPERBUILD_TOPLEVEL_PROJECT})
-set(${proj}_DEPENDS CIP)
+set(${proj}_DEPENDS
+    CIP)
 
 ExternalProject_Include_Dependencies(${proj}
   PROJECT_VAR proj

@@ -2,7 +2,11 @@
 set(proj CIP)
 
 # Set dependency list
-set(${proj}_DEPENDS "")
+if (WIN32) # libxml2 is a prerequisite for other platforms
+  set(LIBXML2_EXTERNAL_NAME LibXml2)
+endif()
+set(${proj}_DEPENDS ${LIBXML2_EXTERNAL_NAME})
+
 
 # Include dependent projects if any
 ExternalProject_Include_Dependencies(${proj} PROJECT_VAR proj)
@@ -12,8 +16,8 @@ if(${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
 endif()
 
 # Sanity checks
-if(DEFINED Foo_DIR AND NOT EXISTS ${Foo_DIR})
-  message(FATAL_ERROR "Foo_DIR variable is defined but corresponds to nonexistent directory")
+if(DEFINED CIP_DIR AND NOT EXISTS ${CIP_DIR})
+  message(FATAL_ERROR "CIP_DIR variable is defined but corresponds to nonexistent directory")
 endif()
 
 if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
@@ -21,20 +25,23 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
   if(NOT DEFINED git_protocol)
     set(git_protocol "git")
   endif()
-
+  message(STATUS ${VTK_DIR})
   ExternalProject_Add(${proj}
     ${${proj}_EP_ARGS}
     GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
-    GIT_TAG "9647dfffd4a16fa61c2c8c9ce6a1bb8d324b101a"
+    GIT_TAG "3842503bf0df3629dea52755ac15cf703ee36fb4"
     #DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
     SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
     BINARY_DIR ${proj}-build
     CMAKE_CACHE_ARGS
       -DCIP_SUPERBUILD:BOOL=OFF
-      -DITK_DIR:STRING=${ITK_DIR}
-      -DVTK_DIR:STRING=${VTK_DIR}
-      -DVTK_SOURCE_DIR:STRING=${VTK_SOURCE_DIR}
-      -DTeem_DIR:STRING=${Teem_DIR}
+      -DITK_DIR:PATH=${ITK_DIR}
+      -DVTK_DIR:PATH=${VTK_DIR}
+      -DVTK_SOURCE_DIR:PATH=${VTK_SOURCE_DIR}
+      -DTeem_DIR:PATH=${Teem_DIR}
+      -DLIBXML2_INCLUDE_DIR:PATH=${LIBXML2_INCLUDE_DIR}
+      -DLIBXML2_LIBRARIES:PATH=${LIBXML2_LIBRARIES}
+      -DBUILD_GENERATEMODEL:BOOL=OFF
       -DSlicerExecutionModel_DIR:STRING=${SlicerExecutionModel_DIR}
       -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
       -DCMAKE_CXX_FLAGS:STRING=${ep_common_cxx_flags}
