@@ -25,9 +25,9 @@ mark_as_superbuild(Slicer_DIR)
 find_package(Git REQUIRED)
 mark_as_superbuild(GIT_EXECUTABLE)
 
-find_package(LibXml2 REQUIRED)
-mark_as_superbuild(LibXml2_DIR)
-
+#commented out to use vtklibxml2
+#find_package(LibXml2 REQUIRED)
+#mark_as_superbuild(LibXml2_DIR)
 
 #-----------------------------------------------------------------------------
 # SuperBuild setup
@@ -38,6 +38,19 @@ if(${EXTENSION_NAME}_SUPERBUILD)
   return()
 endif()
 
+
+find_package(CIP REQUIRED)
+include(${CIP_USE_FILE})
+
+if(WIN32)
+  add_definitions(-DUSE_STATIC_CIP_LIBS)
+endif()
+
+if(APPLE)
+  set(CMAKE_CXX_FLAGS "-stdlib=libstdc++ -mmacosx-version-min=10.6")
+  set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-dylib_file,/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib")
+  set(CMAKE_EXE_LINKER_FLAGS "-Wl,-dylib_file,/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib")
+endif()
 
 #-----------------------------------------------------------------------------
 # Extension modules

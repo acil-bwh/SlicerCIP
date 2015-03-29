@@ -1,11 +1,11 @@
 
 set(proj CIP)
 
-# Set dependency list
-if (WIN32) # libxml2 is a prerequisite for other platforms
-  set(LIBXML2_EXTERNAL_NAME LibXml2)
-endif()
-set(${proj}_DEPENDS ${LIBXML2_EXTERNAL_NAME})
+# Set dependency list (commented out to use vtklibxml2)
+#if (WIN32) # libxml2 is a prerequisite for other platforms
+#  set(LIBXML2_EXTERNAL_NAME LibXml2)
+#endif()
+#set(${proj}_DEPENDS ${LIBXML2_EXTERNAL_NAME})
 
 
 # Include dependent projects if any
@@ -29,7 +29,7 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
   ExternalProject_Add(${proj}
     ${${proj}_EP_ARGS}
     GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
-    GIT_TAG "3842503bf0df3629dea52755ac15cf703ee36fb4"
+    GIT_TAG "1ad42382ee2027b8d576931aa5b9b5d46f00d691"
     #DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
     SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
     BINARY_DIR ${proj}-build
@@ -39,8 +39,8 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DVTK_DIR:PATH=${VTK_DIR}
       -DVTK_SOURCE_DIR:PATH=${VTK_SOURCE_DIR}
       -DTeem_DIR:PATH=${Teem_DIR}
-      -DLIBXML2_INCLUDE_DIR:PATH=${LIBXML2_INCLUDE_DIR}
-      -DLIBXML2_LIBRARIES:PATH=${LIBXML2_LIBRARIES}
+      -DLIBXML2_INCLUDE_DIR:PATH=${vtklibxml2_INCLUDE_DIRS}
+      -DLIBXML2_LIBRARIES:PATH=${vtklibxml2_LIBRARIES}
       -DBUILD_GENERATEMODEL:BOOL=OFF
       -DSlicerExecutionModel_DIR:STRING=${SlicerExecutionModel_DIR}
       -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
