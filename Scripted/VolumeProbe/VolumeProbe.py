@@ -209,7 +209,8 @@ class VolumeProbeWidget:
     self.meanField.setValue(mean)
     self.medianField.setValue(med)
     self.histogram.numberOfBins = self.numBins.value
-    self.histogram.build()
+    # This causes crash in slicer starting end of April 2015
+    #self.histogram.build()
     self.histogramView.show()
     
   def median(self, data):
