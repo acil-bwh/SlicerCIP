@@ -1,15 +1,11 @@
 
 set(proj CIP)
 
-# Set dependency list (commented out to use vtklibxml2)
-#if (WIN32) # libxml2 is a prerequisite for other platforms
-#  set(LIBXML2_EXTERNAL_NAME LibXml2)
-#endif()
-#set(${proj}_DEPENDS ${LIBXML2_EXTERNAL_NAME})
-
+# Set dependency list
+set(${proj}_DEPENDENCIES cython)
 
 # Include dependent projects if any
-ExternalProject_Include_Dependencies(${proj} PROJECT_VAR proj)
+ExternalProject_Include_Dependencies(${proj} PROJECT_VAR proj DEPENDS_VAR ${proj}_DEPENDENCIES)
 
 if(${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
   message(FATAL_ERROR "Enabling ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj} is not supported !")
@@ -29,7 +25,7 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
   ExternalProject_Add(${proj}
     ${${proj}_EP_ARGS}
     GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
-    GIT_TAG "1785d075f4601c76bd8d31ca28e0ccb978986c70"
+    GIT_TAG "769fba64dfd0e6f67e22c4c1e8021aa9641029b1" # include changes for ITK 64-bit and using Slicer Python in CIP develop branch
     #DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
     SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
     BINARY_DIR ${proj}-build
@@ -42,6 +38,7 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DLIBXML2_INCLUDE_DIR:PATH=${vtklibxml2_INCLUDE_DIRS}
       -DLIBXML2_LIBRARIES:PATH=${vtklibxml2_LIBRARIES}
       -DBUILD_GENERATEMODEL:BOOL=OFF
+	  -DSLICER_PYTHON_CMD:FILEPATH=${PYTHON_EXECUTABLE}
       -DSlicerExecutionModel_DIR:STRING=${SlicerExecutionModel_DIR}
       -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
       -DCMAKE_CXX_FLAGS:STRING=${ep_common_cxx_flags}
@@ -59,7 +56,7 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
     #  "Remove this line to enable building of a real CMake based external project"
     INSTALL_COMMAND ""
     DEPENDS
-      ${${proj}_DEPENDS}
+      ${${proj}_DEPENDENCIES}
     )
   set(${proj}_DIR ${CMAKE_BINARY_DIR}/${proj}-build)
 
