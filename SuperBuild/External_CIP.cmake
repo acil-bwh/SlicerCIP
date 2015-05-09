@@ -2,7 +2,7 @@
 set(proj CIP)
 
 # Set dependency list
-set(${proj}_DEPENDENCIES cython)
+set(${proj}_DEPENDENCIES)
 
 # Include dependent projects if any
 ExternalProject_Include_Dependencies(${proj} PROJECT_VAR proj DEPENDS_VAR ${proj}_DEPENDENCIES)
@@ -38,6 +38,7 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DLIBXML2_INCLUDE_DIR:PATH=${vtklibxml2_INCLUDE_DIRS}
       -DLIBXML2_LIBRARIES:PATH=${vtklibxml2_LIBRARIES}
       -DBUILD_GENERATEMODEL:BOOL=OFF
+	  -DCIP_BUILD_TESTING_PYTHON:BOOL=OFF # to exclude cip_python from CIP build
 	  -DSLICER_PYTHON_CMD:FILEPATH=${PYTHON_EXECUTABLE}
       -DSlicerExecutionModel_DIR:STRING=${SlicerExecutionModel_DIR}
       -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
