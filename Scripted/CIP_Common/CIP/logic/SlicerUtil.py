@@ -17,7 +17,10 @@ class SlicerUtil:
     
   ACIL_AcknowledgementText = """This work is funded by the National Heart, Lung, And Blood Institute of the National Institutes of Health under Award Number R01HL116931. 
     The content is solely the responsibility of the authors and does not necessarily represent the official views of the National Institutes of Health."""
-  
+
+  CIP_ModulesCategory = ["Chest Imaging Platform.Modules"]
+  CIP_ModuleName = "CIP_Common"
+
   @staticmethod
   def getModuleFolder(moduleName):
     '''Get the folder where a python scripted module is physically stored''' 
