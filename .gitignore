@@ -23,3 +23,9 @@ install_manifest.txt
 .idea/vcs.xml
 
 *.pyc
+
+.idea/.name
+
+.idea/inspectionProfiles/profiles_settings.xml
+
+.idea/inspectionProfiles/Project_Default.xml
