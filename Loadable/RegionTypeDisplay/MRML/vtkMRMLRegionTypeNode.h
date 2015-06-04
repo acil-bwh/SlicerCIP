@@ -22,7 +22,7 @@
 #ifndef __vtkMRMLRegionTypeNode_h
 #define __vtkMRMLRegionTypeNode_h
 
-#include "vtkMRMLScalarVolumeNode.h"
+#include "vtkMRMLLabelMapVolumeNode.h"
 #include "vtkSlicerRegionTypeModuleMRMLExport.h"
 
 // STD includes
@@ -34,11 +34,11 @@ class vtkMRMLStorageNode;
 class vtkMRMLColorNode;
 class vtkMRMLRegionTypeDisplayNode;
 
-class VTK_SLICER_REGIONTYPE_MODULE_MRML_EXPORT vtkMRMLRegionTypeNode : public vtkMRMLScalarVolumeNode
+class VTK_SLICER_REGIONTYPE_MODULE_MRML_EXPORT vtkMRMLRegionTypeNode : public vtkMRMLLabelMapVolumeNode
 {
 public:
   static vtkMRMLRegionTypeNode *New();
-  vtkTypeMacro(vtkMRMLRegionTypeNode,vtkMRMLScalarVolumeNode);
+  vtkTypeMacro(vtkMRMLRegionTypeNode,vtkMRMLLabelMapVolumeNode);
   void PrintSelf(ostream& os, vtkIndent indent);
 
   //--------------------------------------------------------------------------

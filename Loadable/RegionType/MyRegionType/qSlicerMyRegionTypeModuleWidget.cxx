@@ -31,7 +31,7 @@
 #include <vtkMRMLScene.h>
 #include <vtkMRMLMyRegionTypeNode.h>
 #include <vtkMRMLMyRegionTypeDisplayNode.h>
-#include <vtkMRMLScalarVolumeNode.h>
+#include <vtkMRMLLabelMapVolumeNode.h>
 #include <vtkMRMLLabelMapVolumeDisplayNode.h>
 #include <vtkMRMLChestRTColorTableNode.h>
 
@@ -155,13 +155,13 @@ void qSlicerMyRegionTypeModuleWidget::setMRMLScene(vtkMRMLScene* scene)
 //-----------------------------------------------------------------------------
 void qSlicerMyRegionTypeModuleWidget::initializeRegionTypeNode(vtkMRMLScene* scene)
 {
-  vtkCollection* regionTypeNodes = scene->GetNodesByClass("vtkMRMLScalarVolumeNode");
+  vtkCollection* regionTypeNodes = scene->GetNodesByClass("vtkMRMLLabelMapVolumeNode");
 std::cout<<"in initializeRegionTypeNode"<<std::endl;
   if( regionTypeNodes->GetNumberOfItems() > 0 )
   {
-	vtkMRMLScalarVolumeNode* scalarNode = vtkMRMLScalarVolumeNode::SafeDownCast( regionTypeNodes->GetItemAsObject(0) );
+	vtkMRMLLabelMapVolumeNode* scalarNode = vtkMRMLLabelMapVolumeNode::SafeDownCast( regionTypeNodes->GetItemAsObject(0) );
 	this->regionTypeNode = vtkMRMLMyRegionTypeNode::New();
-	if( scalarNode->GetLabelMap() )
+	if( scalarNode )
 	{
 		this->regionTypeNode->CopyWithScene(scalarNode);
 		scene->AddNode(this->regionTypeNode);
@@ -239,20 +239,20 @@ void qSlicerMyRegionTypeModuleWidget::onInputVolumeChanged()
           logic->DisplayAllRegionType( this->regionTypeNode );
 		  this->updateWidget();
 	  }
-	  else if( node->IsA( "vtkMRMLScalarVolumeNode" ) && d->InputVolumeComboBox->nodes().count() > 1)
+	  else if( node->IsA( "vtkMRMLLabelMapVolumeNode" ) && d->InputVolumeComboBox->nodes().count() > 1)
 	  {
           d->TypeLabelsComboBox->clear();
   		  d->RegionLabelsComboBox->clear();
-		  vtkMRMLScalarVolumeNode* scalarNode = vtkMRMLScalarVolumeNode::SafeDownCast( node );
-		  if( scalarNode->GetLabelMap() )
+		  vtkMRMLLabelMapVolumeNode* scalarNode = vtkMRMLLabelMapVolumeNode::SafeDownCast( node );
+		  if( scalarNode )
 		  {
 			  this->convertToRegionTypeNode(scalarNode);
 		  }
 	  }
-	  else if( d->InputVolumeComboBox->nodes().count() == 1 && this->initialize == 0 && node->IsA( "vtkMRMLScalarVolumeNode" ) )
+	  else if( d->InputVolumeComboBox->nodes().count() == 1 && this->initialize == 0 && node->IsA( "vtkMRMLLabelMapVolumeNode" ) )
 	 {
-		vtkMRMLScalarVolumeNode* scalarNode = vtkMRMLScalarVolumeNode::SafeDownCast( node );
-		if( scalarNode->GetLabelMap() )
+		vtkMRMLLabelMapVolumeNode* scalarNode = vtkMRMLLabelMapVolumeNode::SafeDownCast( node );
+		if( scalarNode )
 		{
 			if( node->IsA( "vtkMRMLMyRegionTypeNode" ) )
 			{
@@ -272,7 +272,7 @@ void qSlicerMyRegionTypeModuleWidget::onInputVolumeChanged()
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerMyRegionTypeModuleWidget::convertToRegionTypeNode(vtkMRMLScalarVolumeNode* scalarVolume)
+void qSlicerMyRegionTypeModuleWidget::convertToRegionTypeNode(vtkMRMLLabelMapVolumeNode* scalarVolume)
 {
 	std::cout<<"in convertToRegionTypeNode"<<std::endl;
     this->regionTypeNode = vtkMRMLMyRegionTypeNode::New();

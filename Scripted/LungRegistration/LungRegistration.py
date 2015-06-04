@@ -106,7 +106,6 @@ class LungRegistrationWidget:
     #input CT image selector
     self.inputSelector = slicer.qMRMLNodeComboBox()
     self.inputSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    #self.inputSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
     self.inputSelector.selectNodeUponCreation = True
     self.inputSelector.addEnabled = False
     self.inputSelector.removeEnabled = False
@@ -123,7 +122,7 @@ class LungRegistrationWidget:
     ##
     self.atlasSelector = slicer.qMRMLNodeComboBox()
     self.atlasSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    #self.leftAtlasSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 1 )
+    #self.atlasSelector.nodeTypes = ( ("vtkMRMLLabelMapVolumeNode"), "" )
     self.atlasSelector.selectNodeUponCreation = True
     self.atlasSelector.addEnabled = False
     self.atlasSelector.removeEnabled = False
@@ -139,7 +138,7 @@ class LungRegistrationWidget:
     ##
     #self.rightAtlasSelector = slicer.qMRMLNodeComboBox()
     #self.rightAtlasSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    ##self.rightAtlasSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 2 )
+    ##self.rightAtlasSelector.nodeTypes = ( ("vtkMRMLLabelMapVolumeNode"), "" )
     #self.rightAtlasSelector.selectNodeUponCreation = True
     #self.rightAtlasSelector.addEnabled = False
     #self.rightAtlasSelector.removeEnabled = False
@@ -158,7 +157,6 @@ class LungRegistrationWidget:
     #
     self.outputSelector = slicer.qMRMLNodeComboBox()
     self.outputSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.outputSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
     self.outputSelector.selectNodeUponCreation = False
     self.outputSelector.addEnabled = True
     self.outputSelector.removeEnabled = True

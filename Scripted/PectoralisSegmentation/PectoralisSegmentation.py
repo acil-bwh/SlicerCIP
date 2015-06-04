@@ -110,7 +110,6 @@ class PectoralisSegmentationWidget:
     #
     self.outputSelector = slicer.qMRMLNodeComboBox()
     self.outputSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.outputSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
     self.outputSelector.selectNodeUponCreation = False
     self.outputSelector.addEnabled = True
     self.outputSelector.removeEnabled = True

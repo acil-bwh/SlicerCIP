@@ -39,7 +39,6 @@ vtkMRMLNodeNewMacro(vtkMRMLMyRegionTypeNode);
 //-----------------------------------------------------------------------------
 vtkMRMLMyRegionTypeNode::vtkMRMLMyRegionTypeNode()
 {
-  this->SetAttribute("LabelMap", "1");
   /*this->RegionValuesList = NULL;
   this->RegionNamesList = NULL;
   this->TypeValuesList = NULL;

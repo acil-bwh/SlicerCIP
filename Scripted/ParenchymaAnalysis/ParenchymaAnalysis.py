@@ -88,7 +88,6 @@ class ParenchymaAnalysisWidget:
 
     self.inspSelector = slicer.qMRMLNodeComboBox(self.inspSelectorFrame)
     self.inspSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.inspSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
     self.inspSelector.selectNodeUponCreation = False
     self.inspSelector.addEnabled = False
     self.inspSelector.removeEnabled = False
@@ -114,7 +113,6 @@ class ParenchymaAnalysisWidget:
     
     self.expSelector = slicer.qMRMLNodeComboBox(self.expSelectorFrame)
     self.expSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.expSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
     self.expSelector.selectNodeUponCreation = False
     self.expSelector.addEnabled = False
     self.expSelector.removeEnabled = False
@@ -139,8 +137,7 @@ class ParenchymaAnalysisWidget:
     self.insplabelSelectorFrame.layout().addWidget( self.insplabelSelectorLabel )
 
     self.insplabelSelector = slicer.qMRMLNodeComboBox()
-    self.insplabelSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
-    self.insplabelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", "1" )
+    self.insplabelSelector.nodeTypes = ( "vtkMRMLLabelMapVolumeNode", "" )
     # todo addAttribute
     self.insplabelSelector.selectNodeUponCreation = False
     self.insplabelSelector.addEnabled = False
@@ -164,8 +161,7 @@ class ParenchymaAnalysisWidget:
     self.explabelSelectorFrame.layout().addWidget( self.explabelSelectorLabel )
     
     self.explabelSelector = slicer.qMRMLNodeComboBox()
-    self.explabelSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
-    self.explabelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", "1" )
+    self.explabelSelector.nodeTypes = ( "vtkMRMLLabelMapVolumeNode", "" )
     # todo addAttribute
     self.explabelSelector.selectNodeUponCreation = False
     self.explabelSelector.addEnabled = False

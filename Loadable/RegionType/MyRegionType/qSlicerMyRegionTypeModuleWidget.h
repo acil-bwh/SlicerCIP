@@ -23,7 +23,7 @@
 
 #include "qSlicerMyRegionTypeModuleExport.h"
 #include <vtkNew.h>
-#include <vtkMRMLScalarVolumeNode.h>
+#include <vtkMRMLLabelMapVolumeNode.h>
 
 class qSlicerMyRegionTypeModuleWidgetPrivate;
 class vtkMRMLNode;
@@ -51,7 +51,7 @@ protected:
   virtual void setMRMLScene(vtkMRMLScene*);
 
   void initializeRegionTypeNode(vtkMRMLScene*);
-  void convertToRegionTypeNode(vtkMRMLScalarVolumeNode*);
+  void convertToRegionTypeNode(vtkMRMLLabelMapVolumeNode*);
 
 protected slots:
   void onInputVolumeChanged();
