@@ -32,7 +32,7 @@
 #include <vtkMRMLSelectionNode.h>
 #include <vtkMRMLRegionTypeNode.h>
 #include <vtkMRMLRegionTypeDisplayNode.h>
-#include <vtkMRMLScalarVolumeNode.h>
+#include <vtkMRMLLabelMapVolumeNode.h>
 #include <vtkMRMLStorageNode.h>
 #include <vtkMRMLLabelMapVolumeDisplayNode.h>
 #include <vtkMRMLChestRTColorTableNode.h>
@@ -188,7 +188,7 @@ void qSlicerRegionTypeModuleWidget::onInputVolumeChanged(vtkMRMLNode* node)
     return;
     }
 
-  vtkMRMLScalarVolumeNode* scalarNode = vtkMRMLScalarVolumeNode::SafeDownCast( node );
+  vtkMRMLLabelMapVolumeNode* scalarNode = vtkMRMLLabelMapVolumeNode::SafeDownCast( node );
 
   if (this->regionTypeNode == 0)
     {
@@ -229,12 +229,12 @@ void qSlicerRegionTypeModuleWidget::onOutputVolumeChanged(vtkMRMLNode* node)
 
   this->regionTypeNode = regionTypeNode;
 
-  if (this->regionTypeNode && vtkMRMLScalarVolumeNode::SafeDownCast(d->InputVolumeComboBox->currentNode()))
+  if (this->regionTypeNode && vtkMRMLLabelMapVolumeNode::SafeDownCast(d->InputVolumeComboBox->currentNode()))
     {
-    this->regionTypeNode->CopyOrientation(vtkMRMLScalarVolumeNode::SafeDownCast(d->InputVolumeComboBox->currentNode()));
+    this->regionTypeNode->CopyOrientation(vtkMRMLLabelMapVolumeNode::SafeDownCast(d->InputVolumeComboBox->currentNode()));
     }
 
-  this->updateRegionTypeNode(vtkMRMLScalarVolumeNode::SafeDownCast(d->InputVolumeComboBox->currentNode()));
+  this->updateRegionTypeNode(vtkMRMLLabelMapVolumeNode::SafeDownCast(d->InputVolumeComboBox->currentNode()));
 }
 
 //-----------------------------------------------------------------------------
@@ -291,7 +291,7 @@ void qSlicerRegionTypeModuleWidget::updateDisplay()
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerRegionTypeModuleWidget::createRegionTypeNode(vtkMRMLScalarVolumeNode* scalarVolume)
+void qSlicerRegionTypeModuleWidget::createRegionTypeNode(vtkMRMLLabelMapVolumeNode* scalarVolume)
 {
   if (scalarVolume == 0)
     {
@@ -318,7 +318,7 @@ void qSlicerRegionTypeModuleWidget::createRegionTypeNode(vtkMRMLScalarVolumeNode
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerRegionTypeModuleWidget::updateRegionTypeNode(vtkMRMLScalarVolumeNode* scalarVolume)
+void qSlicerRegionTypeModuleWidget::updateRegionTypeNode(vtkMRMLLabelMapVolumeNode* scalarVolume)
 {
   Q_D(qSlicerRegionTypeModuleWidget);
 

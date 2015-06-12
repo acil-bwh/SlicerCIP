@@ -23,11 +23,11 @@
 
 #include "qSlicerRegionTypeModuleExport.h"
 #include <vtkNew.h>
-#include <vtkMRMLScalarVolumeNode.h>
+#include <vtkMRMLLabelMapVolumeNode.h>
 
 class qSlicerRegionTypeModuleWidgetPrivate;
 class vtkMRMLNode;
-class vtkMRMLScalarVolumeNode;
+class vtkMRMLLabelMapVolumeNode;
 class vtkMRMLRegionTypeNode;
 
 /// \ingroup Slicer_QtModules_ExtensionTemplate
@@ -63,8 +63,8 @@ private:
   void updateRegionList();
   void updateTypeList();
   void updateDisplay();
-  void createRegionTypeNode(vtkMRMLScalarVolumeNode* scalarVolume);
-  void updateRegionTypeNode(vtkMRMLScalarVolumeNode* scalarVolume);
+  void createRegionTypeNode(vtkMRMLLabelMapVolumeNode* scalarVolume);
+  void updateRegionTypeNode(vtkMRMLLabelMapVolumeNode* scalarVolume);
 
   vtkMRMLRegionTypeNode* regionTypeNode;
 };
