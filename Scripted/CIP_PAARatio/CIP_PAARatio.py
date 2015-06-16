@@ -85,11 +85,12 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.volumeSelector.showChildNodeTypes = False
         self.volumeSelector.setMRMLScene( slicer.mrmlScene )
         # self.volumeSelector.setToolTip( "Pick the volume" )
-        self.mainAreaLayout.addWidget( self.volumeSelector )
+        self.mainAreaLayout.addRow("Volume: ", self.volumeSelector)
 
         # Selector
+
         label = qt.QLabel("Select the structure")
-        self.mainAreaLayout.addWidget(label)
+        #self.mainAreaLayout.addWidget(label)
 
         self.structuresCheckboxGroup=qt.QButtonGroup()
         btn = qt.QRadioButton("None")
@@ -97,11 +98,11 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.structuresCheckboxGroup.addButton(btn)
         self.mainAreaLayout.addWidget(btn)
 
-        btn = qt.QRadioButton("Aorta")
+        btn = qt.QRadioButton("Pulmonary Arterial")
         self.structuresCheckboxGroup.addButton(btn)
         self.mainAreaLayout.addWidget(btn)
 
-        btn = qt.QRadioButton("Pulmonary Arterial")
+        btn = qt.QRadioButton("Aorta")
         self.structuresCheckboxGroup.addButton(btn)
         self.mainAreaLayout.addWidget(btn)
 
@@ -131,13 +132,17 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.moveDownButton.text = "Down"
         self.mainAreaLayout.addWidget(self.moveDownButton)
 
-        self.aortaTextBox = qt.QLineEdit()
-        self.aortaTextBox.setReadOnly(True)
-        self.mainAreaLayout.addRow("Aorta (mm):  ", self.aortaTextBox)
+        self.removeButton = ctk.ctkPushButton()
+        self.removeButton.text = "Remove"
+        self.mainAreaLayout.addWidget(self.removeButton)
 
         self.paTextBox = qt.QLineEdit()
         self.paTextBox.setReadOnly(True)
         self.mainAreaLayout.addRow("PA (mm):  ", self.paTextBox)
+
+        self.aortaTextBox = qt.QLineEdit()
+        self.aortaTextBox.setReadOnly(True)
+        self.mainAreaLayout.addRow("Aorta (mm):  ", self.aortaTextBox)
 
         self.ratioTextBox = qt.QLineEdit()
         self.ratioTextBox.setReadOnly(True)
@@ -148,6 +153,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.placeRulersButton.connect('clicked()', self.onPlaceRuler)
         self.moveUpButton.connect('clicked()', self.onMoveUpRuler)
         self.moveDownButton.connect('clicked()', self.onMoveDownRuler)
+        self.removeButton.connect('clicked()', self.onRemoveRuler)
 
 
     def enter(self):
@@ -256,12 +262,38 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
         if selectedStructure == self.logic.BOTH:
             # Move both rulers
-            self.logic.moveSliceOffset(volumeId, self.logic.AORTA, offset)
+            self.logic.stepSlice(volumeId, self.logic.AORTA, offset)
             newSlice = self.logic.stepSlice(volumeId, self.logic.PA, offset)
         else:
             newSlice = self.logic.stepSlice(volumeId, selectedStructure, offset)
 
         self.moveRedWindowToSlice(newSlice)
+
+    def removeRulers(self):
+        """ Remove the selected rulers
+        :return:
+        """
+        # volumeId = self.volumeSelector.currentNodeId
+        #
+        # if volumeId == '':
+        #     self.showUnselectedVolumeWarningMessage()
+        #     return
+        #
+        # selectedStructure = self.getCurrentSelectedStructure()
+        # if selectedStructure == self.logic.NONE:
+        #     self.showUnselectedStructureWarningMessage()
+        #     return
+        #
+        # if selectedStructure == self.logic.BOTH:
+        #     # Move both rulers
+        #     self.logic.removeRuler(volumeId, self.logic.AORTA)
+        #     self.logic.removeRuler(volumeId, self.logic.PA)
+        # else:
+        #     self.logic.removeRuler(volumeId, selectedStructure)
+
+        self.logic.removeRulers(self.volumeSelector.currentNodeId)
+        self.refreshTextboxes(reset=True)
+
 
     def getCurrentRedWindowSlice(self):
         """ Get the current slice (in RAS) of the Red window
@@ -278,19 +310,30 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         redNodeSliceNode = slicer.app.layoutManager().sliceWidget('Red').sliceLogic().GetSliceNode()
         redNodeSliceNode.JumpSlice(0,0,newSlice)
 
-    def refreshTextboxes(self):
+    def refreshTextboxes(self, reset=False):
         """ Update the information of the textboxes that give information about the measurements
         """
-        rulerAorta, newAorta = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeId, self.logic.AORTA)
-        rulerPA, newPA = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeId, self.logic.PA)
-        if not newAorta:
-            self.aortaTextBox.setText(str(rulerAorta.GetDistanceMeasurement()))
-        if not newPA:
-            self.paTextBox.setText(str(rulerPA.GetDistanceMeasurement()))
-        try:
-            self.ratioTextBox.setText(str(rulerPA.GetDistanceMeasurement() / rulerAorta.GetDistanceMeasurement()))
-        except Exception as exc:
-            print(exc.message)
+        self.aortaTextBox.setText("0")
+        self.paTextBox.setText("0")
+        self.ratioTextBox.setText("0")
+        self.ratioTextBox.setStyleSheet(" QLineEdit { background-color: white; color: black}");
+
+        if not reset:
+            rulerAorta, newAorta = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeId,
+                                        self.logic.AORTA, createIfNotExist=False)
+            rulerPA, newPA = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeId,
+                                        self.logic.PA, createIfNotExist=False)
+            if rulerAorta:
+                self.aortaTextBox.setText(str(rulerAorta.GetDistanceMeasurement()))
+            if rulerPA:
+                self.paTextBox.setText(str(rulerPA.GetDistanceMeasurement()))
+            try:
+                ratio = rulerPA.GetDistanceMeasurement() / rulerAorta.GetDistanceMeasurement()
+                self.ratioTextBox.setText(str(ratio))
+                if ratio > 1:
+                    self.ratioTextBox.setStyleSheet(" QLineEdit { background-color: rgb(255, 0, 0); color: white}");
+            except Exception as exc:
+                print(exc.message)
 
     def showUnselectedVolumeWarningMessage(self):
         qt.QMessageBox.warning(slicer.util.mainWindow(), 'Select a volume',
@@ -299,6 +342,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
     def showUnselectedStructureWarningMessage(self):
         qt.QMessageBox.warning(slicer.util.mainWindow(), 'Review structure',
                 'Please select Aorta, Pulmonary Arterial or Both to place the right ruler/s')
+
 
     #########
     # EVENTS
@@ -331,6 +375,12 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
     def onMoveDownRuler(self):
         self.stepSlice(-1)
+
+    def onRemoveRuler(self):
+        if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Remove rulers',
+            'Are you sure you want to remove all the rulers from this volume?',
+            qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
+            self.logic.removeRulers(self.volumeSelector.currentNodeId)
 #
 # CIP_PAARatioLogic
 #
@@ -370,7 +420,7 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
             logging.debug("Root annotations node created")
         return rootHierarchyNode
 
-    def getRulersListNode(self, volumeId):
+    def getRulersListNode(self, volumeId, createIfNotExist=True):
         """ Get the rulers node for this volume, creating it if it doesn't exist yet
         :param volumeId:
         :return: "volumeId_paaRulersNode" vtkMRMLAnnotationHierarchyNode
@@ -379,7 +429,7 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         nodeName = volumeId + '_paaRulersNode'
         rulersNode = slicer.util.getNode(nodeName)
 
-        if rulersNode is None:
+        if rulersNode is None and createIfNotExist:
             # Create the node
             annotationsLogic = slicer.modules.annotations.logic()
             rootHierarchyNode = self.getRootAnnotationsNode()
@@ -393,7 +443,7 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         # Return the node
         return rulersNode
 
-    def getRulerNodeForVolumeAndStructure(self, volumeId, structureId):
+    def getRulerNodeForVolumeAndStructure(self, volumeId, structureId, createIfNotExist=True):
         """ Search for the right ruler node to be created based on the volume and the selected
         structure (Aorta or PA).
         It also creates the necessary node hierarchy if it doesn't exist.
@@ -410,31 +460,32 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         elif structureId == self.PA:   # 'Pulmonary Arterial':
         #     nodeName = volumeId + '_paaRulers_pa'
             nodeName = "PA"
-        # Get the node that contains all the rulers
-        rulersListNode = self.getRulersListNode(volumeId)
-        # Search for the node
+        # Get the node that contains all the rulers for this volume
+        rulersListNode = self.getRulersListNode(volumeId, createIfNotExist=createIfNotExist)
         node = None
-        for i in range(rulersListNode.GetNumberOfChildrenNodes()):
-            nodeWrapper = rulersListNode.GetNthChildNode(i)
-            # nodeWrapper is also a HierarchyNode. We need to look for its only child that will be the rulerNode
-            col = vtk.vtkCollection()
-            nodeWrapper.GetChildrenDisplayableNodes(col)
-            rulerNode = col.GetItemAsObject(0)
+        if rulersListNode:
+            # Search for the node
+            for i in range(rulersListNode.GetNumberOfChildrenNodes()):
+                nodeWrapper = rulersListNode.GetNthChildNode(i)
+                # nodeWrapper is also a HierarchyNode. We need to look for its only child that will be the rulerNode
+                col = vtk.vtkCollection()
+                nodeWrapper.GetChildrenDisplayableNodes(col)
+                rulerNode = col.GetItemAsObject(0)
 
-            if rulerNode.GetName() == nodeName:
-                node = rulerNode
-                break
+                if rulerNode.GetName() == nodeName:
+                    node = rulerNode
+                    break
 
-        if node is None:
-            # Create the node
-            # Set the active node, so that the new ruler is a child node
-            annotationsLogic = slicer.modules.annotations.logic()
-            annotationsLogic.SetActiveHierarchyNodeID(rulersListNode.GetID())
-            node = slicer.mrmlScene.CreateNodeByClass('vtkMRMLAnnotationRulerNode')
-            node.SetName(nodeName)
-            slicer.mrmlScene.AddNode(node)
-            isNewNode = True
-            logging.debug("Created node " + nodeName + " for volume " + volumeId)
+            if node is None and createIfNotExist:
+                # Create the node
+                # Set the active node, so that the new ruler is a child node
+                annotationsLogic = slicer.modules.annotations.logic()
+                annotationsLogic.SetActiveHierarchyNodeID(rulersListNode.GetID())
+                node = slicer.mrmlScene.CreateNodeByClass('vtkMRMLAnnotationRulerNode')
+                node.SetName(nodeName)
+                slicer.mrmlScene.AddNode(node)
+                isNewNode = True
+                logging.debug("Created node " + nodeName + " for volume " + volumeId)
 
         return node, isNewNode
 
@@ -489,9 +540,10 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         # Convert back to RAS, just replacing the Z
         newSlice = ijktoras.MultiplyPoint(ijkCoords)[2]
 
-        self._placeRulerInSlice_(rulerNode, structureId, newSlice)
+        self._placeRulerInSlice_(rulerNode, structureId, volumeId, newSlice)
 
         return newSlice
+
 
     def placeRulerInSlice(self, volumeId, structureId, newSlice):
         """ Move the ruler to the specified slice (in RAS format)
@@ -504,11 +556,11 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         rulerNode, newNode = self.getRulerNodeForVolumeAndStructure(volumeId, structureId)
 
         # Move the ruler
-        self._placeRulerInSlice_(rulerNode, structureId, newSlice)
+        self._placeRulerInSlice_(rulerNode, structureId, volumeId, newSlice)
 
         return rulerNode, newNode
 
-    def _placeRulerInSlice_(self, rulerNode, structureId, newSlice):
+    def _placeRulerInSlice_(self, rulerNode, structureId, volumeId, newSlice):
         """ Move the ruler to the specified slice (in RAS format)
         :param rulerNode: node of type vtkMRMLAnnotationRulerNode
         :param newSlice: slice in RAS format
@@ -525,17 +577,17 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
 
         if coords1[0] == 0 and coords1[1] == 0:
             # New node, get default coordinates depending on the structure
+            defaultCoords = self.getDefaultCoords(volumeId)
             if structureId == self.AORTA:
-                coords1[0] = self.defaultAorta1[0]
-                coords1[1] = self.defaultAorta1[1]
-                coords2[0] = self.defaultAorta2[0]
-                coords2[1] = self.defaultAorta2[1]
+                coords1[0] = defaultCoords[0][0]
+                coords1[1] = defaultCoords[0][1]
+                coords2[0] = defaultCoords[1][0]
+                coords2[1] = defaultCoords[1][1]
             elif structureId == self.PA:
-                coords1[0] = self.defaultPA1[0]
-                coords1[1] = self.defaultPA1[1]
-                coords2[0] = self.defaultPA2[0]
-                coords2[1] = self.defaultPA2[1]
-
+                coords1[0] = defaultCoords[2][0]
+                coords1[1] = defaultCoords[2][1]
+                coords2[0] = defaultCoords[3][0]
+                coords2[1] = defaultCoords[3][1]
 
         rulerNode.SetPositionWorldCoordinates1(coords1)
         rulerNode.SetPositionWorldCoordinates2(coords2)
@@ -569,6 +621,19 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
 
         return aorta1, aorta2, pa1, pa2
 
+
+    def removeRulers(self, volumeId):
+        """ Remove all the rulers for the selected volume
+        :param volumeId:
+        :param structureId:
+        """
+        #rulerNode, newNode = self.getRulerNodeForVolumeAndStructure(volumeId, structureId)
+        rulersListNode = self.getRulersListNode(volumeId, createIfNotExist=False)
+        if rulersListNode:
+            rulersListNode.RemoveAllChildrenNodes()
+            slicer.mrmlScene.RemoveNode(rulersListNode)
+
+
     def RAStoIJK(self, volumeNode, rasCoords):
         """ Transform a list of RAS coords in IJK for a volume
         :return: list of IJK coordinates
@@ -586,6 +651,7 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         volumeNode.GetIJKToRASMatrix(ijktoras)
         ijkCoords.append(1)
         return list(ijktoras.MultiplyPoint(ijkCoords))
+
 
 
 
