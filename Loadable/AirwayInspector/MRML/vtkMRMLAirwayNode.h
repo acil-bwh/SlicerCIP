@@ -21,6 +21,9 @@
 // Markups includes
 #include "vtkSlicerAirwayInspectorModuleMRMLExport.h"
 
+#include "vtkImageData.h"
+#include "vtkPolyData.h"
+
 #include "vtkMRMLNode.h"
 #include "vtkMRMLModelNode.h"
 
@@ -84,6 +87,31 @@ public:
   vtkSetMacro(Threshold, int);
   vtkGetMacro(Threshold, int);
 
+  /// Get/Set Min
+  vtkSetMacro(Min, int);
+  vtkGetMacro(Min, int);
+
+  /// Get/Set Max
+  vtkSetMacro(Max, int);
+  vtkGetMacro(Max, int);
+
+  /// Get/Set Mean
+  vtkSetMacro(Mean, int);
+  vtkGetMacro(Mean, int);
+
+  /// Get/Set Std
+  vtkSetMacro(Std, int);
+  vtkGetMacro(Std, int);
+
+  vtkGetObjectMacro(AirwayImage, vtkImageData);
+  vtkSetObjectMacro(AirwayImage, vtkImageData);
+
+  vtkGetObjectMacro(InnerContour, vtkPolyData);
+  vtkSetObjectMacro(InnerContour, vtkPolyData);
+
+  vtkGetObjectMacro(OuterContour, vtkPolyData);
+  vtkSetObjectMacro(OuterContour, vtkPolyData);
+
 protected:
   vtkMRMLAirwayNode();
   ~vtkMRMLAirwayNode();
@@ -96,6 +124,15 @@ private:
   float OrientationWXYZ[4];
   double Threshold;
   char *VolumeNodeID;
+
+  double Min;
+  double Max;
+  double Mean;
+  double Std;
+
+  vtkImageData *AirwayImage;
+  vtkPolyData  *InnerContour;
+  vtkPolyData  *OuterContour;
 };
 
 #endif

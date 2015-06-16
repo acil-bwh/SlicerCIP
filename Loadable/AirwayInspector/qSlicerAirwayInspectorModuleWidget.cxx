@@ -30,6 +30,8 @@
 #include "vtkRenderWindow.h"
 #include "vtkInteractorObserver.h"
 
+#include "QPainter.h"
+
 #include "vtkMRMLScene.h"
 #include "vtkMRMLScalarVolumeNode.h"
 #include "vtkMRMLAirwayNode.h"
@@ -39,6 +41,7 @@
 #include "qSlicerLayoutManager.h"
 #include "qMRMLSliceWidget.h"
 #include "qMRMLSliceView.h"
+#include "qMRMLUtils.h"
 
 #include "vtkSlicerAirwayInspectorModuleLogic.h"
 //-----------------------------------------------------------------------------
@@ -71,6 +74,9 @@ void qSlicerAirwayInspectorModuleWidget::setup()
 {
   Q_D(qSlicerAirwayInspectorModuleWidget);
   d->setupUi(this);
+
+  QSizePolicy qSize = QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+  d->ImageLabel->setSizePolicy(qSize);
 
   QObject::connect(d->InputVolumeComboBox, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
                    this, SLOT(setMRMLVolumeNode(vtkMRMLNode*)));
@@ -187,14 +193,17 @@ void qSlicerAirwayInspectorModuleWidget::addAndObserveInteractor(vtkRenderWindow
 //---------------------------------------------------------------------------
 void qSlicerAirwayInspectorModuleWidget::onInteractorEvent(vtkRenderWindowInteractor* interactor, int eventid)
 {
-  std::cout << "OnInteractorEvent - eventid:" << eventid
-             << ", eventname:" << vtkCommand::GetStringFromEventId(eventid) << std::endl;
+  Q_D(qSlicerAirwayInspectorModuleWidget);
 
   vtkSlicerAirwayInspectorModuleLogic *logic = vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
   if (!logic)
     {
     return;
     }
+  if (d->InputVolumeComboBox->currentNode() == 0)
+  {
+    return;
+  }
 
   if (eventid == vtkCommand::KeyReleaseEvent &&
     interactor->GetKeyCode() == 'a'  )
@@ -211,10 +220,8 @@ void qSlicerAirwayInspectorModuleWidget::onInteractorEvent(vtkRenderWindowIntera
       double yNew = windowHeight - y - 1;
       }
       vtkMRMLSliceNode* snode = this->interactors[interactor];
-      assert(snode);
-      //vtkMRMLSliceNode::GetSliceOffset()
       double z = snode->GetSliceOffset();
-      logic->AddAirwayNode(x,y,z);
+      logic->AddAirwayNode(d->InputVolumeComboBox->currentNode()->GetID(), x,y,z, d->ThresholdSpinBox->value());
     }
 }
 
@@ -241,7 +248,7 @@ void qSlicerAirwayInspectorModuleWidget::setMRMLVolumeNode(vtkMRMLNode* mrmlNode
   vtkSlicerAirwayInspectorModuleLogic *airwayLogic = vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
   if (airwayLogic && volumeNode)
     {
-    airwayLogic->SetVolumeNodeID(volumeNode->GetID());
+    /// TODO: do we need to do anything here?
     }
 }
 
@@ -256,6 +263,43 @@ void qSlicerAirwayInspectorModuleWidget::setMRMLAirwayNode(vtkMRMLNode* mrmlNode
   vtkSlicerAirwayInspectorModuleLogic *airwayLogic = vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
   if (airwayLogic && airwayNode)
     {
-    //airwayLogic->Compute();
+    airwayLogic->CreateAirway(airwayNode);
+    }
+
+  this->updateReport(airwayNode);
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayNode)
+{
+  Q_D(qSlicerAirwayInspectorModuleWidget);
+  if (airwayNode == 0)
+    {
+    return;
+    }
+
+  // report the results
+  d->MinSpinBox->setValue(airwayNode->GetMin());
+  d->MaxSpinBox->setValue(airwayNode->GetMax());
+  d->MeanSpinBox->setValue(airwayNode->GetMean());
+  d->StdSpinBox->setValue(airwayNode->GetStd());
+
+  QPixmap imagePixmap;
+  vtkImageData *image= airwayNode->GetAirwayImage();
+  if (image)
+    {
+    QImage qImage;
+    qMRMLUtils::vtkImageDataToQImage(image, qImage);
+    imagePixmap = imagePixmap.fromImage(qImage);
+    imagePixmap = imagePixmap.scaled(d->ImageLabel->size(), Qt::KeepAspectRatio, Qt::FastTransformation);
+
+    // draw poliline
+    QPainter painter;
+    painter.begin(&imagePixmap);
+    //painter.drawPolyline(points,count);
+    painter.end();
+
+    d->ImageLabel->setPixmap(imagePixmap);
+    d->ImageLabel->show();
     }
 }

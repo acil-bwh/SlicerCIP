@@ -33,6 +33,7 @@ class qSlicerAirwayInspectorModuleWidgetPrivate;
 class vtkMRMLNode;
 class vtkRenderWindowInteractor;
 class vtkMRMLSliceNode;
+class vtkMRMLAirwayNode;
 
 #include <map>
 
@@ -66,6 +67,7 @@ protected:
   void addAndObserveInteractors();
   void addAndObserveInteractor(vtkRenderWindowInteractor* newInteractor,
                                 vtkMRMLSliceNode* snode);
+  void updateReport(vtkMRMLAirwayNode* airwayNode);
 
 protected slots:
   void setMRMLVolumeNode(vtkMRMLNode*);

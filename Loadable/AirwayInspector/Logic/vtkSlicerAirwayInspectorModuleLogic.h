@@ -24,16 +24,9 @@ public:
   vtkTypeMacro(vtkSlicerAirwayInspectorModuleLogic,vtkSlicerModuleLogic);
   virtual void PrintSelf(ostream& os, vtkIndent indent);
 
-  /// Description:
-  /// String ID of the volume MRML node
-  vtkSetStringMacro(VolumeNodeID);
-  vtkGetStringMacro(VolumeNodeID);
-
-  /// Get/Set Threshold
-  vtkSetMacro(Threshold, int);
-  vtkGetMacro(Threshold, int);
-
-  vtkMRMLAirwayNode* AddAirwayNode(double x, double y, double z);
+  vtkMRMLAirwayNode* AddAirwayNode(char *volumeNodeID,
+                                   double x, double y, double z,
+                                   double threshold);
 
   void CreateAirway(vtkMRMLAirwayNode *node);
 
@@ -42,9 +35,6 @@ protected:
   vtkSlicerAirwayInspectorModuleLogic();
 
   virtual ~vtkSlicerAirwayInspectorModuleLogic();
-
-  double Threshold;
-  char *VolumeNodeID;
 
 private:
 };

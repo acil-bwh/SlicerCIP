@@ -14,6 +14,7 @@
 #include <vtkObjectFactory.h>
 #include <vtkPNGWriter.h>
 #include <vtkVersion.h>
+#include <vtkImageEllipsoidSource.h>
 
 // STD includes
 #include <algorithm>
@@ -29,8 +30,6 @@ vtkStandardNewMacro(vtkSlicerAirwayInspectorModuleLogic)
 //-----------------------------------------------------------------------------
 vtkSlicerAirwayInspectorModuleLogic::vtkSlicerAirwayInspectorModuleLogic()
 {
-  VolumeNodeID = 0;
-  Threshold = 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -44,15 +43,17 @@ void vtkSlicerAirwayInspectorModuleLogic::PrintSelf(ostream& os, vtkIndent inden
   Superclass::PrintSelf(os, indent);
 }
 
-vtkMRMLAirwayNode* vtkSlicerAirwayInspectorModuleLogic::AddAirwayNode(double x, double y, double z)
+vtkMRMLAirwayNode* vtkSlicerAirwayInspectorModuleLogic::AddAirwayNode(char *volumeNodeID,
+                                                                      double x, double y, double z,
+                                                                      double threshold)
 {
   vtkMRMLAirwayNode *airwayNode = 0;
-  if (this->GetVolumeNodeID())
+  if (volumeNodeID)
   {
     airwayNode = vtkMRMLAirwayNode::New();
 
-    airwayNode->SetVolumeNodeID(this->GetVolumeNodeID());
-    airwayNode->SetThreshold(this->GetThreshold());
+    airwayNode->SetVolumeNodeID(volumeNodeID);
+    airwayNode->SetThreshold(threshold);
     airwayNode->SetXYZ(x, y, z);
     this->GetMRMLScene()->AddNode(airwayNode);
 
@@ -64,4 +65,13 @@ vtkMRMLAirwayNode* vtkSlicerAirwayInspectorModuleLogic::AddAirwayNode(double x, 
 void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
 {
   ///TODO: add airway pipeline
+  // for now just fake
+  node->SetMin(2.5);
+  node->SetMax(7.5);
+  node->SetMean(5.5);
+  node->SetStd(0.5);
+
+  vtkImageEllipsoidSource *isorce = vtkImageEllipsoidSource::New();
+  isorce->Update();
+  node->SetAirwayImage(isorce->GetOutput());
 }

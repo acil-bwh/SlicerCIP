@@ -50,6 +50,15 @@ vtkMRMLAirwayNode::vtkMRMLAirwayNode()
   OrientationWXYZ[3];
   Threshold = 0;
   VolumeNodeID = 0;
+
+  Min = 0;
+  Max = 0;
+  Mean = 0;
+  Std = 0;
+
+  AirwayImage = 0;
+  InnerContour = 0;
+  OuterContour = 0;
 }
 
 //----------------------------------------------------------------------------
@@ -78,6 +87,11 @@ void vtkMRMLAirwayNode::WriteXML(ostream& of, int nIndent)
                             << this->OrientationWXYZ[1] << " "
                             << this->OrientationWXYZ[2] << " "
                             << this->OrientationWXYZ[3] << "\"";
+
+  of << indent << " min=\"" << this->Min << "\"";
+  of << indent << " max=\"" << this->Max << "\"";
+  of << indent << " mean=\"" << this->Mean << "\"";
+  of << indent << " mstd=\"" << this->Std << "\"";
 }
 
 //----------------------------------------------------------------------------
@@ -117,6 +131,30 @@ void vtkMRMLAirwayNode::ReadXMLAttributes(const char** atts)
       ss << attValue;
       ss >> Threshold;
       }
+    else if (!strcmp(attName, "min"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> Min;
+      }
+    else if (!strcmp(attName, "max"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> Max;
+      }
+    else if (!strcmp(attName, "mean"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> Mean;
+      }
+    else if (!strcmp(attName, "std"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> Std;
+      }
     else if (!strcmp(attName, "volumeNodeID"))
       {
       this->SetVolumeNodeID(attValue);
@@ -140,6 +178,10 @@ void vtkMRMLAirwayNode::Copy(vtkMRMLNode *anode)
   this->SetXYZ(node->GetXYZ());
   this->SetOrientationWXYZ(node->GetOrientationWXYZ());
   this->SetThreshold(node->GetThreshold());
+  this->SetMin(node->GetMin());
+  this->SetMax(node->GetMax());
+  this->SetMean(node->GetMean());
+  this->SetStd(node->GetStd());
 }
 
 //----------------------------------------------------------------------------
@@ -151,6 +193,10 @@ void vtkMRMLAirwayNode::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "XYZ: " << this->XYZ << "\n";
   os << indent << "OrientationWXYZ: " << this->OrientationWXYZ << "\n";
   os << indent << "Threshold: " << this->Threshold << "\n";
+  os << indent << "Min: " << this->Min << "\n";
+  os << indent << "Max: " << this->Max << "\n";
+  os << indent << "Mean: " << this->Mean << "\n";
+  os << indent << "Std: " << this->Std << "\n";
 }
 
 //---------------------------------------------------------------------------
