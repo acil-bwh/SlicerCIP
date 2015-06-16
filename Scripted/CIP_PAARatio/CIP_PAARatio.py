@@ -53,7 +53,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
     """
 
 
-
     def setup(self):
         """This is called one time when the module GUI is initialized
         """
@@ -69,7 +68,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         mainAreaCollapsibleButton.text = "Parameters"
         self.layout.addWidget(mainAreaCollapsibleButton)
         # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
-        self.mainAreaLayout = qt.QFormLayout(mainAreaCollapsibleButton)
+        self.mainAreaLayout = qt.QGridLayout(mainAreaCollapsibleButton)
 
         self.volumeSelector = slicer.qMRMLNodeComboBox()
         self.volumeSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
@@ -85,68 +84,96 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.volumeSelector.showChildNodeTypes = False
         self.volumeSelector.setMRMLScene( slicer.mrmlScene )
         # self.volumeSelector.setToolTip( "Pick the volume" )
-        self.mainAreaLayout.addRow("Volume: ", self.volumeSelector)
+        #self.mainAreaLayout.addRow("Volume: ", self.volumeSelector)
+        self.mainAreaLayout.addWidget(self.volumeSelector, 0, 1)
 
-        # Selector
+        label = qt.QLabel("Select the volume")
+        self.mainAreaLayout.addWidget(label, 0, 0)
 
-        label = qt.QLabel("Select the structure")
-        #self.mainAreaLayout.addWidget(label)
+        ### Structure Selector
+        self.structuresGroupbox = qt.QGroupBox("Select the structure")
+        self.groupboxLayout = qt.QVBoxLayout()
+        self.structuresGroupbox.setLayout(self.groupboxLayout)
+        self.mainAreaLayout.addWidget(self.structuresGroupbox, 1, 0)
 
         self.structuresCheckboxGroup=qt.QButtonGroup()
         btn = qt.QRadioButton("None")
+        btn.visible = False
+        self.structuresCheckboxGroup.addButton(btn)
+        self.groupboxLayout.addWidget(btn)
+
+        btn = qt.QRadioButton("Both")
         btn.checked = True
         self.structuresCheckboxGroup.addButton(btn)
-        self.mainAreaLayout.addWidget(btn)
+        self.groupboxLayout.addWidget(btn)
 
         btn = qt.QRadioButton("Pulmonary Arterial")
         self.structuresCheckboxGroup.addButton(btn)
-        self.mainAreaLayout.addWidget(btn)
+        self.groupboxLayout.addWidget(btn)
 
         btn = qt.QRadioButton("Aorta")
         self.structuresCheckboxGroup.addButton(btn)
-        self.mainAreaLayout.addWidget(btn)
+        self.groupboxLayout.addWidget(btn)
 
-        btn = qt.QRadioButton("Both")
-        self.structuresCheckboxGroup.addButton(btn)
-        self.mainAreaLayout.addWidget(btn)
-
+        ### Buttons toolbox
+        self.buttonsToolboxFrame = qt.QFrame()
+        self.buttonsToolboxLayout = qt.QGridLayout()
+        self.buttonsToolboxFrame.setLayout(self.buttonsToolboxLayout)
+        self.mainAreaLayout.addWidget(self.buttonsToolboxFrame, 1, 1)
 
         self.placeDefaultRulersButton = ctk.ctkPushButton()
         self.placeDefaultRulersButton.text = "Place default rulers"
-        self.placeDefaultRulersButton.toolTip = "This is the button tooltip"
-        self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/Reload.png".format(Util.ICON_DIR)))
-        self.placeDefaultRulersButton.setIconSize(qt.QSize(20,20))
+        self.placeDefaultRulersButton.toolTip = "Place default rulers for this volume"
+        # self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/Reload.png".format(Util.ICON_DIR)))
+        # self.placeDefaultRulersButton.setIconSize(qt.QSize(20,20))
         #self.placeRulerButton.setStyleSheet("font-weight:bold; font-size:12px" )
-        self.placeDefaultRulersButton.setFixedWidth(200)
-        self.mainAreaLayout.addWidget(self.placeDefaultRulersButton)
-
-        self.placeRulersButton = ctk.ctkPushButton()
-        self.placeRulersButton.text = "Place rulers"
-        self.mainAreaLayout.addWidget(self.placeRulersButton)
-
-        self.moveUpButton = ctk.ctkPushButton()
-        self.moveUpButton.text = "Up"
-        self.mainAreaLayout.addWidget(self.moveUpButton)
-
-        self.moveDownButton = ctk.ctkPushButton()
-        self.moveDownButton.text = "Down"
-        self.mainAreaLayout.addWidget(self.moveDownButton)
+        #self.placeDefaultRulersButton.setFixedWidth(200)
+        self.buttonsToolboxLayout.addWidget(self.placeDefaultRulersButton, 0, 0)
 
         self.removeButton = ctk.ctkPushButton()
-        self.removeButton.text = "Remove"
-        self.mainAreaLayout.addWidget(self.removeButton)
+        self.removeButton.text = "Remove ALL rulers"
+        self.removeButton.toolTip = "Remove all the rulers for this volume"
+        self.buttonsToolboxLayout.addWidget(self.removeButton, 0, 1)
+
+        self.placeRulersButton = ctk.ctkPushButton()
+        self.placeRulersButton.text = "Place ruler/s"
+        self.placeRulersButton.toolTip = "Place the ruler/s for the selected structure/s in the current slice"
+        self.buttonsToolboxLayout.addWidget(self.placeRulersButton, 1, 0)
+
+        self.moveUpButton = ctk.ctkPushButton()
+        self.moveUpButton.text = "Move up"
+        self.moveUpButton.toolTip = "Move the selected ruler/s one slice up"
+        self.moveUpButton.setIcon(qt.QIcon("{0}/move_up.png".format(Util.ICON_DIR)))
+        self.moveUpButton.setIconSize(qt.QSize(20,20))
+        self.buttonsToolboxLayout.addWidget(self.moveUpButton, 1, 1)
+
+        self.moveDownButton = ctk.ctkPushButton()
+        self.moveDownButton.text = "Move down"
+        self.moveDownButton.toolTip = "Move the selected ruler/s one slice down"
+        self.moveDownButton.setIcon(qt.QIcon("{0}/move_down.png".format(Util.ICON_DIR)))
+        self.moveDownButton.setIconSize(qt.QSize(20,20))
+        self.buttonsToolboxLayout.addWidget(self.moveDownButton, 1, 2)
+
+
+
+
+        ### Textboxes
+        self.textboxesFrame = qt.QFrame()
+        self.textboxesLayout = qt.QFormLayout()
+        self.textboxesFrame.setLayout(self.textboxesLayout)
+        self.mainAreaLayout.addWidget(self.textboxesFrame, 2, 0)
 
         self.paTextBox = qt.QLineEdit()
         self.paTextBox.setReadOnly(True)
-        self.mainAreaLayout.addRow("PA (mm):  ", self.paTextBox)
+        self.textboxesLayout.addRow("PA (mm):  ", self.paTextBox)
 
         self.aortaTextBox = qt.QLineEdit()
         self.aortaTextBox.setReadOnly(True)
-        self.mainAreaLayout.addRow("Aorta (mm):  ", self.aortaTextBox)
+        self.textboxesLayout.addRow("Aorta (mm):  ", self.aortaTextBox)
 
         self.ratioTextBox = qt.QLineEdit()
         self.ratioTextBox.setReadOnly(True)
-        self.mainAreaLayout.addRow("Ratio:  ", self.ratioTextBox)
+        self.textboxesLayout.addRow("Ratio:  ", self.ratioTextBox)
 
         # Connections
         self.placeDefaultRulersButton.connect('clicked()', self.onPlaceDefaultRulers)
@@ -205,17 +232,23 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         selectedStructure = self.getCurrentSelectedStructure()
         if selectedStructure == self.logic.NONE:
             qt.QMessageBox.warning(slicer.util.mainWindow(), 'Review structure',
-                'Please select Aorta or Pulmonary Arterial to place the right ruler')
+                'Please select Pulmonary Arterial, Aorta or both to place the right ruler/s')
             return
 
         # Get the current slice
         currentSlice = self.getCurrentRedWindowSlice()
 
-        rulerNode, newNode = self.logic.placeRulerInSlice(volumeId, selectedStructure, currentSlice)
+        if selectedStructure == self.logic.BOTH:
+            structures = [self.logic.PA, self.logic.AORTA]
+        else:
+            structures = [selectedStructure]
 
-        if newNode:
-             rulerNode.AddObserver(vtk.vtkCommand.ModifiedEvent, self.onRulerUpdated)
-             self.refreshTextboxes()
+        for structure in structures:
+            rulerNode, newNode = self.logic.placeRulerInSlice(volumeId, structure, currentSlice)
+
+            if newNode:
+                rulerNode.AddObserver(vtk.vtkCommand.ModifiedEvent, self.onRulerUpdated)
+                self.refreshTextboxes()
 
         # rulerNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, selectedStructure)
         # # Get the current slice
@@ -362,7 +395,23 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             interactionNode.SwitchToSinglePlaceMode()
 
     def onPlaceDefaultRulers(self):
-        self.placeDefaultRulers(self.volumeSelector.currentNodeId)
+        volumeId = self.volumeSelector.currentNodeId
+        if volumeId == '':
+            self.showUnselectedVolumeWarningMessage()
+            return
+
+        rulerNodePA, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.PA, createIfNotExist=False)
+        rulerNodeAorta, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.AORTA, createIfNotExist=False)
+
+        if rulerNodePA is not None or rulerNodeAorta is not None:
+            # There is some ruler already in place for this volume. Ask the user to confirm the operation
+            if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Place default rulers',
+                    'Are you sure you want to restore the default rulers? (all the current rulers for this volume will be removed)',
+                        qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
+                self.placeDefaultRulers(volumeId)
+        else:
+            # No rulers at the moment. No need to ask
+            self.placeDefaultRulers(volumeId)
 
     def onRulerUpdated(self, node, event):
         self.refreshTextboxes()
@@ -499,11 +548,11 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         """
         aorta1, aorta2, pa1, pa2 = self.getDefaultCoords(volumeId)
 
-        rulerNodeAorta, newNodeAorta = self.getRulerNodeForVolumeAndStructure(volumeId, self.AORTA)
+        rulerNodeAorta, newNodeAorta = self.getRulerNodeForVolumeAndStructure(volumeId, self.AORTA, createIfNotExist=True)
         rulerNodeAorta.SetPositionWorldCoordinates1(aorta1)
         rulerNodeAorta.SetPositionWorldCoordinates2(aorta2)
 
-        rulerNodePA, newNodePA = self.getRulerNodeForVolumeAndStructure(volumeId, self.PA)
+        rulerNodePA, newNodePA = self.getRulerNodeForVolumeAndStructure(volumeId, self.PA, createIfNotExist=True)
         rulerNodePA.SetPositionWorldCoordinates1(pa1)
         rulerNodePA.SetPositionWorldCoordinates2(pa2)
 
@@ -517,8 +566,9 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         :return: new slice in RAS format
         """
         # Calculate the RAS coords of the slice where we should jump to
-        rulerNode, newNode = self.getRulerNodeForVolumeAndStructure(volumeId, structureId)
-        if newNode:
+        rulerNode, newNode = self.getRulerNodeForVolumeAndStructure(volumeId, structureId, createIfNotExist=False)
+        if not rulerNode:
+            # The ruler has not been created. This op doesn't make sense
             return False
 
         coords = [0, 0, 0, 0]
@@ -553,7 +603,7 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         :return: tuple with ruler node and a boolean indicating if the node was just created
         """
         # Get the correct ruler
-        rulerNode, newNode = self.getRulerNodeForVolumeAndStructure(volumeId, structureId)
+        rulerNode, newNode = self.getRulerNodeForVolumeAndStructure(volumeId, structureId, createIfNotExist=True)
 
         # Move the ruler
         self._placeRulerInSlice_(rulerNode, structureId, volumeId, newSlice)
