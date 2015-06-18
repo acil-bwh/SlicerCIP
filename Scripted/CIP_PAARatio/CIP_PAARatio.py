@@ -166,6 +166,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.textboxesFrame = qt.QFrame()
         self.textboxesLayout = qt.QFormLayout()
         self.textboxesFrame.setLayout(self.textboxesLayout)
+        self.textboxesFrame.setFixedWidth(190)
         self.mainAreaLayout.addWidget(self.textboxesFrame, 2, 0)
 
         self.paTextBox = qt.QLineEdit()
@@ -180,7 +181,11 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.ratioTextBox.setReadOnly(True)
         self.textboxesLayout.addRow("Ratio PA/A: ", self.ratioTextBox)
 
+
+        self.switchToRedView()
+
         # Connections
+        self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onInputSelect)
         self.placeDefaultRulersButton.connect('clicked()', self.onPlaceDefaultRulers)
         self.placeRulersButton.connect('clicked()', self.onPlaceRuler)
         self.moveUpButton.connect('clicked()', self.onMoveUpRuler)
@@ -355,7 +360,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.paTextBox.setText("0")
         self.ratioTextBox.setText("0")
         self.ratioTextBox.setStyleSheet(" QLineEdit { background-color: white; color: black}");
-        print("refresh")
 
         volumeId = self.volumeSelector.currentNodeId
         if volumeId:
@@ -387,9 +391,18 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         qt.QMessageBox.warning(slicer.util.mainWindow(), 'Review structure',
                 'Please select Aorta, Pulmonary Arterial or Both to place the right ruler/s')
 
+    def switchToRedView(self):
+        """ Switch the layout to Red slice only
+        :return:
+        """
+        layoutManager = slicer.app.layoutManager()
+        layoutManager.setLayout(6)
 
     #########
     # EVENTS
+    def onInputSelect(self, node):
+        self.refreshTextboxes()
+
     def onStructureClicked(self, button):
         fiducialsNode = self.getFiducialsNode(self.volumeSelector.currentNodeId)
         if fiducialsNode is not None:
