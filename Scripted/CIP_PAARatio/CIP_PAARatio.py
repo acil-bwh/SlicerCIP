@@ -65,16 +65,18 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         #
         # Create all the widgets. Example Area
         mainAreaCollapsibleButton = ctk.ctkCollapsibleButton()
-        mainAreaCollapsibleButton.text = "Parameters"
+        mainAreaCollapsibleButton.text = "Main parameters"
         self.layout.addWidget(mainAreaCollapsibleButton)
-        # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
         self.mainAreaLayout = qt.QGridLayout(mainAreaCollapsibleButton)
+
+        self.label = qt.QLabel("Select the volume")
+        self.label.setStyleSheet("margin:10px 0 30px 7px")
+        self.mainAreaLayout.addWidget(self.label, 0, 0)
 
         self.volumeSelector = slicer.qMRMLNodeComboBox()
         self.volumeSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
         # DEPRECATED. Now there is a new vtkMRMLLabelMapNode
         #self.volumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", "0" )  # No labelmaps
-
         self.volumeSelector.selectNodeUponCreation = True
         self.volumeSelector.autoFillBackground = True
         self.volumeSelector.addEnabled = True
@@ -83,12 +85,10 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.volumeSelector.showHidden = False
         self.volumeSelector.showChildNodeTypes = False
         self.volumeSelector.setMRMLScene( slicer.mrmlScene )
+        self.volumeSelector.setStyleSheet("margin:10px 0 30px 0; padding:2px 0 2px 5px")
         # self.volumeSelector.setToolTip( "Pick the volume" )
         #self.mainAreaLayout.addRow("Volume: ", self.volumeSelector)
         self.mainAreaLayout.addWidget(self.volumeSelector, 0, 1)
-
-        label = qt.QLabel("Select the volume")
-        self.mainAreaLayout.addWidget(label, 0, 0)
 
         ### Structure Selector
         self.structuresGroupbox = qt.QGroupBox("Select the structure")
@@ -126,6 +126,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.placeDefaultRulersButton.toolTip = "Place default rulers for this volume"
         self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/rulers.png".format(Util.ICON_DIR)))
         self.placeDefaultRulersButton.setIconSize(qt.QSize(20,20))
+        self.placeDefaultRulersButton.setFixedWidth(135)
         #self.placeRulerButton.setStyleSheet("font-weight:bold; font-size:12px" )
         #self.placeDefaultRulersButton.setFixedWidth(200)
         self.buttonsToolboxLayout.addWidget(self.placeDefaultRulersButton, 0, 0)
@@ -135,14 +136,14 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.removeButton.toolTip = "Remove all the rulers for this volume"
         self.removeButton.setIcon(qt.QIcon("{0}/delete.png".format(Util.ICON_DIR)))
         self.removeButton.setIconSize(qt.QSize(20,20))
-        self.buttonsToolboxLayout.addWidget(self.removeButton, 0, 1)
+        self.buttonsToolboxLayout.addWidget(self.removeButton, 0, 1, 1, 2, 2)
 
         self.placeRulersButton = ctk.ctkPushButton()
         self.placeRulersButton.text = "Place ruler/s"
         self.placeRulersButton.toolTip = "Place the ruler/s for the selected structure/s in the current slice"
         self.placeRulersButton.setIcon(qt.QIcon("{0}/ruler.png".format(Util.ICON_DIR)))
         self.placeRulersButton.setIconSize(qt.QSize(20,20))
-        self.placeRulersButton.setFixedWidth(100)
+        self.placeRulersButton.setFixedWidth(135)
         self.buttonsToolboxLayout.addWidget(self.placeRulersButton, 1, 0)
 
         self.moveUpButton = ctk.ctkPushButton()
@@ -160,9 +161,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.moveDownButton.setIconSize(qt.QSize(20,20))
         self.moveDownButton.setFixedWidth(100)
         self.buttonsToolboxLayout.addWidget(self.moveDownButton, 1, 2)
-
-
-
 
         ### Textboxes
         self.textboxesFrame = qt.QFrame()
@@ -357,7 +355,11 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.paTextBox.setText("0")
         self.ratioTextBox.setText("0")
         self.ratioTextBox.setStyleSheet(" QLineEdit { background-color: white; color: black}");
+        print("refresh")
 
+        volumeId = self.volumeSelector.currentNodeId
+        if volumeId:
+            self.logic.changeColor(volumeId, self.logic.defaultColor)
         if not reset:
             rulerAorta, newAorta = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeId,
                                         self.logic.AORTA, createIfNotExist=False)
@@ -371,9 +373,11 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
                 ratio = rulerPA.GetDistanceMeasurement() / rulerAorta.GetDistanceMeasurement()
                 self.ratioTextBox.setText(str(ratio))
                 if ratio > 1:
+                    # Switch colors ("alarm")
                     self.ratioTextBox.setStyleSheet(" QLineEdit { background-color: rgb(255, 0, 0); color: white}");
+                    self.logic.changeColor(volumeId, self.logic.defaultWarningColor)
             except Exception as exc:
-                print(exc.message)
+                print("ERROR IN : refreshTextboxes", exc)
 
     def showUnselectedVolumeWarningMessage(self):
         qt.QMessageBox.warning(slicer.util.mainWindow(), 'Select a volume',
@@ -437,6 +441,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             'Are you sure you want to remove all the rulers from this volume?',
             qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
             self.logic.removeRulers(self.volumeSelector.currentNodeId)
+            self.refreshTextboxes()
 #
 # CIP_PAARatioLogic
 #
@@ -461,6 +466,9 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
     defaultAorta2 = [275, 175, 0]
     defaultPA1 = [280, 175, 0]
     defaultPA2 = [320, 190, 0]
+
+    defaultColor = [0.5, 0.5, 1]
+    defaultWarningColor = [1, 0, 0]
 
     def __init__(self):
         pass
@@ -539,11 +547,27 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
                 annotationsLogic.SetActiveHierarchyNodeID(rulersListNode.GetID())
                 node = slicer.mrmlScene.CreateNodeByClass('vtkMRMLAnnotationRulerNode')
                 node.SetName(nodeName)
+                self.__changeColor__(node, self.defaultColor)
                 slicer.mrmlScene.AddNode(node)
                 isNewNode = True
                 logging.debug("Created node " + nodeName + " for volume " + volumeId)
 
         return node, isNewNode
+
+    def __changeColor__(self, node, color):
+        for i in range(3):
+            n = node.GetNthDisplayNode(i)
+            if n:
+                n.SetColor(color)
+        # Refresh UI to repaint both rulers. Is this the best way? Who knows...
+        slicer.app.layoutManager().sliceWidget("Red").sliceView().mrmlSliceNode().Modified()
+
+    def changeColor(self, volumeId, color):
+        for structureId in [self.PA, self.AORTA]:
+            node, new = self.getRulerNodeForVolumeAndStructure(volumeId, structureId, False)
+            if node:
+                self.__changeColor__(node, color)
+
 
     def createDefaultRulers(self, volumeId):
         """ Set the Aorta and PA rulers to their default position.
