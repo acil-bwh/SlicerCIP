@@ -28,9 +28,16 @@
 
 #include "vtkRenderWindowInteractor.h"
 #include "vtkRenderWindow.h"
+#include "vtkRendererCollection.h"
 #include "vtkInteractorObserver.h"
+#include "vtkActor2D.h"
+#include "vtkImageMapToColors.h"
+#include "vtkImageMapper.h"
+#include "vtkLookupTable.h"
 
 #include "QPainter.h"
+#include "QMainWindow.h"
+#include "QVTKWidget.h"
 
 #include "vtkMRMLScene.h"
 #include "vtkMRMLScalarVolumeNode.h"
@@ -49,6 +56,8 @@
 class qSlicerAirwayInspectorModuleWidgetPrivate: public Ui_qSlicerAirwayInspectorModuleWidget
 {
 public:
+
+  QVTKWidget *qvtkWidget;
 };
 
 //-----------------------------------------------------------------------------
@@ -75,8 +84,13 @@ void qSlicerAirwayInspectorModuleWidget::setup()
   Q_D(qSlicerAirwayInspectorModuleWidget);
   d->setupUi(this);
 
-  QSizePolicy qSize = QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-  d->ImageLabel->setSizePolicy(qSize);
+  // VTK/Qt
+  vtkSmartPointer<vtkRenderer> renderer =
+    vtkSmartPointer<vtkRenderer>::New();
+  d->qvtkWidget = new QVTKWidget;
+  d->qvtkWidget->GetRenderWindow()->AddRenderer(renderer);
+  d->qvtkWidget->setFixedSize(200,200);
+  d->reportCollapsibleButton->layout()->addWidget(d->qvtkWidget);
 
   QObject::connect(d->InputVolumeComboBox, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
                    this, SLOT(setMRMLVolumeNode(vtkMRMLNode*)));
@@ -284,9 +298,51 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
   d->MeanSpinBox->setValue(airwayNode->GetMean());
   d->StdSpinBox->setValue(airwayNode->GetStd());
 
-  QPixmap imagePixmap;
   vtkImageData *image= airwayNode->GetAirwayImage();
-  if (image)
+
+  vtkRenderer *renderer= d->qvtkWidget->GetRenderWindow()->GetRenderers()->GetFirstRenderer();
+
+  renderer->RemoveAllViewProps();
+
+  // Map the scalar values in the image to colors with a lookup table:
+  vtkSmartPointer<vtkLookupTable> lookupTable =
+    vtkSmartPointer<vtkLookupTable>::New();
+  lookupTable->SetNumberOfTableValues(256);
+  lookupTable->SetRange(0.0, 255.0);
+  lookupTable->Build();
+
+  // Pass the original image and the lookup table to a filter to create
+  // a color image:
+  vtkSmartPointer<vtkImageMapToColors> scalarValuesToColors =
+    vtkSmartPointer<vtkImageMapToColors>::New();
+  scalarValuesToColors->SetLookupTable(lookupTable);
+  scalarValuesToColors->PassAlphaToOutputOn();
+#if VTK_MAJOR_VERSION <= 5
+  scalarValuesToColors->SetInput(image);
+#else
+  scalarValuesToColors->SetInputData(image);
+#endif
+
+  vtkSmartPointer<vtkImageMapper> imageMapper = vtkSmartPointer<vtkImageMapper>::New();
+#if VTK_MAJOR_VERSION <= 5
+  imageMapper->SetInputConnection(scalarValuesToColors->GetProducerPort());
+#else
+  imageMapper->SetInputConnection(scalarValuesToColors->GetOutputPort());
+#endif
+  imageMapper->SetColorWindow(255);
+  imageMapper->SetColorLevel(127.5);
+
+  vtkSmartPointer<vtkActor2D> imageActor = vtkSmartPointer<vtkActor2D>::New();
+  imageActor->SetMapper(imageMapper);
+
+  //renderer->AddViewProp(imageActor);
+  renderer->AddActor2D(imageActor);
+  //renderer->Render();
+  d->qvtkWidget->GetRenderWindow()->Render();
+
+    /***
+ QPixmap imagePixmap;
+ if (image)
     {
     QImage qImage;
     qMRMLUtils::vtkImageDataToQImage(image, qImage);
@@ -302,4 +358,5 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
     d->ImageLabel->setPixmap(imagePixmap);
     d->ImageLabel->show();
     }
+    ***/
 }

@@ -15,6 +15,7 @@
 #include <vtkPNGWriter.h>
 #include <vtkVersion.h>
 #include <vtkImageEllipsoidSource.h>
+#include <vtkImageCast.h>
 
 // STD includes
 #include <algorithm>
@@ -71,7 +72,23 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
   node->SetMean(5.5);
   node->SetStd(0.5);
 
-  vtkImageEllipsoidSource *isorce = vtkImageEllipsoidSource::New();
-  isorce->Update();
-  node->SetAirwayImage(isorce->GetOutput());
+  // Simple data source
+  vtkSmartPointer<vtkImageEllipsoidSource> source =
+        vtkSmartPointer<vtkImageEllipsoidSource>::New();
+  source->SetOutputScalarTypeToUnsignedShort();
+  source->SetInValue(1000);
+  source->SetOutValue(0);
+  source->SetCenter(20,20,20);
+  source->SetRadius(9,10,11);
+  source->SetWholeExtent(0, 14, 0, 29, 0, 49);
+  source->Update();
+
+  vtkSmartPointer<vtkImageCast> imCast = vtkSmartPointer<vtkImageCast>::New();
+  imCast->SetOutputScalarTypeToUnsignedChar();
+  imCast->SetInputConnection(source->GetOutputPort());
+  imCast->Update();
+
+  vtkImageData *image = vtkImageData::New();
+  image->DeepCopy(imCast->GetOutput());
+  node->SetAirwayImage(image);
 }
