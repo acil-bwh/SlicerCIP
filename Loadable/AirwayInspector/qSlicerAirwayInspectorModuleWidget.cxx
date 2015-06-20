@@ -34,6 +34,7 @@
 #include "vtkImageMapToColors.h"
 #include "vtkImageMapper.h"
 #include "vtkLookupTable.h"
+#include "vtkMatrix4x4.h"
 
 #include "QPainter.h"
 #include "QMainWindow.h"
@@ -232,10 +233,21 @@ void qSlicerAirwayInspectorModuleWidget::onInteractorEvent(vtkRenderWindowIntera
       {
       // it's a 3D displayable manager and the click could have been on a node
       double yNew = windowHeight - y - 1;
-      }
+
       vtkMRMLSliceNode* snode = this->interactors[interactor];
+      vtkMatrix4x4 *xyToRAS = snode->GetXYToRAS();
+      double xyz[3];
+      xyz[0] = x;
+      xyz[1] = yNew;
+      xyz[2] = 0;
+      double *xyzRAS = xyToRAS->MultiplyDoublePoint(xyz);
+
+      x = xyzRAS[0];
+      y = xyzRAS[1];
       double z = snode->GetSliceOffset();
+
       logic->AddAirwayNode(d->InputVolumeComboBox->currentNode()->GetID(), x,y,z, d->ThresholdSpinBox->value());
+      }
     }
 }
 
