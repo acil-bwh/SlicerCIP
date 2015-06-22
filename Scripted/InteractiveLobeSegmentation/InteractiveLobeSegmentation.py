@@ -100,8 +100,9 @@ class InteractiveLobeSegmentationWidget:
     #
 
     self.inputSelector1 = slicer.qMRMLNodeComboBox()
-    self.inputSelector1.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.inputSelector1.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 1 )
+    #self.inputSelector1.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    #self.inputSelector1.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 1 )
+    self.inputSelector1.nodeTypes = ( ("vtkMRMLLabelMapVolumeNode"), "" )
     self.inputSelector1.selectNodeUponCreation = True
     self.inputSelector1.addEnabled = False
     self.inputSelector1.removeEnabled = False
@@ -116,8 +117,9 @@ class InteractiveLobeSegmentationWidget:
     #
 
     self.outputSelector = slicer.qMRMLNodeComboBox()
-    self.outputSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.outputSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 1 )
+    # self.outputSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    # self.outputSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 1 )
+    self.outputSelector.nodeTypes = ( ("vtkMRMLLabelMapVolumeNode"), "" )
     self.outputSelector.selectNodeUponCreation = True
     self.outputSelector.addEnabled = True
     self.outputSelector.removeEnabled = True
