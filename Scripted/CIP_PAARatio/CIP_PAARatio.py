@@ -70,7 +70,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.mainAreaLayout = qt.QGridLayout(mainAreaCollapsibleButton)
 
         self.label = qt.QLabel("Select the volume")
-        self.label.setStyleSheet("margin:10px 0 30px 7px")
+        self.label.setStyleSheet("margin:10px 0 20px 7px")
         self.mainAreaLayout.addWidget(self.label, 0, 0)
 
         self.volumeSelector = slicer.qMRMLNodeComboBox()
@@ -85,16 +85,29 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.volumeSelector.showHidden = False
         self.volumeSelector.showChildNodeTypes = False
         self.volumeSelector.setMRMLScene( slicer.mrmlScene )
-        self.volumeSelector.setStyleSheet("margin:10px 0 30px 0; padding:2px 0 2px 5px")
-        # self.volumeSelector.setToolTip( "Pick the volume" )
-        #self.mainAreaLayout.addRow("Volume: ", self.volumeSelector)
+        self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
         self.mainAreaLayout.addWidget(self.volumeSelector, 0, 1)
+
+
+        self.label2 = qt.QLabel("Select the slice")
+        self.label2.setStyleSheet("margin:0px 0 30px 7px")
+        self.mainAreaLayout.addWidget(self.label2, 1, 0)
+
+        self.placeDefaultRulersButton = ctk.ctkPushButton()
+        self.placeDefaultRulersButton.text = "Go to tentative slice"
+        self.placeDefaultRulersButton.toolTip = "Navigate to the best estimated slice to place the rulers"
+        self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/1415659836_next.png".format(Util.ICON_DIR)))
+        self.placeDefaultRulersButton.setIconSize(qt.QSize(20,20))
+        self.placeDefaultRulersButton.setFixedWidth(135)
+        # self.placeDefaultRulersButton.setStyleSheet("padding: 0 0 30px 0" )
+        self.mainAreaLayout.addWidget(self.placeDefaultRulersButton, 1, 1)
 
         ### Structure Selector
         self.structuresGroupbox = qt.QGroupBox("Select the structure")
         self.groupboxLayout = qt.QVBoxLayout()
         self.structuresGroupbox.setLayout(self.groupboxLayout)
-        self.mainAreaLayout.addWidget(self.structuresGroupbox, 1, 0)
+        self.mainAreaLayout.addWidget(self.structuresGroupbox, 2, 0)
+
 
         self.structuresCheckboxGroup=qt.QButtonGroup()
         btn = qt.QRadioButton("None")
@@ -119,55 +132,48 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.buttonsToolboxFrame = qt.QFrame()
         self.buttonsToolboxLayout = qt.QGridLayout()
         self.buttonsToolboxFrame.setLayout(self.buttonsToolboxLayout)
-        self.mainAreaLayout.addWidget(self.buttonsToolboxFrame, 1, 1)
+        self.mainAreaLayout.addWidget(self.buttonsToolboxFrame, 2, 1)
 
-        self.placeDefaultRulersButton = ctk.ctkPushButton()
-        self.placeDefaultRulersButton.text = "Place default rulers"
-        self.placeDefaultRulersButton.toolTip = "Place default rulers for this volume"
-        self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/rulers.png".format(Util.ICON_DIR)))
-        self.placeDefaultRulersButton.setIconSize(qt.QSize(20,20))
-        self.placeDefaultRulersButton.setFixedWidth(135)
-        #self.placeRulerButton.setStyleSheet("font-weight:bold; font-size:12px" )
-        #self.placeDefaultRulersButton.setFixedWidth(200)
-        self.buttonsToolboxLayout.addWidget(self.placeDefaultRulersButton, 0, 0)
-
-        self.removeButton = ctk.ctkPushButton()
-        self.removeButton.text = "Remove ALL rulers"
-        self.removeButton.toolTip = "Remove all the rulers for this volume"
-        self.removeButton.setIcon(qt.QIcon("{0}/delete.png".format(Util.ICON_DIR)))
-        self.removeButton.setIconSize(qt.QSize(20,20))
-        self.buttonsToolboxLayout.addWidget(self.removeButton, 0, 1, 1, 2, 2)
 
         self.placeRulersButton = ctk.ctkPushButton()
         self.placeRulersButton.text = "Place ruler/s"
         self.placeRulersButton.toolTip = "Place the ruler/s for the selected structure/s in the current slice"
         self.placeRulersButton.setIcon(qt.QIcon("{0}/ruler.png".format(Util.ICON_DIR)))
         self.placeRulersButton.setIconSize(qt.QSize(20,20))
-        self.placeRulersButton.setFixedWidth(135)
-        self.buttonsToolboxLayout.addWidget(self.placeRulersButton, 1, 0)
+        self.placeRulersButton.setFixedWidth(105)
+        self.placeRulersButton.setStyleSheet("font-weight:bold")
+        self.buttonsToolboxLayout.addWidget(self.placeRulersButton, 0, 0)
 
         self.moveUpButton = ctk.ctkPushButton()
         self.moveUpButton.text = "Move up"
         self.moveUpButton.toolTip = "Move the selected ruler/s one slice up"
         self.moveUpButton.setIcon(qt.QIcon("{0}/move_up.png".format(Util.ICON_DIR)))
         self.moveUpButton.setIconSize(qt.QSize(20,20))
-        self.moveUpButton.setFixedWidth(100)
-        self.buttonsToolboxLayout.addWidget(self.moveUpButton, 1, 1)
+        self.moveUpButton.setFixedWidth(95)
+        self.buttonsToolboxLayout.addWidget(self.moveUpButton, 0, 1)
 
         self.moveDownButton = ctk.ctkPushButton()
         self.moveDownButton.text = "Move down"
         self.moveDownButton.toolTip = "Move the selected ruler/s one slice down"
         self.moveDownButton.setIcon(qt.QIcon("{0}/move_down.png".format(Util.ICON_DIR)))
         self.moveDownButton.setIconSize(qt.QSize(20,20))
-        self.moveDownButton.setFixedWidth(100)
-        self.buttonsToolboxLayout.addWidget(self.moveDownButton, 1, 2)
+        self.moveDownButton.setFixedWidth(95)
+        self.buttonsToolboxLayout.addWidget(self.moveDownButton, 0, 2)
+
+        self.removeButton = ctk.ctkPushButton()
+        self.removeButton.text = "Remove ALL rulers"
+        self.removeButton.toolTip = "Remove all the rulers for this volume"
+        self.removeButton.setIcon(qt.QIcon("{0}/delete.png".format(Util.ICON_DIR)))
+        self.removeButton.setIconSize(qt.QSize(20,20))
+        self.buttonsToolboxLayout.addWidget(self.removeButton, 1, 1, 1, 2, 2)
+
 
         ### Textboxes
         self.textboxesFrame = qt.QFrame()
         self.textboxesLayout = qt.QFormLayout()
         self.textboxesFrame.setLayout(self.textboxesLayout)
         self.textboxesFrame.setFixedWidth(190)
-        self.mainAreaLayout.addWidget(self.textboxesFrame, 2, 0)
+        self.mainAreaLayout.addWidget(self.textboxesFrame, 3, 0)
 
         self.paTextBox = qt.QLineEdit()
         self.paTextBox.setReadOnly(True)
@@ -205,6 +211,11 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         pass
 
+    def jumpToDefaultRulers(self, volumeId):
+        aorta1, aorta2, pa1, pa2 = self.logic.getDefaultCoords(volumeId)
+
+        # Set the display in the right slice
+        self.moveRedWindowToSlice(aorta1[2])
 
     def placeDefaultRulers(self, volumeId):
         """
@@ -423,19 +434,20 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         if volumeId == '':
             self.showUnselectedVolumeWarningMessage()
             return
+        self.jumpToDefaultRulers(volumeId)
 
-        rulerNodePA, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.PA, createIfNotExist=False)
-        rulerNodeAorta, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.AORTA, createIfNotExist=False)
-
-        if rulerNodePA is not None or rulerNodeAorta is not None:
-            # There is some ruler already in place for this volume. Ask the user to confirm the operation
-            if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Place default rulers',
-                    'Are you sure you want to restore the default rulers? (all the current rulers for this volume will be removed)',
-                        qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
-                self.placeDefaultRulers(volumeId)
-        else:
-            # No rulers at the moment. No need to ask
-            self.placeDefaultRulers(volumeId)
+    #     rulerNodePA, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.PA, createIfNotExist=False)
+    #     rulerNodeAorta, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.AORTA, createIfNotExist=False)
+    #
+    #     if rulerNodePA is not None or rulerNodeAorta is not None:
+    #         # There is some ruler already in place for this volume. Ask the user to confirm the operation
+    #         if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Place default rulers',
+    #                 'Are you sure you want to restore the default rulers? (all the current rulers for this volume will be removed)',
+    #                     qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
+    #             self.placeDefaultRulers(volumeId)
+    #     else:
+    #         # No rulers at the moment. No need to ask
+    #         self.placeDefaultRulers(volumeId)
 
     def onRulerUpdated(self, node, event):
         self.refreshTextboxes()
