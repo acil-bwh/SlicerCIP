@@ -3,6 +3,7 @@ import os
 import unittest
 from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
+
 import logging
 
 # Add the CIP common library to the path if it has not been loaded yet
@@ -20,6 +21,8 @@ except Exception as ex:
 print("CIP was added to the python path manually in CIP_PAARatio")
 
 from CIP.logic import Util
+from CIP.ui import CaseReportsWidget
+
 
 #
 # CIP_PAARatio
@@ -168,6 +171,8 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.buttonsToolboxLayout.addWidget(self.removeButton, 1, 1, 1, 2, 2)
 
 
+
+
         ### Textboxes
         self.textboxesFrame = qt.QFrame()
         self.textboxesLayout = qt.QFormLayout()
@@ -188,6 +193,27 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.textboxesLayout.addRow("Ratio PA/A: ", self.ratioTextBox)
 
 
+        # Save case data
+        self.reportsCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.reportsCollapsibleButton.text = "Reporting"
+        self.layout.addWidget(self.reportsCollapsibleButton)
+        self.reportsLayout = qt.QHBoxLayout(self.reportsCollapsibleButton)
+
+        self.reportsWidget = CaseReportsWidget("CIP_PAARatio", columnNames=["caseId", "pa", "aorta"], parent=self.reportsCollapsibleButton)
+        self.reportsWidget.setup()
+
+
+ # mainAreaCollapsibleButton = ctk.ctkCollapsibleButton()
+ #        mainAreaCollapsibleButton.text = "Main parameters"
+ #        self.layout.addWidget(mainAreaCollapsibleButton)
+ #        self.mainAreaLayout = qt.QGridLayout(mainAreaCollapsibleButton)
+ #
+ #        self.label = qt.QLabel("Select the volume")
+ #        self.label.setStyleSheet("margin:10px 0 20px 7px")
+ #        self.mainAreaLayout.addWidget(self.label, 0, 0)
+
+
+
         self.switchToRedView()
 
         # Connections
@@ -197,6 +223,8 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.moveUpButton.connect('clicked()', self.onMoveUpRuler)
         self.moveDownButton.connect('clicked()', self.onMoveDownRuler)
         self.removeButton.connect('clicked()', self.onRemoveRuler)
+
+        self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE, self.onReportSave)
 
 
     def enter(self):
@@ -271,22 +299,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
                 rulerNode.AddObserver(vtk.vtkCommand.ModifiedEvent, self.onRulerUpdated)
                 self.refreshTextboxes()
 
-        # rulerNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, selectedStructure)
-        # # Get the current slice
-        # layoutManager = slicer.app.layoutManager()
-        # redWidget = layoutManager.sliceWidget('Red')
-        # redNodeSliceNode = redWidget.sliceLogic().GetSliceNode()
-        # rasSliceOffset = redNodeSliceNode.GetSliceOffset()
-        #
-        #  # Create the node in the current slice
-        # # TODO: conversion RAS -> IJK?
-        # defaultXY1 = [0, 50, rasSliceOffset]
-        # defaultXY2 = [0, 100, rasSliceOffset]
-        #
-        # coords1 = [defaultXY1[0], defaultXY1[1], rasSliceOffset]
-        # coords2 = [defaultXY2[0], defaultXY2[1], rasSliceOffset]
-        # rulerNode.SetPosition1(coords1)
-        # rulerNode.SetPosition2(coords2)
 
     def getCurrentSelectedStructure(self):
         """ Get the current selected structure id
@@ -375,17 +387,21 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         volumeId = self.volumeSelector.currentNodeId
         if volumeId:
             self.logic.changeColor(volumeId, self.logic.defaultColor)
+        aorta = None
+        pa = None
         if not reset:
             rulerAorta, newAorta = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeId,
                                         self.logic.AORTA, createIfNotExist=False)
             rulerPA, newPA = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeId,
                                         self.logic.PA, createIfNotExist=False)
             if rulerAorta:
-                self.aortaTextBox.setText(str(rulerAorta.GetDistanceMeasurement()))
+                aorta = rulerAorta.GetDistanceMeasurement()
+                self.aortaTextBox.setText(str(aorta))
             if rulerPA:
-                self.paTextBox.setText(str(rulerPA.GetDistanceMeasurement()))
+                pa = rulerPA.GetDistanceMeasurement()
+                self.paTextBox.setText(str(pa))
             try:
-                ratio = rulerPA.GetDistanceMeasurement() / rulerAorta.GetDistanceMeasurement()
+                ratio = pa / aorta
                 self.ratioTextBox.setText(str(ratio))
                 if ratio > 1:
                     # Switch colors ("alarm")
@@ -468,6 +484,11 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             self.logic.removeRulers(self.volumeSelector.currentNodeId)
             self.refreshTextboxes()
 #
+    def onReportSave(self):
+        self.reportsWidget.saveCurrentValues(caseId=self.volumeSelector.currentNodeId, pa=self.paTextBox.text,
+                                       aorta=self.aortaTextBox.text)
+
+
 # CIP_PAARatioLogic
 #
 class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
@@ -759,8 +780,6 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         return list(ijktoras.MultiplyPoint(ijkCoords))
 
 
-
-
 class CIP_PAARatioTest(ScriptedLoadableModuleTest):
     """
     This is the test case for your scripted module.
@@ -791,3 +810,4 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
         logging.info("The response message was: " + responseMessage)
         self.assertTrue(responseMessage == expectedMessage)
         self.delayDisplay('Test passed!')
+
