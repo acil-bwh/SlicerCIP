@@ -37,7 +37,24 @@ class Util:
         shape.reverse()
         numpyarray = vtk.util.numpy_support.vtk_to_numpy(vtkImageData.GetPointData().GetScalars()).reshape(shape)
         return numpyarray
-    
+
+    @staticmethod
+    def getDimensions(vtkMRMLVolumeNode):
+        """ Return a list of 3 positions with the dimensions of the volume (XYZ)
+        :param vtkMRMLVolumeNode: vtkMRMLVolumeNode or any subclass
+        :return: list of 3 integer positions
+        """
+        # Get bounds in RAS format
+        bounds = [0,0,0,0,0,0]
+        vtkMRMLVolumeNode.GetRASBounds(bounds)
+        # Convert the limits to IJK format
+        rastoijk=vtk.vtkMatrix4x4()
+        vtkMRMLVolumeNode.GetRASToIJKMatrix(rastoijk)
+        bounds = [bounds[0],bounds[2],bounds[5], 1]
+        dimensions = rastoijk.MultiplyPoint(bounds)
+        return [int(round(dimensions[0])), int(round(dimensions[1])), int(round(dimensions[2]))]
+
+
     @staticmethod
     def saveNewNode(vtkMRMLScalarVolumeNode, fileName):
         """Save a new scalar node in a file and add it to the scene"""

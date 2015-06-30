@@ -199,20 +199,11 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.layout.addWidget(self.reportsCollapsibleButton)
         self.reportsLayout = qt.QHBoxLayout(self.reportsCollapsibleButton)
 
-        self.reportsWidget = CaseReportsWidget("CIP_PAARatio", columnNames=["caseId", "pa", "aorta"], parent=self.reportsCollapsibleButton)
+        self.storedColumnNames = ["caseId", "paDiameter_mm", "aortaDiameter_mm",
+                                  "pa1r", "pa1a", "pa1s", "pa2r", "pa2a", "pa2s",
+                                  "a1r", "a1a", "a1s", "a2r", "a2a", "a2s"]
+        self.reportsWidget = CaseReportsWidget("CIP_PAARatio", columnNames=self.storedColumnNames, parent=self.reportsCollapsibleButton)
         self.reportsWidget.setup()
-
-
- # mainAreaCollapsibleButton = ctk.ctkCollapsibleButton()
- #        mainAreaCollapsibleButton.text = "Main parameters"
- #        self.layout.addWidget(mainAreaCollapsibleButton)
- #        self.mainAreaLayout = qt.QGridLayout(mainAreaCollapsibleButton)
- #
- #        self.label = qt.QLabel("Select the volume")
- #        self.label.setStyleSheet("margin:10px 0 20px 7px")
- #        self.mainAreaLayout.addWidget(self.label, 0, 0)
-
-
 
         self.switchToRedView()
 
@@ -224,7 +215,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.moveDownButton.connect('clicked()', self.onMoveDownRuler)
         self.removeButton.connect('clicked()', self.onRemoveRuler)
 
-        self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE, self.onReportSave)
+        self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE, self.onSaveReport)
 
 
     def enter(self):
@@ -452,19 +443,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             return
         self.jumpToDefaultRulers(volumeId)
 
-    #     rulerNodePA, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.PA, createIfNotExist=False)
-    #     rulerNodeAorta, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.AORTA, createIfNotExist=False)
-    #
-    #     if rulerNodePA is not None or rulerNodeAorta is not None:
-    #         # There is some ruler already in place for this volume. Ask the user to confirm the operation
-    #         if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Place default rulers',
-    #                 'Are you sure you want to restore the default rulers? (all the current rulers for this volume will be removed)',
-    #                     qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
-    #             self.placeDefaultRulers(volumeId)
-    #     else:
-    #         # No rulers at the moment. No need to ask
-    #         self.placeDefaultRulers(volumeId)
-
     def onRulerUpdated(self, node, event):
         self.refreshTextboxes()
 
@@ -483,10 +461,48 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
             self.logic.removeRulers(self.volumeSelector.currentNodeId)
             self.refreshTextboxes()
-#
-    def onReportSave(self):
-        self.reportsWidget.saveCurrentValues(caseId=self.volumeSelector.currentNodeId, pa=self.paTextBox.text,
-                                       aorta=self.aortaTextBox.text)
+
+    def onSaveReport(self):
+        """ Save the current values in a persistent csv file
+        :return:
+        """
+        volumeId = self.volumeSelector.currentNodeId
+        if volumeId:
+            caseName = slicer.mrmlScene.GetNodeByID(volumeId).GetName()
+            coords = [0, 0, 0, 0]
+            pa1 = pa2 = a1 = a2 = None
+            # PA
+            rulerNode, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.PA, createIfNotExist=False)
+            if rulerNode:
+                # Get current RAS coords
+                rulerNode.GetPositionWorldCoordinates1(coords)
+                pa1 = list(coords)
+                rulerNode.GetPositionWorldCoordinates2(coords)
+                pa2 = list(coords)
+            # AORTA
+            rulerNode, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.AORTA, createIfNotExist=False)
+            if rulerNode:
+                rulerNode.GetPositionWorldCoordinates1(coords)
+                a1 = list(coords)
+                rulerNode.GetPositionWorldCoordinates2(coords)
+                a2 = list(coords)
+            self.reportsWidget.saveCurrentValues(
+                caseId=caseName,
+                paDiameter_mm=self.paTextBox.text,
+                aortaDiameter_mm=self.aortaTextBox.text,
+                pa1r = pa1[0] if pa1 is not None else '',
+                pa1a = pa1[1] if pa1 is not None else '',
+                pa1s = pa1[2] if pa1 is not None else '',
+                pa2r = pa2[0] if pa2 is not None else '',
+                pa2a = pa2[1] if pa2 is not None else '',
+                pa2s = pa2[2] if pa2 is not None else '',
+                a1r = a1[0] if a1 is not None else '',
+                a1a = a1[1] if a1 is not None else '',
+                a1s = a1[2] if a1 is not None else '',
+                a2r = a2[0] if a2 is not None else '',
+                a2a = a2[1] if a2 is not None else '',
+                a2s = a2[2] if a2 is not None else ''
+            )
 
 
 # CIP_PAARatioLogic
@@ -801,13 +817,13 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
     def test_CIP_PAARatio_PrintMessage(self):
         self.delayDisplay("Starting the test")
         logic = CIP_PAARatioLogic()
-
-        myMessage = "Print this test message in console"
-        logging.info("Starting the test with this message: " + myMessage)
-        expectedMessage = "I have printed this message: " + myMessage
-        logging.info("The expected message would be: " + expectedMessage)
-        responseMessage = logic.printMessage(myMessage)
-        logging.info("The response message was: " + responseMessage)
-        self.assertTrue(responseMessage == expectedMessage)
+        # Load a volume (TODO: get it from Slicer Data Store)
+        volume = slicer.util.loadVolume('/Volumes/Mac500/Data/tempdata/10002K_INSP_STD_BWH_COPD.nhdr', returnNode=True)
+        self.assertTrue(volume[0])  # The volume loaded correctly
+        volumeId = volume[1].GetID()
+        logic.createDefaultRulers(volumeId)
+        # Make sure a ruler was created
+        ruler = logic.getRulerNodeForVolumeAndStructure(volumeId, logic.AORTA, createIfNotExist=False)
+        self.assertFalse(ruler[0] is None)
         self.delayDisplay('Test passed!')
 
