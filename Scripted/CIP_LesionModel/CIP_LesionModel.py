@@ -219,12 +219,17 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         :return:
         """
         if forceRefresh or self.lastRefreshValue != self.distanceLevelSlider.value:
-            # Refresh
+            # Refresh slides
             print("DEBUG: updating labelmaps with value:", float(self.distanceLevelSlider.value)/100)
             self.logic.updateLabelmap(float(self.distanceLevelSlider.value)/100)
             self.lastRefreshValue = self.distanceLevelSlider.value
+
+
+
+
             # Refresh visible windows
             SlicerUtil.refreshActiveWindows()
+
 
     def activateCurrentLabelmap(self):
         """ Display the right labelmap for the current background node if it exists...
@@ -436,6 +441,14 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.currentLabelmapArray = slicer.util.array(labelmapName)
 
         #print("DEBUG: labelmap array created. Shape: ", self.currentLabelmapArray.shape)
+        # Model render
+        logic = slicer.modules.volumerendering.logic()
+        displayNode = logic.GetFirstVolumeRenderingDisplayNode(self.currentLabelmap)
+        if displayNode is None:
+            # Create the rendering infrastructure
+            displayNode = logic.CreateVolumeRenderingDisplayNode()
+            slicer.mrmlScene.AddNode(displayNode)
+            logic.UpdateDisplayNodeFromVolumeNode(displayNode, self.currentLabelmap)
 
         # Invoke the callback if specified
         if self.onCLISegmentationFinishedCallback is not None:
