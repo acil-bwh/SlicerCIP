@@ -235,4 +235,19 @@ class Util:
             print ("Created folder %s (first time update)" % Util.CIP_DEFAULT_GIT_REPO_FOLDER)
             # Always update the first time
             return True
- 
+
+    @staticmethod
+    def convertScalarToLabelmap(vtkMRMLScalarVolumeNode, nodeName=""):
+        """ Convert a vtkMRMLScalarVolumeNode node in an equivalent vtkMRMLLabelMapVolumeNode
+        :param vtkMRMLScalarVolumeNode:
+        :param nodeName: name of the result node (default: scalarNodeName_lm)
+        :return: vtkMRMLLabelMapVolumeNode
+        """
+        logic = slicer.modules.volumes.logic()
+        if nodeName == "":
+            nodeName = vtkMRMLScalarVolumeNode.GetName() + "_labelmap"
+
+        node = logic.CreateAndAddLabelVolume(vtkMRMLScalarVolumeNode, nodeName)
+        # Make sure that the node name is correct, because sometimes the scene adds a suffix
+        node.SetName(nodeName)
+        return node

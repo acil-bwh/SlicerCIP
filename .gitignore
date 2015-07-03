@@ -31,3 +31,5 @@ install_manifest.txt
 .idea/inspectionProfiles/Project_Default.xml
 
 .settings/org.eclipse.core.resources.prefs
+
+*.pyc

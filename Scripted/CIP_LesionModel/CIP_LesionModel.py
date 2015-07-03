@@ -42,7 +42,6 @@ class CIP_LesionModel(ScriptedLoadableModule):
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 
-
 #
 # CIP_LesionModelWidget
 #
@@ -72,6 +71,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         ScriptedLoadableModuleWidget.setup(self)
 
         self.logic = CIP_LesionModelLogic()
+        self.timer = qt.QTimer()
+        self.timer.timeout.connect(self.checkAndRefreshModels)
+        self.lastRefreshValue = -5000 # Just a value out of range
 
         #
         # Create all the widgets. Example Area
@@ -95,20 +97,20 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         #self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
         self.mainAreaLayout.addRow("Select an input volume", self.inputVolumeSelector)
         
-        self.outputVolumeSelector = slicer.qMRMLNodeComboBox()
-        #self.outputVolumeSelector.nodeTypes = ( "vtkMRMLLabelMapVolumeNode", "" )
-        self.outputVolumeSelector.nodeTypes = ("vtkMRMLScalarVolumeNode", "" )
-        self.outputVolumeSelector.selectNodeUponCreation = True
-        self.outputVolumeSelector.autoFillBackground = True
-        self.outputVolumeSelector.addEnabled = True
-        self.outputVolumeSelector.noneEnabled = False
-        self.outputVolumeSelector.removeEnabled = True
-        self.outputVolumeSelector.renameEnabled = True
-        self.outputVolumeSelector.showHidden = False
-        self.outputVolumeSelector.showChildNodeTypes = False
-        self.outputVolumeSelector.setMRMLScene( slicer.mrmlScene )
-        #self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
-        self.mainAreaLayout.addRow("Select a labelmap volume", self.outputVolumeSelector)
+        # self.outputVolumeSelector = slicer.qMRMLNodeComboBox()
+        # #self.outputVolumeSelector.nodeTypes = ( "vtkMRMLLabelMapVolumeNode", "" )
+        # self.outputVolumeSelector.nodeTypes = ("vtkMRMLScalarVolumeNode", "" )
+        # self.outputVolumeSelector.selectNodeUponCreation = True
+        # self.outputVolumeSelector.autoFillBackground = True
+        # self.outputVolumeSelector.addEnabled = True
+        # self.outputVolumeSelector.noneEnabled = False
+        # self.outputVolumeSelector.removeEnabled = True
+        # self.outputVolumeSelector.renameEnabled = True
+        # self.outputVolumeSelector.showHidden = False
+        # self.outputVolumeSelector.showChildNodeTypes = False
+        # self.outputVolumeSelector.setMRMLScene( slicer.mrmlScene )
+        # #self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
+        # self.mainAreaLayout.addRow("Select a labelmap volume", self.outputVolumeSelector)
 
         self.addFiducialsCheckbox = qt.QCheckBox()
         self.addFiducialsCheckbox.checked = False
@@ -125,22 +127,41 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.applySegmentationButton.setFixedWidth(200)
         self.mainAreaLayout.addWidget(self.applySegmentationButton)
 
+        self.distanceLevelSlider = qt.QSlider()
+        self.distanceLevelSlider.orientation = 1 # Horizontal
+        self.distanceLevelSlider.minimum = -50  # Ad-hoc value
+        self.distanceLevelSlider.maximum = 50
+        self.distanceLevelSlider.enabled = False
+        self.mainAreaLayout.addRow("Select a threshold: ", self.distanceLevelSlider)
+
+
         # Connections
         self.applySegmentationButton.connect('clicked()', self.onApplySegmentationButton)
         self.addFiducialsCheckbox.connect('stateChanged(int)', self.onAddFiducialsCheckboxClicked)
         self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onInputVolumeChanged)
+        #self.distanceLevelSlider.connect('valueChanged(int)', self.onDistanceSliderChanged)
+        #self.distanceLevelSlider.connect('sliderReleased()', self.onDistanceSliderChanged)
+
+
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
-        pass
+        if self.inputVolumeSelector.currentNodeID != '' \
+                and not self.timer.isActive() \
+                and self.logic.currentLabelmap is not None:       # Segmentation was already performed
+            self.timer.start(500)
+
 
     def exit(self):
         """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
-        pass
+        # Disable chekbox of fiducials so that the cursor is not in "fiducials mode" forever if the
+        # user leaves the module
+        self.addFiducialsCheckbox.checked = False
+        self.timer.stop()
 
     def cleanup(self):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
-        pass
+        self.timer.stop()
 
     def __setAddSeedsMode__(self, enabled):
         """ When enabled, the cursor will be enabled to add new fiducials that will be used for the segmentation
@@ -150,7 +171,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         applicationLogic = slicer.app.applicationLogic()
         interactionNode = applicationLogic.GetInteractionNode()
         if enabled:
-            if self.__validateInputAndOutputVolumeSelection__():
+            #print("DEBUG: entering __setAddSeedsMode__ - after enabled")
+            if self.__validateInputVolumeSelection__():
                 # Get the fiducials node
                 fiducialsNodeList = self.logic.getFiducialsListNode(self.inputVolumeSelector.currentNodeID)
                 # Set the cursor to draw fiducials
@@ -158,12 +180,14 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 markupsLogic.SetActiveListID(fiducialsNodeList)
                 selectionNode = applicationLogic.GetSelectionNode()
                 selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLMarkupsFiducialNode")
-                #interactionNode.SwitchToSinglePlaceMode()
-                interactionNode.SetCurrentInteractionMode(1)    # Enable fiducials mode
+
+                #print("DEBUG: enabling fiducials again...")
+
+                # interactionNode.SwitchToSinglePlaceMode()
+                interactionNode.SetCurrentInteractionMode(1)    # Enable fiducials mode. TODO: NOT WORKING!! (I think because of a event handling problem)
         else:
             # Regular cursor mode (not fiducials)
             interactionNode.SetCurrentInteractionMode(2)
-
 
     # def getFiducialsListNode(self):
     #     """ Get the fiducials node that will be used for the selected volume (and create it
@@ -173,31 +197,48 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     #     if self.__validateInputAndOutputVolumeSelection__():
     #         return self.logic.checkFiducialsListNode(self.inputVolumeSelector.currentNodeID)
 
-    def __validateInputAndOutputVolumeSelection__(self, checkInput=True, checkOutput=False):
+    def __validateInputVolumeSelection__(self):
         """ Check there is a valid input and/or output volume selected. Otherwise show a warning message
         :return: True if the validations are passed or False otherwise
         """
-        if checkInput:
-            inputVolumeId = self.inputVolumeSelector.currentNodeID
-            if inputVolumeId == '':
-                qt.QMessageBox.warning(slicer.util.mainWindow(), 'Warning', 'Please select an input volume')
-                return False
-        if checkOutput:
-            outputVolumeId = self.outputVolumeSelector.currentNodeID
-            if outputVolumeId == '':
-                qt.QMessageBox.warning(slicer.util.mainWindow(), 'Warning', 'Please select an output labelmap volume or create a new one')
-                return False
+        inputVolumeId = self.inputVolumeSelector.currentNodeID
+        if inputVolumeId == '':
+            qt.QMessageBox.warning(slicer.util.mainWindow(), 'Warning', 'Please select an input volume')
+            return False
+        # if checkOutput:
+        #     outputVolumeId = self.outputVolumeSelector.currentNodeID
+        #     if outputVolumeId == '':
+        #         qt.QMessageBox.warning(slicer.util.mainWindow(), 'Warning', 'Please select an output labelmap volume or create a new one')
+        #         return False
 
         return True
 
-    def onFiducialsNodeModified(self, node, event):
-        self.__setAddSeedsMode__(self.addFiducialsCheckbox.checked)
 
-    def onApplySegmentationButton(self):
-        if self.__validateInputAndOutputVolumeSelection__():
-            fiducials = self.logic.getFiducialsList(self.inputVolumeSelector.currentNodeID)
-            self.logic.callCLI(self.inputVolumeSelector.currentNodeID, self.outputVolumeSelector.currentNodeID, fiducials)
+    def checkAndRefreshModels(self, forceRefresh=False):
+        """ Refresh the GUI if the slider value has changed since the last time
+        :return:
+        """
+        if forceRefresh or self.lastRefreshValue != self.distanceLevelSlider.value:
+            # Refresh
+            print("DEBUG: updating labelmaps with value:", float(self.distanceLevelSlider.value)/100)
+            self.logic.updateLabelmap(float(self.distanceLevelSlider.value)/100)
+            self.lastRefreshValue = self.distanceLevelSlider.value
+            # Refresh visible windows
+            SlicerUtil.refreshActiveWindows()
 
+    def activateCurrentLabelmap(self):
+        """ Display the right labelmap for the current background node if it exists...
+        :return:
+        """
+         # Set the current labelmap active
+        selectionNode = slicer.app.applicationLogic().GetSelectionNode()
+        selectionNode.SetReferenceActiveVolumeID(self.inputVolumeSelector.currentNodeID)
+
+        selectionNode.SetReferenceActiveLabelVolumeID(self.logic.currentLabelmap.GetID())
+        slicer.app.applicationLogic().PropagateVolumeSelection(0)
+
+    ####
+    #### Events
     def onAddFiducialsCheckboxClicked(self, state):
         """ When checked, the added fiducials will be used as part of the seed
         :param state: 0 = not checked; 2 = checked
@@ -205,7 +246,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """
         if (state == 2):
             # Check there is a volume selected
-            if self.__validateInputAndOutputVolumeSelection__():
+            if self.__validateInputVolumeSelection__():
                 self.__setAddSeedsMode__(True)
             else:
                 self.__setAddSeedsMode__(False)
@@ -213,31 +254,56 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         else:
             self.__setAddSeedsMode__(False)
 
+
     def onInputVolumeChanged(self, node):
         if node is not None:
-            print("New volume: " + node.GetID())
             self.logic.createFiducialsListNode(node.GetID(), self.onFiducialsNodeModified)
+            self.logic.setActiveVolume(node.GetID())
+        elif self.timer.isActive():
+            # Stop checking if there is no selected node
+            self.timer.stop()
 
-    # def onNewFiducialAdded(self, fiducialNode):
-    #     """
-    #     :param caller:
-    #     :param eventId:
-    #     :param callData:
-    #     :return:
-    #     """
-    #     print("new fiducial added")
-    #     print(fiducialNode)
+    def onApplySegmentationButton(self):
+        if self.__validateInputVolumeSelection__():
+            self.logic.callCLI(self.inputVolumeSelector.currentNodeID, self.onCLISegmentationFinished)
+
+
+    def onFiducialsNodeModified(self, node, event):
+        self.__setAddSeedsMode__(self.addFiducialsCheckbox.checked)
+
+
+    def onCLISegmentationFinished(self):
+        """ Triggered when the CLI segmentation has finished the work.
+        This is achieved because this is the function that we specify as a callback
+        when calling the function "callCLI" in the logic class
+        :return:
+        """
+        self.distanceLevelSlider.enabled = True
+        self.distanceLevelSlider.value = 0  # default
+        self.activateCurrentLabelmap()
+
+        self.distanceLevelSlider.minimum = self.logic.cliOutputArray.min() * 100
+        self.distanceLevelSlider.maximum = self.logic.cliOutputArray.max() * 100
+        self.distanceLevelSlider.value = 0
+
+        self.checkAndRefreshModels(forceRefresh=True)
+
+        # Start the timer that will refresh all the visualization nodes
+        self.timer.start(500)
 
 
 # CIP_LesionModelLogic
 #
 class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     def __init__(self):
-        self.currentVolumeId = ''
-        self.segmentedVtkNode = None
-        self.segmentedNumpy = None
+        self.currentVolume = None
+        self.currentLabelmap = None
+        self.currentLabelmapArray = None
+        self.cliOutputScalarNode = None
+        self.cliOutputArray = None
 
-        pass
+        self.onCLISegmentationFinishedCallback = None
+
 
     def createFiducialsListNode(self, volumeId, onModifiedCallback=None):
         """ Create a new fiducials list node for the current volume
@@ -265,6 +331,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
 
         # Node created succesfully
         return True
+
 
     def getFiducialsListNode(self, volumeId):
         """ Get the current fiducialsListNode for the specified volume, and creates it in case
@@ -300,44 +367,100 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             result.append(points)
         return result
 
-    def callCLI(self, inputVolumeID, outputVolumeID, seeds):
+    def setActiveVolume(self, volumeID):
+        """ Set the current volume as active and try to load the preexisting associated structures
+        (labelmaps, CLI segmented nodes, numpy arrays...)
+        :param volumeID:
+        :return:
+        """
+        self.currentVolume = slicer.util.getNode(volumeID)
+        # Search for preexisting labelmap
+        labelmapName = self.currentVolume.GetID() + '_lm'
+        self.currentLabelmap = slicer.util.getNode(labelmapName)
+        if self.currentLabelmap is not None:
+            self.currentLabelmapArray = slicer.util.array(labelmapName)
+        # Search for preexisting segmented node
+        segmentedNodeName = self.currentVolume.GetID() + '_segmentedlm'
+        self.cliOutputScalarNode = slicer.util.getNode(segmentedNodeName)
+        if self.cliOutputScalarNode is not None:
+            self.cliOutputArray = slicer.util.array(segmentedNodeName)
+
+
+    def callCLI(self, inputVolumeID, onCLISegmentationFinishedCallback=None):
+        """ Invoke the Lesion Segmentation CLI for the specified volume and fiducials.
+        Note: the fiducials will be retrieved directly from the scene
+        :param inputVolumeID:
+        :return:
+        """
+        # Try to load preexisting structures
+        self.setActiveVolume(inputVolumeID)
+
+        if self.cliOutputScalarNode is None:
+            # Create the scalar node that will work as the CLI output
+            self.cliOutputScalarNode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLScalarVolumeNode")
+            segmentedNodeName = self.currentVolume.GetID() + '_segmentedlm'
+            self.cliOutputScalarNode.SetName(segmentedNodeName)
+            slicer.mrmlScene.AddNode(self.cliOutputScalarNode)
+
         parameters = {}
+        print("DEBUG: Calling CLI...")
         parameters["inputImage"] = inputVolumeID
-        parameters["outputLevelSet"] = slicer.util.getNode(outputVolumeID)
+        parameters["outputLevelSet"] = self.cliOutputScalarNode
         parameters["seedsFiducials"] = self.getFiducialsListNode(inputVolumeID)
-        #
-        # outModel = slicer.vtkMRMLModelNode()
-        # slicer.mrmlScene.AddNode( outModel )
-        # parameters["OutputGeometry"] = outModel.GetID()
+        self.invokedCLI = False     # Semaphore to avoid duplicated events
 
         module = slicer.modules.generatelesionsegmentation
         result = slicer.cli.run(module, None, parameters)
-        result.AddObserver('ModifiedEvent', self.printStatus)
-        #print("DEBUG: Result of the segmentation: ", result)
-        return result
-
-    def createLabelmap(self):
-        volume = slicer.util.getNode("10002K_INSP_STD_BWH_COPD")
-        lmNode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLLabelMapVolumeNode")
-        lmNode.Copy(volume)
-        lmNode.SetName(volume.GetID() + '_lm')
-        slicer.mrmlScene.AddNode(lmNode)
+        # Observer when the state of the process is modified
+        result.AddObserver('ModifiedEvent', self.onCLIStateUpdated)
+        # Function that will be invoked when the CLI finishes
+        self.onCLISegmentationFinishedCallback = onCLISegmentationFinishedCallback
 
 
+    def __processCLIResults__(self):
+        """ Method called once that the cli has finished the process.
+        Create a new labelmap with the result of the process
+        """
+        print("DEBUG: processing results from CLI...")
+        volumesLogic = slicer.modules.volumes.logic()
 
-    def readResult(self):
-        volume = slicer.util.getNode("Volume")
-        # Convert to numpy
-        self.resultnp = Util.vtkToNumpyArray(volume.GetImageData())
-        print("DEBUG: Process complete. Check the result in self.resultnp")
-        emptynp = np.zeros(dim, np.uint16())
+        # Create a numpy array for the processed result
+        self.cliOutputArray =  slicer.util.array(self.cliOutputScalarNode.GetName())
+
+        # Remove the current labelmap if it already existed
+        slicer.mrmlScene.RemoveNode(self.currentLabelmap)
+        # Create a new labelmap for the segmented volume (we have to adapat it to the new labelmap type)
+        labelmapName = self.currentVolume.GetID() + '_lm'
+        self.currentLabelmap = Util.convertScalarToLabelmap(self.cliOutputScalarNode, labelmapName)
+        # Get a numpy array to work with the labelmap
+        self.currentLabelmapArray = slicer.util.array(labelmapName)
+
+        #print("DEBUG: labelmap array created. Shape: ", self.currentLabelmapArray.shape)
+
+        # Invoke the callback if specified
+        if self.onCLISegmentationFinishedCallback is not None:
+            self.onCLISegmentationFinishedCallback()
+
+    def updateLabelmap(self, newValue):
+        """ Update the labelmap representing the segmentation. Depending on the value the
+        user will see a "bigger" or "smaller" segmentation.
+        This is based on numpy modification.
+        """
+        #TODO: try with vtkImageThreshold filter?
+        if self.currentLabelmap:
+            self.currentLabelmapArray[:] = 0
+            self.currentLabelmapArray[self.cliOutputArray >= newValue] = 1
+            self.currentLabelmap.GetImageData().Modified()
 
 
-    def printStatus(self, caller, event):
-      #print("Got a %s from a %s" % (event, caller.GetClassName()))
-      if caller.IsA('vtkMRMLCommandLineModuleNode') and caller.GetStatusString() == "Completed":
-          self.readResult()
-        #print("Status is %s" % caller.GetStatusString())
+    def onCLIStateUpdated(self, caller, event):
+      if caller.IsA('vtkMRMLCommandLineModuleNode') \
+              and caller.GetStatusString() == "Completed"\
+              and not self.invokedCLI:      # Semaphore to avoid duplicated events
+            self.invokedCLI = True
+            self.__processCLIResults__()
+
+
 
 class CIP_LesionModelTest(ScriptedLoadableModuleTest):
     """
