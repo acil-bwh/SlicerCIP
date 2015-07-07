@@ -192,8 +192,8 @@ class CIP_BodyCompositionWidget():
         self.statisticsCollapsibleButton.collapsed = False
         
         # Statistics buttons frame
-        self.statsButtonsFrame = qt.QFrame(self.statisticsCollapsibleButton)
-        self.statsButtonsFrame.setLayout(qt.QHBoxLayout())
+            self.statsButtonsFrame = qt.QFrame(self.statisticsCollapsibleButton)
+            self.statsButtonsFrame.setLayout(qt.QHBoxLayout())
         self.statisticsLayout.addWidget(self.statsButtonsFrame)
         
         

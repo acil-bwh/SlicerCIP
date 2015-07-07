@@ -112,20 +112,39 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # #self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
         # self.mainAreaLayout.addRow("Select a labelmap volume", self.outputVolumeSelector)
 
-        self.addFiducialsCheckbox = qt.QCheckBox()
-        self.addFiducialsCheckbox.checked = False
-        self.addFiducialsCheckbox.text = "Add fiducials as seeds"
-        self.mainAreaLayout.addWidget(self.addFiducialsCheckbox)
+        # self.addFiducialsCheckbox = qt.QCheckBox()
+        # self.addFiducialsCheckbox.checked = False
+        # self.addFiducialsCheckbox.text = "Add fiducials as seeds"
+        # self.mainAreaLayout.addWidget(self.addFiducialsCheckbox)
 
-        # Example button with some common properties
+        self.fiducialsList = {}
+        self.addFiducialButton = ctk.ctkPushButton()
+        self.addFiducialButton.text = "Add new seed"
+        self.addFiducialButton.setFixedWidth(100)
+        self.addFiducialButton.checkable = True
+        self.addFiducialButton.enabled = False
+        self.mainAreaLayout.addRow("Add seeds: ", self.addFiducialButton)
+
+
+        # Container for the fiducials
+        self.fiducialsContainerFrame = qt.QFrame()
+        self.fiducialsContainerFrame.setLayout(qt.QVBoxLayout())
+        self.mainAreaLayout.addWidget(self.fiducialsContainerFrame)
+
+         # Example button with some common properties
         self.applySegmentationButton = ctk.ctkPushButton()
         self.applySegmentationButton.text = "Segment!"
-        self.applySegmentationButton.toolTip = "This is the button tooltip"
+        self.applySegmentationButton.toolTip = "This is the button toolTip"
         self.applySegmentationButton.setIcon(qt.QIcon("{0}/Reload.png".format(Util.ICON_DIR)))
         self.applySegmentationButton.setIconSize(qt.QSize(20,20))
         self.applySegmentationButton.setStyleSheet("font-weight:bold; font-size:12px" )
         self.applySegmentationButton.setFixedWidth(200)
-        self.mainAreaLayout.addWidget(self.applySegmentationButton)
+        self.mainAreaLayout.addRow("Segment the node: ", self.applySegmentationButton)
+
+        self.progressBar = slicer.qSlicerCLIProgressBar()
+        self.progressBar.visible = False
+        self.mainAreaLayout.addWidget(self.progressBar)
+
 
         self.distanceLevelSlider = qt.QSlider()
         self.distanceLevelSlider.orientation = 1 # Horizontal
@@ -137,31 +156,108 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Connections
         self.applySegmentationButton.connect('clicked()', self.onApplySegmentationButton)
-        self.addFiducialsCheckbox.connect('stateChanged(int)', self.onAddFiducialsCheckboxClicked)
+        self.addFiducialButton.connect('clicked(bool)', self.onAddFiducialClicked)
+
+        #self.addFiducialsCheckbox.connect('stateChanged(int)', self.onAddFiducialsCheckboxClicked)
         self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onInputVolumeChanged)
         #self.distanceLevelSlider.connect('valueChanged(int)', self.onDistanceSliderChanged)
         #self.distanceLevelSlider.connect('sliderReleased()', self.onDistanceSliderChanged)
 
+        self.__refreshUI__()
+
+
+        # self.fiducialsTableView = qt.QTableView()
+        # self.fiducialsTableView.sortingEnabled = True
+        # #self.tableView.minimumHeight = 550
+        # # Unsuccesful attempts to autoscale the table
+        # #self.tableView.maximumHeight = 800
+        # policy = self.fiducialsTableView.sizePolicy
+        # policy.setVerticalPolicy(qt.QSizePolicy.Expanding)
+        # policy.setHorizontalPolicy(qt.QSizePolicy.Expanding)
+        # policy.setVerticalStretch(0)
+        # self.fiducialsTableView.setSizePolicy(policy)
+        # # Hide the table until we have some volume loaded
+        # self.fiducialsTableView.visible = False
+        # # Create model for the table
+        # self.fiducialsTableModel = qt.QStandardItemModel()
+        # self.fiducialsTableView.setModel(self.fiducialsTableModel)
+        # self.fiducialsTableView.verticalHeader().visible = False
+        #
+        # self.statsTableFrame.layout().addWidget(self.fiducialsTableView)
+        #         >>> t = qt.QTableWidget()
+        # >>> w = slicer.modules.CIP_LesionModelWidget
+        # >>> w.mainAreaLayout.addWidget(t)
+        # >>> t.setColumnCount(4)
+        # >>> t.setHorizontalHeaderLabels(["","","Name",""])
+        # >>> headerItem = t.horizontalHeaderItem(0)
+        # >>> headerItem.setIcon(qt.QIcon(":/Icons/MarkupsSelected.png"))
+        # >>> headerItem.setToolTip("Click in this column to select/deselect seeds")
+        # >>> headerItem = t.horizontalHeaderItem(1)
+        # >>> headerItem.setIcon(qt.QIcon(":/Icons/Small/SlicerLockUnlock.png"))
+        # >>> t.setColumnWidth(0,30)
+        # >>> t.setColumnWidth(1,30)
+        # >>> t.setHorizontalHeaderLabels(["","","Name",""])
+        # >>> headerItem.setIcon(qt.QIcon(":/Icons/Small/SlicerVisibleInvisible.png"))
+        # >>> headerItem.setToolTip("Click in this column to show/hide markups in 2D and 3D")
+
+
+
+    # def updateRow(self, index):
+    #     #markupsNode = self.logic.getFiducialsListNode(self.inputVolumeSelector.currentNodeID)
+    #     markupsNode = f
+    #     selectedItem = qt.QTableWidgetItem()
+    #     selectedItem.setCheckState(markupsNode.GetNthMarkupVisibility(index))
+    #
 
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
-        if self.inputVolumeSelector.currentNodeID != '' \
-                and not self.timer.isActive() \
-                and self.logic.currentLabelmap is not None:       # Segmentation was already performed
-            self.timer.start(500)
+        if self.inputVolumeSelector.currentNodeID != '':
+            self.logic.getFiducialsListNode(self.inputVolumeSelector.currentNodeID, self.onFiducialsNodeModified)
+            self.logic.setActiveVolume(self.inputVolumeSelector.currentNodeID)
 
+            if not self.timer.isActive() \
+                and self.logic.currentLabelmap is not None:       # Segmentation was already performed
+                self.timer.start(500)
+
+        self.__refreshUI__()
 
     def exit(self):
         """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
         # Disable chekbox of fiducials so that the cursor is not in "fiducials mode" forever if the
         # user leaves the module
-        self.addFiducialsCheckbox.checked = False
         self.timer.stop()
 
     def cleanup(self):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         self.timer.stop()
+
+    def __refreshUI__(self):
+        if self.inputVolumeSelector.currentNodeID != "":
+            self.addFiducialButton.enabled = True
+            self.addFiducialButton.toolTip = "Click and add a new seed in the volume"
+        else:
+            self.addFiducialButton.enabled = False
+            self.addFiducialButton.toolTip = "Select a volume before adding any seed"
+
+        # Apply segmentation button allowed only if there is at least one seed
+        if self.inputVolumeSelector.currentNodeID != "" and \
+            self.logic.getNumberOfFiducials(self.inputVolumeSelector.currentNodeID) > 0:
+            self.applySegmentationButton.enabled = True
+            self.applySegmentationButton.toolTip = "Run the segmentation algorithm!"
+        else:
+            self.applySegmentationButton.enabled = False
+            self.applySegmentationButton.toolTip = "Add at least one seed before running the algorithm"
+
+        # Level slider active after running the segmentation algorithm
+        if self.logic.cliOutputScalarNode is not None:
+            self.distanceLevelSlider.enabled = True
+            self.distanceLevelSlider.toolTip = "Move the slide to adjust the threshold for the model"
+        else:
+            self.distanceLevelSlider.enabled = False
+            self.distanceLevelSlider.toolTip = "Please run the segmentation algorithm first"
+
+        self.progressBar.visible = self.distanceLevelSlider.enabled
 
     def __setAddSeedsMode__(self, enabled):
         """ When enabled, the cursor will be enabled to add new fiducials that will be used for the segmentation
@@ -197,6 +293,41 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     #     if self.__validateInputAndOutputVolumeSelection__():
     #         return self.logic.checkFiducialsListNode(self.inputVolumeSelector.currentNodeID)
 
+    def _addFiducialRow_(self, fiducialsNode):
+        if self.semaphoreOpen:      # To avoid the problem of duplicated events
+            frame = qt.QFrame()
+            frameLayout = qt.QHBoxLayout()
+            frame.setLayout(frameLayout)
+
+            n = fiducialsNode.GetNumberOfFiducials() - 1
+
+            # Checkbox to select/unselect
+            selectFiducialsCheckbox = qt.QCheckBox()
+            selectFiducialsCheckbox.checked = True
+            selectFiducialsCheckbox.text = "Seed " + str(n+1)
+            selectFiducialsCheckbox.toolTip = "Check/uncheck to include/exclude this seed"
+            selectFiducialsCheckbox.objectName = n
+            frameLayout.addWidget(selectFiducialsCheckbox)
+            selectFiducialsCheckbox.clicked.connect(lambda: self.onFiducialCheckClicked(selectFiducialsCheckbox))
+
+
+            # Remove button?
+            # fidButton = ctk.ctkPushButton()
+            # n = fiducialsNode.GetNumberOfFiducials() - 1
+            # fidButton.text = "Fiducial " + str(n)
+            # #fidButton.objectName = displayNodeID
+            # fidButton.objectName = n
+            # fidButton.checkable = True
+            # fidButton.clicked.connect(lambda: self.onFiducialButtonClicked(fidButton))
+
+            # frame.layout().addWidget(fidButton)
+            self.fiducialsContainerFrame.layout().addWidget(frame)
+            self.addFiducialButton.checked = False
+
+            self.semaphoreOpen = False
+
+        # self.fiducialsList[displayNodeID] = frame
+
     def __validateInputVolumeSelection__(self):
         """ Check there is a valid input and/or output volume selected. Otherwise show a warning message
         :return: True if the validations are passed or False otherwise
@@ -224,9 +355,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.logic.updateLabelmap(float(self.distanceLevelSlider.value)/100)
             self.lastRefreshValue = self.distanceLevelSlider.value
 
-
-
-
             # Refresh visible windows
             SlicerUtil.refreshActiveWindows()
 
@@ -244,37 +372,56 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
     ####
     #### Events
-    def onAddFiducialsCheckboxClicked(self, state):
-        """ When checked, the added fiducials will be used as part of the seed
-        :param state: 0 = not checked; 2 = checked
-        :return:
-        """
-        if (state == 2):
-            # Check there is a volume selected
-            if self.__validateInputVolumeSelection__():
-                self.__setAddSeedsMode__(True)
-            else:
-                self.__setAddSeedsMode__(False)
-                self.addFiducialsCheckbox.checked = False
-        else:
-            self.__setAddSeedsMode__(False)
-
-
     def onInputVolumeChanged(self, node):
         if node is not None:
-            self.logic.createFiducialsListNode(node.GetID(), self.onFiducialsNodeModified)
+            # Create the fiducials node in case it doesn't exist yet
+            self.logic.getFiducialsListNode(node.GetID(), self.onFiducialsNodeModified)
+            # Switch to the current node
             self.logic.setActiveVolume(node.GetID())
+
         elif self.timer.isActive():
             # Stop checking if there is no selected node
             self.timer.stop()
 
+        self.__refreshUI__()
+
+    def onAddFiducialClicked(self, checked):
+        if not (self.__validateInputVolumeSelection__()):
+            self.addFiducialButton.checked = False
+            return
+
+        self.semaphoreOpen = True
+        self.__setAddSeedsMode__(checked)
+
+
     def onApplySegmentationButton(self):
         if self.__validateInputVolumeSelection__():
-            self.logic.callCLI(self.inputVolumeSelector.currentNodeID, self.onCLISegmentationFinished)
+            result = self.logic.callCLI(self.inputVolumeSelector.currentNodeID, self.onCLISegmentationFinished)
+            self.progressBar.setCommandLineModuleNode(result)
+            self.progressBar.visible = True
 
+    def onFiducialsNodeModified(self, nodeID, event):
+        #print("DEBUG: Fiducials node modified.", nodeID)
+        self._addFiducialRow_(nodeID)
+        self.__refreshUI__()
 
-    def onFiducialsNodeModified(self, node, event):
-        self.__setAddSeedsMode__(self.addFiducialsCheckbox.checked)
+    # def onFiducialButtonClicked(self, button):
+    #     print("Button pressed: ", button.objectName)
+    #     n = int(button.objectName)
+    #     logic = slicer.modules.markups.logic()
+    #     fiducialsNode = slicer.util.getNode(logic.GetActiveListID())
+    #     fiducialsNode.SetNthFiducialSelected(n, not button.checked)
+
+    def onFiducialCheckClicked(self, checkBox):
+        """ Click in one of the checkboxes that is associated with every fiducial
+        :param checkBox: checkbox that has been clicked
+        :return:
+        """
+        n = int(checkBox.objectName)
+        logic = slicer.modules.markups.logic()
+        fiducialsNode = slicer.util.getNode(logic.GetActiveListID())
+        fiducialsNode.SetNthFiducialSelected(n, checkBox.checked)
+        fiducialsNode.SetNthFiducialVisibility(n, checkBox.checked)
 
 
     def onCLISegmentationFinished(self):
@@ -283,7 +430,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         when calling the function "callCLI" in the logic class
         :return:
         """
-        self.distanceLevelSlider.enabled = True
         self.distanceLevelSlider.value = 0  # default
         self.activateCurrentLabelmap()
 
@@ -292,6 +438,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.distanceLevelSlider.value = 0
 
         self.checkAndRefreshModels(forceRefresh=True)
+        self.__refreshUI__()
 
         # Start the timer that will refresh all the visualization nodes
         self.timer.start(500)
@@ -310,7 +457,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.onCLISegmentationFinishedCallback = None
 
 
-    def createFiducialsListNode(self, volumeId, onModifiedCallback=None):
+    def __createFiducialsListNode__(self, volumeId, fiducialsNodeName, onModifiedCallback=None):
         """ Create a new fiducials list node for the current volume
         :param volumeId: fiducials list will be connected to this volume
         :return: True if the node was created or False if it already existed
@@ -318,17 +465,27 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         markupsLogic = slicer.modules.markups.logic()
 
         # Check if the node already exists
-        fiducialsNodeName = volumeId + '_fiducialsNode'
+        #fiducialsNodeName = volumeId + '_fiducialsNode'
 
         fiducialsNode = slicer.util.getNode(fiducialsNodeName)
         if fiducialsNode is not None:
+            print("DEBUG: node already existing")
             return False    # Node already created
+
+        print("DEBUG: creating fiducials node for volume " + volumeId)
+
 
         # Create new fiducials node
         fiducialListNodeID = markupsLogic.AddNewFiducialNode(fiducialsNodeName,slicer.mrmlScene)
         fiducialsNode = slicer.util.getNode(fiducialListNodeID)
+        # Make the new fiducials node the active one
+        markupsLogic.SetActiveListID(fiducialsNode)
         # Hide any text from all the fiducials
         fiducialsNode.SetMarkupLabelFormat('')
+        displayNode = fiducialsNode.GetDisplayNode()
+        # displayNode.SetColor([1,0,0])
+        displayNode.SetSelectedColor([1,0,0])
+        displayNode.SetGlyphScale(4)
         # Add observer if specified
         if onModifiedCallback is not None:
             # The callback function will be invoked when the fiducials node is modified
@@ -338,12 +495,15 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         return True
 
 
-    def getFiducialsListNode(self, volumeId):
+    def getFiducialsListNode(self, volumeId, onModifiedCallback=None):
         """ Get the current fiducialsListNode for the specified volume, and creates it in case
         it doesn't exist yet.
         :param volumeId: fiducials list will be connected to this volume
-        :return: the node or None
+        :return: the fiducials node or None if something fails
         """
+        if volumeId == "":
+            return None
+
         markupsLogic = slicer.modules.markups.logic()
 
         # Check if the node already exists
@@ -354,23 +514,28 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             return fiducialsNode
 
         # Create new fiducials node
-        if self.createFiducialsListNode(volumeId):
+        if self.__createFiducialsListNode__(volumeId, fiducialsNodeName, onModifiedCallback):
             return slicer.util.getNode(fiducialsNodeName)   # return the created node
 
         return None     # The process failed
 
+    def getNumberOfFiducials(self, volumeId):
+        fid = self.getFiducialsListNode(volumeId)
+        if fid:
+            return fid.GetNumberOfMarkups()
+        return None     # Error
 
-    def getFiducialsList(self, volumeId):
-        """ Get a list of lists with the fiducials for this volume.
-         Each of them will contain a 3-point array of LPS coordinates that indicates the position of the fiducial
-        """
-        fiducialsNode = self.getFiducialsListNode(volumeId)
-        points = [0,0,0]
-        result = []
-        for i in range(fiducialsNode.GetNumberOfFiducials()):
-            fiducialsNode.GetMarkupPointLPS(i, 0, points)
-            result.append(points)
-        return result
+    # def getFiducialsList(self, volumeId):
+    #     """ Get a list of lists with the fiducials for this volume.
+    #      Each of them will contain a 3-point array of LPS coordinates that indicates the position of the fiducial
+    #     """
+    #     fiducialsNode = self.getFiducialsListNode(volumeId)
+    #     points = [0,0,0]
+    #     result = []
+    #     for i in range(fiducialsNode.GetNumberOfFiducials()):
+    #         fiducialsNode.GetMarkupPointLPS(i, 0, points)
+    #         result.append(points)
+    #     return result
 
     def setActiveVolume(self, volumeID):
         """ Set the current volume as active and try to load the preexisting associated structures
@@ -379,6 +544,12 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         :return:
         """
         self.currentVolume = slicer.util.getNode(volumeID)
+
+        # Switch the fiducials node
+        fiducialsNode = self.getFiducialsListNode(volumeID)
+        markupsLogic = slicer.modules.markups.logic()
+        markupsLogic.SetActiveListID(fiducialsNode)
+
         # Search for preexisting labelmap
         labelmapName = self.currentVolume.GetID() + '_lm'
         self.currentLabelmap = slicer.util.getNode(labelmapName)
@@ -416,11 +587,13 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
 
         module = slicer.modules.generatelesionsegmentation
         result = slicer.cli.run(module, None, parameters)
+
         # Observer when the state of the process is modified
         result.AddObserver('ModifiedEvent', self.onCLIStateUpdated)
         # Function that will be invoked when the CLI finishes
         self.onCLISegmentationFinishedCallback = onCLISegmentationFinishedCallback
 
+        return result
 
     def __processCLIResults__(self):
         """ Method called once that the cli has finished the process.
