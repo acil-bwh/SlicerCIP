@@ -666,52 +666,80 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         Create a new labelmap and a model node with the result of the process
         """
         print("DEBUG: processing results from CLI...")
-        volumesLogic = slicer.modules.volumes.logic()
 
-        # Create a numpy array for the processed result
-        self.cliOutputArray =  slicer.util.array(self.cliOutputScalarNode.GetName())
 
-        # Remove the current labelmap if it already existed
-        slicer.mrmlScene.RemoveNode(self.currentLabelmap)
-        # Create a new labelmap for the segmented volume (we have to adapat it to the new labelmap type)
+        # Create vtk filters
+        self.thresholdFilter = vtk.vtkImageThreshold()
+        self.thresholdFilter.SetInputData(self.cliOutputScalarNode.GetImageData())
+        self.thresholdFilter.SetReplaceOut(True)
+        self.thresholdFilter.SetOutValue(0)  # Value of the background
+        self.thresholdFilter.SetInValue(1)   # Value of the segmented nodule
+
+
         labelmapName = self.currentVolume.GetID() + '_lm'
-        self.currentLabelmap = Util.convertScalarToLabelmap(self.cliOutputScalarNode, labelmapName)
-        # Get a numpy array to work with the labelmap
-        self.currentLabelmapArray = slicer.util.array(labelmapName)
+        self.currentLabelmap = slicer.util.getNode(labelmapName)
+        if self.currentLabelmap is None:
+            # Create a labelmap with the same dimensions that the ct volume
+            self.currentLabelmap = Util.getLabelmapFromScalar(self.cliOutputScalarNode, labelmapName)
+            #self.currentLabelmap = Util.getLabelmapFromScalar(self.currentVolume, labelmapName)
 
-        #print("DEBUG: labelmap array created. Shape: ", self.currentLabelmapArray.shape)
-        # Model render
-        logic = slicer.modules.volumerendering.logic()
-        displayNode = logic.GetFirstVolumeRenderingDisplayNode(self.currentLabelmap)
-        if displayNode is None:
-            # Create the rendering infrastructure
-            displayNode = logic.CreateVolumeRenderingDisplayNode()
+
+
+        self.currentLabelmap.SetImageDataConnection(self.thresholdFilter.GetOutputPort())
+        print("DEBUG: connected the volume " + labelmapName)
+        self.marchingCubesFilter = vtk.vtkMarchingCubes()
+        #self.marchingCubesFilter.SetInputConnection(self.thresholdFilter.GetOutputPort())
+        self.marchingCubesFilter.SetInputData(self.cliOutputScalarNode.GetImageData())
+        self.marchingCubesFilter.SetValue(0, self.defaultThreshold)
+
+        newNode = self.currentModelNode is None
+        if newNode:
+            # Create the result model node and connect it to the pipeline
+            modelsLogic = slicer.modules.models.logic()
+            self.currentModelNode = modelsLogic.AddModel(self.marchingCubesFilter.GetOutput())
+            # Create a DisplayNode and associate it to the model, in order that transformations can work properly
+            displayNode = slicer.vtkMRMLModelDisplayNode()
             slicer.mrmlScene.AddNode(displayNode)
-            logic.UpdateDisplayNodeFromVolumeNode(displayNode, self.currentLabelmap)
+            self.currentModelNode.AddAndObserveDisplayNodeID(displayNode.GetID())
 
-        # Invoke the callback if specified
+        self.updateModels(self.defaultThreshold)    # Default value
+
+        if newNode:
+            # Align the model with the segmented labelmap applying a transformation
+            transformMatrix = vtk.vtkMatrix4x4()
+            self.currentLabelmap.GetIJKToRASMatrix(transformMatrix)
+            self.currentModelNode.ApplyTransformMatrix(transformMatrix)
+            # Center the 3D view in the seed/s
+            layoutManager = slicer.app.layoutManager()
+            threeDWidget = layoutManager.threeDWidget(0)
+            threeDView = threeDWidget.threeDView()
+            threeDView.resetFocalPoint()
+
         if self.onCLISegmentationFinishedCallback is not None:
             self.onCLISegmentationFinishedCallback()
 
-    def updateLabelmap(self, newValue):
-        """ Update the labelmap representing the segmentation. Depending on the value the
-        user will see a "bigger" or "smaller" segmentation.
-        This is based on numpy modification.
-        """
-        #TODO: try with vtkImageThreshold filter?
-        if self.currentLabelmap:
-            self.currentLabelmapArray[:] = 0
-            self.currentLabelmapArray[self.cliOutputArray >= newValue] = 1
-            self.currentLabelmap.GetImageData().Modified()
 
 
-    def onCLIStateUpdated(self, caller, event):
-      if caller.IsA('vtkMRMLCommandLineModuleNode') \
-              and caller.GetStatusString() == "Completed"\
-              and not self.invokedCLI:      # Semaphore to avoid duplicated events
-            self.invokedCLI = True
-            self.__processCLIResults__()
+    def updateModels(self, newThreshold):
+        self.thresholdFilter.ThresholdByUpper(newThreshold)
+        self.thresholdFilter.Update()
+        self.marchingCubesFilter.SetValue(0, newThreshold)
+        self.marchingCubesFilter.Update()
 
+    # def createAndAddToSceneWrapperScalarNode(self, bigNode, smallNode):
+    #     # Clone the big node
+    #     vl = slicer.modules.volumes.logic()
+    #     copyVol = vl.CloneVolume(slicer.mrmlScene, bigNode, bigNode.GetName() + "_copy")
+    #     # Get the associated numpy array
+    #     copyArray = slicer.util.array(copyVol.GetName())
+    #     # Reset all the values
+    #     copyArray[:] = 0
+    #     # Get the associated numpy array for the small node
+    #     smallArray = slicer.util.array(smallNode.GetName())
+    #
+    #     # Calculate the offsets
+    #     offset = [copyArray.shape[0]-smallArray.shape[0], copyArray.shape[1]-smallArray.shape[1], copyArray.shape[2]-smallArray.shape[2]]
+    #
 
 
 class CIP_LesionModelTest(ScriptedLoadableModuleTest):
