@@ -33,3 +33,5 @@ install_manifest.txt
 .settings/org.eclipse.core.resources.prefs
 
 *.pyc
+
+*.pyc
