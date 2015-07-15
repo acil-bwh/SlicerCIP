@@ -726,6 +726,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.marchingCubesFilter.SetValue(0, newThreshold)
         self.marchingCubesFilter.Update()
 
+
     # def createAndAddToSceneWrapperScalarNode(self, bigNode, smallNode):
     #     # Clone the big node
     #     vl = slicer.modules.volumes.logic()

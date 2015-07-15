@@ -251,3 +251,117 @@ class Util:
         # Make sure that the node name is correct, because sometimes the scene adds a suffix
         node.SetName(nodeName)
         return node
+
+    @staticmethod
+    def RAStoIJK(volumeNode, rasCoords):
+        """ Transform a list of RAS coords in IJK for a volume
+        :return: list of IJK coordinates
+        """
+        rastoijk=vtk.vtkMatrix4x4()
+        volumeNode.GetRASToIJKMatrix(rastoijk)
+        cl = list(rasCoords)
+        cl.append(1)
+        return list(rastoijk.MultiplyPoint(cl))
+
+
+    @staticmethod
+    def IJKtoRAS(volumeNode, ijkCoords):
+        """ Transform a list of IJK coords in RAS for a volume
+        :return: list of RAS coordinates
+        """
+        ijktoras=vtk.vtkMatrix4x4()
+        volumeNode.GetIJKToRASMatrix(ijktoras)
+        cl = list(ijkCoords)
+        cl.append(1)
+        return list(ijktoras.MultiplyPoint(cl))
+
+
+    @staticmethod
+    def padVolumeWithAnotherVolume(bigVolume, smallVolume, backgroundValue=None):
+        """ Build a volume that will duplicate the information contained in "smallVolume", but
+        it will be padded with a background value (by default the minimum value found in "bigVolume")
+        to fit the size of "bigVolume".
+        It will also respect the position where the small volume is inside the big volume.
+        This method works for regular scalar nodes and also for labelmap nodes
+        :param bigVolume: volume that will be used to set the position and size of the result volume
+        :param smallVolume: information that will be really cloned
+        :param backgroundValue: value to fill the rest of the volume that will contain no information
+            (default: min value of bigVolume)
+        :return: new volume with the dimensions of "bigVolume" but the information in "smallVolume"
+        """
+        # Get the position of the origin in the small volume in the big one
+        origin = Util.RAStoIJK(bigVolume, smallVolume.GetOrigin())
+        # Create a copy of the big volume to have the same spacial information
+        #vlogic = slicer.modules.volumes.logic()
+        #resultVolume = vlogic.CloneVolume(bigVolume, smallVolume.GetName() + "_extended")
+        resultVolume = Util.cloneVolume(bigVolume, smallVolume.GetName() + "_extended")
+
+        # Get the numpy arrays to operate with them
+        npb = slicer.util.array(resultVolume.GetName())
+        nps = slicer.util.array(smallVolume.GetName())
+        # Initialize the big volume to the backround value or the minimum value of the big volume (default)
+        if backgroundValue is None:
+            back = npb.min()
+            npb[:] = back
+        else:
+            npb[:] = backgroundValue
+        # Copy the values of the small volume in the big one
+        # Create the indexes
+        x0 = int(origin[0])
+        x1 = x0 + nps.shape[2]
+        y0 = int(origin[1])
+        y1 = y0 + nps.shape[1]
+        z0 = int(origin[2])
+        z1 = z0 + nps.shape[0]
+        # Copy values
+        npb[z0:z1, y0:y1, x0:x1] = nps[:,:,:]
+        # Refresh values in mrml
+        resultVolume.GetImageData().Modified()
+        # Return the result volume
+        return resultVolume
+
+    @staticmethod
+    def cloneVolume(volumeNode, copyVolumeName, mrmlScene=None, cloneImageData=True):
+        """ Clone a scalar node or a labelmap and add it to the scene.
+        If no scene is passed, slicer.mrmlScene will be used.
+        This method was implemented following the same guidelines as in slicer.modules.volumes.logic().CloneVolume(),
+        but it is also valid for labelmap nodes
+        :param volumeNode: original node
+        :param copyVolumeName: desired name of the labelmap (with a suffix if a node with that name already exists in the scene)
+        :param mrmlScene: slicer.mrmlScene by default
+        :param cloneImageData: clone also the vtkImageData node
+        :return:
+        """
+        scene = slicer.mrmlScene if mrmlScene is None else mrmlScene
+
+        # Clone DisplayNode
+        displayNode = volumeNode.GetDisplayNode()
+        displayNodeCopy = None
+        if displayNode is not None:
+            displayNodeCopy = slicer.mrmlScene.CreateNodeByClass(displayNode.GetClassName())
+            displayNodeCopy.CopyWithScene(displayNode)
+            scene.AddNode(displayNodeCopy)
+
+        # Clone volumeNode
+        clonedVolume = slicer.mrmlScene.CreateNodeByClass(volumeNode.GetClassName())
+        clonedVolume.CopyWithScene(volumeNode)
+
+        clonedVolume.SetName(scene.GetUniqueNameByString(copyVolumeName))
+        if displayNodeCopy is not None:
+            clonedVolume.SetAndObserveDisplayNodeID(displayNodeCopy.GetID())
+        else:
+            clonedVolume.SetAndObserveDisplayNodeID(None)
+
+        # Clone imageData
+        if cloneImageData:
+            imageData = volumeNode.GetImageData()
+            if imageData is not None:
+                clonedImageData = vtk.vtkImageData()
+                clonedImageData.DeepCopy(imageData)
+                clonedVolume.SetAndObserveImageData(clonedImageData)
+            else:
+                clonedVolume.SetAndObserveImageData(None)
+
+        # Return result
+        scene.AddNode(clonedVolume)
+        return clonedVolume
