@@ -12,7 +12,9 @@
 #include <string>
 
 class vtkRenderWindowInteractor;
+class vtkEllipseFitting;
 class vtkMRMLAirwayNode;
+class vtkComputeAirwayWall;
 
 /// \ingroup Slicer_QtModules_AirwayInspector
 class VTK_SLICER_AIRWAYINSPECTOR_MODULE_LOGIC_EXPORT vtkSlicerAirwayInspectorModuleLogic
@@ -34,9 +36,19 @@ protected:
 
   vtkSlicerAirwayInspectorModuleLogic();
 
+  void CreateAirwayImage(vtkImageData *resliceCT,
+                        vtkEllipseFitting *eifit,
+                        vtkEllipseFitting *eofit,
+                        vtkImageData *airwayImage);
+
+  void SetWallSolver(vtkComputeAirwayWall *ref,
+                     vtkComputeAirwayWall *out);
+
   virtual ~vtkSlicerAirwayInspectorModuleLogic();
 
 private:
+  double SelfTuneModelSmooth[3];
+  double SelfTuneModelSharp[3];
 };
 
 #endif

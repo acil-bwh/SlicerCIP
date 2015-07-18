@@ -59,6 +59,17 @@ vtkMRMLAirwayNode::vtkMRMLAirwayNode()
   AirwayImage = 0;
   InnerContour = 0;
   OuterContour = 0;
+
+  this->AxisMode = HESSIAN;
+  this->Reformat = 1;
+
+  this->SegmentPercentage = 0.5;
+  this->Resolution = 0.1;
+
+  this->Reconstruction = SMOOTH;
+
+  this->AirwayImagePrefix= NULL;
+  this->SaveAirwayImage=0;
 }
 
 //----------------------------------------------------------------------------

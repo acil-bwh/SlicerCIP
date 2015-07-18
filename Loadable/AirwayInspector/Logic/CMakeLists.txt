@@ -36,6 +36,7 @@ set(${KIT}_TARGET_LIBRARIES
   ${VTK_LIBRARIES}
   vtkSlicer${MODULE_NAME}ModuleMRML
   vtkSlicerVolumesModuleLogic
+  ${CIP_LIBRARIES}
   )
 
 #-----------------------------------------------------------------------------

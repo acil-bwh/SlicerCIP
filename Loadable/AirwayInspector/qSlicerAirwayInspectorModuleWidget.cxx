@@ -246,7 +246,11 @@ void qSlicerAirwayInspectorModuleWidget::onInteractorEvent(vtkRenderWindowIntera
       y = xyzRAS[1];
       double z = snode->GetSliceOffset();
 
-      logic->AddAirwayNode(d->InputVolumeComboBox->currentNode()->GetID(), x,y,z, d->ThresholdSpinBox->value());
+      vtkMRMLAirwayNode *airwayNode =
+        logic->AddAirwayNode(d->InputVolumeComboBox->currentNode()->GetID(),
+        x,y,z, d->ThresholdSpinBox->value());
+
+      d->AirwayComboBox->setCurrentNode(airwayNode);
       }
     }
 }
@@ -316,31 +320,10 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
 
   renderer->RemoveAllViewProps();
 
-  // Map the scalar values in the image to colors with a lookup table:
-  vtkSmartPointer<vtkLookupTable> lookupTable =
-    vtkSmartPointer<vtkLookupTable>::New();
-  lookupTable->SetNumberOfTableValues(256);
-  lookupTable->SetRange(0.0, 255.0);
-  lookupTable->Build();
-
-  // Pass the original image and the lookup table to a filter to create
-  // a color image:
-  vtkSmartPointer<vtkImageMapToColors> scalarValuesToColors =
-    vtkSmartPointer<vtkImageMapToColors>::New();
-  scalarValuesToColors->SetLookupTable(lookupTable);
-  scalarValuesToColors->PassAlphaToOutputOn();
-#if VTK_MAJOR_VERSION <= 5
-  scalarValuesToColors->SetInput(image);
-#else
-  scalarValuesToColors->SetInputData(image);
-#endif
-
   vtkSmartPointer<vtkImageMapper> imageMapper = vtkSmartPointer<vtkImageMapper>::New();
-#if VTK_MAJOR_VERSION <= 5
-  imageMapper->SetInputConnection(scalarValuesToColors->GetProducerPort());
-#else
-  imageMapper->SetInputConnection(scalarValuesToColors->GetOutputPort());
-#endif
+
+  imageMapper->SetInputData(image);
+
   imageMapper->SetColorWindow(255);
   imageMapper->SetColorLevel(127.5);
 

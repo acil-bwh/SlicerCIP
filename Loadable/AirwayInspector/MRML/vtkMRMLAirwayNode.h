@@ -74,13 +74,13 @@ public:
 
   ///
   /// Get/Set for Point
-  vtkSetVector3Macro(XYZ,float);
-  vtkGetVectorMacro(XYZ,float,3);
+  vtkSetVector3Macro(XYZ,double);
+  vtkGetVectorMacro(XYZ,double,3);
 
   ///
   /// Get/Set for orientation
-  vtkSetVector4Macro(OrientationWXYZ,float);
-  vtkGetVectorMacro(OrientationWXYZ,float,4);
+  vtkSetVector4Macro(OrientationWXYZ,double);
+  vtkGetVectorMacro(OrientationWXYZ,double,4);
   //void SetOrientationWXYZFromMatrix4x4(vtkMatrix4x4 *mat);
 
   /// Get/Set Threshold
@@ -103,6 +103,48 @@ public:
   vtkSetMacro(Std, int);
   vtkGetMacro(Std, int);
 
+  // Description:
+  // Reformat airway along airway long axis
+  vtkBooleanMacro(Reformat,int);
+  vtkSetMacro(Reformat,int);
+  vtkGetMacro(Reformat,int);
+
+  // Description:
+  // Reformat airway along airway long axis
+  vtkSetMacro(Resolution,double);
+  vtkGetMacro(Resolution,double);
+
+  // Description:
+  // Axis computation model:
+  // 0 = Hessian.
+  // 1 = from vktPolyData line.
+  // 2 = from Vector field in PolyData pointData.
+  vtkSetMacro(AxisMode,int);
+  vtkGetMacro(AxisMode,int);
+  void SetAxisModeToHessian() {this->SetAxisMode(HESSIAN);};
+  void SetAxisModeToPolyData() {this->SetAxisMode(POLYDATA);};
+  void SetAxisModeToVector() {this->SetAxisMode(VECTOR);};
+
+  // Description:
+  // Reconstruction kernel from image
+  // 0 = Smooth
+  // 1 = Sharp
+  vtkSetMacro(Reconstruction,int);
+  vtkGetMacro(Reconstruction,int);
+  void SetReconstructionToSmooth() {this->SetReconstruction(SMOOTH);};
+  void SetReconstructionToSharp() {this->SetReconstruction(SHARP);};
+
+  // Description:
+  // Save a png image with the airway segmentation results for quality control
+  vtkBooleanMacro(SaveAirwayImage,int);
+  vtkSetMacro(SaveAirwayImage,int);
+  vtkGetMacro(SaveAirwayImage,int);
+
+  // Description:
+  // File prefix for the airway image
+  vtkSetStringMacro(AirwayImagePrefix);
+  vtkGetStringMacro(AirwayImagePrefix);
+
   vtkGetObjectMacro(AirwayImage, vtkImageData);
   vtkSetObjectMacro(AirwayImage, vtkImageData);
 
@@ -112,6 +154,9 @@ public:
   vtkGetObjectMacro(OuterContour, vtkPolyData);
   vtkSetObjectMacro(OuterContour, vtkPolyData);
 
+  enum AxisMode { HESSIAN, POLYDATA, VECTOR};
+  enum ReconstructionMode {SMOOTH, SHARP};
+
 protected:
   vtkMRMLAirwayNode();
   ~vtkMRMLAirwayNode();
@@ -120,8 +165,8 @@ protected:
 
 private:
   /// Data
-  float XYZ[3];
-  float OrientationWXYZ[4];
+  double XYZ[3];
+  double OrientationWXYZ[4];
   double Threshold;
   char *VolumeNodeID;
 
@@ -129,6 +174,14 @@ private:
   double Max;
   double Mean;
   double Std;
+
+  double Resolution;
+  int    Reformat;
+  int    AxisMode;
+  int    Reconstruction;
+  double SegmentPercentage;
+  int    SaveAirwayImage;
+  char   *AirwayImagePrefix;
 
   vtkImageData *AirwayImage;
   vtkPolyData  *InnerContour;
