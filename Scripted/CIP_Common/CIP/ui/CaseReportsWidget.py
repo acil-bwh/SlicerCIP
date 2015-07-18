@@ -6,8 +6,8 @@ class CaseReportsWidget(object):
     # Events triggered by the widget
     EVENT_SAVE = 1
     EVENT_SHOW = 2
-    EVENT_DOWNLOAD = 2
-
+    EVENT_DOWNLOAD = 3
+    EVENT_REMOVE = 4
 
     def __init__(self, moduleName, columnNames, parent = None):
         """Widget constructor (existing module)"""
@@ -39,14 +39,19 @@ class CaseReportsWidget(object):
         self.exportButton.text = "Export"
         self.layout.addWidget(self.exportButton)
 
+        self.removeButton = ctk.ctkPushButton()
+        self.removeButton.text = "Clean cache"
+        self.layout.addWidget(self.removeButton)
+
         self.saveValuesButton.connect('clicked()', self.onSave)
-        self.exportButton.connect('clicked()', self.onDownload)
+        self.exportButton.connect('clicked()', self.onExport)
         self.openButton.connect('clicked()', self.onShowStoredData)
+        self.removeButton.connect('clicked()', self.onRemoveStoredData)
 
     def __initEvents__(self):
         """Init all the structures required for events mechanism"""
         self.eventsCallbacks = list()
-        self.events = [self.EVENT_SAVE, self.EVENT_SHOW, self.EVENT_DOWNLOAD]
+        self.events = [self.EVENT_SAVE, self.EVENT_SHOW, self.EVENT_DOWNLOAD, self.EVENT_REMOVE]
 
     def addObservable(self, event, callback):
         """Add a function that will be invoked when the corresponding event is triggered.
@@ -73,8 +78,7 @@ class CaseReportsWidget(object):
     def onSave(self):
         self.__triggerEvent__(self.EVENT_SAVE)
 
-
-    def onDownload(self):
+    def onExport(self):
         fileName = qt.QFileDialog.getSaveFileName(self.parent, "Export to CSV file")
         if fileName:
             self.logic.exportCSV(fileName)
@@ -83,6 +87,13 @@ class CaseReportsWidget(object):
         self.reportWindow.load(self.logic.columnNamesExtended, self.logic.loadValues())
         self.reportWindow.show()
 
+    def onRemoveStoredData(self):
+        if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Remove stored data',
+                'Are you sure you want to remove the saved csv data?',
+                qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
+            self.logic.remove()
+            qt.QMessageBox.information(slicer.util.mainWindow(), 'Data removed', 'The data were removed succesfully')
+            self.__triggerEvent__(self.EVENT_REMOVE)
 
 
 class CaseReportsLogic(object):
@@ -118,7 +129,6 @@ class CaseReportsLogic(object):
             print("There is a wrong number of arguments. Total columns: {0}. Columns passed: {1}".format(len(self.columnNames), len(kwargs)))
             return False
 
-
         for key in kwargs:
             if key not in self.columnNames:
                 print("Column {0} is not included in the list of columns".format(key))
@@ -132,30 +142,36 @@ class CaseReportsLogic(object):
                 orderedColumns.append(kwargs[column])
             else:
                 orderedColumns.append('')
-
-
-
         with open(self._csvFilePath_, 'a+b') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(orderedColumns)
 
+
     def exportCSV(self, filePath):
-        with open(self._csvFilePath_, 'r+b') as csvfileReader:
-            reader = csv.reader(csvfileReader)
-            with open(filePath, 'a+b') as csvfileWriter:
-                writer = csv.writer(csvfileWriter)
-                writer.writerow(self.columnNamesExtended)
-                for row in reader:
-                    writer.writerow(row)
+        if os.path.exists(self._csvFilePath_):
+            with open(self._csvFilePath_, 'r+b') as csvfileReader:
+                reader = csv.reader(csvfileReader)
+                with open(filePath, 'a+b') as csvfileWriter:
+                    writer = csv.writer(csvfileWriter)
+                    writer.writerow(self.columnNamesExtended)
+                    for row in reader:
+                        writer.writerow(row)
+            return True
+        else:
+            return False
 
     def loadValues(self):
         data = []
-        with open(self._csvFilePath_, 'r+b') as csvfileReader:
-            reader = csv.reader(csvfileReader)
-            for row in reader:
-                data.append(row)
+        if os.path.exists(self._csvFilePath_):
+            with open(self._csvFilePath_, 'r+b') as csvfileReader:
+                reader = csv.reader(csvfileReader)
+                for row in reader:
+                    data.append(row)
         return data
 
+    def remove(self):
+        if os.path.exists(self._csvFilePath_):
+            os.remove(self._csvFilePath_)
 
 
 
@@ -173,7 +189,7 @@ class CaseReportsWindow(qt.QWidget):
         self.mainLayout.addWidget(self.label)
 
         self.tableView = qt.QTableView()
-        self.tableView.setColumnWidth(0,120)
+        self.tableView.setColumnWidth(0,125)
 
         self.tableView.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
         self.mainLayout.addWidget(self.tableView)
@@ -182,13 +198,10 @@ class CaseReportsWindow(qt.QWidget):
         self.exportButton.text = "Export"
         self.mainLayout.addWidget(self.exportButton)
 
-        self.exportButton.connect('clicked()', parent.onDownload)
-
-
+        self.exportButton.connect('clicked()', parent.onExport)
 
 
     def load(self, columnNames, data):
-
         self.items = []
 
         self.statisticsTableModel = qt.QStandardItemModel()
@@ -205,7 +218,6 @@ class CaseReportsWindow(qt.QWidget):
         # Header
         self.statisticsTableModel.setHorizontalHeaderLabels(columnNames)
 
-
         for row in range(len(data)):
             rowData = data[row]
             for col in range(len(rowData)):
@@ -215,4 +227,5 @@ class CaseReportsWindow(qt.QWidget):
                 self.statisticsTableModel.setItem(row, col,item)
                 self.items.append(item)
 
+        self.tableView.sortByColumn(0, 1)   # Sort by Date Descending
 
