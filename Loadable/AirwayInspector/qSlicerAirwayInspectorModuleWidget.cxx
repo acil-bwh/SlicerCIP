@@ -236,15 +236,21 @@ void qSlicerAirwayInspectorModuleWidget::onInteractorEvent(vtkRenderWindowIntera
 
       vtkMRMLSliceNode* snode = this->interactors[interactor];
       vtkMatrix4x4 *xyToRAS = snode->GetXYToRAS();
-      double xyz[3];
+      double xyz[4];
       xyz[0] = x;
-      xyz[1] = yNew;
+      xyz[1] = y;
+      //xyz[1] = yNew;
       xyz[2] = 0;
+      xyz[3] = 1;
       double *xyzRAS = xyToRAS->MultiplyDoublePoint(xyz);
 
       x = xyzRAS[0];
       y = xyzRAS[1];
       double z = snode->GetSliceOffset();
+
+      //xyToRAS->Print(std::cout);
+      //std::cout << "Event xyz =" << xyz[0] << "," << xyz[1] << "," << xyz[2] << std::endl;
+      //std::cout << "RAS xyz =" << x << "," << y << "," << z << std::endl;
 
       vtkMRMLAirwayNode *airwayNode =
         logic->AddAirwayNode(d->InputVolumeComboBox->currentNode()->GetID(),

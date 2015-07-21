@@ -20,6 +20,7 @@
 #include <vtkImageMapToColors.h>
 #include <vtkLookupTable.h>
 #include <vtkEllipseFitting.h>
+#include <vtkMatrix4x4.h>
 
 #include <vtkImageResliceWithPlane.h>
 #include <vtkComputeAirwayWall.h>
@@ -212,13 +213,30 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
   vtkEllipseFitting *eifit = vtkEllipseFitting::New();
   vtkEllipseFitting *eofit = vtkEllipseFitting::New();
 
+  // In RAS
   node->GetXYZ(p);
 
+  vtkMatrix4x4 *rasToIJK = vtkMatrix4x4::New();
+  volumeNode->GetRASToIJKMatrix(rasToIJK);
+  double xyz[4];
+  xyz[0] = p[0];
+  xyz[1] = p[1];
+  xyz[2] = p[2];
+  xyz[3] = 1;
+  double *tmp = rasToIJK->MultiplyDoublePoint(xyz);
+
+  ijk[0] = tmp[0];
+  ijk[1] = tmp[1];
+  ijk[2] = tmp[2];
+
   //reslicer->SetCenter(0.5+(p[0]+orig[0])/sp[0],511-((p[1]+orig[1])/sp[1])+0.5,(p[2]-orig[2])/sp[2]);
-  ijk[0]=(p[0]-orig[0])/sp[0] ;
-  ijk[1]= (dim[1]-1) - (p[1]-orig[1])/sp[1];  // j coordinate has to be reflected (vtk origin is lower left and DICOM origing is upper left).
-  ijk[2]=(p[2]-orig[2])/sp[2];
-  //std::cout<<"point id: "<<k<<"Ijk: "<<ijk[0]<<" "<<ijk[1]<<" "<<ijk[2]<<std::endl;
+  //ijk[0]=(p[0]-orig[0])/sp[0] ;
+  //ijk[1]= (dim[1]-1) - (p[1]-orig[1])/sp[1];  // j coordinate has to be reflected (vtk origin is lower left and DICOM origing is upper left).
+  //ijk[2]=(p[2]-orig[2])/sp[2];
+
+  std::cout <<"Center Ijk: "<<ijk[0]<<" "<<ijk[1]<<" "<<ijk[2]<<std::endl;
+  inputImage->Print(std::cout);
+
   reslicer->SetCenter(ijk[0],ijk[1],ijk[2]);
 
   /***
@@ -253,6 +271,8 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
    //cout<<"Before reslice"<<endl;
    reslicer->Update();
    //cout<<"After reslice"<<endl;
+
+   reslicer->GetOutput()->Print(std::cout);
 
    wallSolver->SetInputData(reslicer->GetOutput());
 
@@ -334,7 +354,9 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
    vtkImageData *airwayImage = vtkImageData::New();
    this->CreateAirwayImage(reslicer->GetOutput(),eifit,eofit,airwayImage);
 
-   if (node->GetSaveAirwayImage())
+   //if (node->GetSaveAirwayImage())
+   node->SetAirwayImagePrefix("C:\\tmp\\airwayImage");
+   if (1)
    {
      char fileName[10*256];
      vtkPNGWriter *writer = vtkPNGWriter::New();
@@ -362,6 +384,7 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
   eifit->Delete();
   eofit->Delete();
   airwayImage->Delete();
+  rasToIJK->Delete();
 
   return;
 }
