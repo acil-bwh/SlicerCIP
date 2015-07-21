@@ -19,9 +19,7 @@ except Exception as ex:
         print("CIP was added to the python path manually in CIP_LesionModel")
 
 from CIP.logic import Util
-
-
-
+from CIP.ui import CaseNavigatorWidget
 
 
 #
@@ -153,6 +151,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.distanceLevelSlider.enabled = False
         self.mainAreaLayout.addRow("Select a threshold: ", self.distanceLevelSlider)
 
+        # Case navigator widget
+        caseNavigatorCollapsibleButton = ctk.ctkCollapsibleButton()
+        caseNavigatorCollapsibleButton.text = "Case navigator (advanced)"
+        self.layout.addWidget(caseNavigatorCollapsibleButton)
+        caseNavigatorAreaLayout = qt.QHBoxLayout(caseNavigatorCollapsibleButton)
+        navigatorWidget = CaseNavigatorWidget(moduleName="CIP_LesionModel", parentContainer=caseNavigatorAreaLayout)
 
         # Connections
         self.applySegmentationButton.connect('clicked()', self.onApplySegmentationButton)
@@ -163,7 +167,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         #self.distanceLevelSlider.connect('valueChanged(int)', self.onDistanceSliderChanged)
         #self.distanceLevelSlider.connect('sliderReleased()', self.onDistanceSliderChanged)
 
-        self.semaphoreOpen = True
         self.__refreshUI__()
 
 
@@ -451,6 +454,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Start the timer that will refresh all the visualization nodes
         self.timer.start(500)
+
 
 
 # CIP_LesionModelLogic
