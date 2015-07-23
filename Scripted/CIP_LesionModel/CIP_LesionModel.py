@@ -19,7 +19,7 @@ except Exception as ex:
         print("CIP was added to the python path manually in CIP_LesionModel")
 
 from CIP.logic import Util
-from CIP.ui import CaseNavigatorWidget
+#from CIP.ui import CaseNavigatorWidget
 
 
 #
@@ -670,8 +670,6 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         Create a new labelmap and a model node with the result of the process
         """
         print("DEBUG: processing results from CLI...")
-
-
         # Create vtk filters
         self.thresholdFilter = vtk.vtkImageThreshold()
         self.thresholdFilter.SetInputData(self.cliOutputScalarNode.GetImageData())
@@ -687,10 +685,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             self.currentLabelmap = Util.getLabelmapFromScalar(self.cliOutputScalarNode, labelmapName)
             #self.currentLabelmap = Util.getLabelmapFromScalar(self.currentVolume, labelmapName)
 
-
-
         self.currentLabelmap.SetImageDataConnection(self.thresholdFilter.GetOutputPort())
-        print("DEBUG: connected the volume " + labelmapName)
         self.marchingCubesFilter = vtk.vtkMarchingCubes()
         #self.marchingCubesFilter.SetInputConnection(self.thresholdFilter.GetOutputPort())
         self.marchingCubesFilter.SetInputData(self.cliOutputScalarNode.GetImageData())
@@ -777,3 +772,766 @@ class CIP_LesionModelTest(ScriptedLoadableModuleTest):
         logging.info("The response message was: " + responseMessage)
         self.assertTrue(responseMessage == expectedMessage)
         self.delayDisplay('Test passed!')
+
+
+################################################################################################################
+import os, subprocess, hashlib
+import os.path as path
+from collections import OrderedDict
+
+from __main__ import qt, ctk, slicer
+from CIP.logic import SlicerUtil
+
+class CaseNavigatorWidget(object):
+    # Events triggered by the widget
+    EVENT_ON_BEGIN_DOWNLOAD = 1
+    EVENT_ON_DOWNLOAD_END = 2
+    EVENT_BEFORE_NEXT = 3
+    EVENT_AFTER_NEXT = 4
+    EVENT_BEFORE_PREVIOUS = 5
+    EVENT_AFTER_PREVIOUS = 6
+
+
+    # Study ids. Convention: Descriptive text (key) / Name of the folder in MAD
+    studyIds = OrderedDict()
+    studyIds["COPD Gene"] = "COPDGene"
+    studyIds["FHS"] = "FHS"
+    studyIds["ECLIPSE"] = "ECLIPSE"
+    studyIds["Cotton"] = "Cotton"
+    studyIds["BCN"] = "BCN"
+    studyIds["Other"] = "Other"
+
+
+    # Image types
+    imageTypes = OrderedDict()
+    imageTypes["CT"] = ""
+
+
+    # Label maps types with additional configuration.
+    # Convention:
+    # Descriptive text (key)
+    # Checked by default
+    # Files extension (example: case_partialLungLabelMap.nrrd)
+    # Label map Less Significant Byte (description). This will be used to display soem aditional text in the label map after being loaded
+    labelMapTypes = OrderedDict()
+    labelMapTypes["Partial Lung"] = (False, "_partialLungLabelMap", "ChestType", "ChestRegion")
+    labelMapTypes["Body Composition"] = (False, "_bodyComposition", "ChestType", "ChestRegion")
+
+    def __init__(self, moduleName, parentContainer):
+        """Widget constructor (existing module)"""
+        if parentContainer is None:
+            self.parent = slicer.qMRMLWidget()
+            self.parent.setLayout(qt.QVBoxLayout())
+            self.parent.setMRMLScene(slicer.mrmlScene)
+        else:
+            self.parent = parentContainer
+
+        self.__initEvents__()
+        self.parentModuleName = moduleName
+        self.setup()
+
+
+    def setup(self):
+        self.logic = CaseNavigatorLogic(self.parentModuleName)
+        self.StudyId = ""
+
+        # Frame to contain the whole widget
+        self.mainFrame = qt.QFrame()
+        self.parent.layout().addWidget(self.mainFrame)
+        self.layout = qt.QVBoxLayout()
+        self.mainFrame.setLayout(self.layout)
+
+
+
+
+
+
+        #
+        # Obligatory parameters area
+        #
+        parametersCollapsibleButton = ctk.ctkCollapsibleButton()
+        parametersCollapsibleButton.text = "Image data"
+        self.layout.addWidget(parametersCollapsibleButton)
+        parametersFormLayout = qt.QFormLayout(parametersCollapsibleButton)
+
+        # Study radio buttons
+        label = qt.QLabel()
+        label.text = "Select the study:"
+        parametersFormLayout.addRow(label)
+
+        self.rbgStudy = qt.QButtonGroup()
+
+        for key in self.studyIds:
+            rbStudyid = qt.QRadioButton(key)
+            self.rbgStudy.addButton(rbStudyid)
+            parametersFormLayout.addWidget(rbStudyid)
+
+        self.txtOtherStudy = qt.QLineEdit()
+        self.txtOtherStudy.hide()
+        parametersFormLayout.addWidget(self.txtOtherStudy)
+
+        # Image types
+        label = qt.QLabel()
+        label.text = "Select the images that you want to load:"
+        parametersFormLayout.addRow(label)
+
+        self.cbsImageTypes = []
+        for key in self.imageTypes:
+            check = qt.QCheckBox()
+            check.checked = True
+            check.setText(key)
+            parametersFormLayout.addWidget(check)
+            self.cbsImageTypes.append(check)
+
+        # Label maps
+        label = qt.QLabel()
+        label.text = "Select the label maps that you want to load:"
+        parametersFormLayout.addRow(label)
+
+        # Labelmap types checkboxes
+        self.cbsLabelMapTypes = []
+        for key in self.labelMapTypes:
+            check = qt.QCheckBox()
+            check.setText(key)
+            check.checked = self.labelMapTypes[key][0]
+            parametersFormLayout.addWidget(check)
+            self.cbsLabelMapTypes.append(check)
+
+        parametersFormLayout.addWidget(qt.QLabel("Select one of the next available options:"))
+
+        ##
+        # CaseID / CaseList
+        self.caseFrame = qt.QFrame()
+        self.caseFrameLayout = qt.QGridLayout()
+        self.caseFrame.setLayout(self.caseFrameLayout)
+        parametersFormLayout.addWidget(self.caseFrame)
+
+        self.caseListRadioButtonGroup = qt.QButtonGroup()
+
+        # Case id
+        self.caseIdRb = qt.QRadioButton("Case ID")
+        self.caseIdRb.checked = True
+        self.caseListRadioButtonGroup.addButton(self.caseIdRb)
+        self.caseIdTxt = qt.QLineEdit()
+        self.downloadCaseButton = qt.QPushButton("Download")
+        self.downloadCaseButton.toolTip = "Load the case"
+        self.downloadCaseButton.setStyleSheet("background-color: green; font-weight:bold; color:white")
+
+        self.caseFrameLayout.addWidget(self.caseIdRb, 0, 0)
+        self.caseFrameLayout.addWidget(self.caseIdTxt, 0, 1)
+        self.caseFrameLayout.addWidget(self.downloadCaseButton, 0, 2)
+
+        ##
+        ## CaseList
+        self.caseListRadioButton = qt.QRadioButton("Case List")
+        self.caseListRadioButtonGroup.addButton(self.caseListRadioButton)
+        self.caseListTxt = qt.QLineEdit()
+        self.caseListTxt.text = "/Volumes/Mac500/Data/tempdata/dummyCaseList.txt"
+        self.selectCaseListButton = qt.QPushButton()
+        self.selectCaseListButton.text = "Select file..."
+        self.caselistFileDialog = ctk.ctkFileDialog()
+        self.caseFrameLayout.addWidget(self.caseListRadioButton, 1, 0)
+        self.caseFrameLayout.addWidget(self.caseListTxt, 1, 1)
+        self.caseFrameLayout.addWidget(self.selectCaseListButton, 1, 2)
+
+        # CaseList panel
+        self.caseListFrame = qt.QFrame()
+        self.caseListFrame.visible = False
+        self.caseFrameLayout.addWidget(self.caseListFrame)
+        caseListLayout = qt.QGridLayout()
+        self.caseListFrame.setLayout(caseListLayout)
+        caseListLayout.addWidget(qt.QLabel("Current case: "), 0, 0)
+        self.currentCaseLabel = qt.QLabel("Not loaded yet. Please load a case.")
+        caseListLayout.addWidget(self.currentCaseLabel, 0, 1)
+
+        self.prevCaseButton = ctk.ctkPushButton()
+        self.prevCaseButton.text = "Previous"
+        caseListLayout.addWidget(self.prevCaseButton, 1, 0)
+        self.nextCaseButton = ctk.ctkPushButton()
+        self.nextCaseButton.text = "Next"
+        caseListLayout.addWidget(self.nextCaseButton, 1, 1)
+
+
+        # Information message
+        self.lblDownloading = qt.QLabel()
+        self.lblDownloading.text = "Downloading images. Please wait..."
+        self.lblDownloading.hide()
+        parametersFormLayout.addRow(self.lblDownloading)
+
+        #############################
+        # Optional Parameters
+        #
+        optionalParametersCollapsibleButton = ctk.ctkCollapsibleButton()
+        optionalParametersCollapsibleButton.text = "Optional parameters"
+        self.layout.addWidget(optionalParametersCollapsibleButton)
+        optionalParametersFormLayout = qt.QFormLayout(optionalParametersCollapsibleButton)
+
+        # Local storage (Slicer temporary path)
+        self.localStoragePath = "{0}/ACIL".format(slicer.app.temporaryPath)
+        if not os.path.exists(self.localStoragePath):
+            os.makedirs(self.localStoragePath)
+            # Make sure that everybody has write permissions (sometimes there are problems because of umask)
+            os.chmod(self.localStoragePath, 0777)
+
+        self.storagePathButton = ctk.ctkDirectoryButton()
+        self.storagePathButton.directory = self.localStoragePath
+
+        optionalParametersFormLayout.addRow("Local directory: ", self.storagePathButton)
+
+        # Connection type (SSH, "normal")
+        label = qt.QLabel()
+        label.text = "Connection type:"
+        optionalParametersFormLayout.addRow(label)
+
+        self.rbgConnectionType = qt.QButtonGroup()
+        self.rbSSH = qt.QRadioButton("SSH (secure connection)")
+        self.rbSSH.setChecked(True)
+        self.rbgConnectionType.addButton(self.rbSSH)
+        optionalParametersFormLayout.addWidget(self.rbSSH)
+
+        self.rbCP = qt.QRadioButton("Common")
+        self.rbgConnectionType.addButton(self.rbCP)
+        optionalParametersFormLayout.addWidget(self.rbCP)
+
+        # SSH Server login
+        self.txtServer = qt.QLineEdit()
+        self.txtServer.text = "copd@mad-replicated1.research.partners.org"
+        optionalParametersFormLayout.addRow("Server:     ", self.txtServer)
+
+        # Server root path
+        self.txtServerpath = qt.QLineEdit()
+        self.txtServerpath.text = "/mad/store-replicated/clients/copd/Processed"
+        optionalParametersFormLayout.addRow("Server root path:     ", self.txtServerpath)
+
+
+        # Private key (ACIL generic keys by default)
+        # TODO: review paths and keys (this is a CIP public tool!)
+        self.txtPrivateKeySSH = qt.QLineEdit()
+        if os.sys.platform == "win32":
+            self.txtPrivateKeySSH.text = SlicerUtil.settingGetOrSetDefault("ACIL_GetImage", "sshKey",
+                                                                           os.path.join(Util.DATA_DIR,
+                                                                                        "Win_acil_generic_private.ppk"))
+        else:
+            self.txtPrivateKeySSH.text = SlicerUtil.settingGetOrSetDefault("ACIL_GetImage", "sshKey",
+                                                                           os.path.join(Util.DATA_DIR,
+                                                                                        "acil_generic_rsa"))
+
+        optionalParametersFormLayout.addRow("SSH private key (leave blank for computer's default):     ",
+                                            self.txtPrivateKeySSH)
+
+        # Cache mode
+        self.cbCacheMode = qt.QCheckBox("Cache mode activated")
+        self.cbCacheMode.setChecked(True)  # Cache mode is activated by default
+        optionalParametersFormLayout.addRow("", self.cbCacheMode)
+
+        # Clean cache Button
+        self.cleanCacheButton = qt.QPushButton("Clean cache")
+        self.cleanCacheButton.toolTip = "Remove all the local cached files"
+        optionalParametersFormLayout.addRow(self.cleanCacheButton)
+
+        optionalParametersCollapsibleButton.collapsed = True
+
+        # Check for updates in CIP
+        # autoUpdate = SlicerUtil.settingGetOrSetDefault("ACIL_GetImage", "AutoUpdate", 1)
+        # uw = CIPUI.AutoUpdateWidget(parent=self.parent, autoUpdate=autoUpdate)
+        # uw.addAutoUpdateCheckObserver(self.onAutoUpdateStateChanged)
+
+        # Add vertical spacer
+        self.layout.addStretch(1)
+
+        # Connections
+        self.downloadCaseButton.connect('clicked (bool)', self.onDownloadCaseButton)
+        self.caseListRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onCaseListRadioButtonClicked)
+        self.rbgStudy.connect("buttonClicked (QAbstractButton*)", self.onRbStudyClicked)
+        self.txtOtherStudy.connect("textEdited (QString)", self.onTxtOtherStudyEdited)
+        self.selectCaseListButton.connect('clicked (bool)', self.onSelectCaseListButton)
+        self.rbgConnectionType.connect("buttonClicked (QAbstractButton*)", self.onRbgConnectionType)
+        self.storagePathButton.connect("directorySelected(QString)", self.onTmpDirChanged)
+        self.cleanCacheButton.connect('clicked (bool)', self.onCleanCacheButtonClicked)
+
+
+
+        #
+        # self.prevCaseButton.connect('clicked()', self.onNextCaseClicked)
+        self.nextCaseButton.connect('clicked()', self.onNextCaseClicked)
+
+        self.__loadLastState__()
+
+
+    def __initEvents__(self):
+        """Init all the structures required for events mechanism"""
+        self.eventsCallbacks = list()
+        self.events = [self.EVENT_ON_BEGIN_DOWNLOAD, self.EVENT_ON_DOWNLOAD_END, self.EVENT_BEFORE_NEXT, self.EVENT_AFTER_NEXT, self.EVENT_BEFORE_PREVIOUS, self.EVENT_AFTER_PREVIOUS]
+
+    def addObservable(self, event, callback):
+        """Add a function that will be invoked when the corresponding event is triggered.
+        Ex: myWidget.addObservable(myWidget.EVENT_EVENT_BEFORE_NEXT, self.onBeforeNextClicked)"""
+        if event not in self.events:
+            raise Exception("Event not recognized")
+
+        # Add the event to the list of funcions that will be called when the matching event is triggered
+        self.eventsCallbacks.append((event, callback))
+
+    def __triggerEvent__(self, eventType, *params):
+        """Trigger one of the possible events from the object.
+        Ex:    self.__triggerEvent__(self.EVENT_BEFORE_NEXT) """
+        for callback in (item[1] for item in self.eventsCallbacks if item[0] == eventType):
+            callback(*params)
+
+    def __loadLastState__(self):
+        """ Load the last session information
+        :return:
+        """
+        # TODO: implement
+        pass
+
+    ######
+    # EVENTS
+
+    def onCaseListRadioButtonClicked(self, button):
+        self.caseListFrame.visible = self.caseListRadioButton.checked
+
+    def onDownloadCaseButton(self):
+        """Click in download button"""
+        # Check if there is a Study and Case introduced
+        self.CaseId = self.caseIdTxt.text.strip()
+        if self.CaseId and self.StudyId:
+            self.lblDownloading.show()
+            slicer.app.processEvents()
+
+            # Get the selected image types and label maps
+            imageTypes = [self.imageTypes[cb.text] for cb in
+                          filter(lambda check: check.isChecked(), self.cbsImageTypes)]
+            labelMapExtensions = [self.labelMapTypes[cb.text] for cb in
+                                  filter(lambda check: check.isChecked(), self.cbsLabelMapTypes)]
+
+            result = self.logic.loadCase(self.txtServer.text, self.txtServerpath.text, self.StudyId,
+                                         self.caseIdTxt.text, imageTypes, labelMapExtensions, self.localStoragePath,
+                                         self.cbCacheMode.checkState(), self.rbSSH.isChecked(),
+                                         self.txtPrivateKeySSH.text)
+            self.lblDownloading.hide()
+            if (result == Util.ERROR):
+                self.msgBox = qt.QMessageBox(qt.QMessageBox.Warning, 'Error',
+                                             "There was an error when downloading some of the images of this case. It is possible that some of the selected images where not available in the server. Please review the log console for more details.\nSuggested actions:\n-Empty cache\n-Restart Slicer")
+                self.msgBox.show()
+        else:
+            # Show info messsage
+            self.msgBox = qt.QMessageBox(qt.QMessageBox.Information, 'Attention',
+                                         "Please make sure that you have selected a study and a case")
+            self.msgBox.show()
+
+    def onSelectCaseListButton(self):
+        f = qt.QFileDialog.getOpenFileName()
+        if f:
+            self.caseListTxt.text = f
+
+    def onRbStudyClicked(self, button):
+        """Study radio buttons clicked (any of them)"""
+        self.StudyId = self.studyIds[button.text]
+        self.txtOtherStudy.visible = (button.text == "Other")
+        if (self.txtOtherStudy.visible):
+            self.StudyId = self.txtOtherStudy.text.strip()
+            # self.checkDownloadButtonEnabled()
+
+    def onRbgConnectionType(self, button):
+        self.txtServer.enabled = self.txtPrivateKeySSH.enabled = self.rbSSH.isChecked()
+        # self.txtPrivateKeySSH.enabled = self.rbSSH.checked
+
+    def onTxtOtherStudyEdited(self, text):
+        """Any letter typed in "Other study" text box """
+        self.StudyId = text
+
+    def onCleanCacheButtonClicked(self):
+        """Clean cache button clicked. Remove all the files in the current local storage path directory"""
+        import shutil
+        # Remove directory
+        shutil.rmtree(self.localStoragePath, ignore_errors=True)
+        # Recreate it (this is a safe method for symbolic links)
+        os.makedirs(self.localStoragePath)
+        # Make sure that everybody has write permissions (sometimes there are problems because of umask)
+        os.chmod(self.localStoragePath, 0777)
+        print("Cache cleaned. The following folder was re-created: ", self.localStoragePath)
+
+    def onTmpDirChanged(self, d):
+        print ("Temp dir changed. New dir: " + d)
+        self.localStoragePath = d
+
+    def onNextCaseClicked(self):
+        self.__triggerEvent__(self.EVENT_BEFORE_NEXT)
+        self.logic.nextCase()
+        self.__triggerEvent__(self.EVENT_AFTER_NEXT)
+
+    def cleanup(self):
+        # Saves the current value of the sshKey to reuse it in future sessions
+        SlicerUtil.setSetting("ACIL_GetImage", "sshKey", self.txtPrivateKeySSH.text)
+
+
+class CaseNavigatorLogic:
+    def __init__(self, parentModuleName):
+        """Constructor"""
+        #ScriptedLoadableModuleLogic.__init__(self)
+        # Try to load the command builder object to get download commands
+        #self.commandBuilderName = commandBuilderName
+        self.commandBuilder = None
+        self.caseListFile = None
+        self.caseListIds = None
+        self.caseList = None    # Dictionary of content data for every case
+        self.listHash = None    # Hashtag that will define the caselist based on name, creationdate, etc.
+
+        self.currentCaseIndex = -1
+        self.previousCases = None
+        self.bufferSize = 1     # Number of cases to download in advance
+        self.__nextCaseExists__ = None
+
+        self.mainCaseTemplate = None   # Default: curent directory/Case.nhdr
+        self.labelMapsTemplates = []  # For each labelmap that we want to load with the case, a tmeplate to define the file path must be specified
+        self.additionalFilesTemplates = []  # Other files that will be read as binaries
+
+        self.localStoragePath = os.path.join(slicer.app.temporaryPath, "CaseNavigator", parentModuleName)
+
+        if not os.path.exists(self.localStoragePath):
+            # Create the directory
+            os.makedirs(self.localStoragePath)
+            # Make sure that everybody has write permissions (sometimes there are problems because of umask)
+            os.chmod(self.localStoragePath, 0777)
+
+
+        # TODO: does this make sense? Try a large case list
+        self.loadFullCaseList = True    # By default, read al the cases together
+
+    def readCaseList(self, caseListFullPath):
+        """ Load a case list file that will be used to iterate over the cases
+        :param caseListFullPath:
+        """
+        try:
+            self.caseListFile = open(caseListFullPath, "r")
+            if self.loadFullCaseList:
+                # Read the whole case list. This will allow full case navigation
+                self.caseListIds = self.caseListFile.readlines()
+                self.caseListFile.close()
+                # Remove blank lines if any
+                # i = 1
+                # l = len(self.caseListIds)
+                # id = self.caseListIds[l - i]
+                #
+
+            else:
+                # Load the elements just when next case is requested. Restricted navigation
+                # Useful for very large case lists
+                self.caseListIds = []
+            self.listHash = self.__createListHash__(caseListFullPath)
+            self.currentCaseIndex = -1
+        except:
+            # Error when reading file
+            self.caseListFile = None
+            raise
+
+    def __createListHash__(self, fileFullPath):
+        """ Create a hashtag for a list based on:
+        - Name
+        - Size
+        - Last modification date
+        :param fileFullPath:
+        :return:
+        """
+        stats = os.stat(fileFullPath)
+        id = "{0}_{1}_{2}".format(path.basename(fileFullPath), stats[6], stats[8])
+        # Get a MD5 sum for the concatenated id
+        m = hashlib.md5()
+        m.update(id)
+        return m.hexdigest()
+
+    def nextCase(self):
+        """ Read the next case id in the list and load the associated info.
+        It also tries to download all the required files for the next case
+        :return: True if the case was loaded correctly or False if we are at the end of the list
+        """
+        if SlicerUtil.IsDevelopment:
+            print("DEBUG: Downloading next case...")
+            print("DEBUG: current case index: {0}. Current case ID: {1}".format(self.currentCaseIndex, self.currentCaseId))
+
+        if self.caseListIds is None:
+            raise Exception("List is not initialized. First, read a caselist with readCaseList method")
+
+        self.currentCaseIndex += 1
+        if self.currentCaseIndex >= len(self.caseListIds):
+            # End of list
+            return False
+        self.currentCaseId = self.caseListIds[self.currentCaseIndex].strip()
+        if self.currentCaseId == "":
+            # Blank line. End of list
+            return False
+
+        # Download in background the required files for index+buffer cases
+        self.downloadNextCases(self.currentCaseIndex, self.bufferSize)
+
+        return True
+
+
+    def downloadNextCases(self, caseIndex, bufferSize):
+        """ Download the required files for the next "bufferSize" cases after "currentCaseIndex"
+        :param currentCaseIndex:
+        :param bufferSize:
+        :return:
+        """
+        l = len(self.caseListIds)
+
+        if caseIndex + 1 >= l:
+            # End of list
+            return
+        for i in range(bufferSize):
+            caseId = self.caseListIds[caseIndex + i + 1].strip()
+            if self.currentCaseId == "":
+                return
+            # Build the command to execute
+            downloadCommands = self.commandBuilder.getDownloadCommands(caseId, self.localStoragePath)
+            for command in downloadCommands:
+                print("DEBUG: executing the next download command: " + command)
+
+
+    def loadCase(self, server, serverPath, studyId, caseId, imageTypesExtensions, labelMapExtensions, localStoragePath,
+                 cacheOn, sshMode, privateKeySSH):
+        """Load all the asked images for a case: main images and label maps.
+        Arguments:
+        - server -- User and name of the host. Default: copd@mad-replicated1.research.partners.org
+        - serverPath -- Root path for all the cases. Default: /mad/store-replicated/clients/copd/Processed
+        - studyId -- Code of the study. Ex: COPDGene
+        - caseId -- Case id (NOT patient! It will be extracted from here). Example: 12257B_INSP_STD_UIA_COPD
+        - imageTypesExtensions -- Extensions of the images that must be appended before 'nrrd' in the filename. Default is blank
+        - labelMapExtensions -- Extensions that must be appended to the file name to find the labelmap. Ex: _partialLungLabelMap
+        - localStoragePath -- Local folder where all the images will be downloaded
+        - cacheOn -- When True, the images are not downloaded if they already exist in local
+        - privateKeySSH -- Full path to the file that contains the private key used to connect with SSH to the server
+
+        Returns OK or ERROR
+        """
+        try:
+            # Extract Patient Id
+            patientId = caseId.split('_')[0]
+
+            for ext in imageTypesExtensions:
+                # Download all the volumes (generally just one)
+                locPath = self.downloadNrrdFile(server, serverPath, studyId, patientId, caseId, ext, localStoragePath,
+                                                cacheOn, sshMode, privateKeySSH, self.onVolumeDownloaded)
+                if (SlicerUtil.IsDevelopment): print "Loading volume stored in " + locPath
+                #slicer.util.loadVolume(locPath)
+
+            print ("Labelmap extensions: ", labelMapExtensions)
+            # Download all the selected labelmaps
+            for ext in labelMapExtensions:
+                locPath = self.downloadNrrdFile(server, serverPath, studyId, patientId, caseId, ext[1],
+                                                localStoragePath, cacheOn, sshMode, privateKeySSH)
+                if (SlicerUtil.IsDevelopment): print "Loading label map stored in " + locPath
+                #(code, vtkLabelmapVolumeNode) = slicer.util.loadLabelVolume(locPath, {}, returnNode=True)  # Braces are needed for Windows compatibility... No comments...
+
+                #self.splitLabelMap(vtkLabelmapVolumeNode, ext[2], ext[3])
+            return Util.OK
+        except:
+            Util.printLastException()
+            return Util.ERROR
+
+    def onVolumeDownloaded(self):
+        print("Volume downloaded")
+
+    def downloadNrrdFile(self, server, serverPath, studyId, patientId, caseId, ext, localStoragePath, cacheOn,
+                         sshMode=True, privateKeySSH=None, callback=None):
+        """Download Header and Raw data in a Nrrd file.
+        Returns the full local path for the nhrd file (header)
+        """
+        localFile = os.path.join(localStoragePath, "{0}{1}.nhdr".format(caseId, ext))
+
+        # If cache mode is not activated or the file does not exist locally, proceed to download
+        if (not cacheOn or not os.path.isfile(localFile)):
+            error = False
+            if os.path.isfile(localFile):
+                # Delete file previously to avoid confirmation messages
+                print ("Remove cached files in " + localFile)
+                try:
+                    os.remove(localFile)
+                    localFile = localFile.replace(".nhdr", ".raw.gz")
+                    os.remove(localFile)
+                except:
+                    print ("Error when deleting local file " + localFile)
+
+            # Make sure that the ssh key has not too many permissions if it is used (otherwise scp will return an error)
+            if privateKeySSH:
+                os.chmod(privateKeySSH, 0600)
+
+            # Download header
+            if (Util.isWindows()):
+                winScpPath = path.join(Util.DATA_DIR, "SSH", "WinSCP.com")
+                # The widget always returns paths splitted with "/" # TODO: CHECK THIS
+                localStoragePath = localStoragePath.replace('/', '\\') + '\\'
+
+                if sshMode:
+                    if privateKeySSH:
+                        privateKeyCommand = "-privatekey={0}".format(privateKeySSH)
+                    else:
+                        privateKeyCommand = ""
+                    downloadCommand = "{0} /command open {1} {2} get {3}/{4}/{5}/{6}/{6}{7}.nhdr {8} exit".format(
+                        winScpPath, server, privateKeyCommand, serverPath, studyId, patientId, caseId,
+                        ext, localStoragePath)
+                    #
+                    #
+                    #
+                    # params = [winScpPath, "/command",
+                    #           'open {0} {1}'.format(server, privateKeyCommand),
+                    #           'get {0}/{1}/{2}/{3}/{3}{4}.nhdr {5}'.format(serverPath, studyId, patientId, caseId,
+                    #                                                        ext, localStoragePath), "exit"]
+                else:
+                    downloadCommand = "copy {0}\\{1}\\{2}\\{3}\\{3}{4}.nhdr {5}".format(
+                        serverPath, studyId, patientId, caseId, ext, localStoragePath)
+
+                    # params = ['copy',
+                    #           "{0}\\{1}\\{2}\\{3}\\{3}{4}.nhdr".format(serverPath, studyId, patientId, caseId, ext),
+                    #           localStoragePath]
+
+            else:
+                # Unix
+                if sshMode:
+                    # Set a ssh key command if privateKeySsh has any value (non empty)
+                    keyCommand = ("-i " + privateKeySSH) if privateKeySSH else ""
+                    downloadCommand = "scp {0} {1}:{2}/{3}/{4}/{5}/{5}{6}.nhdr {7}".format(
+                        keyCommand, server, serverPath, studyId, patientId, caseId, ext, localStoragePath)
+                    # params = ['scp',
+                    #           "{0}{1}:{2}/{3}/{4}/{5}/{5}{6}.nhdr".format(keyCommand, server, serverPath, studyId,
+                    #                                                       patientId, caseId, ext), localStoragePath]
+                else:
+                    downloadCommand = "cp {0}/{1}/{2}/{3}/{3}{4}.nhdr {5}".format(
+                        serverPath, studyId, patientId, caseId, ext, localStoragePath)
+                    # params = ['cp',
+                    #           "{0}/{1}/{2}/{3}/{3}{4}.nhdr".format(serverPath, studyId, patientId, caseId, ext),
+                    #           localStoragePath]
+
+            self.executeDowloadCommandCLI(downloadCommand)
+            # Download raw data
+            downloadCommand = downloadCommand.replace(".nhdr", ".raw.gz")
+            self.executeDowloadCommandCLI(downloadCommand, callback)
+        else:
+            print "File {0} already cached".format(localFile)
+
+        # Return path to the Nrrd header file
+        return localFile
+
+
+    # def executeDownloadCommand(self, params):
+    #     """Execute a command to download fisically the file. It will be different depending on the current platform.
+    #     In Unix, we will use the "scp" command.
+    #     In Windows, we will use WinSCP tool (attached to the module in "Resources" folder)
+    #     It returns a tuple: OK/ERROR, StandardOutput, ErrorMessage"""
+    #     if SlicerUtil.IsDevelopment:
+    #         print ("Attempt to download with these params:")
+    #         print (params)
+    #     try:
+    #         out = err = None
+    #
+    #         if (os.sys.platform == "win32"):
+    #             # Hide console window
+    #             startupinfo = subprocess.STARTUPINFO()
+    #             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    #             proc = subprocess.Popen(params, stdout=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo)
+    #             print ("Launch process")
+    #             # Launch the process
+    #             (out, err) = proc.communicate()
+    #             print("End of process")
+    #         else:
+    #             # Preferred method.
+    #             proc = subprocess.Popen(params, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #             # Launch the process
+    #             (out, err) = proc.communicate()
+    #
+    #         if SlicerUtil.IsDevelopment:
+    #             print "Out: " + out
+    #             print "Err:" + err
+    #         if err:
+    #             print "Error returned by system process: " + err
+    #
+    #     except Exception as ex:
+    #         print "FATAL ERROR IN COPY PROCESS:"
+    #         print ex
+    #         # Fatal error
+    #         return (Util.ERROR, out, err)
+    #
+    #     # In Unix sometimes if there is some error, stderr will contain some value
+    #     if err:
+    #         return (Util.ERROR, out, err)  # ERROR!
+    #
+    #     ## Everything ok
+    #     return (Util.OK, out, err)
+
+    def executeDowloadCommand(self, command, onExecuteCommandFinishedCallback=None):
+        """Backup function that will be used when the preferred method fails"""
+        if SlicerUtil.IsDevelopment:
+            print "Executing the following command: " + command
+        subprocess.check_call(command, shell=True)
+        #subprocess.check_call(command.replace(".nhdr", ".raw.gz"), shell=True)
+
+    def executeDowloadCommandCLI(self, command, onExecuteCommandFinishedCallback=None):
+        """Backup function that will be used when the preferred method fails"""
+        if SlicerUtil.IsDevelopment:
+            print "Executing the following command through the CLI: " + command
+        parameters = {}
+        parameters["command"] = command
+
+        self.invokedCLI = False     # Semaphore to avoid duplicated events
+
+        module = slicer.modules.executesystemcommand
+        result = slicer.cli.run(module, None, parameters)
+
+        # Observer when the state of the process is modified
+        result.AddObserver('ModifiedEvent', self.onExecuteCommandCLIStateUpdated)
+        # Function that will be invoked when the CLI finishes
+        self.onExecuteCommandFinishedCallback = onExecuteCommandFinishedCallback
+
+
+    def splitLabelMap(self, vtkLabelmapVolumeNode, suffixMSB, suffixLSB):
+        """Split a volume that contains a label map in two different volumes: one for the most significant byte and another one for the less significant byte
+        Args:
+        - vtkLabelmapVolumeNode -- Name of the original loaded volume
+        - suffixMSB -- Name that will be appended at the end of the volume name for the Most SignificantByte. Ex: ChestType
+        - suffixLSB -- Name that will be appended at the end of the volume name for the Most SignificantByte. Ex: RegionType
+        """
+        imageData = vtkLabelmapVolumeNode.GetImageData()
+        shape = list(imageData.GetDimensions())
+        shape.reverse()
+        numpyarray = vtk.util.numpy_support.vtk_to_numpy(imageData.GetPointData().GetScalars()).reshape(shape)
+
+        # Extract first array (Most significant byte)
+        npMSB = numpyarray >> 8
+        # Extract second array (Less significant byte)
+        npLSB = numpyarray & 255
+
+        volumeName = vtkLabelmapVolumeNode.GetName()
+        volumesLogic = slicer.modules.volumes.logic()
+        outputVolume = volumesLogic.CloneVolume(slicer.mrmlScene, vtkLabelmapVolumeNode,
+                                                volumeName + "_{0}".format(suffixMSB))
+        # Get a reference to the vtkImageData as a numpy array
+        numpyarray = vtk.util.numpy_support.vtk_to_numpy(
+            outputVolume.GetImageData().GetPointData().GetScalars()).reshape(shape)
+        # Substitute the reference (this is what really updates the data, taken from Steve Pieper)
+        numpyarray[:] = npMSB
+        outputVolume.GetImageData().Modified()
+
+        outputVolume = volumesLogic.CloneVolume(slicer.mrmlScene, vtkLabelmapVolumeNode,
+                                                volumeName + "_{0}".format(suffixLSB))
+        # Get a reference to the vtkImageData as a numpy array
+        numpyarray = vtk.util.numpy_support.vtk_to_numpy(
+            outputVolume.GetImageData().GetPointData().GetScalars()).reshape(shape)
+        # Substitute the reference (this is what really updates the data)
+        numpyarray[:] = npLSB
+        outputVolume.GetImageData().Modified()
+
+
+
+    def onExecuteCommandCLIStateUpdated(self, caller, event):
+        print ("DEBUG. CLI state updated to: ", caller.GetStatusString())
+        print ("Event: ", event)
+        print ("Caller: ", caller)
+        if caller.IsA('vtkMRMLCommandLineModuleNode') \
+          and caller.GetStatusString() == "Completed":
+          #and not self.invokedCLI:      # Semaphore to avoid duplicated events
+            # self.invokedCLI = True
+            print("CLI Process complete")
+            if self.onExecuteCommandFinishedCallback is not None:
+                self.onExecuteCommandFinishedCallback()
+

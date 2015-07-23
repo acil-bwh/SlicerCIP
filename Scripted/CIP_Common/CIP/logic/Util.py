@@ -4,10 +4,11 @@ Common functions that can be useful in any Python module development
 '''
 
 from __main__ import vtk, slicer
-import numpy as np
-import os
+
+import os, sys
 import shutil
-#import time
+import traceback
+import numpy as np
 
 class Util: 
     # Constants    
@@ -25,6 +26,15 @@ class Util:
     ERROR = 1
 
     AUTO_UPDATE_DISABLED = True
+
+    @staticmethod
+    def printLastException():
+        """ Print in console the debug information for the last Exception occurred
+        :return:
+        """
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        print "*** EXCEPTION OCCURRED: "
+        traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stdout)
     
     @staticmethod
     def vtkToNumpyArray(vtkImageData):
@@ -54,6 +64,12 @@ class Util:
         dimensions = rastoijk.MultiplyPoint(bounds)
         return [int(round(dimensions[0])), int(round(dimensions[1])), int(round(dimensions[2]))]
 
+    @staticmethod
+    def isWindows():
+        """ Current system platform is Windows based
+        :return:
+        """
+        return os.sys.platform == "win32"
 
     @staticmethod
     def saveNewNode(vtkMRMLScalarVolumeNode, fileName):
