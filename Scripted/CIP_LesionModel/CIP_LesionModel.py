@@ -156,7 +156,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         caseNavigatorCollapsibleButton.text = "Case navigator (advanced)"
         self.layout.addWidget(caseNavigatorCollapsibleButton)
         caseNavigatorAreaLayout = qt.QHBoxLayout(caseNavigatorCollapsibleButton)
-        navigatorWidget = CaseNavigatorWidget(moduleName="CIP_LesionModel", parentContainer=caseNavigatorAreaLayout)
+        self.caseNavigatorWidget = CaseNavigatorWidget(moduleName="CIP_LesionModel", parentContainer=caseNavigatorAreaLayout)
 
         # Connections
         self.applySegmentationButton.connect('clicked()', self.onApplySegmentationButton)
@@ -833,17 +833,15 @@ class CaseNavigatorWidget(object):
 
     def setup(self):
         self.logic = CaseNavigatorLogic(self.parentModuleName)
-        self.StudyId = ""
+        self._loadLastState_()
+
+        self.studyId = ""
 
         # Frame to contain the whole widget
         self.mainFrame = qt.QFrame()
         self.parent.layout().addWidget(self.mainFrame)
         self.layout = qt.QVBoxLayout()
         self.mainFrame.setLayout(self.layout)
-
-
-
-
 
 
         #
@@ -926,7 +924,7 @@ class CaseNavigatorWidget(object):
         self.caseListRadioButton = qt.QRadioButton("Case List")
         self.caseListRadioButtonGroup.addButton(self.caseListRadioButton)
         self.caseListTxt = qt.QLineEdit()
-        self.caseListTxt.text = "/Volumes/Mac500/Data/tempdata/dummyCaseList.txt"
+        self.caseListTxt.text = "/Data/jonieva/tempdata/caselist1.txt"
         self.selectCaseListButton = qt.QPushButton()
         self.selectCaseListButton.text = "Select file..."
         self.caselistFileDialog = ctk.ctkFileDialog()
@@ -944,12 +942,15 @@ class CaseNavigatorWidget(object):
         self.currentCaseLabel = qt.QLabel("Not loaded yet. Please load a case.")
         caseListLayout.addWidget(self.currentCaseLabel, 0, 1)
 
+        self.resumeCaseListButton = ctk.ctkPushButton()
+        self.resumeCaseListButton.text = "Resume list"
+        caseListLayout.addWidget(self.resumeCaseListButton, 1, 0)
         self.prevCaseButton = ctk.ctkPushButton()
         self.prevCaseButton.text = "Previous"
-        caseListLayout.addWidget(self.prevCaseButton, 1, 0)
+        caseListLayout.addWidget(self.prevCaseButton, 1, 1)
         self.nextCaseButton = ctk.ctkPushButton()
         self.nextCaseButton.text = "Next"
-        caseListLayout.addWidget(self.nextCaseButton, 1, 1)
+        caseListLayout.addWidget(self.nextCaseButton, 1, 2)
 
 
         # Information message
@@ -1008,13 +1009,14 @@ class CaseNavigatorWidget(object):
         # TODO: review paths and keys (this is a CIP public tool!)
         self.txtPrivateKeySSH = qt.QLineEdit()
         if os.sys.platform == "win32":
-            self.txtPrivateKeySSH.text = SlicerUtil.settingGetOrSetDefault("ACIL_GetImage", "sshKey",
+            self.txtPrivateKeySSH.text = SlicerUtil.settingGetOrSetDefault("ACIL_CaseNavigator", "sshKey",
                                                                            os.path.join(Util.DATA_DIR,
                                                                                         "Win_acil_generic_private.ppk"))
         else:
-            self.txtPrivateKeySSH.text = SlicerUtil.settingGetOrSetDefault("ACIL_GetImage", "sshKey",
+            self.txtPrivateKeySSH.text = SlicerUtil.settingGetOrSetDefault("ACIL_CaseNavigator", "sshKey",
                                                                            os.path.join(Util.DATA_DIR,
                                                                                         "acil_generic_rsa"))
+            self.txtPrivateKeySSH.text = "/Users/jonieva/Projects/ACILSlicer/ACIL_GetImage/ACIL_GetImage_Resources/acil_generic_rsa"
 
         optionalParametersFormLayout.addRow("SSH private key (leave blank for computer's default):     ",
                                             self.txtPrivateKeySSH)
@@ -1031,16 +1033,14 @@ class CaseNavigatorWidget(object):
 
         optionalParametersCollapsibleButton.collapsed = True
 
-        # Check for updates in CIP
-        # autoUpdate = SlicerUtil.settingGetOrSetDefault("ACIL_GetImage", "AutoUpdate", 1)
-        # uw = CIPUI.AutoUpdateWidget(parent=self.parent, autoUpdate=autoUpdate)
-        # uw.addAutoUpdateCheckObserver(self.onAutoUpdateStateChanged)
 
         # Add vertical spacer
         self.layout.addStretch(1)
 
         # Connections
-        self.downloadCaseButton.connect('clicked (bool)', self.onDownloadCaseButton)
+        self.downloadCaseButton.connect('clicked (bool)', self.onDownloadCaseButtonClicked)
+        self.resumeCaseListButton.connect('clicked (bool)', self.onResumeCaseListButtonClicked)
+
         self.caseListRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onCaseListRadioButtonClicked)
         self.rbgStudy.connect("buttonClicked (QAbstractButton*)", self.onRbStudyClicked)
         self.txtOtherStudy.connect("textEdited (QString)", self.onTxtOtherStudyEdited)
@@ -1055,7 +1055,7 @@ class CaseNavigatorWidget(object):
         # self.prevCaseButton.connect('clicked()', self.onNextCaseClicked)
         self.nextCaseButton.connect('clicked()', self.onNextCaseClicked)
 
-        self.__loadLastState__()
+        self._loadLastState_()
 
 
     def __initEvents__(self):
@@ -1078,12 +1078,48 @@ class CaseNavigatorWidget(object):
         for callback in (item[1] for item in self.eventsCallbacks if item[0] == eventType):
             callback(*params)
 
-    def __loadLastState__(self):
+    def _getCurrentState_(self):
         """ Load the last session information
+        :return:
+        """
+        state = {}
+        state["Server"] = self.txtServer.text
+        state["ServerPath"] = self.txtServerpath.text
+        state["StudyId"] = self.studyId  # TODO: fix
+        state["ImageTypesExtensions"] = self.getSelectedImageTypes()
+        state["LabelmapExtensions"] = self.getSelectedLabelmapTypes()
+        state["LocalStoragePath"] = self.localStoragePath
+        state["CacheOn"] = self.cbCacheMode.checked
+        state["SSHMode"] = self.rbSSH.checked
+        state["PrivateKeySSH"] = self.txtPrivateKeySSH.text
+        return state
+
+    def _loadLastState_(self):
+        """ Load the last state saved in the settings
         :return:
         """
         # TODO: implement
         pass
+
+
+
+    def _saveCurrentState_(self):
+        """ Save the current state of the module
+        :return:
+        """
+        # TODO: implement with all the settings
+         # Saves the current value of the sshKey to reuse it in future sessions
+        SlicerUtil.setSetting("ACIL_CaseNavigator", "sshKey", self.txtPrivateKeySSH.text)
+
+    def getSelectedImageTypes(self):
+        return self.__getSelectedCheckboxes__(self.imageTypes, self.cbsImageTypes)
+
+    def getSelectedLabelmapTypes(self):
+        return self.__getSelectedCheckboxes__(self.labelMapTypes, self.cbsLabelMapTypes)
+
+    def __getSelectedCheckboxes__(self, types, checkBoxes):
+        return [types[cb.text] for cb in filter(lambda check: check.isChecked(), checkBoxes)]
+
 
     ######
     # EVENTS
@@ -1091,22 +1127,24 @@ class CaseNavigatorWidget(object):
     def onCaseListRadioButtonClicked(self, button):
         self.caseListFrame.visible = self.caseListRadioButton.checked
 
-    def onDownloadCaseButton(self):
+    def onDownloadCaseButtonClicked(self):
         """Click in download button"""
         # Check if there is a Study and Case introduced
         self.CaseId = self.caseIdTxt.text.strip()
-        if self.CaseId and self.StudyId:
+        if self.CaseId and self.studyId:
             self.lblDownloading.show()
             slicer.app.processEvents()
 
             # Get the selected image types and label maps
-            imageTypes = [self.imageTypes[cb.text] for cb in
-                          filter(lambda check: check.isChecked(), self.cbsImageTypes)]
-            labelMapExtensions = [self.labelMapTypes[cb.text] for cb in
-                                  filter(lambda check: check.isChecked(), self.cbsLabelMapTypes)]
+            # imageTypes = [self.imageTypes[cb.text] for cb in
+            #               filter(lambda check: check.isChecked(), self.cbsImageTypes)]
+            imageTypes = self.getSelectedImageTypes()
+            # labelMapExtensions = [self.labelMapTypes[cb.text] for cb in
+            #                       filter(lambda check: check.isChecked(), self.cbsLabelMapTypes)]
+            labelmapExtensions = self.getSelectedLabelmapTypes()
 
-            result = self.logic.loadCase(self.txtServer.text, self.txtServerpath.text, self.StudyId,
-                                         self.caseIdTxt.text, imageTypes, labelMapExtensions, self.localStoragePath,
+            result = self.logic.loadCase(self.caseIdTxt.text, self.txtServer.text, self.txtServerpath.text,
+                                         self.studyId, imageTypes, labelmapExtensions, self.localStoragePath,
                                          self.cbCacheMode.checkState(), self.rbSSH.isChecked(),
                                          self.txtPrivateKeySSH.text)
             self.lblDownloading.hide()
@@ -1125,21 +1163,28 @@ class CaseNavigatorWidget(object):
         if f:
             self.caseListTxt.text = f
 
+    def onResumeCaseListButtonClicked(self):
+        """ Load the caselist selected and the last case that was loaded
+        :return:
+        """
+        state = self._getCurrentState_()
+        self.logic.readCaseList(self.caseListTxt.text, state)
+
     def onRbStudyClicked(self, button):
         """Study radio buttons clicked (any of them)"""
-        self.StudyId = self.studyIds[button.text]
+        self.studyId = self.studyIds[button.text]
         self.txtOtherStudy.visible = (button.text == "Other")
         if (self.txtOtherStudy.visible):
-            self.StudyId = self.txtOtherStudy.text.strip()
+            self.studyId = self.txtOtherStudy.text.strip()
             # self.checkDownloadButtonEnabled()
+
+    def onTxtOtherStudyEdited(self, text):
+        """Any letter typed in "Other study" text box """
+        self.studyId = text
 
     def onRbgConnectionType(self, button):
         self.txtServer.enabled = self.txtPrivateKeySSH.enabled = self.rbSSH.isChecked()
         # self.txtPrivateKeySSH.enabled = self.rbSSH.checked
-
-    def onTxtOtherStudyEdited(self, text):
-        """Any letter typed in "Other study" text box """
-        self.StudyId = text
 
     def onCleanCacheButtonClicked(self):
         """Clean cache button clicked. Remove all the files in the current local storage path directory"""
@@ -1161,9 +1206,12 @@ class CaseNavigatorWidget(object):
         self.logic.nextCase()
         self.__triggerEvent__(self.EVENT_AFTER_NEXT)
 
+    def exit(self):
+        self._saveCurrentState_()
+
     def cleanup(self):
-        # Saves the current value of the sshKey to reuse it in future sessions
-        SlicerUtil.setSetting("ACIL_GetImage", "sshKey", self.txtPrivateKeySSH.text)
+        self._saveCurrentState_()
+
 
 
 class CaseNavigatorLogic:
@@ -1180,7 +1228,7 @@ class CaseNavigatorLogic:
 
         self.currentCaseIndex = -1
         self.previousCases = None
-        self.bufferSize = 1     # Number of cases to download in advance
+        self.bufferSize = 2     # Number of cases to download in advance
         self.__nextCaseExists__ = None
 
         self.mainCaseTemplate = None   # Default: curent directory/Case.nhdr
@@ -1189,6 +1237,7 @@ class CaseNavigatorLogic:
 
         self.localStoragePath = os.path.join(slicer.app.temporaryPath, "CaseNavigator", parentModuleName)
 
+        self.currentStateDict = None
         if not os.path.exists(self.localStoragePath):
             # Create the directory
             os.makedirs(self.localStoragePath)
@@ -1199,9 +1248,23 @@ class CaseNavigatorLogic:
         # TODO: does this make sense? Try a large case list
         self.loadFullCaseList = True    # By default, read al the cases together
 
-    def readCaseList(self, caseListFullPath):
+    # def __loadState__(self, stateDict):
+    #     self.server = stateDict["Server"]
+    #     self.serverPath = stateDict["ServerPath"]
+    #     self.studyId = stateDict["StudyId"]
+    #     self.imageTypeExtensions = stateDict["ImageTypeExtensions"]
+    #     self.labelmapExtensions = stateDict["LabelmapExtensions"]
+    #     self.localStoragePath = stateDict["LocalStoragePath"]
+    #     self.cacheOn = stateDict["CacheOn"]
+    #     self.sshMode= stateDict["SSHMode"]
+    #     self.privateKeySSH = stateDict["PrivateKeySSH"]
+
+
+
+    def readCaseList(self, caseListFullPath, stateDict):
         """ Load a case list file that will be used to iterate over the cases
         :param caseListFullPath:
+        :param currentCaseIndex: last case that was loaded for this list
         """
         try:
             self.caseListFile = open(caseListFullPath, "r")
@@ -1220,7 +1283,9 @@ class CaseNavigatorLogic:
                 # Useful for very large case lists
                 self.caseListIds = []
             self.listHash = self.__createListHash__(caseListFullPath)
-            self.currentCaseIndex = -1
+            self.currentCaseIndex = -1 if not stateDict.has_key("currentCaseIndex") else stateDict["currentCaseIndex"]  # TODO: save current index in state
+            self.currentStateDict = stateDict
+            self.nextCase()
         except:
             # Error when reading file
             self.caseListFile = None
@@ -1248,7 +1313,7 @@ class CaseNavigatorLogic:
         """
         if SlicerUtil.IsDevelopment:
             print("DEBUG: Downloading next case...")
-            print("DEBUG: current case index: {0}. Current case ID: {1}".format(self.currentCaseIndex, self.currentCaseId))
+            print("DEBUG: current case index: {0}".format(self.currentCaseIndex))
 
         if self.caseListIds is None:
             raise Exception("List is not initialized. First, read a caselist with readCaseList method")
@@ -1261,6 +1326,14 @@ class CaseNavigatorLogic:
         if self.currentCaseId == "":
             # Blank line. End of list
             return False
+
+
+        # Load current case (load in Slicer too)
+        self.loadCaseWithCurrentState(self.currentCaseId, loadInSlicer=True)
+        # self.loadCase(self.currentCaseId, self.currentStateDict["Server"], self.currentStateDict["ServerPath"],
+        #               self.currentStateDict["StudyId"], self.currentStateDict["ImageTypesExtensions"],
+        #               self.currentStateDict["LabelmapExtensions"], self.currentStateDict["LocalStoragePath"],
+        #               self.currentStateDict["CacheOn"], self.currentStateDict["SSHMode"], self.currentStateDict["PrivateKeySSH"])
 
         # Download in background the required files for index+buffer cases
         self.downloadNextCases(self.currentCaseIndex, self.bufferSize)
@@ -1283,13 +1356,16 @@ class CaseNavigatorLogic:
             caseId = self.caseListIds[caseIndex + i + 1].strip()
             if self.currentCaseId == "":
                 return
-            # Build the command to execute
-            downloadCommands = self.commandBuilder.getDownloadCommands(caseId, self.localStoragePath)
-            for command in downloadCommands:
-                print("DEBUG: executing the next download command: " + command)
+            # Load the next case in background
+            self.loadCaseWithCurrentState(caseId, loadInSlicer=False)
 
+    def loadCaseWithCurrentState(self, caseId, loadInSlicer):
+        self.loadCase(caseId, loadInSlicer, self.currentStateDict["Server"], self.currentStateDict["ServerPath"],
+                      self.currentStateDict["StudyId"], self.currentStateDict["ImageTypesExtensions"],
+                      self.currentStateDict["LabelmapExtensions"], self.currentStateDict["LocalStoragePath"],
+                      self.currentStateDict["CacheOn"], self.currentStateDict["SSHMode"], self.currentStateDict["PrivateKeySSH"])
 
-    def loadCase(self, server, serverPath, studyId, caseId, imageTypesExtensions, labelMapExtensions, localStoragePath,
+    def loadCase(self, caseId, loadInSlicer, server, serverPath, studyId, imageTypesExtensions, labelMapExtensions, localStoragePath,
                  cacheOn, sshMode, privateKeySSH):
         """Load all the asked images for a case: main images and label maps.
         Arguments:
@@ -1311,20 +1387,22 @@ class CaseNavigatorLogic:
 
             for ext in imageTypesExtensions:
                 # Download all the volumes (generally just one)
-                locPath = self.downloadNrrdFile(server, serverPath, studyId, patientId, caseId, ext, localStoragePath,
-                                                cacheOn, sshMode, privateKeySSH, self.onVolumeDownloaded)
-                if (SlicerUtil.IsDevelopment): print "Loading volume stored in " + locPath
-                #slicer.util.loadVolume(locPath)
+                locPath = self.downloadNrrdFile(caseId, loadInSlicer, server, serverPath, studyId, patientId, ext, localStoragePath,
+                                                  cacheOn, sshMode, privateKeySSH, self.onVolumeDownloaded)
+                if loadInSlicer:
+                    if (SlicerUtil.IsDevelopment): print "Loading volume stored in " + locPath
+                    slicer.util.loadVolume(locPath)     # TODO: if we want to do this, we have to wait for the CLI to finsih (we probably dont want that)
 
             print ("Labelmap extensions: ", labelMapExtensions)
             # Download all the selected labelmaps
             for ext in labelMapExtensions:
-                locPath = self.downloadNrrdFile(server, serverPath, studyId, patientId, caseId, ext[1],
-                                                localStoragePath, cacheOn, sshMode, privateKeySSH)
-                if (SlicerUtil.IsDevelopment): print "Loading label map stored in " + locPath
-                #(code, vtkLabelmapVolumeNode) = slicer.util.loadLabelVolume(locPath, {}, returnNode=True)  # Braces are needed for Windows compatibility... No comments...
+                locPath = self.downloadNrrdFile(caseId, loadInSlicer, server, serverPath, studyId, patientId, ext[1],
+                                                  localStoragePath, cacheOn, sshMode, privateKeySSH)
+                if loadInSlicer:
+                    (code, vtkLabelmapVolumeNode) = slicer.util.loadLabelVolume(locPath, {}, returnNode=True)  # Braces are needed for Windows compatibility... No comments...
+                    if (SlicerUtil.IsDevelopment): print "Loading label map stored in " + locPath
 
-                #self.splitLabelMap(vtkLabelmapVolumeNode, ext[2], ext[3])
+                    self.splitLabelMap(vtkLabelmapVolumeNode, ext[2], ext[3])
             return Util.OK
         except:
             Util.printLastException()
@@ -1333,8 +1411,8 @@ class CaseNavigatorLogic:
     def onVolumeDownloaded(self):
         print("Volume downloaded")
 
-    def downloadNrrdFile(self, server, serverPath, studyId, patientId, caseId, ext, localStoragePath, cacheOn,
-                         sshMode=True, privateKeySSH=None, callback=None):
+    def downloadNrrdFile(self, caseId, waitForCompletion, server, serverPath, studyId, patientId, ext, localStoragePath, cacheOn,
+                           sshMode=True, privateKeySSH=None, callback=None):
         """Download Header and Raw data in a Nrrd file.
         Returns the full local path for the nhrd file (header)
         """
@@ -1403,61 +1481,15 @@ class CaseNavigatorLogic:
                     #           "{0}/{1}/{2}/{3}/{3}{4}.nhdr".format(serverPath, studyId, patientId, caseId, ext),
                     #           localStoragePath]
 
-            self.executeDowloadCommandCLI(downloadCommand)
+            self.executeDowloadCommandCLI(downloadCommand, waitForCompletion)
             # Download raw data
             downloadCommand = downloadCommand.replace(".nhdr", ".raw.gz")
-            self.executeDowloadCommandCLI(downloadCommand, callback)
+            self.executeDowloadCommandCLI(downloadCommand, waitForCompletion, callback)
         else:
             print "File {0} already cached".format(localFile)
 
         # Return path to the Nrrd header file
         return localFile
-
-
-    # def executeDownloadCommand(self, params):
-    #     """Execute a command to download fisically the file. It will be different depending on the current platform.
-    #     In Unix, we will use the "scp" command.
-    #     In Windows, we will use WinSCP tool (attached to the module in "Resources" folder)
-    #     It returns a tuple: OK/ERROR, StandardOutput, ErrorMessage"""
-    #     if SlicerUtil.IsDevelopment:
-    #         print ("Attempt to download with these params:")
-    #         print (params)
-    #     try:
-    #         out = err = None
-    #
-    #         if (os.sys.platform == "win32"):
-    #             # Hide console window
-    #             startupinfo = subprocess.STARTUPINFO()
-    #             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    #             proc = subprocess.Popen(params, stdout=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo)
-    #             print ("Launch process")
-    #             # Launch the process
-    #             (out, err) = proc.communicate()
-    #             print("End of process")
-    #         else:
-    #             # Preferred method.
-    #             proc = subprocess.Popen(params, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    #             # Launch the process
-    #             (out, err) = proc.communicate()
-    #
-    #         if SlicerUtil.IsDevelopment:
-    #             print "Out: " + out
-    #             print "Err:" + err
-    #         if err:
-    #             print "Error returned by system process: " + err
-    #
-    #     except Exception as ex:
-    #         print "FATAL ERROR IN COPY PROCESS:"
-    #         print ex
-    #         # Fatal error
-    #         return (Util.ERROR, out, err)
-    #
-    #     # In Unix sometimes if there is some error, stderr will contain some value
-    #     if err:
-    #         return (Util.ERROR, out, err)  # ERROR!
-    #
-    #     ## Everything ok
-    #     return (Util.OK, out, err)
 
     def executeDowloadCommand(self, command, onExecuteCommandFinishedCallback=None):
         """Backup function that will be used when the preferred method fails"""
@@ -1466,7 +1498,7 @@ class CaseNavigatorLogic:
         subprocess.check_call(command, shell=True)
         #subprocess.check_call(command.replace(".nhdr", ".raw.gz"), shell=True)
 
-    def executeDowloadCommandCLI(self, command, onExecuteCommandFinishedCallback=None):
+    def executeDowloadCommandCLI(self, command, waitForCompletion, onExecuteCommandFinishedCallback=None):
         """Backup function that will be used when the preferred method fails"""
         if SlicerUtil.IsDevelopment:
             print "Executing the following command through the CLI: " + command
@@ -1476,7 +1508,7 @@ class CaseNavigatorLogic:
         self.invokedCLI = False     # Semaphore to avoid duplicated events
 
         module = slicer.modules.executesystemcommand
-        result = slicer.cli.run(module, None, parameters)
+        result = slicer.cli.run(module, None, parameters, wait_for_completion=waitForCompletion)
 
         # Observer when the state of the process is modified
         result.AddObserver('ModifiedEvent', self.onExecuteCommandCLIStateUpdated)
