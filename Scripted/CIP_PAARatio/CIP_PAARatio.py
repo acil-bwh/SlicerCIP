@@ -215,7 +215,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.moveDownButton.connect('clicked()', self.onMoveDownRuler)
         self.removeButton.connect('clicked()', self.onRemoveRuler)
 
-        self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE, self.onSaveReport)
+        self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
 
 
     def enter(self):
@@ -503,6 +503,8 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
                 a2a = a2[1] if a2 is not None else '',
                 a2s = a2[2] if a2 is not None else ''
             )
+            qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+
 
 
 # CIP_PAARatioLogic

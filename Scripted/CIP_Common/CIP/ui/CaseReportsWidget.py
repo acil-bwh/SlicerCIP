@@ -4,10 +4,10 @@ from __main__ import qt, ctk, slicer
 
 class CaseReportsWidget(object):
     # Events triggered by the widget
-    EVENT_SAVE = 1
-    EVENT_SHOW = 2
-    EVENT_DOWNLOAD = 3
-    EVENT_REMOVE = 4
+    EVENT_SAVE_BUTTON_CLICKED = 1
+    EVENT_SHOW_REPORT = 2
+    #EVENT_DOWNLOAD = 3
+    EVENT_CLEAN_CACHE = 3
 
     def __init__(self, moduleName, columnNames, parent = None):
         """Widget constructor (existing module)"""
@@ -30,7 +30,6 @@ class CaseReportsWidget(object):
         self.saveValuesButton.text = "Save"
         self.layout.addWidget(self.saveValuesButton)
 
-
         self.openButton = ctk.ctkPushButton()
         self.openButton.text = "Open"
         self.layout.addWidget(self.openButton)
@@ -51,14 +50,14 @@ class CaseReportsWidget(object):
     def __initEvents__(self):
         """Init all the structures required for events mechanism"""
         self.eventsCallbacks = list()
-        self.events = [self.EVENT_SAVE, self.EVENT_SHOW, self.EVENT_DOWNLOAD, self.EVENT_REMOVE]
+        self.events = [self.EVENT_SAVE_BUTTON_CLICKED, self.EVENT_SHOW_REPORT, self.EVENT_CLEAN_CACHE]
 
     def addObservable(self, event, callback):
         """Add a function that will be invoked when the corresponding event is triggered.
         The list of possible events are: EVENT_LOAD, EVENT_SAVE, EVENT_SAVEALL.
         Ex: myWidget.addObservable(myWidget.EVENT_LOAD, self.onFileLoaded)"""
         if event not in self.events:
-            raise Exception("Event not recognized. It must be one of these: EVENT_SAVE, EVENT_SHOW, EVENT_DOWNLOAD")
+            raise Exception("Event not recognized. It must be one of these: EVENT_SAVE_BUTTON_CLICKED, EVENT_SHOW_REPORT, EVENT_CLEAN_CACHE")
 
         # Add the event to the list of funcions that will be called when the matching event is triggered
         self.eventsCallbacks.append((event, callback))
@@ -69,31 +68,51 @@ class CaseReportsWidget(object):
         for callback in (item[1] for item in self.eventsCallbacks if item[0] == eventType):
             callback(*params)
 
+    def setColumnNames(self, columnNames):
+        self.logic.columnNames = columnNames
+
     def saveCurrentValues(self, **kwargs):
         self.logic.saveValues(**kwargs)
 
-    def setColumnNames(self, columnNames):
-        self.logic.setColumnNames(columnNames)
 
+    ###############
+    # EVENTS
     def onSave(self):
-        self.__triggerEvent__(self.EVENT_SAVE)
+        """ Trigger the event of saving some stored data.
+        The widget just triggers the signal, it is the responsibility of the parent to save the desired data
+        :return:
+        """
+        self.__triggerEvent__(self.EVENT_SAVE_BUTTON_CLICKED)
+
 
     def onExport(self):
+        """ Export the current csv file to a customized and formatted file
+        :return:
+        """
         fileName = qt.QFileDialog.getSaveFileName(self.parent, "Export to CSV file")
         if fileName:
             self.logic.exportCSV(fileName)
+            qt.QMessageBox.information(slicer.util.mainWindow(), 'Data exported', 'The data were exported successfully')
+
 
     def onShowStoredData(self):
+        """ Show the dialog window with all the information stored so far
+        :return:
+        """
         self.reportWindow.load(self.logic.columnNamesExtended, self.logic.loadValues())
         self.reportWindow.show()
+        self.__triggerEvent__(self.EVENT_SHOW_REPORT)
 
     def onRemoveStoredData(self):
+        """ Remove the current csv file
+        :return:
+        """
         if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Remove stored data',
                 'Are you sure you want to remove the saved csv data?',
                 qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
             self.logic.remove()
-            qt.QMessageBox.information(slicer.util.mainWindow(), 'Data removed', 'The data were removed succesfully')
-            self.__triggerEvent__(self.EVENT_REMOVE)
+            qt.QMessageBox.information(slicer.util.mainWindow(), 'Data removed', 'The data were removed successfully')
+            self.__triggerEvent__(self.EVENT_CLEAN_CACHE)
 
 
 class CaseReportsLogic(object):
@@ -108,22 +127,32 @@ class CaseReportsLogic(object):
     @property
     def columnNames(self):
         return self.__columnNames__
-
-    def setColumnNames(self, columnNames):
-        self.__columnNames__ = columnNames
+    @columnNames.setter
+    def columnNames(self, value):
+        self.__columnNames__ = value
 
     @property
     def columnNamesExtended(self):
+        """ Column names with the date (timestamp) added as the first column
+        :return:
+        """
         columns = ["Date"]
         columns.extend(self.columnNames)
         return columns
 
     @property
     def _csvFilePath_(self):
+        """ Path of the file that contains all the data
+        :return: Path of the file that contains all the data
+        """
         return self.__csvFilePath__
 
 
     def saveValues(self, **kwargs):
+        """ Save a new row of information in the current csv file that stores the data  (from a dictionary of items)
+        :param kwargs: dictionary of values
+        :return:
+        """
         # Check that we have all the "columns"
         if len(kwargs) != len(self.columnNames):
             print("There is a wrong number of arguments. Total columns: {0}. Columns passed: {1}".format(len(self.columnNames), len(kwargs)))
@@ -148,6 +177,11 @@ class CaseReportsLogic(object):
 
 
     def exportCSV(self, filePath):
+        """ Export the information stored in the current csv file that is storing the data to a better
+        formatted csv file in a location chosen by the user
+        :param filePath: destination of the file (full path)
+        :return:
+        """
         if os.path.exists(self._csvFilePath_):
             with open(self._csvFilePath_, 'r+b') as csvfileReader:
                 reader = csv.reader(csvfileReader)
@@ -161,6 +195,9 @@ class CaseReportsLogic(object):
             return False
 
     def loadValues(self):
+        """ Load all the information stored in the csv file
+        :return: list of lists (rows/colums)
+        """
         data = []
         if os.path.exists(self._csvFilePath_):
             with open(self._csvFilePath_, 'r+b') as csvfileReader:
@@ -168,6 +205,17 @@ class CaseReportsLogic(object):
                 for row in reader:
                     data.append(row)
         return data
+
+    def getLastRow(self):
+        """ Return the last row of data that was stored in the csv file
+        :return: list with the information of a single row
+        """
+        if os.path.exists(self._csvFilePath_):
+            with open(self._csvFilePath_, 'r+b') as csvfileReader:
+                reader = csv.reader(csvfileReader)
+                return reader.next()
+        # Error case
+        return None
 
     def remove(self):
         if os.path.exists(self._csvFilePath_):
@@ -177,6 +225,9 @@ class CaseReportsLogic(object):
 
 
 class CaseReportsWindow(qt.QWidget):
+    """ Class that show a window dialog with a table that will display all the information loaded
+    for the state of this module
+    """
     def __init__(self, parent):
         super(CaseReportsWindow, self).__init__()
 
@@ -202,6 +253,10 @@ class CaseReportsWindow(qt.QWidget):
 
 
     def load(self, columnNames, data):
+        """ Load all the information displayed in the table
+        :param columnNames: list of column names
+        :param data: list of rows, each of them with one value per column
+        """
         self.items = []
 
         self.statisticsTableModel = qt.QStandardItemModel()
