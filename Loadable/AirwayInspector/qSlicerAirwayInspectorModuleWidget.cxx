@@ -35,6 +35,7 @@
 #include "vtkImageMapper.h"
 #include "vtkLookupTable.h"
 #include "vtkMatrix4x4.h"
+#include "vtkImageReader.h"
 
 #include "QPainter.h"
 #include "QMainWindow.h"
@@ -71,13 +72,16 @@ qSlicerAirwayInspectorModuleWidget::qSlicerAirwayInspectorModuleWidget(QWidget* 
   this->interactorCallBackCommand->SetCallback(
       qSlicerAirwayInspectorModuleWidget::DoInteractorCallback);
   this->interactorCallBackCommand->SetClientData(this);
+
+  this->Renderer =
+    vtkSmartPointer<vtkRenderer>::New();
 }
 
 //-----------------------------------------------------------------------------
 qSlicerAirwayInspectorModuleWidget::~qSlicerAirwayInspectorModuleWidget()
 {
   // Remove observers
-  this->removeInteractorObservers();
+  //this->removeInteractorObservers();
 }
 //-----------------------------------------------------------------------------
 void qSlicerAirwayInspectorModuleWidget::setup()
@@ -86,18 +90,19 @@ void qSlicerAirwayInspectorModuleWidget::setup()
   d->setupUi(this);
 
   // VTK/Qt
-  vtkSmartPointer<vtkRenderer> renderer =
-    vtkSmartPointer<vtkRenderer>::New();
+
   d->qvtkWidget = new QVTKWidget;
-  d->qvtkWidget->GetRenderWindow()->AddRenderer(renderer);
+  d->qvtkWidget->GetRenderWindow()->AddRenderer(this->Renderer);
   d->qvtkWidget->setFixedSize(200,200);
   d->reportCollapsibleButton->layout()->addWidget(d->qvtkWidget);
+
+  //d->ReportTable
 
   QObject::connect(d->InputVolumeComboBox, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
                    this, SLOT(setMRMLVolumeNode(vtkMRMLNode*)));
 
-  QObject::connect(d->AirwayComboBox, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
-                   this, SLOT(setMRMLAirwayNode(vtkMRMLNode*)));
+  QObject::connect(d->AnalyzeButton, SIGNAL(pressed()),
+                   this, SLOT(analyzePressed()));
 }
 
 //-----------------------------------------------------------------------------
@@ -289,7 +294,7 @@ void qSlicerAirwayInspectorModuleWidget::setMRMLVolumeNode(vtkMRMLNode* mrmlNode
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerAirwayInspectorModuleWidget::setMRMLAirwayNode(vtkMRMLNode* mrmlNode)
+void qSlicerAirwayInspectorModuleWidget::analyzePressed()
 {
   Q_D(qSlicerAirwayInspectorModuleWidget);
 
@@ -299,6 +304,9 @@ void qSlicerAirwayInspectorModuleWidget::setMRMLAirwayNode(vtkMRMLNode* mrmlNode
   vtkSlicerAirwayInspectorModuleLogic *airwayLogic = vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
   if (airwayLogic && airwayNode)
     {
+    airwayNode->SetMethod(d->MethodComboBox->currentIndex());
+    airwayNode->SetReformat(d->ReformatCheckBox->isChecked());
+    airwayNode->SetThreshold(d->ThresholdSpinBox->value());
     airwayLogic->CreateAirway(airwayNode);
     }
 
@@ -315,6 +323,9 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
     }
 
   // report the results
+  d->ReportTable->setColumnCount(4);
+  d->ReportTable->setRowCount(16);
+
   d->MinSpinBox->setValue(airwayNode->GetMin());
   d->MaxSpinBox->setValue(airwayNode->GetMax());
   d->MeanSpinBox->setValue(airwayNode->GetMean());
@@ -322,23 +333,30 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
 
   vtkImageData *image= airwayNode->GetAirwayImage();
 
-  vtkRenderer *renderer= d->qvtkWidget->GetRenderWindow()->GetRenderers()->GetFirstRenderer();
+  //vtkImageReader *reader = vtkImageReader::New();
+  //reader->SetFileName("C:\\tmp\\foo.png");
+  //reader->Update();
+  //vtkImageData *image1 = reader->GetOutput();
 
-  renderer->RemoveAllViewProps();
+  //vtkImageData *image1 = vtkImageData::New();
+  //this->createColorImage(image1);
+
+  this->Renderer->RemoveAllViewProps();
 
   vtkSmartPointer<vtkImageMapper> imageMapper = vtkSmartPointer<vtkImageMapper>::New();
 
   imageMapper->SetInputData(image);
 
-  imageMapper->SetColorWindow(255);
-  imageMapper->SetColorLevel(127.5);
+  imageMapper->SetColorWindow(256);
+  imageMapper->SetColorLevel(128);
 
   vtkSmartPointer<vtkActor2D> imageActor = vtkSmartPointer<vtkActor2D>::New();
   imageActor->SetMapper(imageMapper);
 
-  //renderer->AddViewProp(imageActor);
-  renderer->AddActor2D(imageActor);
-  //renderer->Render();
+  //this-Renderer->AddViewProp(imageActor);
+  this->Renderer->AddActor2D(imageActor);
+
+  this->Renderer->Render();
   d->qvtkWidget->GetRenderWindow()->Render();
 
     /***
@@ -360,4 +378,39 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
     d->ImageLabel->show();
     }
     ***/
+}
+
+void qSlicerAirwayInspectorModuleWidget::createColorImage(vtkImageData* image)
+{
+  unsigned int dim = 256;
+
+  image->SetDimensions(dim, dim, 1);
+#if VTK_MAJOR_VERSION <= 5
+  image->SetNumberOfScalarComponents(3);
+  image->SetScalarTypeToUnsignedChar();
+  image->AllocateScalars();
+#else
+  image->AllocateScalars(VTK_UNSIGNED_CHAR,3);
+#endif
+  for(unsigned int x = 0; x < dim; x++)
+    {
+    for(unsigned int y = 0; y < dim; y++)
+      {
+      unsigned char* pixel = static_cast<unsigned char*>(image->GetScalarPointer(x,y,0));
+      if(x < dim/2)
+	    {
+	    pixel[0] = 200;
+	    pixel[1] = 0;
+	    }
+          else
+	    {
+	    pixel[0] = 0;
+	    pixel[1] = 200;
+	    }
+
+      pixel[2] = 0;
+      }
+    }
+
+  image->Modified();
 }

@@ -104,50 +104,81 @@
        </widget>
       </item>
       <item row="2" column="0">
-        <widget class="QLabel" name="label_10">
-          <property name="text">
-            <string>Threshold</string>
-          </property>
-        </widget>
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>Threshold</string>
+        </property>
+       </widget>
       </item>
       <item row="2" column="1">
-        <widget class="ctkSliderWidget" name="ThresholdSpinBox" native="true">
-          <property name="singleStep" stdset="0">
-            <double>0.010000000000000</double>
-          </property>
-          <property name="maximum" stdset="0">
-            <double>10.000000000000000</double>
-          </property>
-          <property name="value" stdset="0">
-            <double>2.500000000000000</double>
-          </property>
-        </widget>
+       <widget class="ctkSliderWidget" name="ThresholdSpinBox" native="true">
+        <property name="singleStep" stdset="0">
+         <double>0.010000000000000</double>
+        </property>
+        <property name="maximum" stdset="0">
+         <double>10.000000000000000</double>
+        </property>
+        <property name="value" stdset="0">
+         <double>2.500000000000000</double>
+        </property>
+       </widget>
       </item>
       <item row="3" column="0">
-       <widget class="QLabel" name="VisibilityLabel">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
+       <widget class="QLabel" name="label">
         <property name="text">
-         <string>Vuisibility:</string>
+         <string>Method</string>
         </property>
        </widget>
       </item>
       <item row="3" column="1">
-       <widget class="QToolButton" name="VisibilityButton">
+       <widget class="QComboBox" name="MethodComboBox">
+        <item>
+         <property name="text">
+          <string>FWHN</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Zero Crossing</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>PC - Single Kernel</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>PC - Multiple Kernels</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>Compute Center</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Reformat Along the Axis</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QCheckBox" name="ReformatCheckBox">
         <property name="text">
          <string/>
         </property>
-        <property name="icon">
-         <iconset resource="../../../../../Libs/MRML/Widgets/Resources/qMRMLWidgets.qrc">
-          <normaloff>:/Icons/VisibleOff.png</normaloff>
-          <normalon>:/Icons/VisibleOn.png</normalon>:/Icons/VisibleOff.png</iconset>
-        </property>
-        <property name="checkable">
-         <bool>true</bool>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QCheckBox" name="ComputeCenterCheckBox">
+        <property name="text">
+         <string/>
         </property>
        </widget>
       </item>
@@ -188,7 +219,7 @@
         </property>
        </widget>
       </item>
-     <item row="0" column="1">
+      <item row="0" column="1">
        <widget class="qMRMLNodeComboBox" name="AirwayComboBox" native="true">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
@@ -212,61 +243,71 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="0">
+      <item row="3" column="0">
        <widget class="QLabel" name="MinLabel">
         <property name="text">
          <string>Min</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
-        <widget class="QSpinBox" name="MinSpinBox">
-          <property name="enabled">
-            <bool>false</bool>
-          </property>
-        </widget>
+      <item row="3" column="1">
+       <widget class="QSpinBox" name="MinSpinBox">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+       </widget>
       </item>
-      <item row="2" column="0">
+      <item row="4" column="0">
        <widget class="QLabel" name="MaxLabel">
         <property name="text">
          <string>Max</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="1">
-        <widget class="QSpinBox" name="MaxSpinBox">
-          <property name="enabled">
-            <bool>false</bool>
-          </property>
-        </widget>
+      <item row="4" column="1">
+       <widget class="QSpinBox" name="MaxSpinBox">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+       </widget>
       </item>
-      <item row="3" column="0">
+      <item row="5" column="0">
        <widget class="QLabel" name="MeanLabel">
         <property name="text">
          <string>Mean</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="1">
-        <widget class="QSpinBox" name="MeanSpinBox">
-          <property name="enabled">
-            <bool>false</bool>
-          </property>
-        </widget>
+      <item row="5" column="1">
+       <widget class="QSpinBox" name="MeanSpinBox">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+       </widget>
       </item>
-      <item row="4" column="0">
+      <item row="6" column="0">
        <widget class="QLabel" name="StdLabel">
         <property name="text">
          <string>Std</string>
         </property>
        </widget>
       </item>
-      <item row="4" column="1">
-        <widget class="QSpinBox" name="StdSpinBox">
-          <property name="enabled">
-            <bool>false</bool>
-          </property>
-        </widget>
+      <item row="6" column="1">
+       <widget class="QSpinBox" name="StdSpinBox">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QPushButton" name="AnalyzeButton">
+        <property name="text">
+         <string>Analyze Selected Airway</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QTableWidget" name="ReportTable"/>
       </item>
      </layout>
     </widget>
@@ -288,11 +329,6 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QVTKWidget</class>
-   <extends>QWidget</extends>
-   <header>QVTKWidget.h</header>
-  </customwidget>
-  <customwidget>
    <class>qMRMLNodeComboBox</class>
    <extends>QWidget</extends>
    <header>qMRMLNodeComboBox.h</header>
@@ -309,6 +345,11 @@
    <extends>QWidget</extends>
    <header>ctkCollapsibleButton.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ctkSliderWidget</class>
+   <extends>QWidget</extends>
+   <header>ctksliderwidget.h</header>
   </customwidget>
  </customwidgets>
  <resources>
@@ -349,7 +390,4 @@
    </hints>
   </connection>
  </connections>
- <buttongroups>
-  <buttongroup name="TechniqueButtonGroup"/>
- </buttongroups>
 </ui>

@@ -60,8 +60,9 @@ vtkMRMLAirwayNode::vtkMRMLAirwayNode()
   InnerContour = 0;
   OuterContour = 0;
 
+  this->SetMethodToPhaseCongruency();
   this->AxisMode = HESSIAN;
-  this->Reformat = 1;
+  this->Reformat = 0;
 
   this->SegmentPercentage = 0.5;
   this->Resolution = 0.1;

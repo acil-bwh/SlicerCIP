@@ -25,6 +25,8 @@
 #include <vtkImageResliceWithPlane.h>
 #include <vtkComputeAirwayWall.h>
 
+#include <vtkNRRDWriter.h>
+
 // STD includes
 #include <algorithm>
 #include <string>
@@ -49,11 +51,17 @@ vtkSlicerAirwayInspectorModuleLogic::vtkSlicerAirwayInspectorModuleLogic()
   this->SelfTuneModelSharp[0]=0.0020;
   this->SelfTuneModelSharp[1]=493.6570;
   this->SelfTuneModelSharp[2]=2.9639;
+
+  this->Reslicer = vtkImageResliceWithPlane::New();
+  this->WallSolver = vtkComputeAirwayWall::New();
+  this->WallSolver->SetMethod(1);
 }
 
 //-----------------------------------------------------------------------------
 vtkSlicerAirwayInspectorModuleLogic::~vtkSlicerAirwayInspectorModuleLogic()
 {
+  this->Reslicer->Delete();
+  this->WallSolver->Delete();
 }
 
 //-----------------------------------------------------------------------------
@@ -81,6 +89,7 @@ vtkMRMLAirwayNode* vtkSlicerAirwayInspectorModuleLogic::AddAirwayNode(char *volu
   return airwayNode;
 }
 
+////////////////////////////
 void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
 {
   vtkMRMLScalarVolumeNode *volumeNode = vtkMRMLScalarVolumeNode::SafeDownCast(
@@ -91,7 +100,6 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
     }
 
   vtkImageData *inputImage = volumeNode->GetImageData();
-  vtkComputeAirwayWall *wallSolver = vtkComputeAirwayWall::New();
 
   double orig[3];
   int dim[3];
@@ -104,45 +112,45 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
   double resolution = node->GetResolution();
 
   //Create helper objects
-  vtkImageResliceWithPlane *reslicer = vtkImageResliceWithPlane::New();
   // Set up options
   if (node->GetReformat())
     {
-    reslicer->InPlaneOff();
+    this->Reslicer->InPlaneOff();
     }
   else
     {
-    reslicer->InPlaneOn();
+    this->Reslicer->InPlaneOn();
     }
 
-  reslicer->SetInputData(inputImage);
-  reslicer->SetInterpolationModeToCubic();
-  reslicer->ComputeCenterOff();
-  reslicer->SetDimensions(256,256,1);
-  reslicer->SetSpacing(resolution,resolution,resolution);
-  reslicer->ComputeAxesOn();
+  this->Reslicer->SetInputData(inputImage);
+  this->Reslicer->SetInterpolationModeToCubic();
+  this->Reslicer->ComputeCenterOff();
+  this->Reslicer->SetDimensions(256,256,1);
+  this->Reslicer->SetSpacing(resolution,resolution,resolution);
+  //this->Reslicer->ComputeAxesOn();
+  this->Reslicer->ComputeAxesOff();
 
   /***
   switch(this->GetAxisMode()) {
     case VTK_HESSIAN:
-      reslicer->ComputeAxesOn();
+      this->Reslicer->ComputeAxesOn();
       break;
     case VTK_POLYDATA:
       if (input->GetLines() == NULL) {
-        reslicer->ComputeAxesOn();
+        this->Reslicer->ComputeAxesOn();
         this->SetAxisMode(VTK_HESSIAN);
       } else {
         this->ComputeAirwayAxisFromLines();
-        reslicer->ComputeAxesOff();
+        this->Reslicer->ComputeAxesOff();
       }
       break;
     case VTK_VECTOR:
       if (input->GetPointData()->GetVectors() == NULL)
        {
-        reslicer->ComputeAxesOn();
+        this->Reslicer->ComputeAxesOn();
         this->SetAxisMode(VTK_HESSIAN);
        } else {
-        reslicer->ComputeAxesOff();
+        this->Reslicer->ComputeAxesOff();
 	cout<<"Using vectors"<<endl;
        }
       break;
@@ -160,13 +168,13 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
 
   std::string methodTag;
 
-  if (wallSolver->GetMethod() == 0)
+  if (this->WallSolver->GetMethod() == 0)
   {
     methodTag = "FWHM";
-  } else if (wallSolver->GetMethod() == 1)
+  } else if (this->WallSolver->GetMethod() == 1)
   {
     methodTag = "ZC";
-  } else if (wallSolver->GetMethod() == 2)
+  } else if (this->WallSolver->GetMethod() == 2)
   {
     methodTag = "PC";
   }
@@ -196,7 +204,7 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
   ellipse = vtkDoubleArray::New();
   ellipse->SetName(name.str().c_str());
 
-  int nc = wallSolver->GetNumberOfQuantities();
+  int nc = this->WallSolver->GetNumberOfQuantities();
   int np = 1;
 
   mean->SetNumberOfComponents(nc);
@@ -229,20 +237,19 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
   ijk[1] = tmp[1];
   ijk[2] = tmp[2];
 
-  //reslicer->SetCenter(0.5+(p[0]+orig[0])/sp[0],511-((p[1]+orig[1])/sp[1])+0.5,(p[2]-orig[2])/sp[2]);
+  //this->Reslicer->SetCenter(0.5+(p[0]+orig[0])/sp[0],511-((p[1]+orig[1])/sp[1])+0.5,(p[2]-orig[2])/sp[2]);
   //ijk[0]=(p[0]-orig[0])/sp[0] ;
   //ijk[1]= (dim[1]-1) - (p[1]-orig[1])/sp[1];  // j coordinate has to be reflected (vtk origin is lower left and DICOM origing is upper left).
   //ijk[2]=(p[2]-orig[2])/sp[2];
 
   std::cout <<"Center Ijk: "<<ijk[0]<<" "<<ijk[1]<<" "<<ijk[2]<<std::endl;
-  inputImage->Print(std::cout);
 
-  reslicer->SetCenter(ijk[0],ijk[1],ijk[2]);
+  this->Reslicer->SetCenter(ijk[0],ijk[1],ijk[2]);
 
   /***
    switch(this->GetAxisMode()) {
      case VTK_HESSIAN:
-       reslicer->ComputeAxesOn();
+       this->Reslicer->ComputeAxesOn();
        break;
      case VTK_POLYDATA:
        z[0]=this->AxisArray->GetComponent(0,0);
@@ -250,9 +257,9 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
        z[2]=this->AxisArray->GetComponent(0,2);
        //cout<<"Tangent: "<<z[0]<<" "<<z[1]<<" "<<z[2]<<endl;
        vtkMath::Perpendiculars(z,x,y,0);
-       reslicer->SetXAxis(x);
-       reslicer->SetYAxis(y);
-       reslicer->SetZAxis(z);
+       this->Reslicer->SetXAxis(x);
+       this->Reslicer->SetYAxis(y);
+       this->Reslicer->SetZAxis(z);
        break;
      case VTK_VECTOR:
        z[0]=input->GetPointData()->GetVectors()->GetComponent(0,0);
@@ -261,29 +268,38 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
        //cout<<"Tangent: "<<z[0]<<" "<<z[1]<<" "<<z[2]<<endl;
 
        vtkMath::Perpendiculars(z,x,y,0);
-       reslicer->SetXAxis(x);
-       reslicer->SetYAxis(y);
-       reslicer->SetZAxis(z);
+       this->Reslicer->SetXAxis(x);
+       this->Reslicer->SetYAxis(y);
+       this->Reslicer->SetZAxis(z);
        break;
    }
    **/
 
    //cout<<"Before reslice"<<endl;
-   reslicer->Update();
+   this->Reslicer->Update();
    //cout<<"After reslice"<<endl;
 
-   reslicer->GetOutput()->Print(std::cout);
+   vtkImageData *img = this->Reslicer->GetOutput();
 
-   wallSolver->SetInputData(reslicer->GetOutput());
+   double val = img->GetScalarComponentAsDouble(128, 128, 0, 0);
 
-   //wallSolver->SetInputData(reslicer->GetOutput());
+   vtkNRRDWriter *writer = vtkNRRDWriter::New();
+   writer->SetFileName("C:\\tmp\\airay_slice.nrrd");
+   writer->SetInputData(img);
+   writer->Write();
+
+   //this->Reslicer->GetOutput()->Print(std::cout);
+
+   this->WallSolver->SetInputData(this->Reslicer->GetOutput());
+
+   //this->WallSolver->SetInputData(this->Reslicer->GetOutput());
    //Maybe we have to update the threshold depending on the center value.
-   if (wallSolver->GetMethod()==2)
+   if (this->WallSolver->GetMethod()==2)
    {
      // Use self tune phase congruency
      vtkComputeAirwayWall *tmp = vtkComputeAirwayWall::New();
-     this->SetWallSolver(wallSolver,tmp);
-     tmp->SetInputData(reslicer->GetOutput());
+     this->SetWallSolver(this->WallSolver,tmp);
+     tmp->SetInputData(this->Reslicer->GetOutput());
      tmp->ActivateSectorOff();
      tmp->SetBandwidth(1.577154);
      tmp->SetNumberOfScales(12);
@@ -314,34 +330,34 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
          break;
      }
      ml = exp(factors[0]*pow(log(wt*factors[1]),factors[2]));
-     wallSolver->SetMultiplicativeFactor(ml);
+     this->WallSolver->SetMultiplicativeFactor(ml);
    }
 
    //cout<<"Update solver"<<endl;
-   wallSolver->Update();
+   this->WallSolver->Update();
    //cout<<"Done solver"<<endl;
 
-   //cout<<"Ellipse fitting 1: "<<wallSolver->GetInnerContour()->GetNumberOfPoints()<<endl;
-   if (wallSolver->GetInnerContour()->GetNumberOfPoints() >= 3)
+   //cout<<"Ellipse fitting 1: "<<this->WallSolver->GetInnerContour()->GetNumberOfPoints()<<endl;
+   if (this->WallSolver->GetInnerContour()->GetNumberOfPoints() >= 3)
    {
-     eifit->SetInputData(wallSolver->GetInnerContour());
+     eifit->SetInputData(this->WallSolver->GetInnerContour());
      eifit->Update();
    }
-   //cout<<"Ellipse fitting 2: "<<wallSolver->GetOuterContour()->GetNumberOfPoints()<<endl;
-    if (wallSolver->GetOuterContour()->GetNumberOfPoints() >= 3)
+   //cout<<"Ellipse fitting 2: "<<this->WallSolver->GetOuterContour()->GetNumberOfPoints()<<endl;
+    if (this->WallSolver->GetOuterContour()->GetNumberOfPoints() >= 3)
     {
-      eofit->SetInputData(wallSolver->GetOuterContour());
+      eofit->SetInputData(this->WallSolver->GetOuterContour());
       eofit->Update();
     }
    //cout<<"Done ellipse fitting"<<endl;
 
    // Collect results and assign them to polydata
-   for (int c = 0; c < wallSolver->GetNumberOfQuantities();c++)
+   for (int c = 0; c < this->WallSolver->GetNumberOfQuantities();c++)
    {
-     mean->SetComponent(0,c,wallSolver->GetStatsMean()->GetComponent(2*c,0));
-     std->SetComponent(0,c,wallSolver->GetStatsMean()->GetComponent((2*c)+1,0));
-     min->SetComponent(0,c,wallSolver->GetStatsMinMax()->GetComponent(2*c,0));
-     max->SetComponent(0,c,wallSolver->GetStatsMinMax()->GetComponent((2*c)+1,0));
+     mean->SetComponent(0,c,this->WallSolver->GetStatsMean()->GetComponent(2*c,0));
+     std->SetComponent(0,c,this->WallSolver->GetStatsMean()->GetComponent((2*c)+1,0));
+     min->SetComponent(0,c,this->WallSolver->GetStatsMinMax()->GetComponent(2*c,0));
+     max->SetComponent(0,c,this->WallSolver->GetStatsMinMax()->GetComponent((2*c)+1,0));
    }
 
    ellipse->SetComponent(0,0,eifit->GetMinorAxisLength()*resolution);
@@ -352,14 +368,16 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
    ellipse->SetComponent(0,5,eofit->GetAngle());
 
    vtkImageData *airwayImage = vtkImageData::New();
-   this->CreateAirwayImage(reslicer->GetOutput(),eifit,eofit,airwayImage);
+   this->CreateAirwayImage(this->Reslicer->GetOutput(),eifit,eofit,airwayImage);
 
    //if (node->GetSaveAirwayImage())
    node->SetAirwayImagePrefix("C:\\tmp\\airwayImage");
-   if (1)
+   if (0)
    {
      char fileName[10*256];
      vtkPNGWriter *writer = vtkPNGWriter::New();
+     unsigned char *val = (unsigned char *)airwayImage->GetScalarPointer(128,128,0);
+     //writer->SetInputData(this->Reslicer->GetOutput());
      writer->SetInputData(airwayImage);
      sprintf(fileName,"%s%03lld.png",node->GetAirwayImagePrefix(),0);
      writer->SetFileName(fileName);
@@ -400,17 +418,23 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirwayImage(vtkImageData *reslic
   rgbFilter->SetInputData(resliceCT);
   rgbFilter->SetOutputFormatToRGB();
 
+  double *range = resliceCT->GetScalarRange();
+
   lut->SetSaturationRange(0,0);
   lut->SetHueRange(0,0);
   lut->SetValueRange(0,1);
-  lut->SetTableRange(-150,1500);
+  //lut->SetTableRange(-150,1500);
+  lut->SetTableRange(range[0], range[1]);
   lut->Build();
   rgbFilter->SetLookupTable(lut);
 
   rgbFilter->Update();
 
-  //Set Image voxels based on ellipse information
   vtkImageData *rgbImage=rgbFilter->GetOutput();
+
+  //Set Image voxels based on ellipse information
+
+  /***
   double sp[3];
   rgbImage->GetSpacing(sp);
   int npoints=128;
@@ -452,7 +476,7 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirwayImage(vtkImageData *reslic
       rgbImage->SetScalarComponentFromFloat(round(px),round(py),0,colorChannel[ii],255);
     }
   }
-
+  **/
   airwayImage->DeepCopy(rgbImage);
 
   lut->Delete();

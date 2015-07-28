@@ -30,8 +30,10 @@
 #include <vtkSmartPointer.h>
 
 class qSlicerAirwayInspectorModuleWidgetPrivate;
+class vtkImageData;
 class vtkMRMLNode;
 class vtkRenderWindowInteractor;
+class vtkRenderer;
 class vtkMRMLSliceNode;
 class vtkMRMLAirwayNode;
 
@@ -68,16 +70,18 @@ protected:
   void addAndObserveInteractor(vtkRenderWindowInteractor* newInteractor,
                                 vtkMRMLSliceNode* snode);
   void updateReport(vtkMRMLAirwayNode* airwayNode);
+  void createColorImage(vtkImageData* image);
 
 protected slots:
   void setMRMLVolumeNode(vtkMRMLNode*);
-  void setMRMLAirwayNode(vtkMRMLNode*);
+  void analyzePressed();
 
 protected:
   QScopedPointer<qSlicerAirwayInspectorModuleWidgetPrivate> d_ptr;
 
   std::map<vtkRenderWindowInteractor*, vtkMRMLSliceNode*>   interactors;
   vtkSmartPointer<vtkCallbackCommand>       interactorCallBackCommand;
+  vtkSmartPointer<vtkRenderer> Renderer;
 
 private:
   Q_DECLARE_PRIVATE(qSlicerAirwayInspectorModuleWidget);

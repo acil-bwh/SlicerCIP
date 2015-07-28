@@ -135,6 +135,19 @@ public:
   void SetReconstructionToSharp() {this->SetReconstruction(SHARP);};
 
   // Description:
+  // Reconstruction method
+  // 0 = FWHM
+  // 1 = ZeroCrossing
+  // 2 = PhaseCongruency
+  // 3 = PhaseCongruencyMultipleKernels
+  vtkSetMacro(Method,int);
+  vtkGetMacro(Method,int);
+  void SetMethodToFWHM() {this->SetMethod(FWHM);};
+  void SetMethodToZeroCrossing() {this->SetMethod(ZeroCrossing);};
+  void SetMethodToPhaseCongruency() {this->SetMethod(PhaseCongruency);};
+  void SetMethodToPhaseCongruencyMultipleKernels() {this->SetMethod(PhaseCongruencyMultipleKernels);};
+
+  // Description:
   // Save a png image with the airway segmentation results for quality control
   vtkBooleanMacro(SaveAirwayImage,int);
   vtkSetMacro(SaveAirwayImage,int);
@@ -156,6 +169,7 @@ public:
 
   enum AxisMode { HESSIAN, POLYDATA, VECTOR};
   enum ReconstructionMode {SMOOTH, SHARP};
+  enum Method { FWHM, ZeroCrossing, PhaseCongruency, PhaseCongruencyMultipleKernels};
 
 protected:
   vtkMRMLAirwayNode();
@@ -179,6 +193,7 @@ private:
   int    Reformat;
   int    AxisMode;
   int    Reconstruction;
+  int    Method;
   double SegmentPercentage;
   int    SaveAirwayImage;
   char   *AirwayImagePrefix;

@@ -15,6 +15,7 @@ class vtkRenderWindowInteractor;
 class vtkEllipseFitting;
 class vtkMRMLAirwayNode;
 class vtkComputeAirwayWall;
+class vtkImageResliceWithPlane;
 
 /// \ingroup Slicer_QtModules_AirwayInspector
 class VTK_SLICER_AIRWAYINSPECTOR_MODULE_LOGIC_EXPORT vtkSlicerAirwayInspectorModuleLogic
@@ -31,6 +32,9 @@ public:
                                    double threshold);
 
   void CreateAirway(vtkMRMLAirwayNode *node);
+
+  vtkGetObjectMacro (Reslicer, vtkImageResliceWithPlane);
+  vtkGetObjectMacro (WallSolver, vtkComputeAirwayWall);
 
 protected:
 
@@ -49,6 +53,8 @@ protected:
 private:
   double SelfTuneModelSmooth[3];
   double SelfTuneModelSharp[3];
+  vtkImageResliceWithPlane *Reslicer;
+  vtkComputeAirwayWall     *WallSolver;
 };
 
 #endif
