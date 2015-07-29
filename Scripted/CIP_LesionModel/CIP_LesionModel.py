@@ -791,33 +791,6 @@ class CaseNavigatorWidget(object):
     EVENT_BEFORE_PREVIOUS = 5
     EVENT_AFTER_PREVIOUS = 6
 
-
-    # Study ids. Convention: Descriptive text (key) / Name of the folder in MAD
-    studyIds = OrderedDict()
-    studyIds["COPD Gene"] = "COPDGene"
-    studyIds["FHS"] = "FHS"
-    studyIds["ECLIPSE"] = "ECLIPSE"
-    studyIds["Cotton"] = "Cotton"
-    studyIds["BCN"] = "BCN"
-    studyIds["Other"] = "Other"
-
-
-    # Image types
-    imageTypes = OrderedDict()
-    imageTypes["CT"] = ""
-
-
-    # Label maps types with additional configuration.
-    # Convention:
-    # Descriptive text (key)
-    # Checked by default
-    # Files extension (example: case_partialLungLabelMap.nrrd)
-    # Label map Less Significant Byte (description). This will be used to display soem aditional text in the label map after being loaded
-    labelMapTypes = OrderedDict()
-    labelMapTypes["Partial Lung"] = (False, "_partialLungLabelMap", "ChestType", "ChestRegion")
-    labelMapTypes["Body Composition"] = (False, "_bodyComposition", "ChestType", "ChestRegion")
-
-
     def __init__(self, moduleName, parentContainer):
         """Widget constructor (existing module)"""
         if parentContainer is None:
@@ -833,15 +806,29 @@ class CaseNavigatorWidget(object):
         self.setup()
 
     @property
+    def studyIds(self):
+        return self.logic.studyIds
+
+    @property
+    def imageTypes(self):
+        return self.logic.imageTypes
+
+    @property
+    def labelMapTypes(self):
+        return self.logic.labelMapTypes
+
+
+    @property
     def storedColumnNames(self):
         """ Columns that will be stored to keep track of the reviewed cases
         :return:
         """
-        return ["CaseID", "CaseIndex", "ListHash", "ListPath", "Study", "SelectedImageTypes", "SelectedLabelmapTypes",
+        return ["CaseID", "CaseIndex", "TotalNumberOfCases", "ListHash", "ListPath", "Study", "SelectedImageTypes", "SelectedLabelmapTypes",
                 "Server", "ServerPath", "LocalStoragePath", "CacheOn", "SSHMode", "PrivateKeySSH"]
 
+
     def setup(self):
-        self.logic = CaseNavigatorLogic(self.parentModuleName, self.imageTypes, self.labelMapTypes)
+        self.logic = CaseNavigatorLogic(self.parentModuleName)
         self.reportsWidget = CaseReportsWidget(self.parentModuleName, columnNames=self.storedColumnNames)
 
         self.studyId = ""
@@ -947,11 +934,11 @@ class CaseNavigatorWidget(object):
         caseListLayout = qt.QGridLayout()
         self.caseListFrame.setLayout(caseListLayout)
         # caseListLayout.addWidget(qt.QLabel("Current case: "), 0, 0)
-        self.currentCaseLabel = qt.QLabel("Not loaded yet. Please load a case.")
-        caseListLayout.addWidget(self.currentCaseLabel, 0, 1)
+        self.currentCaseLabel = qt.QLabel()
+        caseListLayout.addWidget(self.currentCaseLabel, 0, 0, 1, 3)
 
         self.resumeCaseListButton = ctk.ctkPushButton()
-        self.resumeCaseListButton.text = "Resume list"
+        self.resumeCaseListButton.text = "Load/Resume list"
         caseListLayout.addWidget(self.resumeCaseListButton, 1, 0)
         self.prevCaseButton = ctk.ctkPushButton()
         self.prevCaseButton.text = "Previous"
@@ -1041,7 +1028,7 @@ class CaseNavigatorWidget(object):
         self.cleanCacheButton.connect('clicked (bool)', self.onCleanCacheButtonClicked)
 
 
-        # self.prevCaseButton.connect('clicked()', self.onNextCaseClicked)
+        self.prevCaseButton.connect('clicked()', self.onPrevCaseClicked)
         self.nextCaseButton.connect('clicked()', self.onNextCaseClicked)
 
 
@@ -1058,6 +1045,8 @@ class CaseNavigatorWidget(object):
                 cb.checked = True
             for cb in self.cbsLabelMapTypes:
                 cb.checked = self.labelMapTypes[cb.text][0]
+
+            self.currentCaseLabel.text = "List not loaded. Please click ""Load/Resume list"" button to proceed"
 
             # Local storage (Slicer temporary path)
             self.localStoragePath = "{0}/{1}/CaseNavigator".format(slicer.app.temporaryPath, self.parentModuleName)
@@ -1087,7 +1076,7 @@ class CaseNavigatorWidget(object):
                 self.txtPrivateKeySSH.text = os.path.join(SlicerUtil.getModuleFolder("ACIL_GetImage"), "ACIL_GetImage_Resources", "acil_generic_rsa")
         else:
             # Load values from the last state
-            for button in self.rbgStudy.buttons:
+            for button in self.rbgStudy.buttons():
                 if button.text == state["Study"]:
                     button.checked = True
                     break
@@ -1100,35 +1089,42 @@ class CaseNavigatorWidget(object):
             if state["SelectedImageTypes"] is not None:
                 spl = state["SelectedImageTypes"].split(";")
                 for cb in self.cbsImageTypes:
-                    if spl.contains(cb.text):
-                        cb.checked = True
+                    cb.checked = (cb.text in spl)
 
             if state["SelectedLabelmapTypes"] is not None:
                 spl = state["SelectedLabelmapTypes"].split(";")
                 for cb in self.cbsLabelMapTypes:
-                    if spl.contains(cb.text):
-                        cb.checked = True
+                    cb.checked = (cb.text in spl)
 
             if state["ListHash"] is None:
                 # Single case
                 self.caseIdRadioButton.checked = True
                 if state["CaseID"]:
                     self.caseIdTxt.text = state["CaseID"]
-
             else:
                 # Case list
+                # TODO: display current case
                 self.caseListRadioButton.checked = True
+                self.caseListFrame.visible = True
                 self.caseListTxt.text = state["ListPath"]
                 self.logic.caseListFilePath = state["ListPath"]
                 self.logic.caseListHash = state["ListHash"]
                 self.logic.currentCaseId = state["CaseID"]
                 self.logic.currentStateDict = state
+                self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(state["CaseID"],
+                                                                                      state["CaseIndex"],
+                                                                                      state["TotalNumberOfCases"])
 
-
+            self.localStoragePath = state["LocalStoragePath"]
+            self.txtServer.text = state["Server"]
+            self.txtServerpath.text = state["ServerPath"]
+            self.cbCacheMode.checked = state["CacheOn"]
+            self.rbSSH.checked = state["SSHMode"]
+            self.txtPrivateKeySSH.text = state["PrivateKeySSH"]
 
         if state is not None and state["ListHash"] is not None:
             # Load the last case list and the last case
-            self.logic.readCaseList(state["ListPath"], state)
+            self.logic.readCaseList(state)
 
 
     def addObservable(self, event, callback):
@@ -1155,22 +1151,24 @@ class CaseNavigatorWidget(object):
             # Single Case loaded
             state["CaseID"] = self.caseIdTxt.text
             state["CaseIndex"] = None
+            state["TotalNumberOfCases"] = None
             state["ListHash"] = None
             state["ListPath"] = None
         else:
             state["CaseID"] = self.logic.currentCaseId
             state["CaseIndex"] = self.logic.currentCaseIndex
+            state["TotalNumberOfCases"] = self.logic.totalNumberOfCases
             state["ListHash"] = self.logic.caseListHash
             state["ListPath"] = self.caseListTxt.text
 
-        state["Study"] = self.studyId
+        if self.rbgStudy.checkedButton().text == "Other":
+            state["Study"] = self.studyId
+        else:
+            state["Study"] = self.rbgStudy.checkedButton().text
         state["Server"] = self.txtServer.text
         state["ServerPath"] = self.txtServerpath.text
-        state["ImageTypesExtensions"] = self.getSelectedImageTypes()
-        print("DEBUG: Imahe types: ", state["ImageTypesExtensions"])
-        state["LabelmapExtensions"] = self.getSelectedLabelmapTypes()
-        print("DEBUG: Labelmap types: ", state["LabelmapExtensions"])
-
+        state["SelectedImageTypes"] = self.getSelectedImageTypes()
+        state["SelectedLabelmapTypes"] = self.getSelectedLabelmapTypes()
         state["LocalStoragePath"] = self.localStoragePath
         state["CacheOn"] = self.cbCacheMode.checked
         state["SSHMode"] = self.rbSSH.checked
@@ -1194,19 +1192,20 @@ class CaseNavigatorWidget(object):
         lastRow = self.reportsWidget.logic.getLastRow()
         if lastRow is not None:
             state = {}
-            state["CaseID"] = lastRow[0]
-            state["CaseIndex"] = lastRow[1]
-            state["ListHash"] = lastRow[2]
-            state["ListPath"] = lastRow[3]
-            state["Study"] = lastRow[4]
-            state["SelectedImageTypes"] = lastRow[5]
-            state["SelectedLabelmapTypes"] = lastRow[6]
-            state["Server"] = lastRow[7]
-            state["ServerPath"] = lastRow[8]
-            state["LocalStoragePath"] = lastRow[9]
-            state["CacheOn"] = lastRow[10]
-            state["SSHMode"] = lastRow[11]
-            state["PrivateKeySSH"] = lastRow[12]
+            state["CaseID"] = lastRow[1]
+            state["CaseIndex"] = lastRow[2]
+            state["TotalNumberOfCases"] = lastRow[3]
+            state["ListHash"] = lastRow[4]
+            state["ListPath"] = lastRow[5]
+            state["Study"] = lastRow[6]
+            state["SelectedImageTypes"] = lastRow[7]
+            state["SelectedLabelmapTypes"] = lastRow[8]
+            state["Server"] = lastRow[9]
+            state["ServerPath"] = lastRow[10]
+            state["LocalStoragePath"] = lastRow[11]
+            state["CacheOn"] = lastRow[12]
+            state["SSHMode"] = lastRow[13]
+            state["PrivateKeySSH"] = lastRow[14]
             return state
 
         # No previous state saved
@@ -1218,7 +1217,11 @@ class CaseNavigatorWidget(object):
         :return:
         """
         state = self._getCurrentStateFromUI_()
-        self.reportsWidget.saveValues(state)
+        # Concat the different extensions
+        state["SelectedImageTypes"] = ";".join(state["SelectedImageTypes"])
+        state["SelectedLabelmapTypes"] = ";".join(state["SelectedLabelmapTypes"])
+
+        self.reportsWidget.saveCurrentValues(**state)
 
     def getSelectedImageTypes(self):
         """ Return the keys of the dictionary of image types where the checkbox is selected
@@ -1269,6 +1272,9 @@ class CaseNavigatorWidget(object):
                                          self.cbCacheMode.checkState(), self.rbSSH.isChecked(),
                                          self.txtPrivateKeySSH.text)
             self.lblDownloading.hide()
+
+            self._saveCurrentState_()
+
             if (result == Util.ERROR):
                 self.msgBox = qt.QMessageBox(qt.QMessageBox.Warning, 'Error',
                                              "There was an error when downloading some of the images of this case. It is possible that some of the selected images where not available in the server. Please review the log console for more details.\nSuggested actions:\n-Empty cache\n-Restart Slicer")
@@ -1284,13 +1290,7 @@ class CaseNavigatorWidget(object):
         if f:
             self.caseListTxt.text = f
 
-    def onResumeCaseListButtonClicked(self):
-        """ Load the caselist selected and the last case that was loaded
-        :return:
-        """
-        state = self._getCurrentStateFromUI_()
-        self.logic.readCaseList(state)
-        self.logic.nextCase()
+
 
     def onRbStudyClicked(self, button):
         """Study radio buttons clicked (any of them)"""
@@ -1323,26 +1323,92 @@ class CaseNavigatorWidget(object):
         print ("Temp dir changed. New dir: " + d)
         self.localStoragePath = d
 
+    def onResumeCaseListButtonClicked(self):
+        """ Load the caselist selected and the last case that was loaded
+        :return:
+        """
+        state = self._getCurrentStateFromUI_()
+        self.logic.readCaseList(state)
+        if self.logic.nextCase():
+            self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(self.logic.currentCaseId,
+                                                                                  self.logic.currentCaseIndex + 1,
+                                                                                  self.logic.totalNumberOfCases)
+            # Disable "Previous" button if we are in the first case of the list
+            self.prevCaseButton.setEnabled(self.logic.currentCaseIndex > 0)
+            # Disable "Next" button if we are in the last case of the list
+            self.nextCaseButton.setEnabled(self.logic.currentCaseIndex < self.logic.totalNumberOfCases - 1)
+
+            self._saveCurrentState_()
+        elif SlicerUtil.IsDevelopment:
+            qt.QMessageBox.information(slicer.util.mainWindow(), 'End of list',
+                                       'You have reached the end of the case list')
+
+
     def onNextCaseClicked(self):
         self.__triggerEvent__(self.EVENT_BEFORE_NEXT)
         self.logic.nextCase()
+        self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(self.logic.currentCaseId,
+                                                                              self.logic.currentCaseIndex + 1,
+                                                                              self.logic.totalNumberOfCases)
         self._saveCurrentState_()
+        # Disable buttons if we are at the beggining or end of the list
+        self.prevCaseButton.setEnabled(self.logic.currentCaseIndex > 0)
+        self.nextCaseButton.setEnabled(self.logic.currentCaseIndex < self.logic.totalNumberOfCases - 1)
+
         self.__triggerEvent__(self.EVENT_AFTER_NEXT)
 
-    def exit(self):
+    def onPrevCaseClicked(self):
+        self.__triggerEvent__(self.EVENT_BEFORE_PREVIOUS)
+        self.logic.previousCase()
+        self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(self.logic.currentCaseId,
+                                                                              self.logic.currentCaseIndex + 1,
+                                                                              self.logic.totalNumberOfCases)
         self._saveCurrentState_()
+        # Disable buttons if we are at the beggining or end of the list
+        self.prevCaseButton.setEnabled(self.logic.currentCaseIndex > 0)
+        self.nextCaseButton.setEnabled(self.logic.currentCaseIndex < self.logic.totalNumberOfCases - 1)
+
+        self.__triggerEvent__(self.EVENT_AFTER_PREVIOUS)
+
+
+    def exit(self):
+        #self._saveCurrentState_()
+        pass
 
     def cleanup(self):
-        self._saveCurrentState_()
-
+        #self._saveCurrentState_()
+        pass
 
 
 class CaseNavigatorLogic:
-    def __init__(self, parentModuleName, imageTypesDict, labelMapsDict):
-        """Constructor"""
-        self.imageTypesDict = imageTypesDict
-        self.labelMapsDict = labelMapsDict
+    # Study ids. Convention: Descriptive text (key) / Name of the folder in MAD
+    studyIds = OrderedDict()
+    studyIds["COPD Gene"] = "COPDGene"
+    studyIds["FHS"] = "FHS"
+    studyIds["ECLIPSE"] = "ECLIPSE"
+    studyIds["Cotton"] = "Cotton"
+    studyIds["BCN"] = "BCN"
+    studyIds["Other"] = "Other"
 
+
+    # Image types
+    imageTypes = OrderedDict()
+    imageTypes["CT"] = ""
+
+
+    # Label maps types with additional configuration.
+    # Convention:
+    # Descriptive text (key)
+    # Checked by default
+    # Files extension (example: case_partialLungLabelMap.nrrd)
+    # Label map Less Significant Byte (description). This will be used to display soem aditional text in the label map after being loaded
+    labelMapTypes = OrderedDict()
+    labelMapTypes["Partial Lung"] = (False, "_partialLungLabelMap", "ChestType", "ChestRegion")
+    labelMapTypes["Body Composition"] = (False, "_bodyComposition", "ChestType", "ChestRegion")
+
+
+    def __init__(self, parentModuleName):
+        """Constructor"""
         self.caseListFile = None
         self.caseListIds = None
         self.caseListFilePath = None
@@ -1352,6 +1418,8 @@ class CaseNavigatorLogic:
         self.currentCaseIndex = -1
         self.currentCaseId = None
         self.previousCases = None
+        self.totalNumberOfCases = 0
+        # TODO: parametrize buffer size
         self.bufferSize = 2     # Number of cases to download in advance
         self.__nextCaseExists__ = None
 
@@ -1390,7 +1458,7 @@ class CaseNavigatorLogic:
         :param caseListFullPath:
         :param currentCaseIndex: last case that was loaded for this list
         """
-        print("DEBUG: Reading case list: ", stateDict)
+        # print("DEBUG: Reading case list: ", stateDict)
         try:
             self.caseListFile = open(stateDict["ListPath"], "r")
             if self.loadFullCaseList:
@@ -1412,6 +1480,7 @@ class CaseNavigatorLogic:
             self.caseListHash = stateDict["ListHash"] if stateDict["ListHash"] is not None else self.__createListHash__(self.caseListFilePath)
             self.currentCaseIndex = int(stateDict["CaseIndex"]) if stateDict["CaseIndex"] is not None else -1
             self.currentStateDict = stateDict
+            self.totalNumberOfCases = len(self.caseListIds)
             # self.nextCase()
         except:
             # Error when reading file
@@ -1438,29 +1507,29 @@ class CaseNavigatorLogic:
         It also tries to download all the required files for the next case
         :return: True if the case was loaded correctly or False if we are at the end of the list
         """
-        if SlicerUtil.IsDevelopment:
-            print("DEBUG: Downloading next case...")
-            print("DEBUG: current case index: {0}".format(self.currentCaseIndex))
+        # if SlicerUtil.IsDevelopment:
+        #     print("DEBUG: Downloading next case...")
+        #     print("DEBUG: current case index: {0}".format(self.currentCaseIndex))
 
         if self.caseListIds is None:
             raise Exception("List is not initialized. First, read a caselist with readCaseList method")
 
-        self.currentCaseIndex += 1
-        if self.currentCaseIndex >= len(self.caseListIds):
+
+
+        if self.currentCaseIndex >= len(self.caseListIds) - 1:
             # End of list
             return False
+
+        self.currentCaseIndex += 1
+
         self.currentCaseId = self.caseListIds[self.currentCaseIndex].strip()
         if self.currentCaseId == "":
             # Blank line. End of list
             return False
 
-
         # Load current case (load in Slicer too)
         self.loadCaseWithCurrentState(self.currentCaseId, loadInSlicer=True)
-        # self.loadCase(self.currentCaseId, self.currentStateDict["Server"], self.currentStateDict["ServerPath"],
-        #               self.currentStateDict["StudyId"], self.currentStateDict["ImageTypesExtensions"],
-        #               self.currentStateDict["LabelmapExtensions"], self.currentStateDict["LocalStoragePath"],
-        #               self.currentStateDict["CacheOn"], self.currentStateDict["SSHMode"], self.currentStateDict["PrivateKeySSH"])
+
 
         # Download in background the required files for index+buffer cases
         self.downloadNextCases(self.currentCaseIndex, self.bufferSize)
@@ -1472,9 +1541,9 @@ class CaseNavigatorLogic:
         It also tries to download all the required files for the previous case if they are not there
         :return: True if the case was loaded correctly or False if we are at the end of the list
         """
-        if SlicerUtil.IsDevelopment:
-            print("DEBUG: Downloading next case...")
-            print("DEBUG: current case index: {0}".format(self.currentCaseIndex))
+        # if SlicerUtil.IsDevelopment:
+        #     print("DEBUG: Downloading next case...")
+        #     print("DEBUG: current case index: {0}".format(self.currentCaseIndex))
 
         if self.caseListIds is None:
             raise Exception("List is not initialized. First, read a caselist with readCaseList method")
@@ -1491,8 +1560,8 @@ class CaseNavigatorLogic:
         # Load current case (load in Slicer too)
         self.loadCaseWithCurrentState(self.currentCaseId, loadInSlicer=True)
 
-        # Download in background the required files for index+buffer cases
-        self.downloadNextCases(self.currentCaseIndex, self.bufferSize)
+        # Download in background the required files for index-buffer cases
+        self.downloadPreviousCases(self.currentCaseIndex, self.bufferSize)
 
         return True
 
@@ -1503,27 +1572,49 @@ class CaseNavigatorLogic:
         :param bufferSize:
         :return:
         """
-        l = len(self.caseListIds)
+        l = self.totalNumberOfCases
 
-        if caseIndex + 1 >= l:
+        if caseIndex + bufferSize >= l:
             # End of list
+            if SlicerUtil.IsDevelopment:
+                print("Reached the end of the list. No more volumes to download in the background")
             return
-        for i in range(bufferSize):
-            caseId = self.caseListIds[caseIndex + i + 1].strip()
+        for i in range(1, bufferSize + 1):
+            caseId = self.caseListIds[caseIndex + i].strip()
             if self.currentCaseId == "":
                 return
             # Load the next case in background
             self.loadCaseWithCurrentState(caseId, loadInSlicer=False)
 
+    def downloadPreviousCases(self, caseIndex, bufferSize):
+        """ Download the required files for the next "bufferSize" cases before "currentCaseIndex"
+        :param currentCaseIndex:
+        :param bufferSize:
+        :return:
+        """
+        l = self.totalNumberOfCases
+
+        if caseIndex - bufferSize < 0:
+            # End of list
+            if SlicerUtil.IsDevelopment:
+                print("Reached the beginning of the list. No more volumes to download in the background")
+            return
+        for i in range(1, bufferSize + 1):
+            caseId = self.caseListIds[caseIndex - i].strip()
+            if self.currentCaseId == "":
+                return
+            # Load the case in background
+            self.loadCaseWithCurrentState(caseId, loadInSlicer=False)
+
     def loadCaseWithCurrentState(self, caseId, loadInSlicer):
-        print("DEBUG: loadCaseWithCurrentState: " + caseId)
+        #print("DEBUG: loadCaseWithCurrentState: " + caseId)
         self.loadCase(caseId, loadInSlicer, self.currentStateDict["Server"], self.currentStateDict["ServerPath"],
-                      self.currentStateDict["Study"], self.currentStateDict["ImageTypesExtensions"],
-                      self.currentStateDict["LabelmapExtensions"], self.currentStateDict["LocalStoragePath"],
+                      self.currentStateDict["Study"], self.currentStateDict["SelectedImageTypes"],
+                      self.currentStateDict["SelectedLabelmapTypes"], self.currentStateDict["LocalStoragePath"],
                       self.currentStateDict["CacheOn"], self.currentStateDict["SSHMode"], self.currentStateDict["PrivateKeySSH"])
 
     def loadCase(self, caseId, loadInSlicer, server, serverPath, studyId, selectedImageTypesKeys,
-                 selectedLabelmapsKeys, localStoragePath,cacheOn, sshMode, privateKeySSH):
+                 selectedLabelmapsKeys, localStoragePath, cacheOn, sshMode, privateKeySSH):
         """Load all the asked images for a case: main images and label maps.
         Arguments:
         - server -- User and name of the host. Default: copd@mad-replicated1.research.partners.org
@@ -1541,30 +1632,30 @@ class CaseNavigatorLogic:
         try:
             # Extract Patient Id
             patientId = caseId.split('_')[0]
-            print("Debug: loading case {0} and patient {1} with loadInSlicer={2}".format(caseId, patientId, str(loadInSlicer)))
+            #print("Debug: loading case {0} with loadInSlicer={2}".format(caseId, str(loadInSlicer)))
             for ext in selectedImageTypesKeys:
                 # Download all the volumes (generally just one)
-                locPath = self.downloadNrrdFile(caseId, loadInSlicer, server, serverPath, studyId, patientId, self.imageTypesDict[ext],
+                locPath = self.downloadNrrdFile(caseId, loadInSlicer, server, serverPath, self.studyIds[studyId], patientId, self.imageTypes[ext],
                                                 localStoragePath, cacheOn, sshMode, privateKeySSH, self.onVolumeDownloaded)
                 if loadInSlicer:
-                    if (SlicerUtil.IsDevelopment): print ("DEBUG: Loading volume stored in " + locPath)
+                    # if (SlicerUtil.IsDevelopment): print ("DEBUG: Loading volume stored in " + locPath)
                     slicer.util.loadVolume(locPath)
 
             # Download all the selected labelmaps
             for ext in selectedLabelmapsKeys:
-                locPath = self.downloadNrrdFile(caseId, loadInSlicer, server, serverPath, studyId, patientId, self.labelMapsDict[ext][1],
+                locPath = self.downloadNrrdFile(caseId, loadInSlicer, server, serverPath, self.studyIds[studyId], patientId, self.labelMapTypes[ext][1],
                                                   localStoragePath, cacheOn, sshMode, privateKeySSH)
                 if loadInSlicer:
                     (code, vtkLabelmapVolumeNode) = slicer.util.loadLabelVolume(locPath, {}, returnNode=True)  # Braces are needed for Windows compatibility... No comments...
-                    if (SlicerUtil.IsDevelopment): print ("DEBUG: Loading label map stored in " + locPath)
-                    self.splitLabelMap(vtkLabelmapVolumeNode, self.labelMapsDict[ext][2], self.labelMapsDict[ext][3])
+                    # if (SlicerUtil.IsDevelopment): print ("DEBUG: Loading label map stored in " + locPath)
+                    self.splitLabelMap(vtkLabelmapVolumeNode, self.labelMapTypes[ext][2], self.labelMapTypes[ext][3])
             return Util.OK
         except:
             Util.printLastException()
             return Util.ERROR
 
     def onVolumeDownloaded(self):
-        print("Volume downloaded")
+        print("DEBUG: File downloaded")
 
     def downloadNrrdFile(self, caseId, waitForCompletion, server, serverPath, studyId, patientId, ext, localStoragePath, cacheOn,
                            sshMode=True, privateKeySSH=None, callback=None):
@@ -1711,9 +1802,9 @@ class CaseNavigatorLogic:
 
 
     def onExecuteCommandCLIStateUpdated(self, caller, event):
-        print ("DEBUG. CLI state updated to: ", caller.GetStatusString())
-        print ("Event: ", event)
-        print ("Caller: ", caller)
+        # print ("DEBUG. CLI state updated to: ", caller.GetStatusString())
+        # print ("Event: ", event)
+        # print ("Caller: ", caller)
         if caller.IsA('vtkMRMLCommandLineModuleNode') \
           and caller.GetStatusString() == "Completed":
           #and not self.invokedCLI:      # Semaphore to avoid duplicated events

@@ -160,7 +160,7 @@ class CaseReportsLogic(object):
 
         for key in kwargs:
             if key not in self.columnNames:
-                print("Column {0} is not included in the list of columns".format(key))
+                print("ERROR: Column {0} is not included in the list of columns".format(key))
                 return False
         # Add the values in the right order (there are not obligatory fields)
         orderedColumns = []
@@ -174,6 +174,7 @@ class CaseReportsLogic(object):
         with open(self._csvFilePath_, 'a+b') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(orderedColumns)
+        #print("DEBUG: saved values in " + self.__csvFilePath__)
 
 
     def exportCSV(self, filePath):
