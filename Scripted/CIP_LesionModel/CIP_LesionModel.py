@@ -791,6 +791,24 @@ class CaseNavigatorWidget(object):
     EVENT_BEFORE_PREVIOUS = 5
     EVENT_AFTER_PREVIOUS = 6
 
+    # Columns to store the state. The numbers are the indexes in the table
+    columns = {
+        "CaseID": 0,
+        "CaseIndex": 1,
+        "TotalNumberOfCases": 2,
+        "ListHash": 3,
+        "ListPath": 4,
+        "Study": 5,
+        "SelectedImageTypes": 6,
+        "SelectedLabelmapTypes": 7,
+        "Server": 8,
+        "ServerPath": 9,
+        "LocalStoragePath": 10,
+        "CacheOn": 11,
+        "SSHMode": 12,
+        "PrivateKeySSH": 13
+    }
+
     def __init__(self, moduleName, parentContainer):
         """Widget constructor (existing module)"""
         if parentContainer is None:
@@ -818,13 +836,16 @@ class CaseNavigatorWidget(object):
         return self.logic.labelMapTypes
 
 
+
+
     @property
     def storedColumnNames(self):
         """ Columns that will be stored to keep track of the reviewed cases
         :return:
         """
+        # return self.columns.keys()
         return ["CaseID", "CaseIndex", "TotalNumberOfCases", "ListHash", "ListPath", "Study", "SelectedImageTypes", "SelectedLabelmapTypes",
-                "Server", "ServerPath", "LocalStoragePath", "CacheOn", "SSHMode", "PrivateKeySSH"]
+                 "Server", "ServerPath", "LocalStoragePath", "CacheOn", "SSHMode", "PrivateKeySSH"]
 
 
     def setup(self):
@@ -839,13 +860,56 @@ class CaseNavigatorWidget(object):
         self.layout = qt.QVBoxLayout()
         self.mainFrame.setLayout(self.layout)
 
+         # CaseList panel
+        self.navigatorCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.navigatorCollapsibleButton.text = "Navigator"
+        self.layout.addWidget(self.navigatorCollapsibleButton)
+        caseListLayout = qt.QGridLayout(self.navigatorCollapsibleButton)
+
+
+        #self.caseListFrame = qt.QFrame()
+        #self.caseListFrame.visible = False
+        #self.caseFrameLayout.addWidget(self.caseListFrame)
+        #caseListLayout = qt.QGridLayout()
+        #self.caseListFrame.setLayout(caseListLayout)
+        # caseListLayout.addWidget(qt.QLabel("Current case: "), 0, 0)
+
+
+        # self.resumeCaseListButton = ctk.ctkPushButton()
+        # self.resumeCaseListButton.text = "Load/Resume list"
+        #caseListLayout.addWidget(self.resumeCaseListButton, 1, 0)
+        self.prevCaseButton = ctk.ctkPushButton()
+        self.prevCaseButton.text = "Previous"
+        caseListLayout.addWidget(self.prevCaseButton, 1, 1)
+        self.nextCaseButton = ctk.ctkPushButton()
+        self.nextCaseButton.text = "Next"
+        caseListLayout.addWidget(self.nextCaseButton, 1, 2)
+
+        caseListLayout.addWidget(qt.QLabel("Current case loaded: "), 2, 0)
+        self.currentCaseLoadedTxt = qt.QLineEdit()
+        caseListLayout.addWidget(self.currentCaseLoadedTxt, 2, 1)
+        self.goToCaseIdButton = ctk.ctkPushButton()
+        self.goToCaseIdButton.setText("Navigate to this case Id")
+        self.goToCaseIdButton.setToolTip("Navigate to this case Id")
+        caseListLayout.addWidget(self.goToCaseIdButton, 2, 2)
+
+        caseListLayout.addWidget(qt.QLabel("Current case index loaded: "), 3, 0)
+        self.currentCaseIndexLoadedTxt = qt.QLineEdit()
+        caseListLayout.addWidget(self.currentCaseIndexLoadedTxt, 3, 1)
+        self.goToCaseIndexButton = ctk.ctkPushButton()
+        self.goToCaseIndexButton.setText("Navigate to this case number")
+        self.goToCaseIndexButton.setToolTip("Navigate to this case number")
+        caseListLayout.addWidget(self.goToCaseIndexButton, 3, 2)
+
+        self.totalNumberOfCasesLabel = qt.QLabel()
+        caseListLayout.addWidget(self.totalNumberOfCasesLabel, 4, 0, 1, 3)
         #
         # Obligatory parameters area
         #
-        parametersCollapsibleButton = ctk.ctkCollapsibleButton()
-        parametersCollapsibleButton.text = "Image data"
-        self.layout.addWidget(parametersCollapsibleButton)
-        parametersFormLayout = qt.QFormLayout(parametersCollapsibleButton)
+        self.parametersCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.parametersCollapsibleButton.text = "Image data"
+        self.layout.addWidget(self.parametersCollapsibleButton)
+        parametersFormLayout = qt.QFormLayout(self.parametersCollapsibleButton)
 
         # Study radio buttons
         label = qt.QLabel()
@@ -921,31 +985,17 @@ class CaseNavigatorWidget(object):
         self.caseListTxt = qt.QLineEdit()
 
         self.selectCaseListButton = qt.QPushButton()
-        self.selectCaseListButton.text = "Select file..."
+        self.selectCaseListButton.text = "..."
+        self.selectCaseListButton.setFixedWidth(40)
         self.caselistFileDialog = ctk.ctkFileDialog()
         self.caseFrameLayout.addWidget(self.caseListRadioButton, 1, 0)
         self.caseFrameLayout.addWidget(self.caseListTxt, 1, 1)
         self.caseFrameLayout.addWidget(self.selectCaseListButton, 1, 2)
-
-        # CaseList panel
-        self.caseListFrame = qt.QFrame()
-        self.caseListFrame.visible = False
-        self.caseFrameLayout.addWidget(self.caseListFrame)
-        caseListLayout = qt.QGridLayout()
-        self.caseListFrame.setLayout(caseListLayout)
-        # caseListLayout.addWidget(qt.QLabel("Current case: "), 0, 0)
-        self.currentCaseLabel = qt.QLabel()
-        caseListLayout.addWidget(self.currentCaseLabel, 0, 0, 1, 3)
-
         self.resumeCaseListButton = ctk.ctkPushButton()
-        self.resumeCaseListButton.text = "Load/Resume list"
-        caseListLayout.addWidget(self.resumeCaseListButton, 1, 0)
-        self.prevCaseButton = ctk.ctkPushButton()
-        self.prevCaseButton.text = "Previous"
-        caseListLayout.addWidget(self.prevCaseButton, 1, 1)
-        self.nextCaseButton = ctk.ctkPushButton()
-        self.nextCaseButton.text = "Next"
-        caseListLayout.addWidget(self.nextCaseButton, 1, 2)
+        self.resumeCaseListButton.text = "Load list"
+        self.caseFrameLayout.addWidget(self.resumeCaseListButton, 1, 3)
+
+
 
 
         # Information message
@@ -1017,7 +1067,7 @@ class CaseNavigatorWidget(object):
 
         # Connections
         self.downloadCaseButton.connect('clicked (bool)', self.onDownloadCaseButtonClicked)
-        self.resumeCaseListButton.connect('clicked (bool)', self.onResumeCaseListButtonClicked)
+        self.resumeCaseListButton.connect('clicked (bool)', self.onLoadCaseListButtonClicked)
 
         self.caseListRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onCaseListRadioButtonClicked)
         self.rbgStudy.connect("buttonClicked (QAbstractButton*)", self.onRbStudyClicked)
@@ -1038,7 +1088,9 @@ class CaseNavigatorWidget(object):
         self.events = [self.EVENT_ON_BEGIN_DOWNLOAD, self.EVENT_ON_DOWNLOAD_END, self.EVENT_BEFORE_NEXT, self.EVENT_AFTER_NEXT, self.EVENT_BEFORE_PREVIOUS, self.EVENT_AFTER_PREVIOUS]
 
     def __loadInitialState__(self):
+        self.navigatorCollapsibleButton.setVisible(False)
         state = self._getLastState_()
+        print("DEBUG: STATE: ", state)
         if state is None:
             # DEFAULT VALUES
             for cb in self.cbsImageTypes:
@@ -1046,7 +1098,7 @@ class CaseNavigatorWidget(object):
             for cb in self.cbsLabelMapTypes:
                 cb.checked = self.labelMapTypes[cb.text][0]
 
-            self.currentCaseLabel.text = "List not loaded. Please click ""Load/Resume list"" button to proceed"
+            self.totalNumberOfCasesLabel.text = "List not loaded. Please click ""Load/Resume list"" button to proceed"
 
             # Local storage (Slicer temporary path)
             self.localStoragePath = "{0}/{1}/CaseNavigator".format(slicer.app.temporaryPath, self.parentModuleName)
@@ -1103,17 +1155,16 @@ class CaseNavigatorWidget(object):
                     self.caseIdTxt.text = state["CaseID"]
             else:
                 # Case list
-                # TODO: display current case
                 self.caseListRadioButton.checked = True
-                self.caseListFrame.visible = True
                 self.caseListTxt.text = state["ListPath"]
                 self.logic.caseListFilePath = state["ListPath"]
                 self.logic.caseListHash = state["ListHash"]
                 self.logic.currentCaseId = state["CaseID"]
                 self.logic.currentStateDict = state
-                self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(state["CaseID"],
-                                                                                      state["CaseIndex"],
-                                                                                      state["TotalNumberOfCases"])
+                # self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(state["CaseID"],
+                #                                                                       state["CaseIndex"],
+                #                                                                       state["TotalNumberOfCases"])
+                self.totalNumberOfCasesLabel.setText("Total number of cases in the list: {0}".format(state["TotalNumberOfCases"]))
 
             self.localStoragePath = state["LocalStoragePath"]
             self.txtServer.text = state["Server"]
@@ -1122,9 +1173,9 @@ class CaseNavigatorWidget(object):
             self.rbSSH.checked = state["SSHMode"]
             self.txtPrivateKeySSH.text = state["PrivateKeySSH"]
 
-        if state is not None and state["ListHash"] is not None:
-            # Load the last case list and the last case
-            self.logic.readCaseList(state)
+        # if state is not None and state["ListHash"] is not None:
+        #     # Load the last case list and the last case
+        #     self.logic.readCaseList(state)
 
 
     def addObservable(self, event, callback):
@@ -1147,19 +1198,27 @@ class CaseNavigatorWidget(object):
         :return:
         """
         state = {}
+
         if self.caseIdRadioButton.checked:
             # Single Case loaded
             state["CaseID"] = self.caseIdTxt.text
-            state["CaseIndex"] = None
-            state["TotalNumberOfCases"] = None
-            state["ListHash"] = None
+            # state["CaseIndex"] = None
+        #     state["TotalNumberOfCases"] = None
+        #     state["ListHash"] = None
             state["ListPath"] = None
         else:
-            state["CaseID"] = self.logic.currentCaseId
-            state["CaseIndex"] = self.logic.currentCaseIndex
-            state["TotalNumberOfCases"] = self.logic.totalNumberOfCases
-            state["ListHash"] = self.logic.caseListHash
+            # Case list
+        #     state["CaseID"] = self.logic.currentCaseId
+        #     state["CaseIndex"] = self.logic.currentCaseIndex
+        #     state["TotalNumberOfCases"] = self.logic.totalNumberOfCases
+        #     state["ListHash"] = self.logic.caseListHash
+            state["CaseID"] = None
             state["ListPath"] = self.caseListTxt.text
+
+        # Null values for caselist state.
+        state["CaseIndex"] = None
+        state["TotalNumberOfCases"] = None
+        state["ListHash"] = None
 
         if self.rbgStudy.checkedButton().text == "Other":
             state["Study"] = self.studyId
@@ -1190,22 +1249,25 @@ class CaseNavigatorWidget(object):
         """
         # Read the last stored info
         lastRow = self.reportsWidget.logic.getLastRow()
+
         if lastRow is not None:
             state = {}
-            state["CaseID"] = lastRow[1]
-            state["CaseIndex"] = lastRow[2]
-            state["TotalNumberOfCases"] = lastRow[3]
-            state["ListHash"] = lastRow[4]
-            state["ListPath"] = lastRow[5]
-            state["Study"] = lastRow[6]
-            state["SelectedImageTypes"] = lastRow[7]
-            state["SelectedLabelmapTypes"] = lastRow[8]
-            state["Server"] = lastRow[9]
-            state["ServerPath"] = lastRow[10]
-            state["LocalStoragePath"] = lastRow[11]
-            state["CacheOn"] = lastRow[12]
-            state["SSHMode"] = lastRow[13]
-            state["PrivateKeySSH"] = lastRow[14]
+            for key in self.columns.keys():
+                state[key] = lastRow[self.columns[key] + 1]
+        #     state["CaseID"] = lastRow[1]
+        #     state["CaseIndex"] = lastRow[2]
+        #     state["TotalNumberOfCases"] = lastRow[3]
+        #     state["ListHash"] = lastRow[4]
+        #     state["ListPath"] = lastRow[5]
+        #     state["Study"] = lastRow[6]
+        #     state["SelectedImageTypes"] = lastRow[7]
+        #     state["SelectedLabelmapTypes"] = lastRow[8]
+        #     state["Server"] = lastRow[9]
+        #     state["ServerPath"] = lastRow[10]
+        #     state["LocalStoragePath"] = lastRow[11]
+        #     state["CacheOn"] = lastRow[12]
+        #     state["SSHMode"] = lastRow[13]
+        #     state["PrivateKeySSH"] = lastRow[14]
             return state
 
         # No previous state saved
@@ -1220,6 +1282,12 @@ class CaseNavigatorWidget(object):
         # Concat the different extensions
         state["SelectedImageTypes"] = ";".join(state["SelectedImageTypes"])
         state["SelectedLabelmapTypes"] = ";".join(state["SelectedLabelmapTypes"])
+        if self.caseListRadioButton.checked:
+            # Get the information from the case navigator (if necessary)
+            state["CaseID"] = self.logic.currentCaseId
+            state["CaseIndex"] = self.logic.currentCaseIndex
+            state["TotalNumberOfCases"] = self.logic.totalNumberOfCases
+            state["ListHash"] = self.logic.caseListHash
 
         self.reportsWidget.saveCurrentValues(**state)
 
@@ -1245,11 +1313,25 @@ class CaseNavigatorWidget(object):
         """
         return [cb.text for cb in filter(lambda check: check.isChecked(), checkBoxes)]
 
+    def __refreshCaselistControls__(self):
+        """ Refresh the UI controls corresponding to the case list navigator controls (buttons, textboxes...)
+        :return:
+        """
+        self.currentCaseLoadedTxt.setText(self.logic.currentCaseId)
+        self.currentCaseIndexLoadedTxt.setText(str(self.logic.currentCaseIndex))
+        self.totalNumberOfCasesLabel.setText("Total number of cases in the list: {0}".format(self.logic.totalNumberOfCases))
+        # Disable "Previous" button if we are in the first case of the list
+        self.prevCaseButton.setEnabled(self.logic.currentCaseIndex > 0)
+        # Disable "Next" button if we are in the last case of the list
+        self.nextCaseButton.setEnabled(self.logic.currentCaseIndex < self.logic.totalNumberOfCases - 1)
+        self.currentCaseLoadedTxt.setText(self.logic.currentCaseId)
+        self.currentCaseIndexLoadedTxt.setText(self.logic.currentCaseIndex + 1)
 
     ######
     # EVENTS
     def onCaseListRadioButtonClicked(self, button):
-        self.caseListFrame.visible = self.caseListRadioButton.checked
+        #self.caseListFrame.visible = self.caseListRadioButton.checked
+        self.navigatorCollapsibleButton.setVisible(self.caseListRadioButton.checked)
 
     def onDownloadCaseButtonClicked(self):
         """Click in download button"""
@@ -1290,6 +1372,43 @@ class CaseNavigatorWidget(object):
         if f:
             self.caseListTxt.text = f
 
+    def onLoadCaseListButtonClicked(self):
+        """ Load the caselist selected and the last case that was loaded
+        :return:
+        """
+        state = self._getCurrentStateFromUI_()
+        currentHash = self.logic.getListHash(self.caseListTxt.text)
+        # Get the last known state for the current list
+        listState = self.reportsWidget.logic.findLastMatchRow(self.columns["ListPath"], self.caseListTxt.text)
+        print("DEBUG: last state found for the list: ")
+        import pprint
+        pprint.pprint(listState)
+
+        if listState is not None and currentHash == listState[self.columns["ListHash"]+1]:
+            # Use the last indexes
+            newStateDict = state.copy()
+            newStateDict["CaseIndex"] = listState[self.columns["CaseIndex"]+1]
+            newStateDict["CaseID"] = listState[self.columns["CaseID"]+1]
+            self.logic.readCaseList(newStateDict)
+            # Update the navigator
+            self.__refreshCaselistControls__()
+        else:
+            # Use just the list path loaded from the UI
+            self.logic.readCaseList(state)
+
+
+        # Show the navigator
+        self.navigatorCollapsibleButton.setVisible(True)
+        # Collapse the other panels
+        self.parametersCollapsibleButton.collapsed = True
+        if self.logic.nextCase():
+            # self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(self.logic.currentCaseId,
+            #                                                                       self.logic.currentCaseIndex + 1,
+            self._saveCurrentState_()
+            self.__refreshCaselistControls__()
+        elif SlicerUtil.IsDevelopment:
+            qt.QMessageBox.information(slicer.util.mainWindow(), 'End of list',
+                                       'You have reached the end of the case list')
 
 
     def onRbStudyClicked(self, button):
@@ -1323,51 +1442,26 @@ class CaseNavigatorWidget(object):
         print ("Temp dir changed. New dir: " + d)
         self.localStoragePath = d
 
-    def onResumeCaseListButtonClicked(self):
-        """ Load the caselist selected and the last case that was loaded
-        :return:
-        """
-        state = self._getCurrentStateFromUI_()
-        self.logic.readCaseList(state)
-        if self.logic.nextCase():
-            self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(self.logic.currentCaseId,
-                                                                                  self.logic.currentCaseIndex + 1,
-                                                                                  self.logic.totalNumberOfCases)
-            # Disable "Previous" button if we are in the first case of the list
-            self.prevCaseButton.setEnabled(self.logic.currentCaseIndex > 0)
-            # Disable "Next" button if we are in the last case of the list
-            self.nextCaseButton.setEnabled(self.logic.currentCaseIndex < self.logic.totalNumberOfCases - 1)
-
-            self._saveCurrentState_()
-        elif SlicerUtil.IsDevelopment:
-            qt.QMessageBox.information(slicer.util.mainWindow(), 'End of list',
-                                       'You have reached the end of the case list')
 
 
     def onNextCaseClicked(self):
         self.__triggerEvent__(self.EVENT_BEFORE_NEXT)
         self.logic.nextCase()
-        self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(self.logic.currentCaseId,
-                                                                              self.logic.currentCaseIndex + 1,
-                                                                              self.logic.totalNumberOfCases)
+        # self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(self.logic.currentCaseId,
+        #                                                                       self.logic.currentCaseIndex + 1,
+        #                                                                       self.logic.totalNumberOfCases)
         self._saveCurrentState_()
-        # Disable buttons if we are at the beggining or end of the list
-        self.prevCaseButton.setEnabled(self.logic.currentCaseIndex > 0)
-        self.nextCaseButton.setEnabled(self.logic.currentCaseIndex < self.logic.totalNumberOfCases - 1)
-
+        self.__refreshCaselistControls__()
         self.__triggerEvent__(self.EVENT_AFTER_NEXT)
 
     def onPrevCaseClicked(self):
         self.__triggerEvent__(self.EVENT_BEFORE_PREVIOUS)
         self.logic.previousCase()
-        self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(self.logic.currentCaseId,
-                                                                              self.logic.currentCaseIndex + 1,
-                                                                              self.logic.totalNumberOfCases)
+        # self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(self.logic.currentCaseId,
+        #                                                                       self.logic.currentCaseIndex + 1,
+        #                                                                       self.logic.totalNumberOfCases)
         self._saveCurrentState_()
-        # Disable buttons if we are at the beggining or end of the list
-        self.prevCaseButton.setEnabled(self.logic.currentCaseIndex > 0)
-        self.nextCaseButton.setEnabled(self.logic.currentCaseIndex < self.logic.totalNumberOfCases - 1)
-
+        self.__refreshCaselistControls__()
         self.__triggerEvent__(self.EVENT_AFTER_PREVIOUS)
 
 
@@ -1428,6 +1522,7 @@ class CaseNavigatorLogic:
         self.additionalFilesTemplates = []  # Other files that will be read as binaries
 
         self.localStoragePath = os.path.join(slicer.app.temporaryPath, "CaseNavigator", parentModuleName)
+        self.currentLoadedVolumes = []      # Volumes that have been loaded in the scene by this navigator
 
         self.currentStateDict = None
         if not os.path.exists(self.localStoragePath):
@@ -1435,10 +1530,6 @@ class CaseNavigatorLogic:
             os.makedirs(self.localStoragePath)
             # Make sure that everybody has write permissions (sometimes there are problems because of umask)
             os.chmod(self.localStoragePath, 0777)
-
-
-        # TODO: does this make sense? Try a large case list
-        self.loadFullCaseList = True    # By default, read al the cases together
 
     # def __loadState__(self, stateDict):
     #     self.server = stateDict["Server"]
@@ -1461,24 +1552,20 @@ class CaseNavigatorLogic:
         # print("DEBUG: Reading case list: ", stateDict)
         try:
             self.caseListFile = open(stateDict["ListPath"], "r")
-            if self.loadFullCaseList:
-                # Read the whole case list. This will allow full case navigation
-                self.caseListIds = self.caseListFile.readlines()
-                self.caseListFile.close()
-                # Remove blank lines if any
-                # i = 1
-                # l = len(self.caseListIds)
-                # id = self.caseListIds[l - i]
-                #
-
-            else:
-                # Load the elements just when next case is requested. Restricted navigation
-                # Useful for very large case lists
-                self.caseListIds = []
+            self.caseListIds = self.caseListFile.readlines()
+            self.caseListFile.close()
 
             self.caseListFilePath = stateDict["ListPath"]
-            self.caseListHash = stateDict["ListHash"] if stateDict["ListHash"] is not None else self.__createListHash__(self.caseListFilePath)
-            self.currentCaseIndex = int(stateDict["CaseIndex"]) if stateDict["CaseIndex"] is not None else -1
+            self.caseListHash = stateDict["ListHash"] if stateDict["ListHash"] is not None else self.getListHash(self.caseListFilePath)
+            if stateDict["CaseIndex"] is not None:
+                self.currentCaseIndex = int(stateDict["CaseIndex"])
+                self.currentCaseId = stateDict["CaseID"]
+            else:
+                self.currentCaseIndex = -1
+                self.currentCaseId = None
+
+            # self.currentCaseIndex = int(stateDict["CaseIndex"]) if stateDict["CaseIndex"] is not None else -1
+
             self.currentStateDict = stateDict
             self.totalNumberOfCases = len(self.caseListIds)
             # self.nextCase()
@@ -1487,7 +1574,7 @@ class CaseNavigatorLogic:
             self.caseListFile = None
             raise
 
-    def __createListHash__(self, fileFullPath):
+    def getListHash(self, fileFullPath):
         """ Create a hashtag for a list based on:
         - Name
         - Size
@@ -1495,12 +1582,15 @@ class CaseNavigatorLogic:
         :param fileFullPath:
         :return:
         """
-        stats = os.stat(fileFullPath)
-        id = "{0}_{1}_{2}".format(path.basename(fileFullPath), stats[6], stats[8])
-        # Get a MD5 sum for the concatenated id
-        m = hashlib.md5()
-        m.update(id)
-        return m.hexdigest()
+        if os.path.exists(fileFullPath):
+            stats = os.stat(fileFullPath)
+            id = "{0}_{1}_{2}".format(path.basename(fileFullPath), stats[6], stats[8])
+            # Get a MD5 sum for the concatenated id
+            m = hashlib.md5()
+            m.update(id)
+            return m.hexdigest()
+        return None
+
 
     def nextCase(self):
         """ Read the next case id in the list and load the associated info.
@@ -1513,8 +1603,6 @@ class CaseNavigatorLogic:
 
         if self.caseListIds is None:
             raise Exception("List is not initialized. First, read a caselist with readCaseList method")
-
-
 
         if self.currentCaseIndex >= len(self.caseListIds) - 1:
             # End of list
@@ -1529,7 +1617,6 @@ class CaseNavigatorLogic:
 
         # Load current case (load in Slicer too)
         self.loadCaseWithCurrentState(self.currentCaseId, loadInSlicer=True)
-
 
         # Download in background the required files for index+buffer cases
         self.downloadNextCases(self.currentCaseIndex, self.bufferSize)
@@ -1608,10 +1695,18 @@ class CaseNavigatorLogic:
 
     def loadCaseWithCurrentState(self, caseId, loadInSlicer):
         #print("DEBUG: loadCaseWithCurrentState: " + caseId)
-        self.loadCase(caseId, loadInSlicer, self.currentStateDict["Server"], self.currentStateDict["ServerPath"],
+        # Copy the current loaded volumes
+        currentVols = list(self.currentLoadedVolumes)
+        self.currentLoadedVolumes = []
+        result = self.loadCase(caseId, loadInSlicer, self.currentStateDict["Server"], self.currentStateDict["ServerPath"],
                       self.currentStateDict["Study"], self.currentStateDict["SelectedImageTypes"],
                       self.currentStateDict["SelectedLabelmapTypes"], self.currentStateDict["LocalStoragePath"],
                       self.currentStateDict["CacheOn"], self.currentStateDict["SSHMode"], self.currentStateDict["PrivateKeySSH"])
+
+        if loadInSlicer and result == Util.OK:
+            # Remove previously loaded volumes
+            for vol in currentVols:
+                slicer.mrmlScene.RemoveNode(vol)
 
     def loadCase(self, caseId, loadInSlicer, server, serverPath, studyId, selectedImageTypesKeys,
                  selectedLabelmapsKeys, localStoragePath, cacheOn, sshMode, privateKeySSH):
@@ -1639,16 +1734,22 @@ class CaseNavigatorLogic:
                                                 localStoragePath, cacheOn, sshMode, privateKeySSH, self.onVolumeDownloaded)
                 if loadInSlicer:
                     # if (SlicerUtil.IsDevelopment): print ("DEBUG: Loading volume stored in " + locPath)
-                    slicer.util.loadVolume(locPath)
+                    (resultCode, volume) = slicer.util.loadVolume(locPath, {}, returnNode=True)    # Braces are needed for Windows compatibility... No comments...
+                    if resultCode:
+                        # Volume loaded ok
+                        self.currentLoadedVolumes.append(volume)
 
             # Download all the selected labelmaps
             for ext in selectedLabelmapsKeys:
                 locPath = self.downloadNrrdFile(caseId, loadInSlicer, server, serverPath, self.studyIds[studyId], patientId, self.labelMapTypes[ext][1],
                                                   localStoragePath, cacheOn, sshMode, privateKeySSH)
                 if loadInSlicer:
-                    (code, vtkLabelmapVolumeNode) = slicer.util.loadLabelVolume(locPath, {}, returnNode=True)  # Braces are needed for Windows compatibility... No comments...
-                    # if (SlicerUtil.IsDevelopment): print ("DEBUG: Loading label map stored in " + locPath)
-                    self.splitLabelMap(vtkLabelmapVolumeNode, self.labelMapTypes[ext][2], self.labelMapTypes[ext][3])
+                    (resultCode, vtkLabelmapVolumeNode) = slicer.util.loadLabelVolume(locPath, {}, returnNode=True)
+                    if resultCode:
+                        self.currentLoadedVolumes.append(vtkLabelmapVolumeNode)
+                        # if (SlicerUtil.IsDevelopment): print ("DEBUG: Loading label map stored in " + locPath)
+                        (vol1, vol2) = self.splitLabelMap(vtkLabelmapVolumeNode, self.labelMapTypes[ext][2], self.labelMapTypes[ext][3])
+                        self.currentLoadedVolumes.extend([vol1, vol2])
             return Util.OK
         except:
             Util.printLastException()
@@ -1790,15 +1891,15 @@ class CaseNavigatorLogic:
         numpyarray[:] = npMSB
         outputVolume.GetImageData().Modified()
 
-        outputVolume = volumesLogic.CloneVolume(slicer.mrmlScene, vtkLabelmapVolumeNode,
+        outputVolume2 = volumesLogic.CloneVolume(slicer.mrmlScene, vtkLabelmapVolumeNode,
                                                 volumeName + "_{0}".format(suffixLSB))
         # Get a reference to the vtkImageData as a numpy array
         numpyarray = vtk.util.numpy_support.vtk_to_numpy(
-            outputVolume.GetImageData().GetPointData().GetScalars()).reshape(shape)
+            outputVolume2.GetImageData().GetPointData().GetScalars()).reshape(shape)
         # Substitute the reference (this is what really updates the data)
         numpyarray[:] = npLSB
-        outputVolume.GetImageData().Modified()
-
+        outputVolume2.GetImageData().Modified()
+        return outputVolume, outputVolume2
 
 
     def onExecuteCommandCLIStateUpdated(self, caller, event):
