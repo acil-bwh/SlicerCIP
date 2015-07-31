@@ -98,6 +98,11 @@ void qSlicerAirwayInspectorModuleWidget::setup()
   d->qvtkWidget->setFixedSize(200,200);
   d->reportFormLayout->setWidget(2, QFormLayout::FieldRole, d->qvtkWidget);
 
+  d->ReportTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  d->ReportTable->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+  d->ReportTable->setColumnCount(4);
+	d->ReportTable->setHorizontalHeaderLabels(QString("Min;Max;Mean;Std").split(";"));
+
   //d->ReportTable
 
   QObject::connect(d->InputVolumeComboBox, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
@@ -349,8 +354,31 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
     }
 
   // report the results
-  d->ReportTable->setColumnCount(4);
-  d->ReportTable->setRowCount(16);
+  d->ReportTable->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+
+	int numCols = 4;
+  int numRows = airwayNode->GetMean()->GetNumberOfComponents();
+  d->ReportTable->setRowCount(numRows);
+
+	//Add Table items here
+  for (int i=0; i<numRows; i++)
+    {
+    QTableWidgetItem *minItem = new QTableWidgetItem();
+    minItem->setData(0, airwayNode->GetMin()->GetValue(i));
+	  d->ReportTable->setItem(i,0,minItem);
+
+    QTableWidgetItem *maxItem = new QTableWidgetItem();
+    maxItem->setData(0, airwayNode->GetMax()->GetValue(i));
+	  d->ReportTable->setItem(i,1,maxItem);
+
+    QTableWidgetItem *meanItem = new QTableWidgetItem();
+    meanItem->setData(0, airwayNode->GetMean()->GetValue(i));
+	  d->ReportTable->setItem(i,2,meanItem);
+
+    QTableWidgetItem *stdItem = new QTableWidgetItem();
+    stdItem->setData(0, airwayNode->GetStd()->GetValue(i));
+	  d->ReportTable->setItem(i,3,stdItem);
+    }
 
   //d->MinSpinBox->setValue(airwayNode->GetMin());
   //d->MaxSpinBox->setValue(airwayNode->GetMax());
