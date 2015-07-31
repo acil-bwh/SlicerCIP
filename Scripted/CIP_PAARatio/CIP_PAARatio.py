@@ -99,7 +99,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.placeDefaultRulersButton = ctk.ctkPushButton()
         self.placeDefaultRulersButton.text = "Go to tentative slice"
         self.placeDefaultRulersButton.toolTip = "Navigate to the best estimated slice to place the rulers"
-        self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/next.png".format(Util.ICON_DIR)))
+        self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/next.png".format(SlicerSlicerUtil.ICON_DIR)))
         self.placeDefaultRulersButton.setIconSize(qt.QSize(20,20))
         self.placeDefaultRulersButton.setFixedWidth(135)
         # self.placeDefaultRulersButton.setStyleSheet("padding: 0 0 30px 0" )
@@ -141,7 +141,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.placeRulersButton = ctk.ctkPushButton()
         self.placeRulersButton.text = "Place ruler/s"
         self.placeRulersButton.toolTip = "Place the ruler/s for the selected structure/s in the current slice"
-        self.placeRulersButton.setIcon(qt.QIcon("{0}/ruler.png".format(Util.ICON_DIR)))
+        self.placeRulersButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.ICON_DIR)))
         self.placeRulersButton.setIconSize(qt.QSize(20,20))
         self.placeRulersButton.setFixedWidth(105)
         self.placeRulersButton.setStyleSheet("font-weight:bold")
@@ -150,7 +150,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.moveUpButton = ctk.ctkPushButton()
         self.moveUpButton.text = "Move up"
         self.moveUpButton.toolTip = "Move the selected ruler/s one slice up"
-        self.moveUpButton.setIcon(qt.QIcon("{0}/move_up.png".format(Util.ICON_DIR)))
+        self.moveUpButton.setIcon(qt.QIcon("{0}/move_up.png".format(SlicerUtil.ICON_DIR)))
         self.moveUpButton.setIconSize(qt.QSize(20,20))
         self.moveUpButton.setFixedWidth(95)
         self.buttonsToolboxLayout.addWidget(self.moveUpButton, 0, 1)
@@ -158,7 +158,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.moveDownButton = ctk.ctkPushButton()
         self.moveDownButton.text = "Move down"
         self.moveDownButton.toolTip = "Move the selected ruler/s one slice down"
-        self.moveDownButton.setIcon(qt.QIcon("{0}/move_down.png".format(Util.ICON_DIR)))
+        self.moveDownButton.setIcon(qt.QIcon("{0}/move_down.png".format(SlicerUtil.ICON_DIR)))
         self.moveDownButton.setIconSize(qt.QSize(20,20))
         self.moveDownButton.setFixedWidth(95)
         self.buttonsToolboxLayout.addWidget(self.moveDownButton, 0, 2)
@@ -166,7 +166,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.removeButton = ctk.ctkPushButton()
         self.removeButton.text = "Remove ALL rulers"
         self.removeButton.toolTip = "Remove all the rulers for this volume"
-        self.removeButton.setIcon(qt.QIcon("{0}/delete.png".format(Util.ICON_DIR)))
+        self.removeButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.ICON_DIR)))
         self.removeButton.setIconSize(qt.QSize(20,20))
         self.buttonsToolboxLayout.addWidget(self.removeButton, 1, 1, 1, 2, 2)
 

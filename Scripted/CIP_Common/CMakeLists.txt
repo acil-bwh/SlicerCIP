@@ -16,6 +16,7 @@ set(MODULE_PYTHON_SCRIPTS
   CIP/ui/CIP_EditBox.py
   CIP/ui/CIP_EditorWidget.py
   CIP/ui/LoadSaveDataWidget.py
+  CIP/ui/CaseReportsWidget.py
   )
 
 set(MODULE_PYTHON_RESOURCES
