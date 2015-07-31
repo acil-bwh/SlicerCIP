@@ -2,7 +2,7 @@ from LoadSaveDataWidget import LoadSaveDataWidget
 from CIP_EditorWidget import CIP_EditorWidget
 from CIP_EditBox import *
 from CaseReportsWidget import *
-from CaseNavigatorWidget import *
+#from ACIL_GetImage.CaseNavigatorWidget import *
 #from AutoUpdateWidget import AutoUpdateWidget
 
 # import os

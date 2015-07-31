@@ -35,7 +35,7 @@ class AutoUpdateWidget(object):
 
     # Default values
     self.autoUpdate = int(autoUpdate)
-    self.updateFolder = Util.CIP_DEFAULT_GIT_REPO_FOLDER
+    self.updateFolder = SlicerUtil.CIP_DEFAULT_GIT_REPO_FOLDER
     self.lastCommit = SlicerUtil.settingGetOrSetDefault("CIP", "lastCommit")
 
     self.autoUpdateCheckObserver = None
@@ -84,7 +84,7 @@ class AutoUpdateWidget(object):
         os.makedirs(self.updateFolder)
         os.chmod(self.updateFolder, 0777)
     
-        repo = Repo.clone_from(Util.CIP_GIT_REMOTE_URL, self.updateFolder)
+        repo = Repo.clone_from(SlicerUtil.CIP_GIT_REMOTE_URL, self.updateFolder)
         currentCommit = repo.head.commit.hexsha
         if self.lastCommit != currentCommit or self.forceUpdate:
           for folder in (d for d in os.listdir(self.updateFolder) if not d.startswith('.')):

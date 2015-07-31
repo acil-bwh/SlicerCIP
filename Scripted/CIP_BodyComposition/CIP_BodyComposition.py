@@ -97,7 +97,7 @@ class CIP_BodyCompositionWidget():
         # Create the appropiate color maps for each type of segmentation
         self.__createColorNodes__()
       
-        self.iconsPath = Util.ICON_DIR     # Imported from CIP library
+        self.iconsPath = SlicerUtil.ICON_DIR     # Imported from CIP library
       
         ####################
         # Place the main paramteres (region and type selection)
@@ -142,7 +142,7 @@ class CIP_BodyCompositionWidget():
         self.btnGoToPreviousStructure = ctk.ctkPushButton()
         self.btnGoToPreviousStructure.text = " Previous slice"
         self.btnGoToPreviousStructure.toolTip = "Go to the previous slice that contains the selected label" 
-        self.btnGoToPreviousStructure.setIcon(qt.QIcon("{0}/1415659830_previous.png".format(self.iconsPath)))
+        self.btnGoToPreviousStructure.setIcon(qt.QIcon("{0}/previous.png".format(self.iconsPath)))
         self.btnGoToPreviousStructure.setIconSize(qt.QSize(24,24))
         self.btnGoToPreviousStructure.setFixedWidth(150)        
         self.btnGoToPreviousStructure.iconAlignment = 0x0001    # Align the icon to the right. See http://qt-project.org/doc/qt-4.8/qt.html#AlignmentFlag-enum for a complete list
@@ -153,7 +153,7 @@ class CIP_BodyCompositionWidget():
         self.btnGoToNextStructure = ctk.ctkPushButton()
         self.btnGoToNextStructure.text = "  Next slice"     # Hack: padding is not working for the text!
         self.btnGoToNextStructure.toolTip = "Go to the next slice that contains the selected label" 
-        self.btnGoToNextStructure.setIcon(qt.QIcon("{0}/1415659836_next.png".format(self.iconsPath)))
+        self.btnGoToNextStructure.setIcon(qt.QIcon("{0}/next.png".format(self.iconsPath)))
         self.btnGoToNextStructure.setIconSize(qt.QSize(24,24))         
         self.btnGoToNextStructure.setFixedWidth(150)        
         self.btnGoToNextStructure.iconAlignment = 0x0002    # Align the icon to the right. See http://qt-project.org/doc/qt-4.8/qt.html#AlignmentFlag-enum for a complete list
@@ -348,7 +348,7 @@ class CIP_BodyCompositionWidget():
             slicer.mrmlScene.AddNode(storageNode)
             colorTableNode.SetName("BodyCompositionColorMap")
             colorTableNode.AddAndObserveStorageNodeID(storageNode.GetID())
-            storageNode.SetFileName("{0}/{1}".format(Util.DATA_DIR, "BodyCompositionColorMap.ctbl"))     # Blank file         
+            storageNode.SetFileName("{0}/{1}".format(SlicerUtil.RESOURCES_DIR, "BodyCompositionColorMap.ctbl"))     # Blank file
             storageNode.ReadData(colorTableNode)
                      
             # Reserve all the possible combinations (11111111 11111111 = 65535)

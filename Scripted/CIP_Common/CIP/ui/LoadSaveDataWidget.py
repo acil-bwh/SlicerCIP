@@ -10,7 +10,7 @@ from __main__ import vtk, qt, ctk, slicer
 import os
 import re
 #import ACIL_Common
-from CIP.logic import Util
+from CIP.logic import SlicerUtil
 
 
 class LoadSaveDataWidget(object):
@@ -69,7 +69,7 @@ class LoadSaveDataWidget(object):
         self.setParameters(moduleName, labelmapNodeNameExtensions, volumesFileExtensions)
      
         if not iconsPath:            
-            iconsPath = Util.ICON_DIR
+            iconsPath = SlicerUtil.ICON_DIR
             #print("Imported " + iconsPath)
         
         # ctkCollapsibleButton+frame that wrap everything

@@ -3,24 +3,26 @@ Created on Oct 29, 2014
 Common functions that can be useful in any Python module development
 '''
 
-from __main__ import vtk, slicer
+from __main__ import vtk
 
 import os, sys
 import shutil
 import traceback
 import numpy as np
 
-class Util: 
-    # Constants    
-    CIP_MODULE_ROOT_DIR = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + '/../..')
-    #CIP_GIT_REPO_FOLDER = os.path.realpath(CIP_MODULE_ROOT_DIR + '/../CIP-Repo')
-    CIP_DEFAULT_GIT_REPO_FOLDER = slicer.app.temporaryPath + '/CIP-Repo'
-    CIP_GIT_REMOTE_URL = "https://acilgeneric:bwhacil2015@github.com/acil-bwh/ACILSlicer.git"
-    #CIP_GIT_REPO = "/Users/Jorge/tmp/CIP-Repo"
-    CIP_LIBRARY_ROOT_DIR = CIP_MODULE_ROOT_DIR + '/CIP'
+#from CIP.logic import SlicerUtil
 
-    DATA_DIR = CIP_LIBRARY_ROOT_DIR + '/ui/Resources'
-    ICON_DIR = DATA_DIR + '/Icons' 
+class Util: 
+    # # Constants
+    # CIP_MODULE_ROOT_DIR = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + '/../..')
+    # #CIP_GIT_REPO_FOLDER = os.path.realpath(CIP_MODULE_ROOT_DIR + '/../CIP-Repo')
+    # CIP_DEFAULT_GIT_REPO_FOLDER = slicer.app.temporaryPath + '/CIP-Repo'
+    # CIP_GIT_REMOTE_URL = "https://acilgeneric:bwhacil2015@github.com/acil-bwh/ACILSlicer.git"
+    # #CIP_GIT_REPO = "/Users/Jorge/tmp/CIP-Repo"
+    # CIP_LIBRARY_ROOT_DIR = CIP_MODULE_ROOT_DIR + '/CIP'
+    #
+    # RESOURCES_DIR = CIP_LIBRARY_ROOT_DIR + '/ui/Resources'
+    # ICON_DIR = RESOURCES_DIR + '/Icons'
 
     OK = 0
     ERROR = 1
@@ -193,64 +195,7 @@ class Util:
         # Return the indexes of the slices with data
         return np.where(tproj)[0]    
     
-    @staticmethod
-    def gitUpdateCIP():
-        if Util.AUTO_UPDATE_DISABLED:
-            print("CIP auto update is disabled")
-            return False
 
-        #try:
-        update = Util.__gitUpdate__()
-        if update:
-            # Copy the directory under CIP_GIT_REPO with this module name
-            #srcPath = "%s/%s" %    (Util.CIP_GIT_REPO_FOLDER, moduleName)
-            srcPath = Util.CIP_DEFAULT_GIT_REPO_FOLDER
-            print('src: ', srcPath)
-            #destPath = os.path.join(Util.CIP_LIBRARY_ROOT_DIR, moduleName)
-            destPath = os.path.realpath(Util.CIP_MODULE_ROOT_DIR + '/..')
-            print('dest: ', destPath)
-            # First rename the folder to a temp name, as a backup
-            backupPath = destPath + "_TMP"
-            os.rename(destPath, backupPath)
-            # Copy the folder
-            shutil.copytree(srcPath, destPath)
-            # Remove the temp folder
-            shutil.rmtree(backupPath)
-        
-        return update
-#         except Exception as ex:
-#             print (ex.message())
-#             return False
-
-    @staticmethod
-    def __gitUpdate__():
-        '''Gets the last version of the CIP git repository.
-        In case it does not exist, it creates it from scratch
-        Returns true if there was any update in the repository'''
-        from git import Repo
-
-        if os.path.exists(Util.CIP_DEFAULT_GIT_REPO_FOLDER):
-            # Check for updates
-            repo = Repo(Util.CIP_DEFAULT_GIT_REPO_FOLDER)
-            #remote = repo.remotes.pop()
-            remote = repo.remotes.origin
-            prevCommit = repo.head.commit.hexsha
-            status = remote.fetch().pop()
-            if status and status.commit.hexsha != prevCommit:
-                remote.pull()
-                return True
-            
-            return False
-            
-        else:
-            # Create the new repository
-            os.makedirs(Util.CIP_DEFAULT_GIT_REPO_FOLDER)
-            os.chmod(Util.CIP_DEFAULT_GIT_REPO_FOLDER, 0777)
-            #repo = Repo(Util.CIP_GIT_REPO_FOLDER)
-            Repo.clone_from(Util.CIP_GIT_REMOTE_URL, Util.CIP_DEFAULT_GIT_REPO_FOLDER)
-            print ("Created folder %s (first time update)" % Util.CIP_DEFAULT_GIT_REPO_FOLDER)
-            # Always update the first time
-            return True
 
     @staticmethod
     def getLabelmapFromScalar(vtkMRMLScalarVolumeNode, nodeName=""):

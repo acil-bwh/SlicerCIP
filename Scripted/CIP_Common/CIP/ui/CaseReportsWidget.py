@@ -1,6 +1,7 @@
 
-import csv, os, time
+import csv, os, time, pprint
 from __main__ import qt, ctk, slicer
+
 
 class CaseReportsWidget(object):
     # Events triggered by the widget
@@ -141,7 +142,7 @@ class CaseReportsLogic(object):
         return columns
 
     @property
-    def _csvFilePath_(self):
+    def csvFilePath(self):
         """ Path of the file that contains all the data
         :return: Path of the file that contains all the data
         """
@@ -155,12 +156,18 @@ class CaseReportsLogic(object):
         """
         # Check that we have all the "columns"
         if len(kwargs) != len(self.columnNames):
-            print("There is a wrong number of arguments. Total columns: {0}. Columns passed: {1}".format(len(self.columnNames), len(kwargs)))
+            print("REPORTS WIDGET ERROR when saving values. There is a wrong number of arguments. ")
+            print("Current columns: ")
+            pprint.pprint(self.columnNames)
+            print("Total: {0}".format(len(self.columnNames)))
+            print("Args passed: ")
+            pprint.pprint(kwargs)
+            print("Total: {0}".format(len(kwargs)))
             return False
 
         for key in kwargs:
             if key not in self.columnNames:
-                print("Column {0} is not included in the list of columns".format(key))
+                print("ERROR: Column {0} is not included in the list of columns".format(key))
                 return False
         # Add the values in the right order (there are not obligatory fields)
         orderedColumns = []
@@ -171,9 +178,10 @@ class CaseReportsLogic(object):
                 orderedColumns.append(kwargs[column])
             else:
                 orderedColumns.append('')
-        with open(self._csvFilePath_, 'a+b') as csvfile:
+        with open(self.csvFilePath, 'a+b') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(orderedColumns)
+        #print("DEBUG: saved values in " + self.__csvFilePath__)
 
 
     def exportCSV(self, filePath):
@@ -182,8 +190,8 @@ class CaseReportsLogic(object):
         :param filePath: destination of the file (full path)
         :return:
         """
-        if os.path.exists(self._csvFilePath_):
-            with open(self._csvFilePath_, 'r+b') as csvfileReader:
+        if os.path.exists(self.csvFilePath):
+            with open(self.csvFilePath, 'r+b') as csvfileReader:
                 reader = csv.reader(csvfileReader)
                 with open(filePath, 'a+b') as csvfileWriter:
                     writer = csv.writer(csvfileWriter)
@@ -199,8 +207,8 @@ class CaseReportsLogic(object):
         :return: list of lists (rows/colums)
         """
         data = []
-        if os.path.exists(self._csvFilePath_):
-            with open(self._csvFilePath_, 'r+b') as csvfileReader:
+        if os.path.exists(self.csvFilePath):
+            with open(self.csvFilePath, 'r+b') as csvfileReader:
                 reader = csv.reader(csvfileReader)
                 for row in reader:
                     data.append(row)
@@ -210,16 +218,39 @@ class CaseReportsLogic(object):
         """ Return the last row of data that was stored in the csv file
         :return: list with the information of a single row
         """
-        if os.path.exists(self._csvFilePath_):
-            with open(self._csvFilePath_, 'r+b') as csvfileReader:
+        if os.path.exists(self.csvFilePath):
+            with open(self.csvFilePath, 'r+b') as csvfileReader:
                 reader = csv.reader(csvfileReader)
-                return reader.next()
+                #return reader.next()
+                # Read all the information of the file to iterate in reverse order
+                rows = [row for row in reader]
+                return rows.pop()
         # Error case
         return None
 
+    def findLastMatchRow(self, columnIndex, value):
+        """ Go over all the rows in the CSV until it finds the value "value" in the column "columnName"
+        :param columnIndex: index of the column that we are comparing. This index will NOT include the obligatory timestamp field
+        :param value:
+        :return: row with the first match or None if it' not found
+        """
+        if os.path.exists(self.csvFilePath):
+            with open(self.csvFilePath, 'r+b') as csvfileReader:
+                reader = csv.reader(csvfileReader)
+                rows = [row for row in reader if row[columnIndex + 1] == value]
+                # print("DEBUG. Rows:")
+                # import pprint
+                # pprint.pprint(rows)
+                if len(rows) > 0:
+                    # Get the last element
+                    return rows.pop()
+        # Not found
+        return None
+
+
     def remove(self):
-        if os.path.exists(self._csvFilePath_):
-            os.remove(self._csvFilePath_)
+        if os.path.exists(self.csvFilePath):
+            os.remove(self.csvFilePath)
 
 
 
