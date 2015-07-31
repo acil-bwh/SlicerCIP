@@ -879,10 +879,16 @@ class CaseNavigatorWidget(object):
         # self.resumeCaseListButton.text = "Load/Resume list"
         #caseListLayout.addWidget(self.resumeCaseListButton, 1, 0)
         self.prevCaseButton = ctk.ctkPushButton()
-        self.prevCaseButton.text = "Previous"
+        self.prevCaseButton.text = "Previous case"
+        self.prevCaseButton.setIcon(qt.QIcon("{0}/previous.png".format(Util.ICON_DIR)))
+        self.prevCaseButton.setIconSize(qt.QSize(24,24))
+        self.prevCaseButton.setFixedWidth(150)
         caseListLayout.addWidget(self.prevCaseButton, 1, 1)
         self.nextCaseButton = ctk.ctkPushButton()
-        self.nextCaseButton.text = "Next"
+        self.nextCaseButton.text = "Next case"
+        self.nextCaseButton.setIcon(qt.QIcon("{0}/next.png".format(Util.ICON_DIR)))
+        self.nextCaseButton.setIconSize(qt.QSize(24,24))
+        self.nextCaseButton.setFixedWidth(150)
         caseListLayout.addWidget(self.nextCaseButton, 1, 2)
 
         caseListLayout.addWidget(qt.QLabel("Current case loaded: "), 2, 0)
@@ -1059,7 +1065,6 @@ class CaseNavigatorWidget(object):
 
         optionalParametersCollapsibleButton.collapsed = True
 
-
         # Add vertical spacer
         self.layout.addStretch(1)
 
@@ -1077,9 +1082,10 @@ class CaseNavigatorWidget(object):
         self.storagePathButton.connect("directorySelected(QString)", self.onTmpDirChanged)
         self.cleanCacheButton.connect('clicked (bool)', self.onCleanCacheButtonClicked)
 
-
         self.prevCaseButton.connect('clicked()', self.onPrevCaseClicked)
         self.nextCaseButton.connect('clicked()', self.onNextCaseClicked)
+        self.goToCaseIndexButton.connect('clicked()', self.onGoToCaseIndexClicked)
+        self.goToCaseIdButton.connect('clicked()', self.onGoToCaseIdClicked)
 
 
     def __initEvents__(self):
@@ -1090,7 +1096,7 @@ class CaseNavigatorWidget(object):
     def __loadInitialState__(self):
         self.navigatorCollapsibleButton.setVisible(False)
         state = self._getLastState_()
-        print("DEBUG: STATE: ", state)
+        print("DEBUG: LAST STATE: ", state)
         if state is None:
             # DEFAULT VALUES
             for cb in self.cbsImageTypes:
@@ -1401,14 +1407,16 @@ class CaseNavigatorWidget(object):
         self.navigatorCollapsibleButton.setVisible(True)
         # Collapse the other panels
         self.parametersCollapsibleButton.collapsed = True
-        if self.logic.nextCase():
-            # self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(self.logic.currentCaseId,
-            #                                                                       self.logic.currentCaseIndex + 1,
-            self._saveCurrentState_()
-            self.__refreshCaselistControls__()
-        elif SlicerUtil.IsDevelopment:
-            qt.QMessageBox.information(slicer.util.mainWindow(), 'End of list',
-                                       'You have reached the end of the case list')
+        if self.logic.currentCaseIndex == -1:
+            # Load the first case in the list just when we are starting it
+            if self.logic.nextCase():
+                # self.currentCaseLabel.text = "Last case loaded: {0} ({1}/{2})".format(self.logic.currentCaseId,
+                #                                                                       self.logic.currentCaseIndex + 1,
+                self._saveCurrentState_()
+                self.__refreshCaselistControls__()
+            elif SlicerUtil.IsDevelopment:
+                qt.QMessageBox.information(slicer.util.mainWindow(), 'End of list',
+                                           'You have reached the end of the case list')
 
 
     def onRbStudyClicked(self, button):
@@ -1429,14 +1437,24 @@ class CaseNavigatorWidget(object):
 
     def onCleanCacheButtonClicked(self):
         """Clean cache button clicked. Remove all the files in the current local storage path directory"""
-        import shutil
-        # Remove directory
-        shutil.rmtree(self.localStoragePath, ignore_errors=True)
-        # Recreate it (this is a safe method for symbolic links)
-        os.makedirs(self.localStoragePath)
-        # Make sure that everybody has write permissions (sometimes there are problems because of umask)
-        os.chmod(self.localStoragePath, 0777)
-        print("Cache cleaned. The following folder was re-created: ", self.localStoragePath)
+        if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Remove cached data',
+                'Are you sure you want to remove the current case list saved state and the cached cases?',
+                qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
+            import shutil
+            # Remove directory
+            shutil.rmtree(self.localStoragePath, ignore_errors=True)
+            # Recreate it (this is a safe method for symbolic links)
+            os.makedirs(self.localStoragePath)
+            # Make sure that everybody has write permissions (sometimes there are problems because of umask)
+            os.chmod(self.localStoragePath, 0777)
+            if SlicerUtil.IsDevelopment:
+                print("Cache cleaned. The following folder was re-created: ", self.localStoragePath)
+
+            os.remove(self.reportsWidget.logic.csvFilePath)
+            if SlicerUtil.IsDevelopment:
+                print("The following file was removed: ", self.reportsWidget.logic.csvFilePath)
+            qt.QMessageBox.information(slicer.util.mainWindow(), 'Cache cleaned', 'The cache has been cleaned')
+
 
     def onTmpDirChanged(self, d):
         print ("Temp dir changed. New dir: " + d)
@@ -1463,6 +1481,19 @@ class CaseNavigatorWidget(object):
         self._saveCurrentState_()
         self.__refreshCaselistControls__()
         self.__triggerEvent__(self.EVENT_AFTER_PREVIOUS)
+
+    def onGoToCaseIndexClicked(self):
+        self.logic.goToCaseIndex(int(self.currentCaseIndexLoadedTxt.text) - 1)
+        self._saveCurrentState_()
+        self.__refreshCaselistControls__()
+
+    def onGoToCaseIdClicked(self):
+        if self.logic.goToCaseId(self.currentCaseLoadedTxt.text):
+            self._saveCurrentState_()
+            self.__refreshCaselistControls__()
+        else:
+            qt.QMessageBox.warning(slicer.util.mainWindow(), 'Case not found', 'The case "{0}" has not been found in the caselist'.format(self.currentCaseLoadedTxt.text))
+            
 
 
     def exit(self):
@@ -1651,6 +1682,23 @@ class CaseNavigatorLogic:
         self.downloadPreviousCases(self.currentCaseIndex, self.bufferSize)
 
         return True
+
+    def goToCaseIndex(self, index):
+        # Check that the index is in range
+        if index < 0 or index >= self.totalNumberOfCases:
+            raise Exception("Index out of range")
+        self.currentCaseIndex = index
+        self.currentCaseId = self.caseListIds[self.currentCaseIndex].strip()
+        # Load current case (load in Slicer too)
+        self.loadCaseWithCurrentState(self.currentCaseId, loadInSlicer=True)
+
+    def goToCaseId(self, caseId):
+        # Search for the id
+        for i in range(len(self.caseListIds)):
+            if self.caseListIds[i].strip() == caseId.strip():
+                self.goToCaseIndex(i)
+                return True
+        return False
 
 
     def downloadNextCases(self, caseIndex, bufferSize):

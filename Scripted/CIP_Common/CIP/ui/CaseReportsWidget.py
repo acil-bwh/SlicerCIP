@@ -142,7 +142,7 @@ class CaseReportsLogic(object):
         return columns
 
     @property
-    def _csvFilePath_(self):
+    def csvFilePath(self):
         """ Path of the file that contains all the data
         :return: Path of the file that contains all the data
         """
@@ -178,7 +178,7 @@ class CaseReportsLogic(object):
                 orderedColumns.append(kwargs[column])
             else:
                 orderedColumns.append('')
-        with open(self._csvFilePath_, 'a+b') as csvfile:
+        with open(self.csvFilePath, 'a+b') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(orderedColumns)
         #print("DEBUG: saved values in " + self.__csvFilePath__)
@@ -190,8 +190,8 @@ class CaseReportsLogic(object):
         :param filePath: destination of the file (full path)
         :return:
         """
-        if os.path.exists(self._csvFilePath_):
-            with open(self._csvFilePath_, 'r+b') as csvfileReader:
+        if os.path.exists(self.csvFilePath):
+            with open(self.csvFilePath, 'r+b') as csvfileReader:
                 reader = csv.reader(csvfileReader)
                 with open(filePath, 'a+b') as csvfileWriter:
                     writer = csv.writer(csvfileWriter)
@@ -207,8 +207,8 @@ class CaseReportsLogic(object):
         :return: list of lists (rows/colums)
         """
         data = []
-        if os.path.exists(self._csvFilePath_):
-            with open(self._csvFilePath_, 'r+b') as csvfileReader:
+        if os.path.exists(self.csvFilePath):
+            with open(self.csvFilePath, 'r+b') as csvfileReader:
                 reader = csv.reader(csvfileReader)
                 for row in reader:
                     data.append(row)
@@ -218,8 +218,8 @@ class CaseReportsLogic(object):
         """ Return the last row of data that was stored in the csv file
         :return: list with the information of a single row
         """
-        if os.path.exists(self._csvFilePath_):
-            with open(self._csvFilePath_, 'r+b') as csvfileReader:
+        if os.path.exists(self.csvFilePath):
+            with open(self.csvFilePath, 'r+b') as csvfileReader:
                 reader = csv.reader(csvfileReader)
                 #return reader.next()
                 # Read all the information of the file to iterate in reverse order
@@ -234,8 +234,8 @@ class CaseReportsLogic(object):
         :param value:
         :return: row with the first match or None if it' not found
         """
-        if os.path.exists(self._csvFilePath_):
-            with open(self._csvFilePath_, 'r+b') as csvfileReader:
+        if os.path.exists(self.csvFilePath):
+            with open(self.csvFilePath, 'r+b') as csvfileReader:
                 reader = csv.reader(csvfileReader)
                 rows = [row for row in reader if row[columnIndex + 1] == value]
                 # print("DEBUG. Rows:")
@@ -249,8 +249,8 @@ class CaseReportsLogic(object):
 
 
     def remove(self):
-        if os.path.exists(self._csvFilePath_):
-            os.remove(self._csvFilePath_)
+        if os.path.exists(self.csvFilePath):
+            os.remove(self.csvFilePath)
 
 
 

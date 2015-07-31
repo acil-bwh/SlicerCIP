@@ -21,8 +21,8 @@ set(MODULE_PYTHON_SCRIPTS
 set(MODULE_PYTHON_RESOURCES
   CIP/ui/Resources/BodyCompositionColorMap.ctbl
   CIP/ui/Resources/StructuresColorMap.ctbl
-  CIP/ui/Resources/Icons/1415659830_previous.png
-  CIP/ui/Resources/Icons/1415659836_next.png
+  CIP/ui/Resources/Icons/previous.png
+  CIP/ui/Resources/Icons/next.png
   CIP/ui/Resources/Icons/1415667870_kview.png
   CIP/ui/Resources/Icons/ACIL_Blank.png
   CIP/ui/Resources/Icons/export-csv.png
