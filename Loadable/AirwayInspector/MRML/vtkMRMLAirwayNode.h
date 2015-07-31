@@ -87,27 +87,17 @@ public:
   vtkSetMacro(Threshold, int);
   vtkGetMacro(Threshold, int);
 
-  /// Get/Set Min
-  vtkSetMacro(Min, int);
-  vtkGetMacro(Min, int);
-
-  /// Get/Set Max
-  vtkSetMacro(Max, int);
-  vtkGetMacro(Max, int);
-
-  /// Get/Set Mean
-  vtkSetMacro(Mean, int);
-  vtkGetMacro(Mean, int);
-
-  /// Get/Set Std
-  vtkSetMacro(Std, int);
-  vtkGetMacro(Std, int);
-
   // Description:
   // Reformat airway along airway long axis
   vtkBooleanMacro(Reformat,int);
   vtkSetMacro(Reformat,int);
   vtkGetMacro(Reformat,int);
+
+  // Description:
+  // Reformat airway along airway long axis
+  vtkBooleanMacro(ComputeCenter,int);
+  vtkSetMacro(ComputeCenter,int);
+  vtkGetMacro(ComputeCenter,int);
 
   // Description:
   // Reformat airway along airway long axis
@@ -167,6 +157,12 @@ public:
   vtkGetObjectMacro(OuterContour, vtkPolyData);
   vtkSetObjectMacro(OuterContour, vtkPolyData);
 
+  vtkGetObjectMacro(Mean, vtkDoubleArray);
+  vtkGetObjectMacro(Std, vtkDoubleArray);
+  vtkGetObjectMacro(Min, vtkDoubleArray);
+  vtkGetObjectMacro(Max, vtkDoubleArray);
+  vtkGetObjectMacro(Ellipse, vtkDoubleArray);
+
   enum AxisMode { HESSIAN, POLYDATA, VECTOR};
   enum ReconstructionMode {SMOOTH, SHARP};
   enum Method { FWHM, ZeroCrossing, PhaseCongruency, PhaseCongruencyMultipleKernels};
@@ -184,14 +180,10 @@ private:
   double Threshold;
   char *VolumeNodeID;
 
-  double Min;
-  double Max;
-  double Mean;
-  double Std;
-
   double Resolution;
   int    Reformat;
   int    AxisMode;
+  int    ComputeCenter;
   int    Reconstruction;
   int    Method;
   double SegmentPercentage;
@@ -201,6 +193,11 @@ private:
   vtkImageData *AirwayImage;
   vtkPolyData  *InnerContour;
   vtkPolyData  *OuterContour;
+  vtkDoubleArray *Mean;
+  vtkDoubleArray *Std;
+  vtkDoubleArray *Min;
+  vtkDoubleArray *Max;
+  vtkDoubleArray *Ellipse;
 };
 
 #endif

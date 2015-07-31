@@ -36,6 +36,8 @@
 #include "vtkLookupTable.h"
 #include "vtkMatrix4x4.h"
 #include "vtkImageReader.h"
+#include "vtkNRRDWriter.h"
+#include "vtkPNGWriter.h"
 
 #include "QPainter.h"
 #include "QMainWindow.h"
@@ -94,7 +96,7 @@ void qSlicerAirwayInspectorModuleWidget::setup()
   d->qvtkWidget = new QVTKWidget;
   d->qvtkWidget->GetRenderWindow()->AddRenderer(this->Renderer);
   d->qvtkWidget->setFixedSize(200,200);
-  d->reportCollapsibleButton->layout()->addWidget(d->qvtkWidget);
+  d->reportFormLayout->setWidget(2, QFormLayout::FieldRole, d->qvtkWidget);
 
   //d->ReportTable
 
@@ -103,6 +105,9 @@ void qSlicerAirwayInspectorModuleWidget::setup()
 
   QObject::connect(d->AnalyzeButton, SIGNAL(pressed()),
                    this, SLOT(analyzePressed()));
+
+  QObject::connect(d->AirwayComboBox, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
+                   this, SLOT(setMRMLAirwayNode(vtkMRMLNode*)));
 }
 
 //-----------------------------------------------------------------------------
@@ -293,6 +298,22 @@ void qSlicerAirwayInspectorModuleWidget::setMRMLVolumeNode(vtkMRMLNode* mrmlNode
     }
 }
 
+void qSlicerAirwayInspectorModuleWidget::setMRMLAirwayNode(vtkMRMLNode* mrmlNode)
+{
+  Q_D(qSlicerAirwayInspectorModuleWidget);
+
+  vtkMRMLAirwayNode* airwayNode = vtkMRMLAirwayNode::SafeDownCast(
+    d->AirwayComboBox->currentNode());
+
+  if (airwayNode)
+    {
+    d->ComputeCenterCheckBox->setChecked(airwayNode->GetComputeCenter());
+    d->ThresholdSpinBox->setValue(airwayNode->GetThreshold());
+    d->MethodComboBox->setCurrentIndex(airwayNode->GetMethod());
+    d->ReformatCheckBox->setChecked(airwayNode->GetReformat());
+    }
+}
+
 //-----------------------------------------------------------------------------
 void qSlicerAirwayInspectorModuleWidget::analyzePressed()
 {
@@ -311,6 +332,11 @@ void qSlicerAirwayInspectorModuleWidget::analyzePressed()
     }
 
   this->updateReport(airwayNode);
+
+  if (d->WriteAirwaysCheckBox->isChecked())
+  {
+    this->saveAirwayImage(airwayNode);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -326,10 +352,10 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
   d->ReportTable->setColumnCount(4);
   d->ReportTable->setRowCount(16);
 
-  d->MinSpinBox->setValue(airwayNode->GetMin());
-  d->MaxSpinBox->setValue(airwayNode->GetMax());
-  d->MeanSpinBox->setValue(airwayNode->GetMean());
-  d->StdSpinBox->setValue(airwayNode->GetStd());
+  //d->MinSpinBox->setValue(airwayNode->GetMin());
+  //d->MaxSpinBox->setValue(airwayNode->GetMax());
+  //d->MeanSpinBox->setValue(airwayNode->GetMean());
+  //d->StdSpinBox->setValue(airwayNode->GetStd());
 
   vtkImageData *image= airwayNode->GetAirwayImage();
 
@@ -414,3 +440,21 @@ void qSlicerAirwayInspectorModuleWidget::createColorImage(vtkImageData* image)
 
   image->Modified();
 }
+
+void qSlicerAirwayInspectorModuleWidget::saveAirwayImage(vtkMRMLAirwayNode* airwayNode)
+{
+  Q_D(qSlicerAirwayInspectorModuleWidget);
+  if (airwayNode == 0 || airwayNode->GetAirwayImage() == 0)
+    {
+    return;
+    }
+
+   char fileName[10*256];
+   vtkPNGWriter *writer = vtkPNGWriter::New();
+   writer->SetInputData(airwayNode->GetAirwayImage());
+   sprintf(fileName,"%%s/s_%s.png", d->OutputDirectoryButton->directory().toStdString().c_str(),
+                                    d->FilePrefixLineEdit->text(), airwayNode->GetName());
+   writer->SetFileName(fileName);
+   writer->Write();
+   writer->Delete();
+ }

@@ -28,6 +28,7 @@
 #include <vtkSmartPointer.h>
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
+#include <vtkDoubleArray.h>
 
 // STD includes
 #include <sstream>
@@ -51,10 +52,11 @@ vtkMRMLAirwayNode::vtkMRMLAirwayNode()
   Threshold = 0;
   VolumeNodeID = 0;
 
-  Min = 0;
-  Max = 0;
-  Mean = 0;
-  Std = 0;
+  this->Mean = vtkDoubleArray::New();
+  this->Std = vtkDoubleArray::New();
+  this->Min = vtkDoubleArray::New();
+  this->Max = vtkDoubleArray::New();
+  this->Ellipse = vtkDoubleArray::New();
 
   AirwayImage = 0;
   InnerContour = 0;
@@ -81,6 +83,11 @@ vtkMRMLAirwayNode::~vtkMRMLAirwayNode()
     delete [] this->VolumeNodeID;
     this->VolumeNodeID = NULL;
     }
+  this->Mean->Delete();
+  this->Std->Delete();
+  this->Min->Delete();
+  this->Max->Delete();
+  this->Ellipse->Delete();
 }
 
 //----------------------------------------------------------------------------
@@ -147,25 +154,25 @@ void vtkMRMLAirwayNode::ReadXMLAttributes(const char** atts)
       {
       std::stringstream ss;
       ss << attValue;
-      ss >> Min;
+      //ss >> Min;
       }
     else if (!strcmp(attName, "max"))
       {
       std::stringstream ss;
       ss << attValue;
-      ss >> Max;
+      //ss >> Max;
       }
     else if (!strcmp(attName, "mean"))
       {
       std::stringstream ss;
       ss << attValue;
-      ss >> Mean;
+      //ss >> Mean;
       }
     else if (!strcmp(attName, "std"))
       {
       std::stringstream ss;
       ss << attValue;
-      ss >> Std;
+      //ss >> Std;
       }
     else if (!strcmp(attName, "volumeNodeID"))
       {
@@ -190,10 +197,10 @@ void vtkMRMLAirwayNode::Copy(vtkMRMLNode *anode)
   this->SetXYZ(node->GetXYZ());
   this->SetOrientationWXYZ(node->GetOrientationWXYZ());
   this->SetThreshold(node->GetThreshold());
-  this->SetMin(node->GetMin());
-  this->SetMax(node->GetMax());
-  this->SetMean(node->GetMean());
-  this->SetStd(node->GetStd());
+  //this->SetMin(node->GetMin());
+  //this->SetMax(node->GetMax());
+  //this->SetMean(node->GetMean());
+  //this->SetStd(node->GetStd());
 }
 
 //----------------------------------------------------------------------------

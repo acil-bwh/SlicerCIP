@@ -13,7 +13,6 @@
 // VTK includes
 #include <vtkImageData.h>
 #include <vtkObjectFactory.h>
-#include <vtkPNGWriter.h>
 #include <vtkVersion.h>
 #include <vtkImageEllipsoidSource.h>
 #include <vtkImageCast.h>
@@ -24,8 +23,6 @@
 
 #include <vtkImageResliceWithPlane.h>
 #include <vtkComputeAirwayWall.h>
-
-#include <vtkNRRDWriter.h>
 
 // STD includes
 #include <algorithm>
@@ -160,12 +157,6 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
   // Allocate data
   //Create point Data for each stats
 
-  vtkDoubleArray *mean;
-  vtkDoubleArray *std;
-  vtkDoubleArray *min;
-  vtkDoubleArray *max;
-  vtkDoubleArray *ellipse;
-
   std::string methodTag;
 
   if (this->WallSolver->GetMethod() == 0)
@@ -181,42 +172,37 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
 
   std::stringstream name;
   name << "airwaymetrics-" << methodTag.c_str() << "-mean";
-  mean = vtkDoubleArray::New();
-  mean->SetName(name.str().c_str());
+  node->GetMean()->SetName(name.str().c_str());
 
   name.clear();
   name << "airwaymetrics-" << methodTag.c_str() << "-std";
-  std = vtkDoubleArray::New();
-  std->SetName(name.str().c_str());
+  node->GetStd()->SetName(name.str().c_str());
 
   name.clear();
   name << "airwaymetrics-" << methodTag.c_str() << "-min";
-  min = vtkDoubleArray::New();
-  min->SetName(name.str().c_str());
+  node->GetMin()->SetName(name.str().c_str());
 
   name.clear();
   name << "airwaymetrics-" << methodTag.c_str() << "-max";
-  max = vtkDoubleArray::New();
-  max->SetName(name.str().c_str());
+  node->GetMax()->SetName(name.str().c_str());
 
   name.clear();
   name << "airwaymetrics-" << methodTag.c_str() << "-ellips";
-  ellipse = vtkDoubleArray::New();
-  ellipse->SetName(name.str().c_str());
+  node->GetEllipse()->SetName(name.str().c_str());
 
   int nc = this->WallSolver->GetNumberOfQuantities();
   int np = 1;
 
-  mean->SetNumberOfComponents(nc);
-  mean->SetNumberOfTuples(np);
-  std->SetNumberOfComponents(nc);
-  std->SetNumberOfTuples(np);
-  min->SetNumberOfComponents(nc);
-  min->SetNumberOfTuples(np);
-  max->SetNumberOfComponents(nc);
-  max->SetNumberOfTuples(np);
-  ellipse->SetNumberOfComponents(6);
-  ellipse->SetNumberOfTuples(np);
+  node->GetMean()->SetNumberOfComponents(nc);
+  node->GetMean()->SetNumberOfTuples(np);
+  node->GetStd()->SetNumberOfComponents(nc);
+  node->GetStd()->SetNumberOfTuples(np);
+  node->GetMin()->SetNumberOfComponents(nc);
+  node->GetMin()->SetNumberOfTuples(np);
+  node->GetMax()->SetNumberOfComponents(nc);
+  node->GetMax()->SetNumberOfTuples(np);
+  node->GetEllipse()->SetNumberOfComponents(6);
+  node->GetEllipse()->SetNumberOfTuples(np);
 
   vtkEllipseFitting *eifit = vtkEllipseFitting::New();
   vtkEllipseFitting *eofit = vtkEllipseFitting::New();
@@ -283,10 +269,10 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
 
    double val = img->GetScalarComponentAsDouble(128, 128, 0, 0);
 
-   vtkNRRDWriter *writer = vtkNRRDWriter::New();
-   writer->SetFileName("C:\\tmp\\airay_slice.nrrd");
-   writer->SetInputData(img);
-   writer->Write();
+   //vtkNRRDWriter *writer = vtkNRRDWriter::New();
+   //writer->SetFileName("C:\\tmp\\airay_slice.nrrd");
+   //writer->SetInputData(img);
+   //writer->Write();
 
    //this->Reslicer->GetOutput()->Print(std::cout);
 
@@ -354,42 +340,23 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
    // Collect results and assign them to polydata
    for (int c = 0; c < this->WallSolver->GetNumberOfQuantities();c++)
    {
-     mean->SetComponent(0,c,this->WallSolver->GetStatsMean()->GetComponent(2*c,0));
-     std->SetComponent(0,c,this->WallSolver->GetStatsMean()->GetComponent((2*c)+1,0));
-     min->SetComponent(0,c,this->WallSolver->GetStatsMinMax()->GetComponent(2*c,0));
-     max->SetComponent(0,c,this->WallSolver->GetStatsMinMax()->GetComponent((2*c)+1,0));
+     node->GetMean()->SetComponent(0,c,this->WallSolver->GetStatsMean()->GetComponent(2*c,0));
+     node->GetStd()->SetComponent(0,c,this->WallSolver->GetStatsMean()->GetComponent((2*c)+1,0));
+     node->GetMin()->SetComponent(0,c,this->WallSolver->GetStatsMinMax()->GetComponent(2*c,0));
+     node->GetMax()->SetComponent(0,c,this->WallSolver->GetStatsMinMax()->GetComponent((2*c)+1,0));
    }
 
-   ellipse->SetComponent(0,0,eifit->GetMinorAxisLength()*resolution);
-   ellipse->SetComponent(0,1,eifit->GetMajorAxisLength()*resolution);
-   ellipse->SetComponent(0,2,eifit->GetAngle());
-   ellipse->SetComponent(0,3,eofit->GetMinorAxisLength()*resolution);
-   ellipse->SetComponent(0,4,eofit->GetMajorAxisLength()*resolution);
-   ellipse->SetComponent(0,5,eofit->GetAngle());
+   node->GetEllipse()->SetComponent(0,0,eifit->GetMinorAxisLength()*resolution);
+   node->GetEllipse()->SetComponent(0,1,eifit->GetMajorAxisLength()*resolution);
+   node->GetEllipse()->SetComponent(0,2,eifit->GetAngle());
+   node->GetEllipse()->SetComponent(0,3,eofit->GetMinorAxisLength()*resolution);
+   node->GetEllipse()->SetComponent(0,4,eofit->GetMajorAxisLength()*resolution);
+   node->GetEllipse()->SetComponent(0,5,eofit->GetAngle());
 
    vtkImageData *airwayImage = vtkImageData::New();
    this->CreateAirwayImage(this->Reslicer->GetOutput(),eifit,eofit,airwayImage);
 
-   //if (node->GetSaveAirwayImage())
-   node->SetAirwayImagePrefix("C:\\tmp\\airwayImage");
-   if (0)
-   {
-     char fileName[10*256];
-     vtkPNGWriter *writer = vtkPNGWriter::New();
-     unsigned char *val = (unsigned char *)airwayImage->GetScalarPointer(128,128,0);
-     //writer->SetInputData(this->Reslicer->GetOutput());
-     writer->SetInputData(airwayImage);
-     sprintf(fileName,"%s%03lld.png",node->GetAirwayImagePrefix(),0);
-     writer->SetFileName(fileName);
-     writer->Write();
-     writer->Delete();
-  }
-
-  node->SetMin(min->GetValue(0));
-  node->SetMax(max->GetValue(0));
-  node->SetMean(mean->GetValue(0));
-  node->SetStd(std->GetValue(0));
-  node->SetAirwayImage(airwayImage);
+   node->SetAirwayImage(airwayImage);
 
   //Compute stats for each line if lines are available
   /***
