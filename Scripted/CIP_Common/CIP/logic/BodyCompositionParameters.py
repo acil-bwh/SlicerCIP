@@ -38,7 +38,10 @@ class BodyCompositionParameters(object):
     - Green level (0-1)    DEPRECATED
     - Blue level (0-1)     DEPRECATED
     - Threshold Min
-    - Threshold Max"""
+    - Threshold Max
+    - Window Width
+    - Window level
+    - Preprocessing"""
   REGION_ID = 0                 # Chest Region (0-255)
   TYPE_ID = 1                   # Chest Type (0-255)   
   RED = 2                       # Red level (0-1)      DEPRECATED

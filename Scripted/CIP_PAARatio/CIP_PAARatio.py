@@ -541,12 +541,7 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         """ Get the root annotations node global to the scene, creating it if necessary
         :return: "All Annotations" vtkMRMLAnnotationHierarchyNode
         """
-        rootHierarchyNode = slicer.util.getNode('All Annotations')
-        if rootHierarchyNode is None:
-            # Create root annotations node
-            rootHierarchyNode = slicer.modules.annotations.logic().GetActiveHierarchyNode()
-            logging.debug("Root annotations node created")
-        return rootHierarchyNode
+        return SlicerUtil.getRootAnnotationsNode()
 
     def getRulersListNode(self, volumeId, createIfNotExist=True):
         """ Get the rulers node for this volume, creating it if it doesn't exist yet

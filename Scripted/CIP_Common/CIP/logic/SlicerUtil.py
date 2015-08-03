@@ -97,6 +97,72 @@ class SlicerUtil:
             return False
         return True
 
+    @staticmethod
+    def getRootAnnotationsNode():
+        """ Get the root annotations node global to the scene, creating it if necessary.
+        This is useful as a starting point to add rulers to the scene
+        :return: "All Annotations" vtkMRMLAnnotationHierarchyNode
+        """
+        rootHierarchyNode = slicer.util.getNode('All Annotations')
+        if rootHierarchyNode is None:
+            # Create root annotations node
+            rootHierarchyNode = slicer.modules.annotations.logic().GetActiveHierarchyNode()
+        return rootHierarchyNode
+
+
+    @staticmethod
+    def __setMarkupsMode__(isFiducialsMode, fiducialClass, keepFiducialsModeOn):
+        """ Activate fiducials mode.
+        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
+        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
+        calling setFiducialsMode with activateFiducials=False
+        :param isFiducialsMode: True for "fiducials mode". False for a regular use
+        :fiducialClass: "vtkMRMLMarkupsFiducialNode", "vtkMRMLAnnotationRulerNode"...
+        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
+        first fiducial we will come back to the regular state
+        """
+        applicationLogic = slicer.app.applicationLogic()
+        selectionNode = applicationLogic.GetSelectionNode()
+        selectionNode.SetReferenceActivePlaceNodeClassName(fiducialClass)
+        interactionNode = applicationLogic.GetInteractionNode()
+        if isFiducialsMode:
+            # Mouse cursor --> fiducials
+            interactionNode.SetCurrentInteractionMode(1)
+            # Persistence depending on if we to keep fiducials (or just one)
+            interactionNode.SetPlaceModePersistence(keepFiducialsModeOn)
+        else:
+            # Regular cursor
+            interactionNode.SetCurrentInteractionMode(2)
+            interactionNode.SetPlaceModePersistence(False)
+
+    @staticmethod
+    def setFiducialsMode(isFiducialsMode, keepFiducialsModeOn=False):
+        """ Activate fiducials mode.
+        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
+        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
+        calling setFiducialsMode with activateFiducials=False
+        :param isFiducialsMode: True for "fiducials mode". False for a regular use
+        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
+        first fiducial we will come back to the regular state
+        """
+        SlicerUtil.__setMarkupsMode__(isFiducialsMode, "vtkMRMLMarkupsFiducialNode", keepFiducialsModeOn)
+
+    @staticmethod
+    def setRulersMode(isRulersMode, keepFiducialsModeOn=False):
+        """ Activate fiducials ruler mode.
+        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
+        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
+        calling setFiducialsMode with activateFiducials=False
+        :param isRulersMode: True for "fiducials mode". False for a regular use
+        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
+        first fiducial we will come back to the regular state
+        """
+        SlicerUtil.__setMarkupsMode__(isRulersMode, "vtkMRMLAnnotationRulerNode", keepFiducialsModeOn)
+
+
+
+
+
         # @staticmethod
     # def gitUpdateCIP():
     #     if Util.AUTO_UPDATE_DISABLED:

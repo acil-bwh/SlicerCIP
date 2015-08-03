@@ -22,7 +22,7 @@ except Exception as ex:
         path = os.path.normpath(path + '/CIP')    # We assume that CIP is a subfolder (Slicer behaviour)
     sys.path.append(path)
     from CIP.logic import SlicerUtil
-    print("CIP was added to the python path manually in ACIL_BodyComposition")
+    print("CIP was added to the python path manually in CIP_BodyComposition")
     
 from CIP.logic import Util
 from CIP.logic import BodyCompositionParameters
