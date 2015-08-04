@@ -99,7 +99,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.placeDefaultRulersButton = ctk.ctkPushButton()
         self.placeDefaultRulersButton.text = "Go to tentative slice"
         self.placeDefaultRulersButton.toolTip = "Navigate to the best estimated slice to place the rulers"
-        self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/next.png".format(SlicerSlicerUtil.ICON_DIR)))
+        self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/next.png".format(SlicerUtil.ICON_DIR)))
         self.placeDefaultRulersButton.setIconSize(qt.QSize(20,20))
         self.placeDefaultRulersButton.setFixedWidth(135)
         # self.placeDefaultRulersButton.setStyleSheet("padding: 0 0 30px 0" )

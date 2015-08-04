@@ -152,6 +152,15 @@ class SubtypingParameters(object):
             return self.__subtypes__[0][0]
         return "{0} ({1})".format(self.__subtypes__[subtypeId][0], self.__subtypes__[subtypeId][1])
 
+    def getSubtypeAbbreviation(self, subtypeId):
+        """ Get the abbreviation for this subtype
+        :param subtypeId:
+        :return:
+        """
+        if subtypeId == 0:
+            return ""
+        return self.subtypes[subtypeId][1]
+
     def getColor(self, typeId):
         """ Get a  3-tuple color for this type
         :param typeId:

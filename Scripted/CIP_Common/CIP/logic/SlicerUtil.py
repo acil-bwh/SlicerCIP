@@ -160,6 +160,14 @@ class SlicerUtil:
         SlicerUtil.__setMarkupsMode__(isRulersMode, "vtkMRMLAnnotationRulerNode", keepFiducialsModeOn)
 
 
+    @staticmethod
+    def setActiveVolume(volumeId, labelmapId=None):
+        selectionNode = slicer.app.applicationLogic().GetSelectionNode()
+        if volumeId is not None and volumeId != "":
+            selectionNode.SetReferenceActiveVolumeID(volumeId)
+        if labelmapId is not None and labelmapId != "":
+            selectionNode.SetReferenceActiveLabelVolumeID(labelmapId)
+        slicer.app.applicationLogic().PropagateVolumeSelection(0)
 
 
 
