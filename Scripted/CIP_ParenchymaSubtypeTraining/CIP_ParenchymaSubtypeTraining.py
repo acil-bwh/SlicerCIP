@@ -108,10 +108,6 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.mainLayout.addWidget(self.subtypesFrame, 2, 1)
         self.updateState()
 
-        resultsLabel = qt.QLabel("Save results in...")
-
-
-        # Example button with some common properties
         self.removeLastFiducialButton = ctk.ctkPushButton()
         self.removeLastFiducialButton.text = "Remove last fiducial"
         self.removeLastFiducialButton.toolTip = "Remove the last fiducial added"
@@ -121,13 +117,36 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.removeLastFiducialButton.setFixedWidth(200)
         self.mainLayout.addWidget(self.removeLastFiducialButton, 3, 1)
 
+        self.saveResultsButton = ctk.ctkPushButton()
+        self.saveResultsButton.setText("Save markups")
+        self.saveResultsButton.toolTip = "Save the markups in the specified directory"
+        self.saveResultsButton.setIcon(qt.QIcon("{0}/Save.png".format(SlicerUtil.ICON_DIR)))
+        self.saveResultsButton.setIconSize(qt.QSize(20,20))
+        # self.saveResultsButton.setStyleSheet("font-weight:bold; font-size:12px" )
+        # self.saveResultsButton.setFixedWidth(200)
+
+        self.mainLayout.addWidget(self.saveResultsButton, 4, 0)
+        fileSelectorFrame = qt.QFrame()
+        fileSelectorLayout = qt.QHBoxLayout()
+        fileSelectorFrame.setLayout(fileSelectorLayout)
+        self.saveResultsDirectoryText = qt.QLineEdit()
+        fileSelectorLayout.addWidget(self.saveResultsDirectoryText)
+        self.saveResultsOpenDirectoryDialogButton = ctk.ctkPushButton()
+        self.saveResultsOpenDirectoryDialogButton.setText("...")
+        self.saveResultsOpenDirectoryDialogButton.setFixedWidth(35)
+        self.saveResultsOpenDirectoryDialogButton.setFixedHeight(25)
+        fileSelectorLayout.addWidget(self.saveResultsOpenDirectoryDialogButton)
+        self.mainLayout.addWidget(fileSelectorFrame, 4, 1)
+
+
+
         # Connections
         self.typesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onTypesRadioButtonClicked)
         self.subtypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onSubtypesRadioButtonClicked)
         self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelected)
-
-
         self.removeLastFiducialButton.connect('clicked()', self.onRemoveLastFiducialButtonClicked)
+        self.saveResultsOpenDirectoryDialogButton.connect('clicked()', self.onOpenDirectoryDialogButtonClicked)
+        self.saveResultsButton.connect('clicked()', self.onSaveResultsButtonClicked)
 
 
     def updateState(self):
@@ -226,9 +245,20 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
                     self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId())
 
     def onRemoveLastFiducialButtonClicked(self):
-        #self.logic.saveFiducials(self.volumeSelector.currentNodeID)
-        self.logic.removeLastMarkup()
+       self.logic.removeLastMarkup()
 
+    def onOpenDirectoryDialogButtonClicked(self):
+        f = qt.QFileDialog.getExistingDirectory()
+        if f:
+            self.saveResultsDirectoryText.setText(f)
+
+    def onSaveResultsButtonClicked(self):
+        d = self.saveResultsDirectoryText.text
+        if os.path.isdir(d):
+            self.logic.saveFiducials(self.volumeSelector.currentNodeID, d)
+        else:
+            qt.QMessageBox.warning(slicer.util.mainWindow(), 'Directory incorrect'
+                , 'The folder "{0}" does not exist. Please select a valid directory'.format(d))
 #
 # CIP_ParenchymaSubtypeTrainingLogic
 #
@@ -237,9 +267,10 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         self.params = SubtypingParameters.SubtypingParameters()
         self.markupsLogic = slicer.modules.markups.logic()
 
+        self.currentVolumeId = None
         self.currentTypeId = -1
         self.currentSubtypeId = -1
-        self.markups = []
+        self.savedVolumes = set()
 
     # Constants
     @property
@@ -302,6 +333,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
             fid = slicer.util.getNode(nodeName)
             if fid is None and createIfNotExists:
                 fid = self._createFiducialsListNode_(nodeName, typeId)
+            self.currentVolumeId = volumeNode.GetID()
             self.currentTypeId = typeId
             self.currentSubtypeId = subtypeId
 
@@ -331,9 +363,11 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         # Use the description to store the type of the fiducial that will be saved in
         # the GeometryTopolyData object
         markupListNode.SetNthMarkupDescription(n-1, str(self.getEffectiveType(self.currentTypeId, self.currentSubtypeId)))
+        # Markup added. Mark the current volume as state modified
+        if self.currentVolumeId in self.savedVolumes:
+            self.savedVolumes.remove(self.currentVolumeId)
 
-
-    def saveFiducials(self, volumeId):
+    def saveFiducials(self, volumeId, directory):
         """ Save all the fiducials for the current volume"""
         # Iterate over all the fiducials list nodes
       #  positions = []
@@ -349,25 +383,28 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
                 desc = fidListNode.GetNthMarkupDescription(i)
                 p = GeometryTopologyData.Point(list(pos), 0, int(desc))
                 geom.addPoint(p)
-                #positions.append(list(pos))
-               # types.append(fidListNode.GetNthMarkupDescription(i))
 
-
-
-        # print("DEBUG: saved positions: ")
-        # print(positions)
-        # print(types)
-        # # for position in positions:
-        #
+        # Get the xml content file
         xml = geom.toXml()
-        print(xml)
+        # Save the file
+        fileName = os.path.join(directory, "{0}.xml".format(volumeId))
+        with open(fileName, 'w') as f:
+            f.write(xml)
+
+        # Mark the current volume as saved
+        self.savedVolumes.add(volumeId)
 
     def removeLastMarkup(self):
         fiducialsList = slicer.util.getNode(self.markupsLogic.GetActiveListID())
         if fiducialsList is not None:
             # Remove the last fiducial
             fiducialsList.RemoveMarkup(fiducialsList.GetNumberOfMarkups()-1)
+        # Markup removed. Mark the current volume as state modified
+        if self.currentVolumeId in self.savedVolumes:
+            self.savedVolumes.remove(self.currentVolumeId)
 
+    def isVolumeSaved(self, volumeId):
+        return volumeId in self.savedVolumes
 
     def printMessage(self, message):
         print("This is your message: ", message)
