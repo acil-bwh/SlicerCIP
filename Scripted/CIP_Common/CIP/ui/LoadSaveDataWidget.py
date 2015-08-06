@@ -69,7 +69,7 @@ class LoadSaveDataWidget(object):
         self.setParameters(moduleName, labelmapNodeNameExtensions, volumesFileExtensions)
      
         if not iconsPath:            
-            iconsPath = SlicerUtil.ICON_DIR
+            iconsPath = SlicerUtil.CIP_ICON_DIR
             #print("Imported " + iconsPath)
         
         # ctkCollapsibleButton+frame that wrap everything

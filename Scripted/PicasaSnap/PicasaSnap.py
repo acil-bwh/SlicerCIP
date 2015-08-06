@@ -44,7 +44,7 @@ class PicasaSnapWidget:
   def __init__(self, parent=None):
     """Widget constructor (existing module)"""
     self.BASE_PATH = os.path.dirname(slicer.util.modulePath("PicasaSnap"))
-    self.ICON_DIR = self.BASE_PATH + "/Resources/Icons"
+    self.CIP_ICON_DIR = self.BASE_PATH + "/Resources/Icons"
         
     if not parent:
       self.parent = slicer.qMRMLWidget()
@@ -193,7 +193,7 @@ class PicasaSnapWidget:
       self.newTagButton = qt.QPushButton("New tag")
       #self.newTagButton.setStyleSheet("background-color: #5D74C6; color:white")
       self.newTagButton.setIconSize(qt.QSize(20,20))
-      self.newTagButton.setIcon(qt.QIcon(self.ICON_DIR + "/Plus - 48.png"))
+      self.newTagButton.setIcon(qt.QIcon(self.CIP_ICON_DIR + "/Plus - 48.png"))
       self.newTagButton.setFixedWidth(75)
       self.newTagButton.toolTip = "Add a new tag (the tag will not be created until you upload any picture with it)"
       self.tagsLayout.addWidget(self.newTagButton, 1, 2)
@@ -211,7 +211,7 @@ class PicasaSnapWidget:
       self.uploadSnapshotsButton.text = "Upload to Picasa!"        
       self.uploadSnapshotsButton.toolTip = "Upload selected screenshots to Picassa"      
       self.uploadSnapshotsButton.setStyleSheet("background-color: #5D74C6; color: white; font-weight: bold; font-size:14px")
-      self.uploadSnapshotsButton.setIcon(qt.QIcon(self.ICON_DIR + "/Upload - 64.png")) 
+      self.uploadSnapshotsButton.setIcon(qt.QIcon(self.CIP_ICON_DIR + "/Upload - 64.png"))
       self.uploadSnapshotsButton.setIconSize(qt.QSize(24,24))   
       self.uploadSnapshotsButton.setFixedSize(170, 35)
       self.uploadSnapsLayout.addWidget(self.uploadSnapshotsButton)
@@ -232,7 +232,7 @@ class PicasaSnapWidget:
 #     self.uploadProgressFrame.setLayout(self.uploadProgressLayout)
 #        
 #     # Gif image   
-#     self.imUploading = qt.QMovie("%s/loading.gif" % self.ICON_DIR, qt.QByteArray())
+#     self.imUploading = qt.QMovie("%s/loading.gif" % self.CIP_ICON_DIR, qt.QByteArray())
 #     # Label to contain the gif
 #     self.lblImLoading = qt.QLabel()
 #     # Fix the dimensions of the image (by fixing the dimensions of the label that contains it)
@@ -368,7 +368,7 @@ class PicasaSnapWidget:
     self.btnReloadSnaps = qt.QPushButton("Reload snapshots")
     self.btnReloadSnaps.toolTip = ("Reload all the current snapshots and set them to the initial state (equivalent to the first load of the module)."  
                                   "\nThis is useful if you want to re-upload any snapshots")
-    self.btnReloadSnaps.setIcon(qt.QIcon(self.ICON_DIR + "/Reload - 16.png"))
+    self.btnReloadSnaps.setIcon(qt.QIcon(self.CIP_ICON_DIR + "/Reload - 16.png"))
     self.btnReloadSnaps.setStyleSheet("margin-top: 15px")
     self.btnReloadSnaps.setFixedSize(150,40)
     

@@ -69,7 +69,7 @@ class CIP_BlankWidget(ScriptedLoadableModuleWidget):
         self.exampleButton = ctk.ctkPushButton()
         self.exampleButton.text = "Push me!"
         self.exampleButton.toolTip = "This is the button tooltip"
-        self.exampleButton.setIcon(qt.QIcon("{0}/Reload.png".format(SlicerUtil.ICON_DIR)))
+        self.exampleButton.setIcon(qt.QIcon("{0}/Reload.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.exampleButton.setIconSize(qt.QSize(20,20))
         self.exampleButton.setStyleSheet("font-weight:bold; font-size:12px" )
         self.exampleButton.setFixedWidth(200)

@@ -63,7 +63,7 @@ class CaseReportsWidget(object):
         # Add the event to the list of funcions that will be called when the matching event is triggered
         self.eventsCallbacks.append((event, callback))
 
-    def __triggerEvent__(self, eventType, *params):
+    def triggerEvent(self, eventType, *params):
         """Trigger one of the possible events from the object.
         Ex:    self.__triggerEvent__(self.EVENT_SAVE) """
         for callback in (item[1] for item in self.eventsCallbacks if item[0] == eventType):

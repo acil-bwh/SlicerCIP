@@ -19,8 +19,10 @@ except Exception as ex:
     from CIP.logic import SlicerUtil
     print("CIP was added to the python path manually in CIP_ParenchyaSubtypeTraining")
 
-from CIP.logic import SubtypingParameters, GeometryTopologyData
+from CIP.logic import SubtypingParameters
+# import CIP.logic.GeometryTopologyData as geom
 
+from CIP.logic import geometryTopologyData as geom
 
 #
 # CIP_ParenchymaSubtypeTraining
@@ -47,6 +49,9 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
+
+    moduleName = "CIP_ParenchymaSubtypeTraining"
+
     def setup(self):
         """This is called one time when the module GUI is initialized
         """
@@ -106,21 +111,22 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.subtypesFrame.setFixedHeight(300)
         self.subtypesLayout = qt.QVBoxLayout(self.subtypesFrame)
         self.mainLayout.addWidget(self.subtypesFrame, 2, 1)
-        self.updateState()
 
+        # Remove fiducial button
         self.removeLastFiducialButton = ctk.ctkPushButton()
         self.removeLastFiducialButton.text = "Remove last fiducial"
         self.removeLastFiducialButton.toolTip = "Remove the last fiducial added"
-        self.removeLastFiducialButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.ICON_DIR)))
+        self.removeLastFiducialButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
         #self.exampleButton.setIconSize(qt.QSize(20,20))
         #self.exampleButton.setStyleSheet("font-weight:bold; font-size:12px" )
         self.removeLastFiducialButton.setFixedWidth(200)
         self.mainLayout.addWidget(self.removeLastFiducialButton, 3, 1)
 
+        # Save results section
         self.saveResultsButton = ctk.ctkPushButton()
         self.saveResultsButton.setText("Save markups")
         self.saveResultsButton.toolTip = "Save the markups in the specified directory"
-        self.saveResultsButton.setIcon(qt.QIcon("{0}/Save.png".format(SlicerUtil.ICON_DIR)))
+        self.saveResultsButton.setIcon(qt.QIcon("{0}/Save.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.saveResultsButton.setIconSize(qt.QSize(20,20))
         # self.saveResultsButton.setStyleSheet("font-weight:bold; font-size:12px" )
         # self.saveResultsButton.setFixedWidth(200)
@@ -130,6 +136,10 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         fileSelectorLayout = qt.QHBoxLayout()
         fileSelectorFrame.setLayout(fileSelectorLayout)
         self.saveResultsDirectoryText = qt.QLineEdit()
+        # Assign a default path for the results
+        defaultPath = os.path.join(SlicerUtil.getModuleFolder(self.moduleName), "Results")
+        self.saveResultsDirectoryText.setText(SlicerUtil.settingGetOrSetDefault(self.moduleName,
+                                                                                "SaveResultsDirectory", defaultPath))
         fileSelectorLayout.addWidget(self.saveResultsDirectoryText)
         self.saveResultsOpenDirectoryDialogButton = ctk.ctkPushButton()
         self.saveResultsOpenDirectoryDialogButton.setText("...")
@@ -139,6 +149,22 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.mainLayout.addWidget(fileSelectorFrame, 4, 1)
 
 
+        # Case navigator
+        if SlicerUtil.is_SlicerACIL_loaded():
+            caseNavigatorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
+            caseNavigatorAreaCollapsibleButton.text = "Case navigator"
+            self.layout.addWidget(caseNavigatorAreaCollapsibleButton)
+            caseNavigatorLayout = qt.QVBoxLayout(caseNavigatorAreaCollapsibleButton)
+
+            # Add a case list navigator
+            from ACIL.ui import CaseNavigatorWidget
+            self.caseNavigatorWidget = CaseNavigatorWidget(parentModuleName=self.moduleName
+                                                           ,parentContainer=caseNavigatorAreaCollapsibleButton)
+            # Listen for the event of loading volume
+            self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_VOLUME_LOADED, self.onNewVolumeLoaded)
+
+        self.updateState()
+
 
         # Connections
         self.typesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onTypesRadioButtonClicked)
@@ -147,6 +173,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.removeLastFiducialButton.connect('clicked()', self.onRemoveLastFiducialButtonClicked)
         self.saveResultsOpenDirectoryDialogButton.connect('clicked()', self.onOpenDirectoryDialogButtonClicked)
         self.saveResultsButton.connect('clicked()', self.onSaveResultsButtonClicked)
+
 
 
     def updateState(self):
@@ -174,33 +201,27 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             self.logic.setActiveFiducialsListNode(selectedVolume,
                 self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId())
 
-        # for i in range(len(self.typesRadioButtonGroup.buttons())):
-        #     if self.typesRadioButtonGroup.buttons()[i].checked:
-        #         # Load the subtypes for this type
-        #         subtypesDict = self.logic.getSubtypes(self.typesRadioButtonGroup.checkedId())
-        #         # Remove all the existing buttons
-        #         for b in self.subtypesRadioButtonGroup.buttons():
-        #             b.hide()
-        #             b.delete()
-        #         # Add all the subtypes with the full description
-        #         for subtype in subtypesDict.iterkeys():
-        #             rbitem = qt.QRadioButton(self.logic.getSubtypeFullDescription(subtype))
-        #             self.subtypesRadioButtonGroup.addButton(rbitem, subtype)
-        #             self.subtypesLayout.addWidget(rbitem)
-        #         # Check first element
-        #         self.subtypesRadioButtonGroup.buttons()[0].setChecked(True)
-
-
-
-        # # Get the active list id
-
-        # # Search for the type id that is active
-        # pattern = "(.*)__(.*)__"
-        # m = re.match(pattern, fidListNodeID)
-        # if m:
-        #     typeId = int(m.groups()[1])
-        #     print("DEBUG: typeId=", typeId)
-        #     color = self.params.getColor(typeId)
+    def saveResultsCurrentNode(self):
+        d = self.saveResultsDirectoryText.text
+        if not os.path.isdir(d):
+            # Ask the user if he wants to create the folder
+            if qt.QMessageBox.question(slicer.util.mainWindow(), "Create directory?",
+                "The directory '{0}' does not exist. Do you want to create it?".format(d),
+                                       qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
+                try:
+                    os.makedirs(d)
+                    # Make sure that everybody has write permissions (sometimes there are problems because of umask)
+                    os.chmod(d, 0777)
+                    self.logic.saveFiducials(self.volumeSelector.currentNode(), d)
+                    qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved',
+                        "The results have been saved succesfully")
+                except:
+                     qt.QMessageBox.warning(slicer.util.mainWindow(), 'Directory incorrect',
+                        'The folder "{0}" could not be created. Please select a valid directory'.format(d))
+        else:
+            self.logic.saveFiducials(self.volumeSelector.currentNode(), d)
+            qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved',
+                "The results have been saved succesfully")
 
 
     def enter(self):
@@ -220,12 +241,26 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         pass
 
+    def onNewVolumeLoaded(self, volumeNode):
+        print("DEBUG: Current selected volume: ", self.volumeSelector.currentNodeID)
+        print("DEBUG: Volume loaded: ", volumeNode.GetID())
+        volume = self.volumeSelector.currentNode()
+        if volume is not None \
+                and volumeNode.GetID() != self.volumeSelector.currentNodeID  \
+                and not self.logic.isVolumeSaved(volume.GetID()):
+            # Ask the user if he wants to save the previously loaded volume
+            if qt.QMessageBox.question(slicer.util.mainWindow(), "Save results?",
+                    "The fiducials for the volume '{0}' have not been saved. Do you want to save them?"
+                    .format(volume.GetName()),
+                    qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
+                self.saveResultsCurrentNode()
+
 
     def onVolumeSelected(self, volumeNode):
-        # Get the fiducials node for this volume. Create it if necessary
-        #fid = self.logic.setActiveFiducialsListNode(volumeNode)
-        SlicerUtil.setActiveVolume(volumeNode.GetID())
-        self.updateState()
+        if volumeNode:
+            print ("New volume selected: " + volumeNode.GetID())
+            SlicerUtil.setActiveVolume(volumeNode.GetID())
+            self.updateState()
 
     def onTypesRadioButtonClicked(self, button):
         """ One of the radio buttons has been pressed
@@ -253,12 +288,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             self.saveResultsDirectoryText.setText(f)
 
     def onSaveResultsButtonClicked(self):
-        d = self.saveResultsDirectoryText.text
-        if os.path.isdir(d):
-            self.logic.saveFiducials(self.volumeSelector.currentNodeID, d)
-        else:
-            qt.QMessageBox.warning(slicer.util.mainWindow(), 'Directory incorrect'
-                , 'The folder "{0}" does not exist. Please select a valid directory'.format(d))
+        self.saveResultsCurrentNode()
 #
 # CIP_ParenchymaSubtypeTrainingLogic
 #
@@ -367,32 +397,34 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         if self.currentVolumeId in self.savedVolumes:
             self.savedVolumes.remove(self.currentVolumeId)
 
-    def saveFiducials(self, volumeId, directory):
-        """ Save all the fiducials for the current volume"""
+    def saveFiducials(self, volume, directory):
+        """ Save all the fiducials for the current volume.
+        The name of the file will be VolumeName_parenchymaTraining.xml"
+        :param volume:
+        :param directory:
+        :return:
+        """
         # Iterate over all the fiducials list nodes
-      #  positions = []
         pos = [0,0,0]
-        desc = ""
-        #types = []
-        geom = GeometryTopologyData.GeometryTopologyData()
-        for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volumeId)).itervalues():
+        topology = geom.GeometryTopologyData()
+        for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volume.GetID())).itervalues():
             # Get all the markups
             for i in range(fidListNode.GetNumberOfMarkups()):
                 fidListNode.GetNthFiducialPosition(i, pos)
                 # Get the type from the description (region will always be 0)
                 desc = fidListNode.GetNthMarkupDescription(i)
-                p = GeometryTopologyData.Point(list(pos), 0, int(desc))
-                geom.addPoint(p)
+                p = geom.Point(list(pos), 0, int(desc))
+                topology.addPoint(p)
 
         # Get the xml content file
-        xml = geom.toXml()
+        xml = topology.toXml()
         # Save the file
-        fileName = os.path.join(directory, "{0}.xml".format(volumeId))
+        fileName = os.path.join(directory, "{0}_parenchymaTraining.xml".format(volume.GetName()))
         with open(fileName, 'w') as f:
             f.write(xml)
 
         # Mark the current volume as saved
-        self.savedVolumes.add(volumeId)
+        self.savedVolumes.add(volume.GetID())
 
     def removeLastMarkup(self):
         fiducialsList = slicer.util.getNode(self.markupsLogic.GetActiveListID())

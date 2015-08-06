@@ -97,7 +97,7 @@ class CIP_BodyCompositionWidget():
         # Create the appropiate color maps for each type of segmentation
         self.__createColorNodes__()
       
-        self.iconsPath = SlicerUtil.ICON_DIR     # Imported from CIP library
+        self.iconsPath = SlicerUtil.CIP_ICON_DIR     # Imported from CIP library
       
         ####################
         # Place the main paramteres (region and type selection)
@@ -348,7 +348,7 @@ class CIP_BodyCompositionWidget():
             slicer.mrmlScene.AddNode(storageNode)
             colorTableNode.SetName("BodyCompositionColorMap")
             colorTableNode.AddAndObserveStorageNodeID(storageNode.GetID())
-            storageNode.SetFileName("{0}/{1}".format(SlicerUtil.RESOURCES_DIR, "BodyCompositionColorMap.ctbl"))     # Blank file
+            storageNode.SetFileName("{0}/{1}".format(SlicerUtil.CIP_RESOURCES_DIR, "BodyCompositionColorMap.ctbl"))     # Blank file
             storageNode.ReadData(colorTableNode)
                      
             # Reserve all the possible combinations (11111111 11111111 = 65535)

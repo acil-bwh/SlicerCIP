@@ -134,7 +134,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.applySegmentationButton = ctk.ctkPushButton()
         self.applySegmentationButton.text = "Segment!"
         self.applySegmentationButton.toolTip = "This is the button toolTip"
-        self.applySegmentationButton.setIcon(qt.QIcon("{0}/Reload.png".format(SlicerUtil.ICON_DIR)))
+        self.applySegmentationButton.setIcon(qt.QIcon("{0}/Reload.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.applySegmentationButton.setIconSize(qt.QSize(20,20))
         self.applySegmentationButton.setStyleSheet("font-weight:bold; font-size:12px" )
         self.applySegmentationButton.setFixedWidth(200)
