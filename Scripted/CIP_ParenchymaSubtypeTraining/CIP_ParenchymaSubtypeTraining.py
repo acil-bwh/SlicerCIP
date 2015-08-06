@@ -19,10 +19,8 @@ except Exception as ex:
     from CIP.logic import SlicerUtil
     print("CIP was added to the python path manually in CIP_ParenchyaSubtypeTraining")
 
-from CIP.logic import SubtypingParameters
-# import CIP.logic.GeometryTopologyData as geom
-
-from CIP.logic import geometryTopologyData as geom
+from CIP.logic import subtypingParameters
+from CIP.logic import geometryTopologyData as GTD
 
 #
 # CIP_ParenchymaSubtypeTraining
@@ -122,6 +120,15 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.removeLastFiducialButton.setFixedWidth(200)
         self.mainLayout.addWidget(self.removeLastFiducialButton, 3, 1)
 
+
+        #TEMP BUTTON
+        # Remove fiducial button
+        self.loadButton = ctk.ctkPushButton()
+        self.loadButton.text = "Load fiducials file"
+        self.mainLayout.addWidget(self.loadButton, 3, 0)
+
+
+
         # Save results section
         self.saveResultsButton = ctk.ctkPushButton()
         self.saveResultsButton.setText("Save markups")
@@ -170,6 +177,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.typesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onTypesRadioButtonClicked)
         self.subtypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onSubtypesRadioButtonClicked)
         self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelected)
+        self.loadButton.connect('clicked()', self.openFiducialsFile)
         self.removeLastFiducialButton.connect('clicked()', self.onRemoveLastFiducialButtonClicked)
         self.saveResultsOpenDirectoryDialogButton.connect('clicked()', self.onOpenDirectoryDialogButtonClicked)
         self.saveResultsButton.connect('clicked()', self.onSaveResultsButtonClicked)
@@ -223,11 +231,22 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved',
                 "The results have been saved succesfully")
 
+    def openFiducialsFile(self):
+        volumeNode = self.volumeSelector.currentNode()
+        if volumeNode is None:
+            qt.QMessageBox.warning(slicer.util.mainWindow(), 'Select a volume',
+                                       'Please load a volume first')
+            return
+
+        f = qt.QFileDialog.getOpenFileName()
+        if f:
+            self.logic.readExistingPoints(volumeNode, f)
+            self.saveResultsDirectoryText.setText(os.path.dirname(f))
+
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
         SlicerUtil.setFiducialsMode(True, True)
-
 
 
     def exit(self):
@@ -242,8 +261,8 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         pass
 
     def onNewVolumeLoaded(self, volumeNode):
-        print("DEBUG: Current selected volume: ", self.volumeSelector.currentNodeID)
-        print("DEBUG: Volume loaded: ", volumeNode.GetID())
+        #print("DEBUG: Current selected volume: ", self.volumeSelector.currentNodeID)
+        #print("DEBUG: Volume loaded: ", volumeNode.GetID())
         volume = self.volumeSelector.currentNode()
         if volume is not None \
                 and volumeNode.GetID() != self.volumeSelector.currentNodeID  \
@@ -294,7 +313,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 #
 class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
     def __init__(self):
-        self.params = SubtypingParameters.SubtypingParameters()
+        self.params = subtypingParameters.SubtypingParameters()
         self.markupsLogic = slicer.modules.markups.logic()
 
         self.currentVolumeId = None
@@ -306,7 +325,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
     @property
     def mainTypes(self):
         """ Return an OrderedDic with key=Code and value=Description of the subtype """
-        return self.params.types
+        return self.params.mainTypes
 
     # def setCurrentTypeAndSubtype(self, typeId, subtypeId):
     #     self.currentTypeId = typeId
@@ -375,7 +394,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
     def getMarkupLabel(self, typeId, subtypeId):
         if subtypeId == 0:
             # No subtype. Just add the general type description
-            return self.params.types[typeId]
+            return self.params.mainTypes[typeId]
         # Initials of the subtype
         return self.params.getSubtypeAbbreviation(subtypeId)
 
@@ -406,14 +425,14 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         """
         # Iterate over all the fiducials list nodes
         pos = [0,0,0]
-        topology = geom.GeometryTopologyData()
+        topology = GTD.GeometryTopologyData()
         for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volume.GetID())).itervalues():
             # Get all the markups
             for i in range(fidListNode.GetNumberOfMarkups()):
                 fidListNode.GetNthFiducialPosition(i, pos)
                 # Get the type from the description (region will always be 0)
                 desc = fidListNode.GetNthMarkupDescription(i)
-                p = geom.Point(list(pos), 0, int(desc))
+                p = GTD.Point(list(pos), 0, int(desc))
                 topology.addPoint(p)
 
         # Get the xml content file
@@ -442,6 +461,28 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         print("This is your message: ", message)
         return "I have printed this message: " + message
 
+
+    def readExistingPoints(self, volumeNode, fileName):
+        with open(fileName, "r") as f:
+            xml = f.read()
+
+        geom = GTD.GeometryTopologyData.fromXml(xml)
+        print ("Points: ", len(geom.points))
+
+        # point = GTD.Point()
+        for point in geom.points:
+            subtype = point.chestType
+            if subtype in self.params.mainTypes.keys():
+                # Main type. The subtype will be "Any"
+                mainType = subtype
+                subtype = 0
+            else:
+                mainType = self.params.getMainTypeForSubtype(subtype)
+            # Activate the current fiducials list based on the main type
+            fidList = self.setActiveFiducialsListNode(volumeNode, mainType, subtype)
+            # Add the fiducial
+            fidList.AddFiducial(point.coordinate[0], point.coordinate[1], point.coordinate[2],
+                                self.getMarkupLabel(mainType, subtype))
 
 
 class CIP_ParenchymaSubtypeTrainingTest(ScriptedLoadableModuleTest):

@@ -7,6 +7,8 @@ Created on Apr 6, 2015
 @author: Jorge Onieva
 '''
 
+import xml.etree.ElementTree as ET
+
 class GeometryTopologyData:
     def __init__(self):
 #         self.numDimensions = 0
@@ -38,11 +40,9 @@ class GeometryTopologyData:
     def fromXml(xml):
         """Build a GeometryTopologyData object from a xml string.
         All the coordinates will be float.
-        remark: It uses the lxml module, not available in Slicer
+        remark: It uses the ElementTree instead of lxml module to be compatible with Slicer
         """
-        from lxml import etree
-
-        root = etree.fromstring(xml)
+        root = ET.fromstring(xml)
 
         geometryTopology = GeometryTopologyData()
 
@@ -84,10 +84,11 @@ class GeometryTopologyData:
                             
             geometryTopology.addBoundingBox(BoundingBox(coordinatesStart, coordinatesSize, chestRegion, chestType, description=desc))
 
-       
-
         return geometryTopology
-        
+
+
+
+
 class Point:
     def __init__(self, coordinate, chestRegion, chestType, description=None, format="%f"):
         """
