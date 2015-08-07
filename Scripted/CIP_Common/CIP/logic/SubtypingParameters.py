@@ -65,18 +65,18 @@ class SubtypingParameters(object):
 
     __allowedCombinations__ = ( \
         # ILD
-        (84, 0),
-        (84, 86),
-        (84, 87),
-        (84, 88),
-        (84, 89),
-        (84, 90),
-        (84, 91),
-        (84, 92),
-        (84, 93),
-        (84, 94),
-        (84, 95),
-        (84, 96),
+        (94, 0),
+        (94, 96),
+        (94, 6),
+        (94, 97),
+        (94, 5),
+        (94, 37),
+        (94, 26),
+        (94, 98),
+        (94, 7),
+        (94, 99),
+        (94, 100),
+        (94, 101),
         # (84, 97),
         # (84, 98),
         # (84, 99),
@@ -97,7 +97,7 @@ class SubtypingParameters(object):
         # (4, 97),
         # (4, 98),
         # ARTIFACT
-        (85, 0),
+        (95, 0),
         # NORMAL
         (1, 0))
 
@@ -150,8 +150,8 @@ class SubtypingParameters(object):
         :param typeId:
         :return:
         """
-        if typeId == 84: return (0.7, 0.62, 0.23)     # ILD
+        if typeId == 94: return (0.7, 0.62, 0.23)     # ILD
         if typeId == 4: return (0, 0, 1)     # Emphysema
-        if typeId == 85: return (1, 0, 0)     # Artifact
+        if typeId == 95: return (1, 0, 0)     # Artifact
         if typeId == 1: return (0, 1, 0)     # Normal
         return None
