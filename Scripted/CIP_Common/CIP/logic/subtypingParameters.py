@@ -10,6 +10,7 @@ class SubtypingParameters(object):
     __types__ = OrderedDict()
     __types__[94] = "ILD"
     __types__[4] = "Emphysema"
+    __types__[77] = "Bronchiectatic"
     __types__[95] = "Artifact"
     __types__[1] = "Normal"
 
@@ -51,6 +52,10 @@ class SubtypingParameters(object):
     # __subtypes__[19] = ("Mild panlobular", "Mild PLE")
     # __subtypes__[20] = ("Moderate panlobular", "Mod PLE")
     # __subtypes__[21] = ("Severe panlobular", "Sev PLE")
+
+    # BRONCHIESTATIC
+    __subtypes__[77] = ("Bronchiectatic", "Bron")
+    __subtypes__[78] = ("Not bronchiectatic", "NotBr")
 
 
 
@@ -96,6 +101,9 @@ class SubtypingParameters(object):
         # (4, 21),
         # (4, 97),
         # (4, 98),
+        # BRONCHIECTATIC
+        (77, 77),
+        (77, 78),
         # ARTIFACT
         (95, 0),
         # NORMAL
@@ -150,8 +158,9 @@ class SubtypingParameters(object):
         :param typeId:
         :return:
         """
-        if typeId == 94: return (0.7, 0.62, 0.23)     # ILD
-        if typeId == 4: return (0, 0, 1)     # Emphysema
+        if typeId == 94: return (0.93, 0.9, 0.26)     # ILD
+        if typeId == 4: return (0.24, 0.74, 1)     # Emphysema
+        if typeId == 77: return (0.44, 0.42, 0.2)     # Bronchiectatic
         if typeId == 95: return (1, 0, 0)     # Artifact
-        if typeId == 1: return (0, 1, 0)     # Normal
+        if typeId == 1: return (0.28, 0.77, 0.22)     # Normal
         return None
