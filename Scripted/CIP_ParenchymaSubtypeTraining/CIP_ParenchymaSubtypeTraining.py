@@ -39,6 +39,7 @@ class CIP_ParenchymaSubtypeTraining(ScriptedLoadableModule):
         self.parent.helpText = """Training for a subtype of emphysema done quickly by an expert"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
+
 #
 # CIP_ParenchymaSubtypeTrainingWidget
 #
@@ -48,7 +49,21 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
-    moduleName = "CIP_ParenchymaSubtypeTraining"
+    def __init__(self, parent):
+        ScriptedLoadableModuleWidget.__init__(self, parent)
+
+        from functools import partial
+        def __onNodeAddedObserver__(self, caller, eventId, callData):
+            """Node added to the Slicer scene"""
+            if callData.GetClassName() == 'vtkMRMLScalarVolumeNode':
+                self.onNewVolumeLoaded(callData)
+
+        self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
+        self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
+
+
+        self.moduleName = "CIP_ParenchymaSubtypeTraining"
+
 
     def setup(self):
         """This is called one time when the module GUI is initialized
@@ -58,6 +73,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         # Create objects that can be used anywhere in the module. Example: in most cases there should be just one
         # object of the logic class
         self.logic = CIP_ParenchymaSubtypeTrainingLogic()
+        self.currentVolumeLoaded = None
 
         ##########
         # Main area
@@ -121,7 +137,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.mainLayout.addWidget(self.removeLastFiducialButton, 3, 1)
 
 
-        #TEMP BUTTON
+        # Load caselist button
         # Remove fiducial button
         self.loadButton = ctk.ctkPushButton()
         self.loadButton.text = "Load fiducials file"
@@ -155,7 +171,6 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         fileSelectorLayout.addWidget(self.saveResultsOpenDirectoryDialogButton)
         self.mainLayout.addWidget(fileSelectorFrame, 4, 1)
 
-
         # Case navigator
         if SlicerUtil.is_SlicerACIL_loaded():
             caseNavigatorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -168,20 +183,20 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             self.caseNavigatorWidget = CaseNavigatorWidget(parentModuleName=self.moduleName
                                                            ,parentContainer=caseNavigatorAreaCollapsibleButton)
             # Listen for the event of loading volume
-            self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_VOLUME_LOADED, self.onNewVolumeLoaded)
+            #self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_VOLUME_LOADED, self.onNewVolumeLoaded)
 
         self.updateState()
-
 
         # Connections
         self.typesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onTypesRadioButtonClicked)
         self.subtypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onSubtypesRadioButtonClicked)
-        self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelected)
+        #self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelected)
         self.loadButton.connect('clicked()', self.openFiducialsFile)
         self.removeLastFiducialButton.connect('clicked()', self.onRemoveLastFiducialButtonClicked)
         self.saveResultsOpenDirectoryDialogButton.connect('clicked()', self.onOpenDirectoryDialogButtonClicked)
         self.saveResultsButton.connect('clicked()', self.onSaveResultsButtonClicked)
-
+        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__)
+        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__)
 
 
     def updateState(self):
@@ -189,6 +204,10 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         current selected type) and creates it when necessary
         :return:
         """
+        if self.currentVolumeLoaded is None:
+            print("DEBUG: updating status for volume (NONE)")
+        else:
+            print("DEBUG: updating status for volume ", self.currentVolumeLoaded.GetName())
         # Load the subtypes for this type
         subtypesDict = self.logic.getSubtypes(self.typesRadioButtonGroup.checkedId())
         # Remove all the existing buttons
@@ -204,7 +223,8 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.subtypesRadioButtonGroup.buttons()[0].setChecked(True)
 
         # Set the correct state for fiducials
-        selectedVolume = self.volumeSelector.currentNode()
+        #selectedVolume = self.volumeSelector.currentNode()
+        selectedVolume = self.currentVolumeLoaded
         if selectedVolume is not None:
             self.logic.setActiveFiducialsListNode(selectedVolume,
                 self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId())
@@ -260,12 +280,13 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         pass
 
-    def onNewVolumeLoaded(self, volumeNode):
-        #print("DEBUG: Current selected volume: ", self.volumeSelector.currentNodeID)
-        #print("DEBUG: Volume loaded: ", volumeNode.GetID())
-        volume = self.volumeSelector.currentNode()
+    def onNewVolumeLoaded(self, newVolumeNode):
+        # print("DEBUG: Current selected volume: ", self.volumeSelector.currentNodeID)
+        print("DEBUG: Volume loaded: ", newVolumeNode.GetName())
+        # volume = self.volumeSelector.currentNode()
+        volume = self.currentVolumeLoaded
         if volume is not None \
-                and volumeNode.GetID() != self.volumeSelector.currentNodeID  \
+                and newVolumeNode.GetID() != volume.GetID()  \
                 and not self.logic.isVolumeSaved(volume.GetID()):
             # Ask the user if he wants to save the previously loaded volume
             if qt.QMessageBox.question(slicer.util.mainWindow(), "Save results?",
@@ -273,13 +294,20 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
                     .format(volume.GetName()),
                     qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
                 self.saveResultsCurrentNode()
-
+        # Remove all the previously existing nodes
+        if self.currentVolumeLoaded is not None and newVolumeNode != self.currentVolumeLoaded:
+            self.logic.removeMarkups(self.currentVolumeLoaded)
+        SlicerUtil.setActiveVolumeId(newVolumeNode.GetID())
+        self.currentVolumeLoaded = newVolumeNode
+        self.updateState()
 
     def onVolumeSelected(self, volumeNode):
         if volumeNode:
-            print ("New volume selected: " + volumeNode.GetID())
-            SlicerUtil.setActiveVolume(volumeNode.GetID())
+            print ("VolumeSelector currentNodeChanged: " + volumeNode.GetID())
+            #self.logic.reset(volumeNode)
+            SlicerUtil.setActiveVolumeId(volumeNode.GetID())
             self.updateState()
+
 
     def onTypesRadioButtonClicked(self, button):
         """ One of the radio buttons has been pressed
@@ -308,6 +336,9 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 
     def onSaveResultsButtonClicked(self):
         self.saveResultsCurrentNode()
+
+    def __onSceneClosed__(self, arg1, arg2):
+        self.currentVolumeLoaded = None
 #
 # CIP_ParenchymaSubtypeTrainingLogic
 #
@@ -319,13 +350,22 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         self.currentVolumeId = None
         self.currentTypeId = -1
         self.currentSubtypeId = -1
-        self.savedVolumes = set()
+        self.savedVolumes = {}
 
     # Constants
     @property
     def mainTypes(self):
         """ Return an OrderedDic with key=Code and value=Description of the subtype """
         return self.params.mainTypes
+
+    @property
+    def fiducialNodesNameMask(self):
+        """ mask that will be used to name the fiducial nodes.
+        Note: the mask will have to be formatted with the volume id and the type.
+        Ex: fiducialNodesNameMask.format(volumeId, typeId)
+        :return:
+        """
+        return "{0}_fiducials_{1}"
 
     # def setCurrentTypeAndSubtype(self, typeId, subtypeId):
     #     self.currentTypeId = typeId
@@ -369,6 +409,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         fidNode = slicer.util.getNode(fidListID)
         displayNode = fidNode.GetDisplayNode()
         displayNode.SetSelectedColor(self.params.getColor(typeId))
+        print("DEBUG: Type Id = {0}. Color for the fiducial: ".format(typeId), self.params.getColor(typeId))
 
         # Add an observer when a new markup is added
         fidNode.AddObserver(fidNode.MarkupAddedEvent, self.onMarkupAdded)
@@ -376,20 +417,28 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         return fidNode
 
     def setActiveFiducialsListNode(self, volumeNode, typeId, subtypeId, createIfNotExists=True):
-        """ Get the vtkMRMLMarkupsFiducialNode node associated with this volume and this type"""
+        """ Get the vtkMRMLMarkupsFiducialNode node associated with this volume and this type.
+        :param volumeNode: Scalar volume node
+        :param typeId: main type id
+        :param subtypeId: subtype id
+        :param createIfNotExists: create the node if it doesn't exist yet
+        :return: fiducials volume node
+        """
         if volumeNode is not None:
-            nodeName = "{0}_fiducials_{1}".format(volumeNode.GetID(), typeId)
+            nodeName = self.fiducialNodesNameMask.format(volumeNode.GetID(), typeId)
             fid = slicer.util.getNode(nodeName)
             if fid is None and createIfNotExists:
+                print("DEBUG: creating a new fiducials node: " + nodeName)
                 fid = self._createFiducialsListNode_(nodeName, typeId)
+                # Add the volume to the list of "managed" cases
+                self.savedVolumes[volumeNode.GetID()] = False
             self.currentVolumeId = volumeNode.GetID()
             self.currentTypeId = typeId
             self.currentSubtypeId = subtypeId
-
+            # Mark the node list as the active one
+            self.markupsLogic.SetActiveListID(fid)
             return fid
 
-    def setActiveFiducialsList(self, fiducialsNode):
-        self.markupsLogic.SetActiveListID(fiducialsNode)
 
     def getMarkupLabel(self, typeId, subtypeId):
         if subtypeId == 0:
@@ -397,6 +446,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
             return self.params.mainTypes[typeId]
         # Initials of the subtype
         return self.params.getSubtypeAbbreviation(subtypeId)
+
 
     def onMarkupAdded(self, markupListNode, event):
         """ New markup node added. It will be renamed based on the type-subtype
@@ -413,8 +463,10 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         # the GeometryTopolyData object
         markupListNode.SetNthMarkupDescription(n-1, str(self.getEffectiveType(self.currentTypeId, self.currentSubtypeId)))
         # Markup added. Mark the current volume as state modified
-        if self.currentVolumeId in self.savedVolumes:
-            self.savedVolumes.remove(self.currentVolumeId)
+        # if self.currentVolumeId in self.savedVolumes:
+        #     self.savedVolumes.remove(self.currentVolumeId)
+        self.savedVolumes[self.currentVolumeId] = False
+
 
     def saveFiducials(self, volume, directory):
         """ Save all the fiducials for the current volume.
@@ -443,33 +495,42 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
             f.write(xml)
 
         # Mark the current volume as saved
-        self.savedVolumes.add(volume.GetID())
+        #self.savedVolumes.add(volume.GetID())
+        self.savedVolumes[volume.GetID()] = True
+
 
     def removeLastMarkup(self):
+        """ Remove the last markup that was added to the scene. It will remove all the markups if the user wants
+        """
         fiducialsList = slicer.util.getNode(self.markupsLogic.GetActiveListID())
         if fiducialsList is not None:
             # Remove the last fiducial
             fiducialsList.RemoveMarkup(fiducialsList.GetNumberOfMarkups()-1)
         # Markup removed. Mark the current volume as state modified
-        if self.currentVolumeId in self.savedVolumes:
-            self.savedVolumes.remove(self.currentVolumeId)
+        # if self.currentVolumeId in self.savedVolumes:
+        #     self.savedVolumes.remove(self.currentVolumeId)
+        self.savedVolumes[self.currentVolumeId] = False
 
     def isVolumeSaved(self, volumeId):
-        return volumeId in self.savedVolumes
-
-    def printMessage(self, message):
-        print("This is your message: ", message)
-        return "I have printed this message: " + message
+        """ True if there are no markups unsaved for this volume
+        :param volumeId:
+        :return:
+        """
+        if not self.savedVolumes.has_key(volumeId):
+            raise Exception("Volume {0} is not in the list of managed volumes".format(volumeId.GetID()))
+        return self.savedVolumes[volumeId]
 
 
     def readExistingPoints(self, volumeNode, fileName):
+        """ Read a list of fiducials for a particular volume node
+        :param volumeNode: Volume (scalar node)
+        :param fileName: full path of the file to load the fiducials where
+        """
         with open(fileName, "r") as f:
             xml = f.read()
 
         geom = GTD.GeometryTopologyData.fromXml(xml)
-        print ("Points: ", len(geom.points))
 
-        # point = GTD.Point()
         for point in geom.points:
             subtype = point.chestType
             if subtype in self.params.mainTypes.keys():
@@ -483,6 +544,42 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
             # Add the fiducial
             fidList.AddFiducial(point.coordinate[0], point.coordinate[1], point.coordinate[2],
                                 self.getMarkupLabel(mainType, subtype))
+
+
+    def reset(self, volumeToKeep=None):
+        """ Remove a volume node and all its associated fiducials """
+        if volumeToKeep is None:
+            # Just clear the scene
+            slicer.mrmlScene.Clear(False)
+        else:
+            # Remove scalarNodes
+            nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLScalarVolumeNode")
+            nodes.InitTraversal()
+            node = nodes.GetNextItemAsObject()
+            while node is not None:
+                if node.GetID() != volumeToKeep.GetID():
+                    slicer.mrmlScene.RemoveNode(node)
+                node = nodes.GetNextItemAsObject()
+
+            # Remove fiducials
+            nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLMarkupsFiducialNode")
+            nodes.InitTraversal()
+            node = nodes.GetNextItemAsObject()
+            while node is not None:
+                slicer.mrmlScene.RemoveNode(node)
+                node = nodes.GetNextItemAsObject()
+
+    def removeMarkups(self, volume):
+        print("DEBUG: removing markups for {0} ({1})".format(volume.GetName(), volume.GetID()))
+        nodes = slicer.util.getNodes(volume.GetID() + "_*")
+        for node in nodes.itervalues():
+            slicer.mrmlScene.RemoveNode(node)
+        slicer.mrmlScene.RemoveNode(volume)
+
+    def printMessage(self, message):
+        print("This is your message: ", message)
+        return "I have printed this message: " + message
+
 
 
 class CIP_ParenchymaSubtypeTrainingTest(ScriptedLoadableModuleTest):

@@ -162,7 +162,7 @@ class SlicerUtil:
 
 
     @staticmethod
-    def setActiveVolume(volumeId, labelmapId=None):
+    def setActiveVolumeId(volumeId, labelmapId=None):
         selectionNode = slicer.app.applicationLogic().GetSelectionNode()
         if volumeId is not None and volumeId != "":
             selectionNode.SetReferenceActiveVolumeID(volumeId)

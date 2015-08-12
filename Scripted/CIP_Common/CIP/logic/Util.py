@@ -76,7 +76,7 @@ class Util:
     @staticmethod 
     def getLabelmapSlices(vtkImageData):
         '''Get a dictionary with the slices where all the label data are contained.
-        The output will be a dictionary of [label_Code: array of labels].
+        The output will be a dictionary of [label_Code: array of slices].
         The origin is a vktImageData node'''
         # Get a numpy array from the imageData
         npArray = Util.vtkToNumpyArray(vtkImageData)
