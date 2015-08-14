@@ -2,7 +2,17 @@
   <xs:element name="GeometryTopologyData">
     <xs:complexType>
       <xs:sequence>
-        <xs:element type="xs:byte" name="NumDimensions"/>
+        <xs:element type="xs:byte" name="numDimensions"/>
+        <xs:element name="coordinateSystem" minOccurs="0" maxOccurs="1">
+          <xs:simpleType>
+            <xs:restriction base="xs:string">
+              <xs:enumeration value="Unknown"/>
+              <xs:enumeration value="IJK"/>
+              <xs:enumeration value="RAS"/>
+              <xs:enumeration value="LPS"/>
+            </xs:restriction>
+          </xs:simpleType>
+        </xs:element>
         <xs:element name="Point" minOccurs="0" maxOccurs="unbounded">
           <xs:complexType>
             <xs:sequence>

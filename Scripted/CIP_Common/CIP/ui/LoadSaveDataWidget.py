@@ -9,8 +9,7 @@ from __main__ import vtk, qt, ctk, slicer
 
 import os
 import re
-#import ACIL_Common
-from CIP.logic import SlicerUtil
+from CIP.logic.SlicerUtil import SlicerUtil
 
 
 class LoadSaveDataWidget(object):

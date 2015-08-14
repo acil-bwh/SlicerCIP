@@ -7,7 +7,7 @@ import logging
 
 # Add the CIP common library to the path if it has not been loaded yet
 try:
-    from CIP.logic import SlicerUtil
+    from CIP.logic.SlicerUtil import SlicerUtil
 except Exception as ex:
     import inspect
     path = os.path.dirname(inspect.getfile(inspect.currentframe()))
@@ -16,11 +16,11 @@ except Exception as ex:
     elif os.path.exists(os.path.normpath(path + '/CIP')):
         path = os.path.normpath(path + '/CIP')    # We assume that CIP is a subfolder (Slicer behaviour)
     sys.path.append(path)
-    from CIP.logic import SlicerUtil
+    from CIP.logic.SlicerUtil import SlicerUtil
     print("CIP was added to the python path manually in CIP_ParenchyaSubtypeTraining")
 
 from CIP.logic import subtypingParameters
-from CIP.logic import geometryTopologyData as GTD
+from CIP.logic import GeometryTopologyData as GTD
 
 #
 # CIP_ParenchymaSubtypeTraining

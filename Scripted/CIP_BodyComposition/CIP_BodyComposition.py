@@ -12,7 +12,7 @@ import numpy as np
 
 # Add the CIP common library to the path if it has not been loaded yet
 try:
-    from CIP.logic import SlicerUtil
+    from CIP.logic.SlicerUtil import SlicerUtil
 except Exception as ex:
     import inspect
     path = os.path.dirname(inspect.getfile(inspect.currentframe()))
@@ -21,7 +21,7 @@ except Exception as ex:
     elif os.path.exists(os.path.normpath(path + '/CIP')):
         path = os.path.normpath(path + '/CIP')    # We assume that CIP is a subfolder (Slicer behaviour)
     sys.path.append(path)
-    from CIP.logic import SlicerUtil
+    from CIP.logic.SlicerUtil import SlicerUtil
     print("CIP was added to the python path manually in CIP_BodyComposition")
     
 from CIP.logic import Util
@@ -1016,7 +1016,7 @@ class CIP_BodyCompositionLogic:
         """Constructor. """
         #ScriptedLoadableModuleLogic.__init__(self)
         #importCIP()            
-        self.params = BodyCompositionParameters()        
+        self.params = BodyCompositionParameters.BodyCompositionParameters()
         
     def settingGetOrSetDefault(self, settingName, settingDefaultValue):
         """Try to find the value of a setting and, if it does not exist, set ot to the defaultValue"""

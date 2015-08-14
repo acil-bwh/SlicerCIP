@@ -10,8 +10,30 @@ Created on Apr 6, 2015
 import xml.etree.ElementTree as ET
 
 class GeometryTopologyData:
+    # Coordinate System Constants
+    UNKNOWN = 0
+    IJK = 1
+    RAS = 2
+    LPS = 3
+
+    __numDimensions__ = 0
+    @property
+    def numDimensions(self):
+        if self.__numDimensions__ == 0:
+            # Try to get the number of dimensions from the first point or bounding box
+            if len(self.points) > 0:
+                self.__numDimensions__ = len(self.points[0].coordinate)
+            elif len(self.boundingBoxes) > 0:
+                self.__numDimensions__ = len(self.boundingBoxes[0].start)
+        return self.__numDimensions__    
+    @numDimensions.setter
+    def numDimensions(self, value):
+        self.__numDimensions__ = value
+
     def __init__(self):
-#         self.numDimensions = 0
+        self.__numDimensions__ = 0
+        self.coordinateSystem = self.UNKNOWN
+
         self.points = []
         self.boundingBoxes = []
     
@@ -26,8 +48,10 @@ class GeometryTopologyData:
         """Generate the XML string representation of this object.
         It doesn't use any special module to keep compatibility with Slicer"""
         output = '<?xml version="1.0" encoding="utf8"?><GeometryTopologyData>'
-#         if self.numDimensions != 0: 
-#             output = output +  ('<numDimensions>%i</numDimensions>' % self.numDimensions) 
+        if self.numDimensions != 0: 
+            output = output +  ('<numDimensions>%i</numDimensions>' % self.numDimensions)
+
+        output = output +  ('<coordinateSystem>%s</coordinateSystem>' % self.coordinateSystemToStr(self.coordinateSystem))
         
         # Concatenate points
         points = "".join(map(lambda i:i.toXml(), self.points))
@@ -47,9 +71,14 @@ class GeometryTopologyData:
         geometryTopology = GeometryTopologyData()
 
         # NumDimensions
-#         nd = root.find("NumDimensions")
-#         if not nd is None:
-#             geometryTopology.numDimensions = int(nd.text)
+        nd = root.find("numDimensions")
+        if nd is not None:
+            geometryTopology.__numDimensions__ = int(nd.text)
+
+        # Coordinate System
+        c = root.find("coordinateSystem")
+        if c is not None:
+            geometryTopology.coordinateSystem = geometryTopology.coordinateSystemFromStr(c)
 
         # Points
         for point in root.findall("Point"):
@@ -61,7 +90,7 @@ class GeometryTopologyData:
             
             # Description
             desc = point.find("Description")
-            if not desc is None:
+            if desc is not None:
                 desc = desc.text
                 
             geometryTopology.addPoint(Point(coordinates, chestRegion, chestType, description=desc))
@@ -79,14 +108,29 @@ class GeometryTopologyData:
             
             # Description
             desc = bb.find("Description")
-            if not desc is None:
+            if desc is not None:
                 desc = desc.text
                             
             geometryTopology.addBoundingBox(BoundingBox(coordinatesStart, coordinatesSize, chestRegion, chestType, description=desc))
 
         return geometryTopology
 
+    @staticmethod
+    def coordinateSystemFromStr(valueStr):
+        if valueStr:
+            if valueStr == "IJK": return GeometryTopologyData.IJK
+            elif valueStr == "RAS": return GeometryTopologyData.RAS
+            elif valueStr == "LPS": return GeometryTopologyData.LPS
+            else: return GeometryTopologyData.UNKNOWN
+        else:
+            return GeometryTopologyData.UNKNOWN
 
+    @staticmethod
+    def coordinateSystemToStr(valueInt):
+        if valueInt == GeometryTopologyData.IJK: return "IJK"
+        elif valueInt == GeometryTopologyData.RAS: return "RAS"
+        elif valueInt == GeometryTopologyData.LPS: return "LPS"
+        return "UNKNOWN"
 
 
 class Point:

@@ -1,9 +1,10 @@
 from Util import *
-from SlicerUtil import *
-from BodyCompositionParameters import *
-from StructuresParameters import *
+from GeometryTopologyData import *
 from EventsTrigger import *
-from subtypingParameters import *
-from geometryTopologyData import *
+# from SlicerUtil import *
+# from BodyCompositionParameters import *
+# from StructuresParameters import *
+# from subtypingParameters import *
+
 
 
