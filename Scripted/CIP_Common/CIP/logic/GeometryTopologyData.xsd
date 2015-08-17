@@ -13,6 +13,13 @@
             </xs:restriction>
           </xs:simpleType>
         </xs:element>
+        <xs:element name="LPStoIJKTransformationMatrix" minOccurs="0" maxOccurs="1">
+            <xs:complexType>
+              <xs:choice minOccurs="4" maxOccurs="unbounded">
+                <xs:element type="xs:float" name="value"/>
+              </xs:choice>
+            </xs:complexType>
+          </xs:element>
         <xs:element name="Point" minOccurs="0" maxOccurs="unbounded">
           <xs:complexType>
             <xs:sequence>

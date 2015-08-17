@@ -1,5 +1,5 @@
 from Util import *
-from GeometryTopologyData import *
+from geometry_topology_data import *
 from EventsTrigger import *
 # from SlicerUtil import *
 # from BodyCompositionParameters import *

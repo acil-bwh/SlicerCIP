@@ -2,8 +2,9 @@
 import csv, os, time, pprint
 from __main__ import qt, ctk, slicer
 
+from CIP.logic import EventsTrigger
 
-class CaseReportsWidget(object):
+class CaseReportsWidget(EventsTrigger):
     # Events triggered by the widget
     EVENT_SAVE_BUTTON_CLICKED = 1
     EVENT_SHOW_REPORT = 2
@@ -12,6 +13,8 @@ class CaseReportsWidget(object):
 
     def __init__(self, moduleName, columnNames, parent = None):
         """Widget constructor (existing module)"""
+        EventsTrigger.__init__(self)
+        
         if not parent:
             self.parent = slicer.qMRMLWidget()
             self.parent.setLayout(qt.QVBoxLayout())
@@ -50,24 +53,23 @@ class CaseReportsWidget(object):
 
     def __initEvents__(self):
         """Init all the structures required for events mechanism"""
-        self.eventsCallbacks = list()
-        self.events = [self.EVENT_SAVE_BUTTON_CLICKED, self.EVENT_SHOW_REPORT, self.EVENT_CLEAN_CACHE]
+        self.setEvents([self.EVENT_SAVE_BUTTON_CLICKED, self.EVENT_SHOW_REPORT, self.EVENT_CLEAN_CACHE])
 
-    def addObservable(self, event, callback):
-        """Add a function that will be invoked when the corresponding event is triggered.
-        The list of possible events are: EVENT_LOAD, EVENT_SAVE, EVENT_SAVEALL.
-        Ex: myWidget.addObservable(myWidget.EVENT_LOAD, self.onFileLoaded)"""
-        if event not in self.events:
-            raise Exception("Event not recognized. It must be one of these: EVENT_SAVE_BUTTON_CLICKED, EVENT_SHOW_REPORT, EVENT_CLEAN_CACHE")
-
-        # Add the event to the list of funcions that will be called when the matching event is triggered
-        self.eventsCallbacks.append((event, callback))
-
-    def triggerEvent(self, eventType, *params):
-        """Trigger one of the possible events from the object.
-        Ex:    self.__triggerEvent__(self.EVENT_SAVE) """
-        for callback in (item[1] for item in self.eventsCallbacks if item[0] == eventType):
-            callback(*params)
+    # def addObservable(self, event, callback):
+    #     """Add a function that will be invoked when the corresponding event is triggered.
+    #     The list of possible events are: EVENT_LOAD, EVENT_SAVE, EVENT_SAVEALL.
+    #     Ex: myWidget.addObservable(myWidget.EVENT_LOAD, self.onFileLoaded)"""
+    #     if event not in self.events:
+    #         raise Exception("Event not recognized. It must be one of these: EVENT_SAVE_BUTTON_CLICKED, EVENT_SHOW_REPORT, EVENT_CLEAN_CACHE")
+    # 
+    #     # Add the event to the list of funcions that will be called when the matching event is triggered
+    #     self.eventsCallbacks.append((event, callback))
+    # 
+    # def triggerEvent(self, eventType, *params):
+    #     """Trigger one of the possible events from the object.
+    #     Ex:    self.triggerEvent(self.EVENT_SAVE) """
+    #     for callback in (item[1] for item in self.eventsCallbacks if item[0] == eventType):
+    #         callback(*params)
 
     def setColumnNames(self, columnNames):
         self.logic.columnNames = columnNames
@@ -83,7 +85,7 @@ class CaseReportsWidget(object):
         The widget just triggers the signal, it is the responsibility of the parent to save the desired data
         :return:
         """
-        self.__triggerEvent__(self.EVENT_SAVE_BUTTON_CLICKED)
+        self.triggerEvent(self.EVENT_SAVE_BUTTON_CLICKED)
 
 
     def onExport(self):
@@ -102,7 +104,7 @@ class CaseReportsWidget(object):
         """
         self.reportWindow.load(self.logic.columnNamesExtended, self.logic.loadValues())
         self.reportWindow.show()
-        self.__triggerEvent__(self.EVENT_SHOW_REPORT)
+        self.triggerEvent(self.EVENT_SHOW_REPORT)
 
     def onRemoveStoredData(self):
         """ Remove the current csv file
@@ -113,7 +115,7 @@ class CaseReportsWidget(object):
                 qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
             self.logic.remove()
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data removed', 'The data were removed successfully')
-            self.__triggerEvent__(self.EVENT_CLEAN_CACHE)
+            self.triggerEvent(self.EVENT_CLEAN_CACHE)
 
 
 class CaseReportsLogic(object):

@@ -10,17 +10,18 @@ try:
     from CIP.logic.SlicerUtil import SlicerUtil
 except Exception as ex:
     import inspect
-    path = os.path.dirname(inspect.getfile(inspect.currentframe()))
-    if os.path.exists(os.path.normpath(path + '/../CIP_Common')):
-        path = os.path.normpath(path + '/../CIP_Common')    # We assume that CIP_Common is a sibling folder of the one that contains this module
-    elif os.path.exists(os.path.normpath(path + '/CIP')):
-        path = os.path.normpath(path + '/CIP')    # We assume that CIP is a subfolder (Slicer behaviour)
+    currentpath = os.path.dirname(inspect.getfile(inspect.currentframe()))
+    # We assume that CIP_Common is in the development structure
+    path = os.path.normpath(currentpath + '/../../SlicerCIP/Scripted/CIP_Common')
+    if not os.path.exists(path):
+        # We assume that CIP is a subfolder (Slicer behaviour)
+        path = os.path.normpath(currentpath + '/CIP')
     sys.path.append(path)
+    print("The following path was manually added to the PythonPath in CIP_ParenchymaSubtypeTraining: " + path)
     from CIP.logic.SlicerUtil import SlicerUtil
-    print("CIP was added to the python path manually in CIP_ParenchyaSubtypeTraining")
 
-from CIP.logic import subtypingParameters
-from CIP.logic import GeometryTopologyData as GTD
+from CIP.logic import SubtypingParameters
+from CIP.logic import geometry_topology_data as GTD
 
 #
 # CIP_ParenchymaSubtypeTraining
@@ -29,7 +30,6 @@ class CIP_ParenchymaSubtypeTraining(ScriptedLoadableModule):
     """Uses ScriptedLoadableModule base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
-
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
         self.parent.title = "Parenchyma Subtype Training"
@@ -282,7 +282,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 
     def onNewVolumeLoaded(self, newVolumeNode):
         # print("DEBUG: Current selected volume: ", self.volumeSelector.currentNodeID)
-        print("DEBUG: Volume loaded: ", newVolumeNode.GetName())
+        # print("DEBUG: Volume loaded: ", newVolumeNode.GetName())
         # volume = self.volumeSelector.currentNode()
         volume = self.currentVolumeLoaded
         if volume is not None \
@@ -298,6 +298,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         if self.currentVolumeLoaded is not None and newVolumeNode != self.currentVolumeLoaded:
             self.logic.removeMarkups(self.currentVolumeLoaded)
         SlicerUtil.setActiveVolumeId(newVolumeNode.GetID())
+        SlicerUtil.setFiducialsMode(True, True)
         self.currentVolumeLoaded = newVolumeNode
         self.updateState()
 
@@ -344,7 +345,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 #
 class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
     def __init__(self):
-        self.params = subtypingParameters.SubtypingParameters()
+        self.params = SubtypingParameters.SubtypingParameters()
         self.markupsLogic = slicer.modules.markups.logic()
 
         self.currentVolumeId = None
@@ -478,6 +479,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         # Iterate over all the fiducials list nodes
         pos = [0,0,0]
         topology = GTD.GeometryTopologyData()
+        topology.coordinateSystem = topology.RAS
         for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volume.GetID())).itervalues():
             # Get all the markups
             for i in range(fidListNode.GetNumberOfMarkups()):

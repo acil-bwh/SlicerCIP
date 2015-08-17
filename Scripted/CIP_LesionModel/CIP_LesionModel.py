@@ -1,4 +1,4 @@
-import os
+import os, sys
 import unittest
 from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
@@ -6,20 +6,20 @@ import logging
 import numpy as np
 # Add the CIP common library to the path if it has not been loaded yet
 try:
-        from CIP.logic.SlicerUtil import SlicerUtil
+    from CIP.logic.SlicerUtil import SlicerUtil
 except Exception as ex:
-        import inspect
-        path = os.path.dirname(inspect.getfile(inspect.currentframe()))
-        if os.path.exists(os.path.normpath(path + '/../CIP_Common')):
-                path = os.path.normpath(path + '/../CIP_Common')        # We assume that CIP_Common is a sibling folder of the one that contains this module
-        elif os.path.exists(os.path.normpath(path + '/CIP')):
-                path = os.path.normpath(path + '/CIP')        # We assume that CIP is a subfolder (Slicer behaviour)
-        sys.path.append(path)
-        from CIP.logic.SlicerUtil import SlicerUtil
-        print("CIP was added to the python path manually in CIP_LesionModel")
+    import inspect
+    currentpath = os.path.dirname(inspect.getfile(inspect.currentframe()))
+    # We assume that CIP_Common is in the development structure
+    path = os.path.normpath(currentpath + '/../../SlicerCIP/Scripted/CIP_Common')
+    if not os.path.exists(path):
+        # We assume that CIP is a subfolder (Slicer behaviour)
+        path = os.path.normpath(currentpath + '/CIP')
+    sys.path.append(path)
+    print("The following path was manually added to the PythonPath in CIP_LesionModel: " + path)
+    from CIP.logic.SlicerUtil import SlicerUtil
 
 from CIP.logic import Util
-
 
 
 #

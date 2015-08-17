@@ -30,6 +30,10 @@ class GeometryTopologyData:
     def numDimensions(self, value):
         self.__numDimensions__ = value
 
+
+    __LPStoIJKTransformationMatrix__ = None
+
+
     def __init__(self):
         self.__numDimensions__ = 0
         self.coordinateSystem = self.UNKNOWN

@@ -15,14 +15,15 @@ try:
     from CIP.logic.SlicerUtil import SlicerUtil
 except Exception as ex:
     import inspect
-    path = os.path.dirname(inspect.getfile(inspect.currentframe()))
-    if os.path.exists(os.path.normpath(path + '/../CIP_Common')):
-        path = os.path.normpath(path + '/../CIP_Common')    # We assume that CIP_Common is a sibling folder of the one that contains this module
-    elif os.path.exists(os.path.normpath(path + '/CIP')):
-        path = os.path.normpath(path + '/CIP')    # We assume that CIP is a subfolder (Slicer behaviour)
+    currentpath = os.path.dirname(inspect.getfile(inspect.currentframe()))
+    # We assume that CIP_Common is in the development structure
+    path = os.path.normpath(currentpath + '/../../SlicerCIP/Scripted/CIP_Common')
+    if not os.path.exists(path):
+        # We assume that CIP is a subfolder (Slicer behaviour)
+        path = os.path.normpath(currentpath + '/CIP')
     sys.path.append(path)
+    print("The following path was manually added to the PythonPath in CIP_BodyComposition: " + path)
     from CIP.logic.SlicerUtil import SlicerUtil
-    print("CIP was added to the python path manually in CIP_BodyComposition")
     
 from CIP.logic import Util
 from CIP.logic import BodyCompositionParameters
