@@ -195,7 +195,7 @@ class SlicerUtil:
         :return: new volume with the dimensions of "bigVolume" but the information in "smallVolume"
         """
         # Get the position of the origin in the small volume in the big one
-        origin = Util.RAStoIJK(bigVolume, smallVolume.GetOrigin())
+        origin = Util.ras_to_ijk(bigVolume, smallVolume.GetOrigin())
         # Create a copy of the big volume to have the same spacial information
         #vlogic = slicer.modules.volumes.logic()
         #resultVolume = vlogic.CloneVolume(bigVolume, smallVolume.GetName() + "_extended")
@@ -271,6 +271,22 @@ class SlicerUtil:
         scene.AddNode(clonedVolume)
         return clonedVolume
 
+
+    @staticmethod
+    def getLabellmapFromScalar(vtkMRMLScalarVolumeNode, nodeName=""):
+        """ Convert a vtkMRMLScalarVolumeNode node in an equivalent vtkMRMLLabelMapVolumeNode
+        :param vtkMRMLScalarVolumeNode:
+        :param nodeName: name of the result node (default: scalarNodeName_lm)
+        :return: vtkMRMLLabelMapVolumeNode
+        """
+        logic = slicer.modules.volumes.logic()
+        if nodeName == "":
+            nodeName = vtkMRMLScalarVolumeNode.GetName() + "_labelmap"
+
+        node = logic.CreateAndAddLabelVolume(vtkMRMLScalarVolumeNode, nodeName)
+        # Make sure that the node name is correct, because sometimes the scene adds a suffix
+        node.SetName(nodeName)
+        return node
         # @staticmethod
     # def gitUpdateCIP():
     #     if Util.AUTO_UPDATE_DISABLED:

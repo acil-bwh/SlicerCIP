@@ -2,8 +2,8 @@
   <xs:element name="GeometryTopologyData">
     <xs:complexType>
       <xs:sequence>
-        <xs:element type="xs:byte" name="numDimensions"/>
-        <xs:element name="coordinateSystem" minOccurs="0" maxOccurs="1">
+        <xs:element type="xs:byte" name="NumDimensions"/>
+        <xs:element name="CoordinateSystem" minOccurs="0" maxOccurs="1">
           <xs:simpleType>
             <xs:restriction base="xs:string">
               <xs:enumeration value="Unknown"/>

@@ -17,14 +17,17 @@ def test_geometry_topology_data_write_read():
     It also validates the xml schema against the xsd file
     """
     g = GeometryTopologyData()
-    g.numDimensions = 3
-    g.coordinateSystem = g.RAS
-    g.addPoint(Point([2, 3.5, 3], 2, 5, "My desc", "%f"))
-    g.addPoint(Point([2, 3.5, 3], 2, 5, format="%i"))
-    g.addBoundingBox(BoundingBox([2, 3.5, 3], [1, 1, 4], 2, 5, format="%i"))
-    g.addBoundingBox(BoundingBox([2, 3.5, 3], [1, 1, 3], 2, 5, format="%f"))
+    g.num_dimensions = 3
+    g.coordinate_system = g.RAS
+    g.lps_to_ijk_transformation_matrix = [[1,2,3,4], [5,6,7,8], [1,2,3,4], [1,1,1,1]]
 
-    xml = g.toXml()
+    g.add_point(Point([2, 3.5, 3], 2, 5, "My desc", "%f"))
+    g.add_point(Point([2, 3.5, 3], 2, 5, format_="%i"))
+    g.add_bounding_box(BoundingBox([2, 3.5, 3], [1, 1, 4], 2, 5, format_="%i"))
+    g.add_bounding_box(BoundingBox([2, 3.5, 3], [1, 1, 3], 2, 5, format_="%f"))
+
+    xml = g.to_xml()
+    print(xml)
 
     # Compare XML output
     with open(xml_file, 'r+b') as f:
@@ -53,3 +56,4 @@ def test_geometry_topology_data_schema():
     etree.fromstring(xml, xmlparser)
 
 
+test_geometry_topology_data_write_read()

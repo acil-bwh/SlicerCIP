@@ -104,7 +104,7 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
   double x[3],y[3],z[3];
   inputImage->GetOrigin(orig);
   inputImage->GetSpacing(sp);
-  inputImage->GetDimensions(dim);
+  inputImage->get_dimensions(dim);
 
   double resolution = node->GetResolution();
 

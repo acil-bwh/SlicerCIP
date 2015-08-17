@@ -401,7 +401,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
                     self.logic.changeColor(volumeId, self.logic.defaultWarningColor)
             except Exception as exc:
                 if SlicerUtil.IsDevelopment:
-                    Util.printLastException()
+                    Util.print_last_exception()
 
     def showUnselectedVolumeWarningMessage(self):
         qt.QMessageBox.warning(slicer.util.mainWindow(), 'Select a volume',

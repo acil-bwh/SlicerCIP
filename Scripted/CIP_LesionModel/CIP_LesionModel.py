@@ -686,8 +686,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.currentLabelmap = slicer.util.getNode(labelmapName)
         if self.currentLabelmap is None:
             # Create a labelmap with the same dimensions that the ct volume
-            self.currentLabelmap = Util.getLabelmapFromScalar(self.cliOutputScalarNode, labelmapName)
-            #self.currentLabelmap = Util.getLabelmapFromScalar(self.currentVolume, labelmapName)
+            self.currentLabelmap = SlicerUtil.getLabelmapFromScalar(self.cliOutputScalarNode, labelmapName)
+            #self.currentLabelmap = Util.get_labelmap_from_scalar(self.currentVolume, labelmapName)
 
         self.currentLabelmap.SetImageDataConnection(self.thresholdFilter.GetOutputPort())
         self.marchingCubesFilter = vtk.vtkMarchingCubes()

@@ -635,7 +635,7 @@ class ROIManager(ViewWatcher):
     roiPixels = []
 
     if bgVTKImage:
-      dims = bgVTKImage.GetDimensions()
+      dims = bgVTKImage.get_dimensions()
       for i in range(dims[0]):
         for j in range(dims[1]):
           dist2 = (i-x)*(i-x) + (j-y)*(j-y)

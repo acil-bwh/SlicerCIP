@@ -555,7 +555,7 @@ class CIP_BodyCompositionWidget():
         
         # Calculate the values
         if SlicerUtil.IsDevelopment: print("Calculating slices for Volume " + volumeID)        
-        self.labelMapSlices[volumeID] = self.logic.getLabelMapSlices(labelMapNode)            
+        self.labelMapSlices[volumeID] = self.logic.get_labelmap_slices(labelMapNode)
          
     
     def getCurrentGrayscaleNode(self):
@@ -1028,16 +1028,16 @@ class CIP_BodyCompositionLogic:
         slicer.app.settings().setValue(settingName, settingDefaultValue)
         return settingDefaultValue
     
-    def getLabelMapSlices(self, vtkVolumeNode):     
+    def get_labelmap_slices(self, vtkVolumeNode):
         """For each label map, get the slices where it appears. Store the result in labelmapSlices object
         (it will be used later for statistics)""" 
-        self.labelmapSlices = Util.getLabelmapSlices(vtkVolumeNode.GetImageData())
+        self.labelmapSlices = Util.get_labelmap_slices(vtkVolumeNode.GetImageData())
         return self.labelmapSlices
     
     def calculateStatistics(self, grayscaleNode, labelNode, labelmapSlices=None, callbackStepFunction = None):
         # Get the numpy arrays of both nodes. We do not use Slicer function beacuse we will need the imageData node to apply preprocessing vtk filters
         intensityImageData = grayscaleNode.GetImageData()
-        shape = list(intensityImageData.GetDimensions())
+        shape = list(intensityImageData.get_dimensions())
         shape.reverse()
         intensityScalars = intensityImageData.GetPointData().GetScalars()
         intensityArray = vtk.util.numpy_support.vtk_to_numpy(intensityScalars).reshape(shape)
@@ -1048,7 +1048,7 @@ class CIP_BodyCompositionLogic:
         if labelmapSlices:
             self.labelmapSlices = labelmapSlices
         else:
-            self.getLabelMapSlices(labelNode)
+            self.get_labelmap_slices(labelNode)
 
         # List where we will store all the "StatsWrapper" result objects
         self.stats = []
@@ -1152,8 +1152,8 @@ class CIP_BodyCompositionLogic:
                 resliceFilter.SetOutputDimensionality(2)
                 resliceFilter.SetInterpolationModeToNearestNeighbor()
                 mm=vtk.vtkMatrix4x4()
-                width = labelmapImageData.GetDimensions()[0]
-                height = labelmapImageData.GetDimensions()[1]
+                width = labelmapImageData.get_dimensions()[0]
+                height = labelmapImageData.get_dimensions()[1]
                 centerX = width/2
                 centerY = height/2
                 center=[centerX, centerY, 0]
@@ -1181,7 +1181,7 @@ class CIP_BodyCompositionLogic:
                     imData= closeFilter.GetOutput()
                     
                     # Convert imData in a numpy array
-                    shape = list(imData.GetDimensions())    
+                    shape = list(imData.get_dimensions())
                     shape.reverse()                 
                     lArray = vtk.util.numpy_support.vtk_to_numpy(imData.GetPointData().GetScalars()).reshape(shape)
                                     

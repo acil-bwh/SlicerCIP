@@ -20,7 +20,7 @@ except Exception as ex:
     print("The following path was manually added to the PythonPath in CIP_ParenchymaSubtypeTraining: " + path)
     from CIP.logic.SlicerUtil import SlicerUtil
 
-from CIP.logic import SubtypingParameters
+from CIP.logic import SubtypingParameters, Util
 from CIP.logic import geometry_topology_data as GTD
 
 #
@@ -143,8 +143,6 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.loadButton.text = "Load fiducials file"
         self.mainLayout.addWidget(self.loadButton, 3, 0)
 
-
-
         # Save results section
         self.saveResultsButton = ctk.ctkPushButton()
         self.saveResultsButton.setText("Save markups")
@@ -153,8 +151,8 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.saveResultsButton.setIconSize(qt.QSize(20,20))
         # self.saveResultsButton.setStyleSheet("font-weight:bold; font-size:12px" )
         # self.saveResultsButton.setFixedWidth(200)
-
         self.mainLayout.addWidget(self.saveResultsButton, 4, 0)
+
         fileSelectorFrame = qt.QFrame()
         fileSelectorLayout = qt.QHBoxLayout()
         fileSelectorFrame.setLayout(fileSelectorLayout)
@@ -204,10 +202,10 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         current selected type) and creates it when necessary
         :return:
         """
-        if self.currentVolumeLoaded is None:
-            print("DEBUG: updating status for volume (NONE)")
-        else:
-            print("DEBUG: updating status for volume ", self.currentVolumeLoaded.GetName())
+        # if self.currentVolumeLoaded is None:
+        #     print("DEBUG: updating status for volume (NONE)")
+        # else:
+        #     print("DEBUG: updating status for volume ", self.currentVolumeLoaded.GetName())
         # Load the subtypes for this type
         subtypesDict = self.logic.getSubtypes(self.typesRadioButtonGroup.checkedId())
         # Remove all the existing buttons
@@ -260,7 +258,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 
         f = qt.QFileDialog.getOpenFileName()
         if f:
-            self.logic.readExistingPoints(volumeNode, f)
+            self.logic.loadFiducials(volumeNode, f)
             self.saveResultsDirectoryText.setText(os.path.dirname(f))
 
 
@@ -410,7 +408,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         fidNode = slicer.util.getNode(fidListID)
         displayNode = fidNode.GetDisplayNode()
         displayNode.SetSelectedColor(self.params.getColor(typeId))
-        print("DEBUG: Type Id = {0}. Color for the fiducial: ".format(typeId), self.params.getColor(typeId))
+        # print("DEBUG: Type Id = {0}. Color for the fiducial: ".format(typeId), self.params.getColor(typeId))
 
         # Add an observer when a new markup is added
         fidNode.AddObserver(fidNode.MarkupAddedEvent, self.onMarkupAdded)
@@ -429,7 +427,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
             nodeName = self.fiducialNodesNameMask.format(volumeNode.GetID(), typeId)
             fid = slicer.util.getNode(nodeName)
             if fid is None and createIfNotExists:
-                print("DEBUG: creating a new fiducials node: " + nodeName)
+                # print("DEBUG: creating a new fiducials node: " + nodeName)
                 fid = self._createFiducialsListNode_(nodeName, typeId)
                 # Add the volume to the list of "managed" cases
                 self.savedVolumes[volumeNode.GetID()] = False
@@ -472,25 +470,31 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
     def saveFiducials(self, volume, directory):
         """ Save all the fiducials for the current volume.
         The name of the file will be VolumeName_parenchymaTraining.xml"
-        :param volume:
-        :param directory:
+        :param volume: scalar node
+        :param directory: destiny directory
         :return:
         """
         # Iterate over all the fiducials list nodes
         pos = [0,0,0]
         topology = GTD.GeometryTopologyData()
-        topology.coordinateSystem = topology.RAS
+        topology.coordinate_system = topology.LPS
+        # Get the transformation matrix LPS-->IJK
+        matrix = Util.get_lps_to_ijk_transformation_matrix(volume)
+        topology.lps_to_ijk_transformation_matrix = Util.convert_vtk_matrix_to_list(matrix)
+
         for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volume.GetID())).itervalues():
             # Get all the markups
             for i in range(fidListNode.GetNumberOfMarkups()):
                 fidListNode.GetNthFiducialPosition(i, pos)
                 # Get the type from the description (region will always be 0)
                 desc = fidListNode.GetNthMarkupDescription(i)
-                p = GTD.Point(list(pos), 0, int(desc))
-                topology.addPoint(p)
+                # Switch to LPS
+                lpos = Util.switch_ras_lps(list(pos))
+                p = GTD.Point(lpos, 0, int(desc))
+                topology.add_point(p)
 
         # Get the xml content file
-        xml = topology.toXml()
+        xml = topology.to_xml()
         # Save the file
         fileName = os.path.join(directory, "{0}_parenchymaTraining.xml".format(volume.GetName()))
         with open(fileName, 'w') as f:
@@ -523,7 +527,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         return self.savedVolumes[volumeId]
 
 
-    def readExistingPoints(self, volumeNode, fileName):
+    def loadFiducials(self, volumeNode, fileName):
         """ Read a list of fiducials for a particular volume node
         :param volumeNode: Volume (scalar node)
         :param fileName: full path of the file to load the fiducials where
@@ -531,10 +535,10 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         with open(fileName, "r") as f:
             xml = f.read()
 
-        geom = GTD.GeometryTopologyData.fromXml(xml)
+        geom = GTD.GeometryTopologyData.from_xml(xml)
 
         for point in geom.points:
-            subtype = point.chestType
+            subtype = point.chest_type
             if subtype in self.params.mainTypes.keys():
                 # Main type. The subtype will be "Any"
                 mainType = subtype
@@ -543,9 +547,21 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
                 mainType = self.params.getMainTypeForSubtype(subtype)
             # Activate the current fiducials list based on the main type
             fidList = self.setActiveFiducialsListNode(volumeNode, mainType, subtype)
+            print(geom.coordinate_system)
+            # Check if the coordinate system is RAS (and make the corresponding transform otherwise)
+            if geom.coordinate_system == geom.LPS:
+                print("LPS")
+                coord = Util.switch_ras_lps(point.coordinate)
+            elif geom.coordinate_system == geom.IJK:
+                print("IJK")
+                coord = Util.ras_to_ijk(volumeNode, point.coordinate)
+            else:
+                # Try default mode (RAS)
+                print("RAS")
+                coord = point.coordinate
+            print ("This is the RAS coordinate: ", coord)
             # Add the fiducial
-            fidList.AddFiducial(point.coordinate[0], point.coordinate[1], point.coordinate[2],
-                                self.getMarkupLabel(mainType, subtype))
+            fidList.AddFiducial(coord[0], coord[1], coord[2], self.getMarkupLabel(mainType, subtype))
 
 
     def reset(self, volumeToKeep=None):
