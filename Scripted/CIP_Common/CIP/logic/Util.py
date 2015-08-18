@@ -59,6 +59,15 @@ class Util:
         """
         return os.sys.platform == "win32"
 
+    @staticmethod
+    def get_file_extension(file_path):
+        """ Return the extension of a file (with the dot included)
+        :param file_path: relative or absolute file path
+        :return: extension with dot (ex: ".xml")
+        """
+        (f, ext) = os.path.splitext(file_path)
+        return ext
+
     @staticmethod 
     def get_labelmap_slices(vtk_image_data):
         """Get a dictionary with the slices where all the label data are contained.

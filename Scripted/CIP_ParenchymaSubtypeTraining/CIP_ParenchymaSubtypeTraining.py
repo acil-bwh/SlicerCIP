@@ -547,19 +547,14 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
                 mainType = self.params.getMainTypeForSubtype(subtype)
             # Activate the current fiducials list based on the main type
             fidList = self.setActiveFiducialsListNode(volumeNode, mainType, subtype)
-            print(geom.coordinate_system)
             # Check if the coordinate system is RAS (and make the corresponding transform otherwise)
             if geom.coordinate_system == geom.LPS:
-                print("LPS")
                 coord = Util.switch_ras_lps(point.coordinate)
             elif geom.coordinate_system == geom.IJK:
-                print("IJK")
                 coord = Util.ras_to_ijk(volumeNode, point.coordinate)
             else:
                 # Try default mode (RAS)
-                print("RAS")
                 coord = point.coordinate
-            print ("This is the RAS coordinate: ", coord)
             # Add the fiducial
             fidList.AddFiducial(coord[0], coord[1], coord[2], self.getMarkupLabel(mainType, subtype))
 

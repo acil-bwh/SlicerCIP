@@ -19,6 +19,7 @@ class GeometryTopologyData:
     __num_dimensions__ = 0
     @property
     def num_dimensions(self):
+        """ Number of dimensions (generally 3)"""
         if self.__num_dimensions__ == 0:
             # Try to get the number of dimensions from the first point or bounding box
             if len(self.points) > 0:
@@ -40,15 +41,20 @@ class GeometryTopologyData:
         self.lps_to_ijk_transformation_matrix = None    # 4x4 transformation matrix to go from LPS to IJK (in the shape of a 4x4 list)
     
     def add_point(self, point):
-        """Add a new Point from a vector of float coordinates"""
+        """ Add a new Point to the structure
+        :param point: Point object """
         self.points.append(point)
     
     def add_bounding_box(self, bounding_box):
+        """ Add a new BoundingBox to the structure
+        :param bounding_box: BoundingBox object
+        :return:
+        """
         self.bounding_boxes.append(bounding_box)
     
     def to_xml(self):
-        """Generate the XML string representation of this object.
-        It doesn't use any special module to keep compatibility with Slicer"""
+        """ Generate the XML string representation of this object.
+        It doesn't use any special python module to keep compatibility with Slicer """
         output = '<?xml version="1.0" encoding="utf8"?><GeometryTopologyData>'
         if self.num_dimensions != 0:
             output += ('<NumDimensions>%i</NumDimensions>' % self.num_dimensions)
@@ -67,9 +73,11 @@ class GeometryTopologyData:
    
     @staticmethod
     def from_xml(xml):
-        """Build a GeometryTopologyData object from a xml string.
+        """ Build a GeometryTopologyData object from a xml string.
         All the coordinates will be float.
         remark: It uses the ElementTree instead of lxml module to be compatible with Slicer
+        :param xml: xml string
+        :return: new GeometryTopologyData object
         """
         root = et.fromstring(xml)
         geometry_topology = GeometryTopologyData()
@@ -122,7 +130,22 @@ class GeometryTopologyData:
         return geometry_topology
 
     @staticmethod
+    def to_xml_vector(array, format_="%f"):
+        """ Get the xml representation of a vector of coordinates (<value>elem1</value>, <value>elem2</value>...)
+        :param array: vector of values
+        :return: xml representation of the vector (<value>elem1</value>, <value>elem2</value>...)
+        """
+        output = ''
+        for i in array:
+            output = ("%s<value>" + format_ + "</value>") % (output, i)
+        return output
+
+    @staticmethod
     def coordinate_system_from_str(value_str):
+        """ Get one of the possible coordinate systems allowed from its string representation
+        :param value_str: "IJK", "RAS", "LPS"...
+        :return: one the allowed coordinates systems
+        """
         if value_str is not None:
             if value_str == "IJK": return GeometryTopologyData.IJK
             elif value_str == "RAS": return GeometryTopologyData.RAS
@@ -133,6 +156,10 @@ class GeometryTopologyData:
 
     @staticmethod
     def coordinate_system_to_str(value_int):
+        """ Get the string representation of one of the coordinates systems
+        :param value_int: GeometryTopologyData.IJK, GeometryTopologyData.RAS, GeometryTopologyData.LPS...
+        :return: string representing the coordinate system ("IJK", "RAS", "LPS"...)
+        """
         if value_int == GeometryTopologyData.IJK: return "IJK"
         elif value_int == GeometryTopologyData.RAS: return "RAS"
         elif value_int == GeometryTopologyData.LPS: return "LPS"
@@ -169,6 +196,8 @@ class GeometryTopologyData:
         return "<LPStoIJKTransformationMatrix>%s</LPStoIJKTransformationMatrix>" % s
 
 
+
+
 class Point:
     def __init__(self, coordinate, chest_region, chest_type, description=None, format_="%f"):
         """
@@ -186,19 +215,17 @@ class Point:
         self.format = format_
     
     def to_xml(self):
-        coords = self.to_xml_vector(self.coordinate)
+        """ Get the xml string representation of the point
+        :return: xml string representation of the point
+        """
+        coords = GeometryTopologyData.to_xml_vector(self.coordinate, self.format)
         description_str = ''
         if self.description is not None:
             description_str = '<Description>%s</Description>' % self.description
             
         return '<Point><ChestRegion>%i</ChestRegion><ChestType>%i</ChestType>%s<Coordinate>%s</Coordinate></Point>' % \
             (self.chest_region, self.chest_type, description_str, coords)
-            
-    def to_xml_vector(self, array):
-        output = ''
-        for i in array:
-            output = ("%s<value>" + self.format + "</value>") % (output, i) 
-        return output
+
 
 
 class BoundingBox:
@@ -221,8 +248,11 @@ class BoundingBox:
 
     
     def to_xml(self):
-        start_str = self.to_xml_vector(self.start)
-        size_str = self.to_xml_vector(self.size)
+        """ Get the xml string representation of the bounding box
+        :return: xml string representation of the bounding box
+        """
+        start_str = GeometryTopologyData.to_xml_vector(self.start, self.format)
+        size_str = GeometryTopologyData.to_xml_vector(self.size, self.format)
         description_str = ''
         if self.description is not None:
             description_str = '<Description>%s</Description>' % self.description
@@ -230,9 +260,5 @@ class BoundingBox:
             (self.chest_region, self.chest_type, description_str, start_str, size_str)
             
 
-    def to_xml_vector(self, array):
-        output = ''
-        for i in array:
-            output = ("%s<value>" + self.format + "</value>") % (output, i)
-        return output
+
 

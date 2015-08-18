@@ -54,6 +54,3 @@ def test_geometry_topology_data_schema():
     schema = etree.XMLSchema(etree.XML(xsd))
     xmlparser = etree.XMLParser(schema=schema)
     etree.fromstring(xml, xmlparser)
-
-
-test_geometry_topology_data_write_read()
