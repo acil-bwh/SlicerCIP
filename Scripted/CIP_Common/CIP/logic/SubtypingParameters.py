@@ -3,23 +3,20 @@ from collections import OrderedDict
 class SubtypingParameters(object):
     """ Class that stores the structure required for Chest Subtyping training
     """
-    #INF = 100000
-    #MAX_REGION_TYPE_CODE = 65536  # 11111111 11111111
- 
+    # MAIN TYPES
     """ Allowed region types """
     __types__ = OrderedDict()
     __types__[94] = "ILD"
     __types__[4] = "Emphysema"
     __types__[2] = "Airway"
-    __types__[95] = "Artifact"
+    # __types__[95] = "Artifact"
     __types__[1] = "Normal"
-
 
     @property
     def mainTypes(self):
         return self.__types__
 
-
+    # SUBTYPES
     """ Allowed tissue types """
     __subtypes__ = OrderedDict()
     __subtypes__[0]  = ("Any", "")
@@ -38,8 +35,7 @@ class SubtypingParameters(object):
     __subtypes__[99] = ("Paraseptal emphysema with ground glass", "PSE-GG")
     __subtypes__[100] = ("Centrilobular emphysema with ground glass", "CLE-GG")
     __subtypes__[101] = ("Linear", "Lin")
-
-    # EMPHYSEMA
+    # Emphysema
     __subtypes__[67] = ("Paraseptal", "PSE")
     __subtypes__[68] = ("Centrilobular", "CLE")
     __subtypes__[69] = ("Panlobular", "PLE")
@@ -52,16 +48,24 @@ class SubtypingParameters(object):
     # __subtypes__[19] = ("Mild panlobular", "Mild PLE")
     # __subtypes__[20] = ("Moderate panlobular", "Mod PLE")
     # __subtypes__[21] = ("Severe panlobular", "Sev PLE")
-
-    # BRONCHIESTATIC
+    # Bronchiestatic
     __subtypes__[77] = ("Bronchiectatic", "BE")
     __subtypes__[78] = ("Not bronchiectatic", "non-BE")
-
-
 
     @property
     def subtypes(self):
         return self.__subtypes__
+
+    # ARTIFACTS
+    __artifacts__ = OrderedDict()
+    __artifacts__[0] = ("No artifact", "")
+    __artifacts__[1] = ("Undefined", "Artifact")
+    __artifacts__[4] = ("Motion", "Motion")
+
+    @property
+    def artifacts(self):
+        return self.__artifacts__
+
 
 
     """ Allowed combinations"""
@@ -106,7 +110,7 @@ class SubtypingParameters(object):
         (2, 77),
         (2, 78),
         # ARTIFACT
-        (95, 0),
+        #(95, 0),
         # NORMAL
         (1, 0))
 
@@ -154,14 +158,32 @@ class SubtypingParameters(object):
             return ""
         return self.subtypes[subtypeId][1]
 
-    def getColor(self, typeId):
-        """ Get a  3-tuple color for this type
+
+    def getArtifactDescr(self, artifactId):
+        """ At the moment just the description (it may change if we include useful abbreviations)
+            :param artifactId:
+            :return: string
+        """
+        return self.artifacts[artifactId][0]
+
+    def getArtifactAbbreviation(self, artifactId):
+        """ Get the abbreviation for this artifact.
+            :param subtypeId:
+            :return:
+        """
+        return self.artifacts[artifactId][1]
+
+
+    def getColor(self, typeId, artifactId):
+        """ Get a  3-tuple color for this type and/or artifact
         :param typeId:
         :return:
         """
-        if typeId == 94: return (0.93, 0.9, 0.26)     # ILD
+        if artifactId != 0:
+            return (1, 0, 0)       # Mark all artifacts as red
+        if typeId == 94: return (1, 0.525, 0)     # ILD
         if typeId == 4: return (0.24, 0.74, 1)     # Emphysema
         if typeId == 2: return (0.44, 0.42, 0.2)     # Airway
-        if typeId == 95: return (1, 0, 0)     # Artifact
+        # if typeId == 95: return (1, 0, 0)     # Artifact
         if typeId == 1: return (0.28, 0.77, 0.22)     # Normal
         raise Exception("Unknown color for type {0}".format(typeId))

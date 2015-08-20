@@ -1,6 +1,4 @@
 import os, sys
-import re
-import unittest
 from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
@@ -79,11 +77,11 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         # Main area
         self.mainAreaCollapsibleButton = ctk.ctkCollapsibleButton()
         self.mainAreaCollapsibleButton.text = "Main area"
-        self.layout.addWidget(self.mainAreaCollapsibleButton)
+        self.layout.addWidget(self.mainAreaCollapsibleButton, 0x0020)
         self.mainLayout = qt.QGridLayout(self.mainAreaCollapsibleButton)
 
         # Node selector
-        volumeLabel = qt.QLabel("Select the active volume: ")
+        volumeLabel = qt.QLabel("Active volume: ")
         volumeLabel.setStyleSheet("margin-left:5px")
         self.mainLayout.addWidget(volumeLabel, 0, 0)
         self.volumeSelector = slicer.qMRMLNodeComboBox()
@@ -100,14 +98,14 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         #self.volumeSelector.selectNodeUponCreation = False
         self.mainLayout.addWidget(self.volumeSelector, 0, 1)
 
-        # Radio Buttons types
+        # Types Radio Buttons
         typesLabel = qt.QLabel("Select the type")
         typesLabel.setStyleSheet("font-weight: bold; margin-left:5px")
+        typesLabel.setFixedHeight(30)
         self.mainLayout.addWidget(typesLabel, 1, 0)
         self.typesFrame = qt.QFrame()
         self.typesLayout = qt.QVBoxLayout(self.typesFrame)
         self.mainLayout.addWidget(self.typesFrame, 2, 0)
-
         self.typesRadioButtonGroup = qt.QButtonGroup()
         for key, description in self.logic.mainTypes.iteritems():
             rbitem = qt.QRadioButton(description)
@@ -115,16 +113,35 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             self.typesLayout.addWidget(rbitem)
         self.typesRadioButtonGroup.buttons()[0].setChecked(True)
 
-        # Radio buttons subtypes
+        # Subtypes Radio buttons
         subtypesLabel = qt.QLabel("Select the subtype")
         subtypesLabel.setStyleSheet("font-weight: bold; margin-left:5px")
+        subtypesLabel.setFixedHeight(30)
         self.mainLayout.addWidget(subtypesLabel, 1, 1)
         #self.mainLayout.addWidget(qt.QLabel("Select the subtype"), 1, 1)
         self.subtypesRadioButtonGroup = qt.QButtonGroup()
         self.subtypesFrame = qt.QFrame()
         self.subtypesFrame.setFixedHeight(300)
         self.subtypesLayout = qt.QVBoxLayout(self.subtypesFrame)
-        self.mainLayout.addWidget(self.subtypesFrame, 2, 1)
+        self.mainLayout.addWidget(self.subtypesFrame, 2, 1, 0x0020)     # Put the frame in the top
+        # The content will be loaded dynamically every time the main type is modified
+
+        # Artifact radio buttons
+        artifactsLabel = qt.QLabel("Artifact")
+        artifactsLabel.setStyleSheet("font-weight: bold; margin-left:5px")
+        artifactsLabel.setFixedHeight(30)
+        self.mainLayout.addWidget(artifactsLabel, 1, 2)
+        #self.mainLayout.addWidget(qt.QLabel("Select the artifact"), 1, 1)
+        self.artifactsRadioButtonGroup = qt.QButtonGroup()
+        self.artifactsFrame = qt.QFrame()
+        self.artifactsLayout = qt.QVBoxLayout(self.artifactsFrame)
+        self.mainLayout.addWidget(self.artifactsFrame, 2, 2)
+        self.artifactsRadioButtonGroup = qt.QButtonGroup()
+        for artifactId in self.logic.artifacts.iterkeys():
+            rbitem = qt.QRadioButton(self.logic.params.getArtifactDescr(artifactId))
+            self.artifactsRadioButtonGroup.addButton(rbitem, artifactId)
+            self.artifactsLayout.addWidget(rbitem)
+        self.artifactsRadioButtonGroup.buttons()[0].setChecked(True)
 
         # Remove fiducial button
         self.removeLastFiducialButton = ctk.ctkPushButton()
@@ -169,11 +186,12 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         fileSelectorLayout.addWidget(self.saveResultsOpenDirectoryDialogButton)
         self.mainLayout.addWidget(fileSelectorFrame, 4, 1)
 
+        #####
         # Case navigator
         if SlicerUtil.is_SlicerACIL_loaded():
             caseNavigatorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
             caseNavigatorAreaCollapsibleButton.text = "Case navigator"
-            self.layout.addWidget(caseNavigatorAreaCollapsibleButton)
+            self.layout.addWidget(caseNavigatorAreaCollapsibleButton, 0x0020)
             caseNavigatorLayout = qt.QVBoxLayout(caseNavigatorAreaCollapsibleButton)
 
             # Add a case list navigator
@@ -188,6 +206,8 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         # Connections
         self.typesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onTypesRadioButtonClicked)
         self.subtypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onSubtypesRadioButtonClicked)
+        self.artifactsRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onSubtypesRadioButtonClicked)
+
         #self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelected)
         self.loadButton.connect('clicked()', self.openFiducialsFile)
         self.removeLastFiducialButton.connect('clicked()', self.onRemoveLastFiducialButtonClicked)
@@ -225,7 +245,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         selectedVolume = self.currentVolumeLoaded
         if selectedVolume is not None:
             self.logic.setActiveFiducialsListNode(selectedVolume,
-                self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId())
+                self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId(), self.artifactsRadioButtonGroup.checkedId())
 
     def saveResultsCurrentNode(self):
         d = self.saveResultsDirectoryText.text
@@ -323,7 +343,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         selectedVolume = self.volumeSelector.currentNode()
         if selectedVolume is not None:
             self.logic.setActiveFiducialsListNode(selectedVolume,
-                    self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId())
+                    self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId(), self.artifactsRadioButtonGroup.checkedId())
 
     def onRemoveLastFiducialButtonClicked(self):
        self.logic.removeLastMarkup()
@@ -349,22 +369,19 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         self.currentVolumeId = None
         self.currentTypeId = -1
         self.currentSubtypeId = -1
+        self.currentArtifactId = 0
         self.savedVolumes = {}
 
-    # Constants
     @property
     def mainTypes(self):
-        """ Return an OrderedDic with key=Code and value=Description of the subtype """
+        """ Return an OrderedDic with key=Code and value=Description of the type """
         return self.params.mainTypes
 
     @property
-    def fiducialNodesNameMask(self):
-        """ mask that will be used to name the fiducial nodes.
-        Note: the mask will have to be formatted with the volume id and the type.
-        Ex: fiducialNodesNameMask.format(volumeId, typeId)
-        :return:
-        """
-        return "{0}_fiducials_{1}"
+    def artifacts(self):
+        """ Return an OrderedDic with key=Code and value=Description of the type of artifact """
+        return self.params.artifacts
+
 
     # def setCurrentTypeAndSubtype(self, typeId, subtypeId):
     #     self.currentTypeId = typeId
@@ -398,16 +415,17 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         return typeId if subtypeId == 0 else subtypeId
 
 
-    def _createFiducialsListNode_(self, nodeName, typeId):
+    def _createFiducialsListNode_(self, nodeName, typeId, artifactId):
         """ Create a fiducials list node for this volume and this type. Depending on the type, the color will be different
         :param nodeName: Full name of the fiducials list node
         :param typeId: type id that will modify the color of the fiducial
+        :param artifactId: type id that will modify the color and tag of the fiducial
         :return: fiducials list node
         """
         fidListID = self.markupsLogic.AddNewFiducialNode(nodeName, slicer.mrmlScene)
         fidNode = slicer.util.getNode(fidListID)
         displayNode = fidNode.GetDisplayNode()
-        displayNode.SetSelectedColor(self.params.getColor(typeId))
+        displayNode.SetSelectedColor(self.params.getColor(typeId, artifactId))
         # print("DEBUG: Type Id = {0}. Color for the fiducial: ".format(typeId), self.params.getColor(typeId))
 
         # Add an observer when a new markup is added
@@ -415,36 +433,56 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
 
         return fidNode
 
-    def setActiveFiducialsListNode(self, volumeNode, typeId, subtypeId, createIfNotExists=True):
+    def setActiveFiducialsListNode(self, volumeNode, typeId, subtypeId, artifactId, createIfNotExists=True):
         """ Get the vtkMRMLMarkupsFiducialNode node associated with this volume and this type.
         :param volumeNode: Scalar volume node
         :param typeId: main type id
         :param subtypeId: subtype id
+        :param artifactId: artifact id
         :param createIfNotExists: create the node if it doesn't exist yet
         :return: fiducials volume node
         """
         if volumeNode is not None:
-            nodeName = self.fiducialNodesNameMask.format(volumeNode.GetID(), typeId)
+            if artifactId == -1:
+                # No artifact
+                nodeName = "{0}_fiducials_{1}".format(volumeNode.GetID(), typeId)
+            else:
+                # Artifact. Add the type of artifact to the node name
+                nodeName = "{0}_fiducials_{1}_{2}".format(volumeNode.GetID(), typeId, artifactId)
             fid = slicer.util.getNode(nodeName)
             if fid is None and createIfNotExists:
                 # print("DEBUG: creating a new fiducials node: " + nodeName)
-                fid = self._createFiducialsListNode_(nodeName, typeId)
+                fid = self._createFiducialsListNode_(nodeName, typeId, artifactId)
                 # Add the volume to the list of "managed" cases
                 self.savedVolumes[volumeNode.GetID()] = False
             self.currentVolumeId = volumeNode.GetID()
             self.currentTypeId = typeId
             self.currentSubtypeId = subtypeId
+            self.currentArtifactId = artifactId
             # Mark the node list as the active one
             self.markupsLogic.SetActiveListID(fid)
             return fid
 
 
-    def getMarkupLabel(self, typeId, subtypeId):
+    def getMarkupLabel(self, typeId, subtypeId, artifactId):
+        """ Get the text that will be displayed in the fiducial
+        :param typeId:
+        :param subtypeId:
+        :param artifactId:
+        :return: test
+        """
         if subtypeId == 0:
             # No subtype. Just add the general type description
-            return self.params.mainTypes[typeId]
-        # Initials of the subtype
-        return self.params.getSubtypeAbbreviation(subtypeId)
+            label = self.params.mainTypes[typeId]
+        else:
+            # Initials of the subtype
+            label = self.params.getSubtypeAbbreviation(subtypeId)
+
+        if artifactId != 0:
+            # There is artifact
+            return "{0}-{1}".format(label, self.params.getArtifactAbbreviation(artifactId))
+        # No artifact
+        return label
 
 
     def onMarkupAdded(self, markupListNode, event):
@@ -453,14 +491,15 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         :param event:
         :return:
         """
-        label = self.getMarkupLabel(self.currentTypeId, self.currentSubtypeId)
+        label = self.getMarkupLabel(self.currentTypeId, self.currentSubtypeId, self.currentArtifactId)
         # Get the last added markup (there is no index in the event!)
         n = markupListNode.GetNumberOfFiducials()
         # Change the label
         markupListNode.SetNthMarkupLabel(n-1, label)
         # Use the description to store the type of the fiducial that will be saved in
         # the GeometryTopolyData object
-        markupListNode.SetNthMarkupDescription(n-1, str(self.getEffectiveType(self.currentTypeId, self.currentSubtypeId)))
+        markupListNode.SetNthMarkupDescription(n-1,
+            "{0}_{1}".format(self.getEffectiveType(self.currentTypeId, self.currentSubtypeId), self.currentArtifactId))
         # Markup added. Mark the current volume as state modified
         # if self.currentVolumeId in self.savedVolumes:
         #     self.savedVolumes.remove(self.currentVolumeId)
@@ -488,9 +527,11 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
                 fidListNode.GetNthFiducialPosition(i, pos)
                 # Get the type from the description (region will always be 0)
                 desc = fidListNode.GetNthMarkupDescription(i)
+                typeId = int(desc.split("_")[0])
+                artifactId = int(desc.split("_")[1])
                 # Switch to LPS
-                lpos = Util.switch_ras_lps(list(pos))
-                p = GTD.Point(lpos, 0, int(desc))
+                lps_coords = Util.switch_ras_lps(list(pos))
+                p = GTD.Point(0, typeId, artifactId, lps_coords)
                 topology.add_point(p)
 
         # Get the xml content file
@@ -528,7 +569,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
 
 
     def loadFiducials(self, volumeNode, fileName):
-        """ Read a list of fiducials for a particular volume node
+        """ Load from disk a list of fiducials for a particular volume node
         :param volumeNode: Volume (scalar node)
         :param fileName: full path of the file to load the fiducials where
         """
@@ -546,7 +587,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
             else:
                 mainType = self.params.getMainTypeForSubtype(subtype)
             # Activate the current fiducials list based on the main type
-            fidList = self.setActiveFiducialsListNode(volumeNode, mainType, subtype)
+            fidList = self.setActiveFiducialsListNode(volumeNode, mainType, subtype, point.feature_type)
             # Check if the coordinate system is RAS (and make the corresponding transform otherwise)
             if geom.coordinate_system == geom.LPS:
                 coord = Util.switch_ras_lps(point.coordinate)
@@ -556,7 +597,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
                 # Try default mode (RAS)
                 coord = point.coordinate
             # Add the fiducial
-            fidList.AddFiducial(coord[0], coord[1], coord[2], self.getMarkupLabel(mainType, subtype))
+            fidList.AddFiducial(coord[0], coord[1], coord[2], self.getMarkupLabel(mainType, subtype, point.feature_type))
 
 
     def reset(self, volumeToKeep=None):

@@ -1,5 +1,15 @@
+import sys
+for p in sys.path:
+    print p
+
 import os, sys
 from lxml import etree
+
+# Add manually the common folder to the pythonpath
+# this_dir = os.path.dirname(os.path.realpath(__file__))
+# path = os.path.normpath(this_dir + '/../..')
+# sys.path.append(path)
+
 from CIP.logic.geometry_topology_data import *
 
 
@@ -21,13 +31,13 @@ def test_geometry_topology_data_write_read():
     g.coordinate_system = g.RAS
     g.lps_to_ijk_transformation_matrix = [[1,2,3,4], [5,6,7,8], [1,2,3,4], [1,1,1,1]]
 
-    g.add_point(Point([2, 3.5, 3], 2, 5, "My desc", "%f"))
-    g.add_point(Point([2, 3.5, 3], 2, 5, format_="%i"))
-    g.add_bounding_box(BoundingBox([2, 3.5, 3], [1, 1, 4], 2, 5, format_="%i"))
-    g.add_bounding_box(BoundingBox([2, 3.5, 3], [1, 1, 3], 2, 5, format_="%f"))
+    g.add_point(Point(2, 5, 1, [2, 3.5, 3], description="My desc", format_="%f"))
+    g.add_point(Point(2, 5, 1, coordinate=[2, 3.5, 3], format_="%i"))
+    g.add_bounding_box(BoundingBox(2, 5, 1, start=[2, 3.5, 3], size=[1, 1, 4], format_="%i"))
+    g.add_bounding_box(BoundingBox(2, 5, 1, start=[2, 3.5, 3], size=[1, 1, 3], format_="%f"))
 
     xml = g.to_xml()
-    print(xml)
+    # print(xml)
 
     # Compare XML output
     with open(xml_file, 'r+b') as f:
