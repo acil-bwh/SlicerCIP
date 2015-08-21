@@ -21,7 +21,7 @@ class Util:
         :return:
         """
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        print "*** EXCEPTION OCCURRED: "
+        print ("*** EXCEPTION OCCURRED: ")
         traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stdout)
     
     @staticmethod

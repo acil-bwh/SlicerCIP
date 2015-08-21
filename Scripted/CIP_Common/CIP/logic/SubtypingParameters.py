@@ -6,11 +6,12 @@ class SubtypingParameters(object):
     # MAIN TYPES
     """ Allowed region types """
     __types__ = OrderedDict()
-    __types__[94] = "ILD"
-    __types__[4] = "Emphysema"
-    __types__[2] = "Airway"
+    __types__[94] = ["ILD", "ILD", (1, 0.525, 0)]
+    __types__[4] = ["Emphysema", "Emphysema", (0.24, 0.74, 1)]
+    __types__[2] = ["Airway", "Airway", (0.44, 0.42, 0.2)]
     # __types__[95] = "Artifact"
-    __types__[1] = "Normal"
+    __types__[1] = ["Normal", "Normal", (0.28, 0.77, 0.22)]
+    __types__[102] = ["Nodule", "Nodule", (0.49, 0, 0.88)]
 
     @property
     def mainTypes(self):
@@ -51,6 +52,10 @@ class SubtypingParameters(object):
     # Bronchiestatic
     __subtypes__[77] = ("Bronchiectatic", "BE")
     __subtypes__[78] = ("Not bronchiectatic", "non-BE")
+    # Nodule
+    __subtypes__[102] = ("Nodule", "N")
+    __subtypes__[103] = ("Tumor", "T")
+
 
     @property
     def subtypes(self):
@@ -109,6 +114,9 @@ class SubtypingParameters(object):
         (2, 0),
         (2, 77),
         (2, 78),
+        # NODULE
+        (102, 102),
+        (102, 103),
         # ARTIFACT
         #(95, 0),
         # NORMAL
@@ -120,6 +128,28 @@ class SubtypingParameters(object):
         :return: Ordered dict of main types
         """
         return self.__types__
+
+    def getMainTypeLabel(self, typeId):
+        """ Get the regular label for this type
+        :param typeId: main type id
+        :return: string
+        """
+        return self.mainTypes[typeId][0]
+
+    def getMainTypeAbbreviation(self, typeId):
+        """ Get the abbreviation for this type
+        :param typeId: main type id
+        :return: string
+        """
+        return self.mainTypes[typeId][1]
+
+    def getMainTypeColor(self, typeId):
+        """ Get a tuple with the color for this type
+        :param typeId: main type id
+        :return: 3-tuple 0-1 values
+        """
+        return self.mainTypes[typeId][2]
+
 
     def getSubtypes(self, typeId):
         """ Return the subtypes allowed for a concrete type
@@ -140,7 +170,7 @@ class SubtypingParameters(object):
             if comb[1] == subtypeId: return comb[0]
         return None
 
-    def getSubtypeFullDescr(self, subtypeId):
+    def getSubtypeLabel(self, subtypeId):
         """ Get subtypes like "Subtype (ABR)" with the description and abbreviation
         :param subtypeId:
         :return: string
@@ -159,7 +189,7 @@ class SubtypingParameters(object):
         return self.subtypes[subtypeId][1]
 
 
-    def getArtifactDescr(self, artifactId):
+    def getArtifactLabel(self, artifactId):
         """ At the moment just the description (it may change if we include useful abbreviations)
             :param artifactId:
             :return: string
@@ -181,9 +211,10 @@ class SubtypingParameters(object):
         """
         if artifactId != 0:
             return (1, 0, 0)       # Mark all artifacts as red
-        if typeId == 94: return (1, 0.525, 0)     # ILD
-        if typeId == 4: return (0.24, 0.74, 1)     # Emphysema
-        if typeId == 2: return (0.44, 0.42, 0.2)     # Airway
-        # if typeId == 95: return (1, 0, 0)     # Artifact
-        if typeId == 1: return (0.28, 0.77, 0.22)     # Normal
-        raise Exception("Unknown color for type {0}".format(typeId))
+        return self.getMainTypeColor(typeId)
+        # if typeId == 94: return (1, 0.525, 0)     # ILD
+        # if typeId == 4: return (0.24, 0.74, 1)     # Emphysema
+        # if typeId == 2: return (0.44, 0.42, 0.2)     # Airway
+        # # if typeId == 95: return (1, 0, 0)     # Artifact
+        # if typeId == 1: return (0.28, 0.77, 0.22)     # Normal
+        # raise Exception("Unknown color for type {0}".format(typeId))

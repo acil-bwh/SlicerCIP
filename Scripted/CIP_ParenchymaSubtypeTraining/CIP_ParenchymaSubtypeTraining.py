@@ -54,7 +54,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         def __onNodeAddedObserver__(self, caller, eventId, callData):
             """Node added to the Slicer scene"""
             if callData.GetClassName() == 'vtkMRMLScalarVolumeNode':
-                self.onNewVolumeLoaded(callData)
+                self.__onNewVolumeLoaded__(callData)
 
         self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
         self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
@@ -77,7 +77,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         # Main area
         self.mainAreaCollapsibleButton = ctk.ctkCollapsibleButton()
         self.mainAreaCollapsibleButton.text = "Main area"
-        self.layout.addWidget(self.mainAreaCollapsibleButton, 0x0020)
+        self.layout.addWidget(self.mainAreaCollapsibleButton, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
         self.mainLayout = qt.QGridLayout(self.mainAreaCollapsibleButton)
 
         # Node selector
@@ -85,7 +85,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         volumeLabel.setStyleSheet("margin-left:5px")
         self.mainLayout.addWidget(volumeLabel, 0, 0)
         self.volumeSelector = slicer.qMRMLNodeComboBox()
-        self.volumeSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "")
+        self.volumeSelector.nodeTypes = ("vtkMRMLScalarVolumeNode", "")
         self.volumeSelector.selectNodeUponCreation = True
         self.volumeSelector.autoFillBackground = True
         self.volumeSelector.addEnabled = False
@@ -93,98 +93,93 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.volumeSelector.removeEnabled = False
         self.volumeSelector.showHidden = False
         self.volumeSelector.showChildNodeTypes = False
-        self.volumeSelector.setMRMLScene( slicer.mrmlScene )
+        self.volumeSelector.setMRMLScene(slicer.mrmlScene)
+        self.volumeSelector.setFixedWidth(250)
         self.volumeSelector.setStyleSheet("margin: 15px 0")
         #self.volumeSelector.selectNodeUponCreation = False
-        self.mainLayout.addWidget(self.volumeSelector, 0, 1)
+        self.mainLayout.addWidget(self.volumeSelector, 0, 1, 1, 3)
 
+        labelsStyle = "font-weight: bold; margin: 0 0 5px 5px;"
         # Types Radio Buttons
         typesLabel = qt.QLabel("Select the type")
-        typesLabel.setStyleSheet("font-weight: bold; margin-left:5px")
-        typesLabel.setFixedHeight(30)
+        typesLabel.setStyleSheet(labelsStyle)
+        typesLabel.setFixedHeight(15)
         self.mainLayout.addWidget(typesLabel, 1, 0)
         self.typesFrame = qt.QFrame()
         self.typesLayout = qt.QVBoxLayout(self.typesFrame)
-        self.mainLayout.addWidget(self.typesFrame, 2, 0)
+        self.mainLayout.addWidget(self.typesFrame, 2, 0, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
         self.typesRadioButtonGroup = qt.QButtonGroup()
-        for key, description in self.logic.mainTypes.iteritems():
-            rbitem = qt.QRadioButton(description)
+        for key in self.logic.params.mainTypes.iterkeys():
+            rbitem = qt.QRadioButton(self.logic.params.getMainTypeLabel(key))
             self.typesRadioButtonGroup.addButton(rbitem, key)
             self.typesLayout.addWidget(rbitem)
         self.typesRadioButtonGroup.buttons()[0].setChecked(True)
 
         # Subtypes Radio buttons
         subtypesLabel = qt.QLabel("Select the subtype")
-        subtypesLabel.setStyleSheet("font-weight: bold; margin-left:5px")
-        subtypesLabel.setFixedHeight(30)
+        subtypesLabel.setStyleSheet(labelsStyle)
+        subtypesLabel.setFixedHeight(15)
         self.mainLayout.addWidget(subtypesLabel, 1, 1)
-        #self.mainLayout.addWidget(qt.QLabel("Select the subtype"), 1, 1)
         self.subtypesRadioButtonGroup = qt.QButtonGroup()
         self.subtypesFrame = qt.QFrame()
-        self.subtypesFrame.setFixedHeight(300)
+        self.subtypesFrame.setMinimumHeight(275)
         self.subtypesLayout = qt.QVBoxLayout(self.subtypesFrame)
-        self.mainLayout.addWidget(self.subtypesFrame, 2, 1, 0x0020)     # Put the frame in the top
+        self.subtypesLayout.setAlignment(SlicerUtil.ALIGNMENT_VERTICAL_TOP)
+        self.subtypesLayout.setStretch(0, 0)
+        self.mainLayout.addWidget(self.subtypesFrame, 2, 1, SlicerUtil.ALIGNMENT_VERTICAL_TOP)     # Put the frame in the top
         # The content will be loaded dynamically every time the main type is modified
 
         # Artifact radio buttons
-        artifactsLabel = qt.QLabel("Artifact")
-        artifactsLabel.setStyleSheet("font-weight: bold; margin-left:5px")
-        artifactsLabel.setFixedHeight(30)
-        self.mainLayout.addWidget(artifactsLabel, 1, 2)
+        self.artifactsLabel = qt.QLabel("Artifact")
+        self.artifactsLabel.setStyleSheet(labelsStyle)
+        self.artifactsLabel.setFixedHeight(15)
+        self.mainLayout.addWidget(self.artifactsLabel, 1, 2)
         #self.mainLayout.addWidget(qt.QLabel("Select the artifact"), 1, 1)
         self.artifactsRadioButtonGroup = qt.QButtonGroup()
         self.artifactsFrame = qt.QFrame()
         self.artifactsLayout = qt.QVBoxLayout(self.artifactsFrame)
-        self.mainLayout.addWidget(self.artifactsFrame, 2, 2)
+        self.mainLayout.addWidget(self.artifactsFrame, 2, 2, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
         self.artifactsRadioButtonGroup = qt.QButtonGroup()
-        for artifactId in self.logic.artifacts.iterkeys():
-            rbitem = qt.QRadioButton(self.logic.params.getArtifactDescr(artifactId))
+        for artifactId in self.logic.params.artifacts.iterkeys():
+            rbitem = qt.QRadioButton(self.logic.params.getArtifactLabel(artifactId))
             self.artifactsRadioButtonGroup.addButton(rbitem, artifactId)
             self.artifactsLayout.addWidget(rbitem)
         self.artifactsRadioButtonGroup.buttons()[0].setChecked(True)
+
+        # Load caselist button
+        self.loadButton = ctk.ctkPushButton()
+        self.loadButton.text = "Load fiducials file"
+        self.loadButton.setIcon(qt.QIcon("{0}/open_file.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.loadButton.setIconSize(qt.QSize(20, 20))
+        self.loadButton.setFixedWidth(135)
+        self.mainLayout.addWidget(self.loadButton, 3, 0)
 
         # Remove fiducial button
         self.removeLastFiducialButton = ctk.ctkPushButton()
         self.removeLastFiducialButton.text = "Remove last fiducial"
         self.removeLastFiducialButton.toolTip = "Remove the last fiducial added"
         self.removeLastFiducialButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
-        #self.exampleButton.setIconSize(qt.QSize(20,20))
-        #self.exampleButton.setStyleSheet("font-weight:bold; font-size:12px" )
+        self.removeLastFiducialButton.setIconSize(qt.QSize(20, 20))
         self.removeLastFiducialButton.setFixedWidth(200)
         self.mainLayout.addWidget(self.removeLastFiducialButton, 3, 1)
 
-
-        # Load caselist button
-        # Remove fiducial button
-        self.loadButton = ctk.ctkPushButton()
-        self.loadButton.text = "Load fiducials file"
-        self.mainLayout.addWidget(self.loadButton, 3, 0)
-
-        # Save results section
+        # Save results button
         self.saveResultsButton = ctk.ctkPushButton()
         self.saveResultsButton.setText("Save markups")
         self.saveResultsButton.toolTip = "Save the markups in the specified directory"
         self.saveResultsButton.setIcon(qt.QIcon("{0}/Save.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.saveResultsButton.setIconSize(qt.QSize(20,20))
-        # self.saveResultsButton.setStyleSheet("font-weight:bold; font-size:12px" )
-        # self.saveResultsButton.setFixedWidth(200)
         self.mainLayout.addWidget(self.saveResultsButton, 4, 0)
 
-        fileSelectorFrame = qt.QFrame()
-        fileSelectorLayout = qt.QHBoxLayout()
-        fileSelectorFrame.setLayout(fileSelectorLayout)
-        self.saveResultsDirectoryText = qt.QLineEdit()
+        # Save results directory button
         # Assign a default path for the results
         defaultPath = os.path.join(SlicerUtil.getModuleFolder(self.moduleName), "Results")
-        self.saveResultsDirectoryText.setText(SlicerUtil.settingGetOrSetDefault(self.moduleName,
-                                                                                "SaveResultsDirectory", defaultPath))
-        fileSelectorLayout.addWidget(self.saveResultsDirectoryText)
-        self.saveResultsOpenDirectoryDialogButton = ctk.ctkPushButton()
-        self.saveResultsOpenDirectoryDialogButton.setText("...")
-        self.saveResultsOpenDirectoryDialogButton.setFixedWidth(35)
-        self.saveResultsOpenDirectoryDialogButton.setFixedHeight(25)
-        fileSelectorLayout.addWidget(self.saveResultsOpenDirectoryDialogButton)
-        self.mainLayout.addWidget(fileSelectorFrame, 4, 1)
+        path = SlicerUtil.settingGetOrSetDefault(self.moduleName, "SaveResultsDirectory", defaultPath)
+        self.saveResultsDirectoryButton = ctk.ctkDirectoryButton()
+        self.saveResultsDirectoryButton.directory = path
+        self.saveResultsDirectoryButton.setMaximumWidth(375)
+        self.mainLayout.addWidget(self.saveResultsDirectoryButton, 4, 1, 1, 2)
+
 
         #####
         # Case navigator
@@ -201,18 +196,21 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             # Listen for the event of loading volume
             #self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_VOLUME_LOADED, self.onNewVolumeLoaded)
 
+        self.layout.addStretch()
+
         self.updateState()
 
         # Connections
-        self.typesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onTypesRadioButtonClicked)
-        self.subtypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onSubtypesRadioButtonClicked)
-        self.artifactsRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onSubtypesRadioButtonClicked)
+        self.typesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onTypesRadioButtonClicked__)
+        self.subtypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSubtypesRadioButtonClicked__)
+        self.artifactsRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSubtypesRadioButtonClicked__)
 
         #self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelected)
         self.loadButton.connect('clicked()', self.openFiducialsFile)
-        self.removeLastFiducialButton.connect('clicked()', self.onRemoveLastFiducialButtonClicked)
-        self.saveResultsOpenDirectoryDialogButton.connect('clicked()', self.onOpenDirectoryDialogButtonClicked)
-        self.saveResultsButton.connect('clicked()', self.onSaveResultsButtonClicked)
+        self.removeLastFiducialButton.connect('clicked()', self.__onRemoveLastFiducialButtonClicked__)
+        # self.saveResultsOpenDirectoryDialogButton.connect('clicked()', self.onOpenDirectoryDialogButtonClicked)
+        self.saveResultsDirectoryButton.connect("directoryChanged (str)", self.__onSaveResultsDirectoryChanged__)
+        self.saveResultsButton.connect('clicked()', self.__onSaveResultsButtonClicked__)
         slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__)
         slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__)
 
@@ -236,7 +234,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         for subtype in subtypesDict.iterkeys():
             rbitem = qt.QRadioButton(self.logic.getSubtypeFullDescription(subtype))
             self.subtypesRadioButtonGroup.addButton(rbitem, subtype)
-            self.subtypesLayout.addWidget(rbitem)
+            self.subtypesLayout.addWidget(rbitem, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
         # Check first element by default
         self.subtypesRadioButtonGroup.buttons()[0].setChecked(True)
 
@@ -248,7 +246,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
                 self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId(), self.artifactsRadioButtonGroup.checkedId())
 
     def saveResultsCurrentNode(self):
-        d = self.saveResultsDirectoryText.text
+        d = self.saveResultsDirectoryButton.directory
         if not os.path.isdir(d):
             # Ask the user if he wants to create the folder
             if qt.QMessageBox.question(slicer.util.mainWindow(), "Create directory?",
@@ -279,8 +277,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         f = qt.QFileDialog.getOpenFileName()
         if f:
             self.logic.loadFiducials(volumeNode, f)
-            self.saveResultsDirectoryText.setText(os.path.dirname(f))
-
+            self.saveResultsDirectoryButton.directory = os.path.dirname(f)
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
@@ -298,7 +295,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         pass
 
-    def onNewVolumeLoaded(self, newVolumeNode):
+    def __onNewVolumeLoaded__(self, newVolumeNode):
         # print("DEBUG: Current selected volume: ", self.volumeSelector.currentNodeID)
         # print("DEBUG: Volume loaded: ", newVolumeNode.GetName())
         # volume = self.volumeSelector.currentNode()
@@ -320,7 +317,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.currentVolumeLoaded = newVolumeNode
         self.updateState()
 
-    def onVolumeSelected(self, volumeNode):
+    def __onVolumeSelected__(self, volumeNode):
         if volumeNode:
             print ("VolumeSelector currentNodeChanged: " + volumeNode.GetID())
             #self.logic.reset(volumeNode)
@@ -328,14 +325,14 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             self.updateState()
 
 
-    def onTypesRadioButtonClicked(self, button):
+    def __onTypesRadioButtonClicked__(self, button):
         """ One of the radio buttons has been pressed
         :param button:
         :return:
         """
         self.updateState()
 
-    def onSubtypesRadioButtonClicked(self, button):
+    def __onSubtypesRadioButtonClicked__(self, button):
         """ One of the subtype radio buttons has been pressed
         :param button:
         :return:
@@ -345,15 +342,16 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             self.logic.setActiveFiducialsListNode(selectedVolume,
                     self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId(), self.artifactsRadioButtonGroup.checkedId())
 
-    def onRemoveLastFiducialButtonClicked(self):
+    def __onRemoveLastFiducialButtonClicked__(self):
        self.logic.removeLastMarkup()
 
-    def onOpenDirectoryDialogButtonClicked(self):
-        f = qt.QFileDialog.getExistingDirectory()
-        if f:
-            self.saveResultsDirectoryText.setText(f)
+    def __onSaveResultsDirectoryChanged__(self, directory):
+        # f = qt.QFileDialog.getExistingDirectory()
+        # if f:
+        #     self.saveResultsDirectoryText.setText(f)
+        SlicerUtil.setSetting(self.moduleName, "SaveResultsDirectory", directory)
 
-    def onSaveResultsButtonClicked(self):
+    def __onSaveResultsButtonClicked__(self):
         self.saveResultsCurrentNode()
 
     def __onSceneClosed__(self, arg1, arg2):
@@ -372,26 +370,6 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         self.currentArtifactId = 0
         self.savedVolumes = {}
 
-    @property
-    def mainTypes(self):
-        """ Return an OrderedDic with key=Code and value=Description of the type """
-        return self.params.mainTypes
-
-    @property
-    def artifacts(self):
-        """ Return an OrderedDic with key=Code and value=Description of the type of artifact """
-        return self.params.artifacts
-
-
-    # def setCurrentTypeAndSubtype(self, typeId, subtypeId):
-    #     self.currentTypeId = typeId
-    #     self.currentSubtypeId = subtypeId
-    #
-
-    # @property
-    # def subtypes(self):
-    #     return self.params.subtypes
-
     def getSubtypes(self, typeId):
         """ Get all the subtypes for the specified type
         :param typeId: type id
@@ -404,7 +382,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         :param subtypeId:
         :return:
         """
-        return self.params.getSubtypeFullDescr(subtypeId)
+        return self.params.getSubtypeLabel(subtypeId)
 
     def getEffectiveType(self, typeId, subtypeId):
         """ Return the subtype id unless it's 0. In this case, return the main type id
@@ -473,7 +451,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         """
         if subtypeId == 0:
             # No subtype. Just add the general type description
-            label = self.params.mainTypes[typeId]
+            label = self.params.getMainTypeAbbreviation(typeId)
         else:
             # Initials of the subtype
             label = self.params.getSubtypeAbbreviation(subtypeId)
@@ -624,7 +602,6 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
                 node = nodes.GetNextItemAsObject()
 
     def removeMarkups(self, volume):
-        print("DEBUG: removing markups for {0} ({1})".format(volume.GetName(), volume.GetID()))
         nodes = slicer.util.getNodes(volume.GetID() + "_*")
         for node in nodes.itervalues():
             slicer.mrmlScene.RemoveNode(node)

@@ -32,6 +32,17 @@ class SlicerUtil:
     CIP_ModulesCategory = ["Chest Imaging Platform.Modules"]
     CIP_ModuleName = "CIP_Common"
 
+    # Aligment
+    ALIGNMENT_HORIZONTAL_LEFT = 0x0001
+    ALIGNMENT_HORIZONTAL_RIGHT = 0x0002
+    ALIGNMENT_HORIZONTAL_CENTER = 0x0004
+    ALIGNMENT_HORIZONTAL_JUSTIFY = 0x0008
+
+    ALIGNMENT_VERTICAL_TOP = 0x0020
+    ALIGNMENT_VERTICAL_BOTTOM = 0x0040
+    ALIGNMENT_VERTICAL_CENTER = 0x0080
+
+
     @staticmethod
     def getModuleFolder(moduleName):
         '''Get the folder where a python scripted module is physically stored''' 
