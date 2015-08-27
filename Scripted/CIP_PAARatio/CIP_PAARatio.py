@@ -56,6 +56,17 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
+    def __init__(self, parent):
+        ScriptedLoadableModuleWidget.__init__(self, parent)
+
+        from functools import partial
+        def __onNodeAddedObserver__(self, caller, eventId, callData):
+            """Node added to the Slicer scene"""
+            if callData.GetClassName() == 'vtkMRMLScalarVolumeNode':
+                self.volumeSelector.setCurrentNode(callData)
+
+        self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
+        self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
 
     def setup(self):
         """This is called one time when the module GUI is initialized
@@ -65,6 +76,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         # Create objects that can be used anywhere in the module. Example: in most cases there should be just one
         # object of the logic class
         self.logic = CIP_PAARatioLogic()
+        self.currentVolumesLoaded = set()
 
         #
         # Create all the widgets. Example Area
@@ -97,14 +109,14 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.label2.setStyleSheet("margin:0px 0 30px 7px")
         self.mainAreaLayout.addWidget(self.label2, 1, 0)
 
-        self.placeDefaultRulersButton = ctk.ctkPushButton()
-        self.placeDefaultRulersButton.text = "Go to tentative slice"
-        self.placeDefaultRulersButton.toolTip = "Navigate to the best estimated slice to place the rulers"
-        self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/next.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.placeDefaultRulersButton.setIconSize(qt.QSize(20,20))
-        self.placeDefaultRulersButton.setFixedWidth(135)
+        self.goToTentativeSliceButton = ctk.ctkPushButton()
+        self.goToTentativeSliceButton.text = "Go to tentative slice"
+        self.goToTentativeSliceButton.toolTip = "Navigate to the best estimated slice to place the rulers"
+        self.goToTentativeSliceButton.setIcon(qt.QIcon("{0}/next.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.goToTentativeSliceButton.setIconSize(qt.QSize(20,20))
+        self.goToTentativeSliceButton.setFixedWidth(135)
         # self.placeDefaultRulersButton.setStyleSheet("padding: 0 0 30px 0" )
-        self.mainAreaLayout.addWidget(self.placeDefaultRulersButton, 1, 1)
+        self.mainAreaLayout.addWidget(self.goToTentativeSliceButton, 1, 1)
 
         ### Structure Selector
         self.structuresGroupbox = qt.QGroupBox("Select the structure")
@@ -113,23 +125,23 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.mainAreaLayout.addWidget(self.structuresGroupbox, 2, 0)
 
 
-        self.structuresCheckboxGroup=qt.QButtonGroup()
-        btn = qt.QRadioButton("None")
-        btn.visible = False
-        self.structuresCheckboxGroup.addButton(btn)
-        self.groupboxLayout.addWidget(btn)
+        self.structuresButtonGroup=qt.QButtonGroup()
+        # btn = qt.QRadioButton("None")
+        # btn.visible = False
+        # self.structuresButtonGroup.addButton(btn)
+        # self.groupboxLayout.addWidget(btn)
 
         btn = qt.QRadioButton("Both")
         btn.checked = True
-        self.structuresCheckboxGroup.addButton(btn)
+        self.structuresButtonGroup.addButton(btn, 0)
         self.groupboxLayout.addWidget(btn)
 
         btn = qt.QRadioButton("Pulmonary Arterial")
-        self.structuresCheckboxGroup.addButton(btn)
+        self.structuresButtonGroup.addButton(btn, 1)
         self.groupboxLayout.addWidget(btn)
 
         btn = qt.QRadioButton("Aorta")
-        self.structuresCheckboxGroup.addButton(btn)
+        self.structuresButtonGroup.addButton(btn, 2)
         self.groupboxLayout.addWidget(btn)
 
         ### Buttons toolbox
@@ -209,19 +221,26 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.switchToRedView()
 
         # Connections
-        self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onInputSelect)
-        self.placeDefaultRulersButton.connect('clicked()', self.onPlaceDefaultRulers)
-        self.placeRulersButton.connect('clicked()', self.onPlaceRuler)
-        self.moveUpButton.connect('clicked()', self.onMoveUpRuler)
-        self.moveDownButton.connect('clicked()', self.onMoveDownRuler)
-        self.removeButton.connect('clicked()', self.onRemoveRuler)
+        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__)
+        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__)
+
+        self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelectorChanged)
+        self.goToTentativeSliceButton.connect('clicked()', self.onGoToTentativeSliceClicked)
+        self.placeRulersButton.connect('clicked()', self.onPlaceRulersClicked)
+        self.moveUpButton.connect('clicked()', self.onMoveUpRulerClicked)
+        self.moveDownButton.connect('clicked()', self.onMoveDownRulerClicked)
+        self.removeButton.connect('clicked()', self.onRemoveRulerClicked)
 
         self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
 
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
-        pass
+        activeVolumeId = SlicerUtil.getActiveVolumeIdInRedSlice()
+        if activeVolumeId is not None:
+            self.volumeSelector.setCurrentNodeID(activeVolumeId)
+            if activeVolumeId not in self.currentVolumesLoaded:
+                self.placeDefaultRulers(activeVolumeId)
 
     def exit(self):
         """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
@@ -231,36 +250,54 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         pass
 
-    def jumpToDefaultRulers(self, volumeId):
-        aorta1, aorta2, pa1, pa2 = self.logic.getDefaultCoords(volumeId)
 
+    def jumpToTemptativeSlice(self, volumeId):
+        aorta1, aorta2, pa1, pa2 = self.logic.getDefaultCoords(volumeId)
+        print("DEBUG: moving to slice ", aorta1[2])
         # Set the display in the right slice
         self.moveRedWindowToSlice(aorta1[2])
 
     def placeDefaultRulers(self, volumeId):
-        """
-        :param volumeId: Set the Aorta and PA rulers to a default estimated position
+        """ Set the Aorta and PA rulers to a default estimated position and jump to that slice
+        :param volumeId:
         :return:
         """
-        if volumeId == '':
-            self.showUnselectedVolumeWarningMessage()
-            return
+        self.structuresButtonGroup.buttons()[0].setChecked(True)
+        self.jumpToTemptativeSlice(volumeId)
+        self.placeRuler()
+        self.currentVolumesLoaded.add(volumeId)
 
-        rulerNodeAorta, isNewAorta, rulerNodePA, isNewPA = self.logic.createDefaultRulers(volumeId)
+        # Modify the zoom of the Red slice
+        redSliceNode = slicer.util.getFirstNodeByClassByName("vtkMRMLSliceNode", "Red")
+        factor = 0.5
+        newFOVx = redSliceNode.GetFieldOfView()[0] * factor
+        newFOVy = redSliceNode.GetFieldOfView()[1] * factor
+        newFOVz = redSliceNode.GetFieldOfView()[2]
+        redSliceNode.SetFieldOfView( newFOVx, newFOVy, newFOVz )
+        # Move the camera up to fix the view
+        redSliceNode.SetXYZOrigin(0, 50, 0)
 
-        if isNewAorta:
-            rulerNodeAorta.AddObserver(vtk.vtkCommand.ModifiedEvent, self.onRulerUpdated)
-        if isNewPA:
-            rulerNodePA.AddObserver(vtk.vtkCommand.ModifiedEvent, self.onRulerUpdated)
+        redSliceNode.UpdateMatrices()
 
-        # Get the coordinates of one of the rulers and jump to that slice
-        coords = [0, 0, 0, 0]
-        # Get current RAS coords
-        rulerNodeAorta.GetPositionWorldCoordinates1(coords)
-        # Set the display in the right slice
-        self.moveRedWindowToSlice(coords[2])
-
-        self.refreshTextboxes()
+    #     if volumeId == '':
+    #         self.showUnselectedVolumeWarningMessage()
+    #         return
+    #
+    #     rulerNodeAorta, isNewAorta, rulerNodePA, isNewPA = self.logic.createDefaultRulers(volumeId)
+    #
+    #     if isNewAorta:
+    #         rulerNodeAorta.AddObserver(vtk.vtkCommand.ModifiedEvent, self.onRulerUpdated)
+    #     if isNewPA:
+    #         rulerNodePA.AddObserver(vtk.vtkCommand.ModifiedEvent, self.onRulerUpdated)
+    #
+    #     # Get the coordinates of one of the rulers and jump to that slice
+    #     coords = [0, 0, 0, 0]
+    #     # Get current RAS coords
+    #     rulerNodeAorta.GetPositionWorldCoordinates1(coords)
+    #     # Set the display in the right slice
+    #     self.moveRedWindowToSlice(coords[2])
+    #
+    #     self.refreshTextboxes()
 
     def placeRuler(self):
         """ Place one or the two rulers in the current visible slice in Red node
@@ -296,7 +333,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         """ Get the current selected structure id
         :return: self.logic.AORTA or self.logic.PA
         """
-        selectedStructureText = self.structuresCheckboxGroup.checkedButton().text
+        selectedStructureText = self.structuresButtonGroup.checkedButton().text
         if selectedStructureText == "Aorta": return self.logic.AORTA
         elif selectedStructureText == "Pulmonary Arterial": return  self.logic.PA
         elif selectedStructureText == "Both": return self.logic.BOTH
@@ -420,7 +457,14 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
     #########
     # EVENTS
-    def onInputSelect(self, node):
+    def onVolumeSelectorChanged(self, node):
+        #if node is not None and node.GetID() not in self.currentVolumesLoaded:
+        if node is not None:
+            print("DEBUG: processing node " + node.GetID())
+            # New node. Load default rulers
+            if node.GetID() not in self.currentVolumesLoaded:
+                self.placeDefaultRulers(node.GetID())
+
         self.refreshTextboxes()
 
     def onStructureClicked(self, button):
@@ -438,26 +482,26 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             interactionNode = applicationLogic.GetInteractionNode()
             interactionNode.SwitchToSinglePlaceMode()
 
-    def onPlaceDefaultRulers(self):
+    def onGoToTentativeSliceClicked(self):
         volumeId = self.volumeSelector.currentNodeId
         if volumeId == '':
             self.showUnselectedVolumeWarningMessage()
             return
-        self.jumpToDefaultRulers(volumeId)
+        self.jumpToTemptativeSlice(volumeId)
 
     def onRulerUpdated(self, node, event):
         self.refreshTextboxes()
 
-    def onPlaceRuler(self):
+    def onPlaceRulersClicked(self):
         self.placeRuler()
 
-    def onMoveUpRuler(self):
+    def onMoveUpRulerClicked(self):
         self.stepSlice(1)
 
-    def onMoveDownRuler(self):
+    def onMoveDownRulerClicked(self):
         self.stepSlice(-1)
 
-    def onRemoveRuler(self):
+    def onRemoveRulerClicked(self):
         if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Remove rulers',
             'Are you sure you want to remove all the rulers from this volume?',
             qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
@@ -507,6 +551,13 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             )
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
 
+    def __onSceneClosed__(self, arg1, arg2):
+        """ Scene closed. Reset currently loaded volumes
+        :param arg1:
+        :param arg2:
+        :return:
+        """
+        self.currentVolumesLoaded.clear()
 
 
 # CIP_PAARatioLogic

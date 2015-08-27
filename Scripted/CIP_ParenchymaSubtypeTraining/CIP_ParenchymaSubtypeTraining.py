@@ -54,7 +54,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         def __onNodeAddedObserver__(self, caller, eventId, callData):
             """Node added to the Slicer scene"""
             if callData.GetClassName() == 'vtkMRMLScalarVolumeNode':
-                self.__onNewVolumeLoaded__(callData)
+                self.__newVolume__(callData)
 
         self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
         self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
@@ -183,7 +183,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 
         #####
         # Case navigator
-        if SlicerUtil.is_SlicerACIL_loaded():
+        if SlicerUtil.isSlicerACILLoaded():
             caseNavigatorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
             caseNavigatorAreaCollapsibleButton.text = "Case navigator"
             self.layout.addWidget(caseNavigatorAreaCollapsibleButton, 0x0020)

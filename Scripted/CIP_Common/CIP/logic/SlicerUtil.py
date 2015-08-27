@@ -9,7 +9,7 @@ import os
 
 from . import Util
 
-class SlicerUtil: 
+class SlicerUtil:
     # Constants    
     try:
         IsDevelopment = slicer.app.settings().value('Developer/DeveloperMode').lower() == 'true'
@@ -99,7 +99,7 @@ class SlicerUtil:
                 slice.repaint()
 
     @staticmethod
-    def is_SlicerACIL_loaded():
+    def isSlicerACILLoaded():
         """ Check the existence of the common ACIL module
         :return: True if the module is found
         """
@@ -298,6 +298,22 @@ class SlicerUtil:
         # Make sure that the node name is correct, because sometimes the scene adds a suffix
         node.SetName(nodeName)
         return node
+
+    @staticmethod
+    def getActiveVolumeIdInRedSlice():
+        """ Get the active volume in the Red Slice
+        :return: volume node id or None
+        """
+        layoutManager = slicer.app.layoutManager()
+        compositeNode = layoutManager.sliceWidget("Red").mrmlSliceCompositeNode()
+        backgroundNode = compositeNode.GetBackgroundVolumeID()
+        if backgroundNode is not None:
+            return backgroundNode
+        # If background is None, try foreground
+        backgroundNode = compositeNode.GetForegroundVolumeID()
+        return backgroundNode
+
+
         # @staticmethod
     # def gitUpdateCIP():
     #     if Util.AUTO_UPDATE_DISABLED:

@@ -157,7 +157,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.layout.addWidget(caseNavigatorCollapsibleButton)
         caseNavigatorAreaLayout = qt.QHBoxLayout(caseNavigatorCollapsibleButton)
 
-        if SlicerUtil.is_SlicerACIL_loaded():
+        if SlicerUtil.isSlicerACILLoaded():
             # Add a case list navigator
             from ACIL.ui import CaseNavigatorWidget
             self.caseNavigatorWidget = CaseNavigatorWidget(parentModuleName="CIP_LesionModel", parentContainer=caseNavigatorAreaLayout)
