@@ -14,10 +14,9 @@ import numpy as np
 try:
     from CIP.logic.SlicerUtil import SlicerUtil
 except Exception as ex:
-    import inspect
-    currentpath = os.path.dirname(inspect.getfile(inspect.currentframe()))
+    currentpath = os.path.dirname(os.path.realpath(__file__))
     # We assume that CIP_Common is in the development structure
-    path = os.path.normpath(currentpath + '/../../SlicerCIP/Scripted/CIP_Common')
+    path = os.path.normpath(currentpath + '/../../../SlicerCIP/Scripted/CIP_Common')
     if not os.path.exists(path):
         # We assume that CIP is a subfolder (Slicer behaviour)
         path = os.path.normpath(currentpath + '/CIP')
