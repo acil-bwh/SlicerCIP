@@ -360,6 +360,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 #
 class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
     def __init__(self):
+        ScriptedLoadableModuleLogic.__init__(self)
         self.params = SubtypingParameters.SubtypingParameters()
         self.markupsLogic = slicer.modules.markups.logic()
 

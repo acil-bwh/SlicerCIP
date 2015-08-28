@@ -5,6 +5,8 @@ the volume based on its label map, like Area, Mean, Std.Dev., etc.
 First version: Jorge Onieva (ACIL, jonieva@bwh.harvard.edu). 11/2014'''
 
 from __main__ import qt,vtk, ctk, slicer
+from slicer.ScriptedLoadableModule import *
+
 import os
 import sys
 
@@ -33,11 +35,12 @@ import CIP.ui as CIPUI
 # CIP_BodyComposition. Global variables
 #
 
-ModuleName = "CIP_BodyComposition"
+# ModuleName = "CIP_BodyComposition"
 
-class CIP_BodyComposition:
+class CIP_BodyComposition(ScriptedLoadableModule):
     """Module that allows to segment different parts of the lungs in a manual or semi-automatic basis"""
     def __init__(self, parent):
+        ScriptedLoadableModule.__init__(self, parent)
         """Constructor for main class"""
         self.parent = parent
         self.parent.title = "Body Composition"
@@ -50,11 +53,13 @@ class CIP_BodyComposition:
 ######################################
 # CIP_BodyCompositionWidget
 #######################################
-class CIP_BodyCompositionWidget():
+class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     """GUI object"""
 
     def __init__(self, parent = None):
         """Widget constructor (existing module)"""
+        ScriptedLoadableModuleWidget.__init__(self, parent)
+        #VTKObservationMixin.__init__(self)
         if not parent:
             self.parent = slicer.qMRMLWidget()            
             self.parent.setLayout(qt.QVBoxLayout())            
@@ -65,29 +70,26 @@ class CIP_BodyCompositionWidget():
         
         # We have to define here the callback functions in order that we can access the node info in the events.
         # More info: http://www.slicer.org/slicerWiki/index.php/Documentation/Nightly/Developers/FAQ/Python_Scripting#How_can_I_access_callData_argument_in_a_VTK_object_observer_callback_function
-#         from functools import partial
-#         def onNodeAdded(self, caller, eventId, callData):
-#             """Node added to the Slicer scene"""
-#             if callData.GetClassName() == 'vtkMRMLScalarVolumeNode':  
-#                 if SlicerUtil.IsDevelopment: print ("New node node added to scene: {0}".format(callData.GetName()))
-#                 self.__onScalarNodeAdded__(callData)    
-#   
-#         self.onNodeAdded = partial(onNodeAdded, self)
-#         self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
-          
+        from functools import partial
+        def onNodeAdded(self, caller, eventId, callData):
+            """Node added to the Slicer scene"""
+            if callData.GetClassName() == 'vtkMRMLScalarVolumeNode':
+                # if SlicerUtil.IsDevelopment: print ("New node node added to scene: {0}".format(callData.GetName()))
+                self.checkMasterAndLabelMapNodes()
+
+        self.onNodeAdded = partial(onNodeAdded, self)
+        self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
+
     def enter(self):
         """Method that is invoked when we switch to the module in slicer user interface"""
-        if self.getCurrentGrayscaleNode() is None or self.getCurrentLabelMapNode() is None:
-            self.getCurrentMasterNodeFromGUI()
-            self.checkMasterAndLabelMapNodes()
+        self.checkMasterAndLabelMapNodes()
         
 
     def setup(self):
         """Init the widget """
-        #ScriptedLoadableModuleWidget.setup(self)        
+        ScriptedLoadableModuleWidget.setup(self)
         
         self.logic = CIP_BodyCompositionLogic()
-                
         self.colorTableNode = None
         self.disableEvents = False
         self.labelMapSlices = {}    # Dict. with the slices that contain data for each label in a label map volume
@@ -98,7 +100,21 @@ class CIP_BodyCompositionWidget():
         self.__createColorNodes__()
       
         self.iconsPath = SlicerUtil.CIP_ICON_DIR     # Imported from CIP library
-      
+
+        self.labelmapNodeNameExtension = self.logic.settingGetOrSetDefault("CIP_BodyComposition/labelmapNodeNameExtension", "_bodyComposition")
+
+        # Quick Load/Saving files buttons
+        # Default extension that will be used for labelmap nodes
+        # if SlicerUtil.isSlicerACILLoaded():
+#             self.loadDataCollapsibleButton = ctk.ctkCollapsibleButton()
+#             self.loadDataCollapsibleButton.text = "Load data"
+# #             loadDataLayout = qt.QVBoxLayout(self.loadDataCollapsibleButton)
+#             self.loadSaveDatabuttonsWidget = CIPUI.LoadSaveDataWidget(parent=self.parent)
+#             self.loadSaveDatabuttonsWidget.setup(moduleName="CIP_BodyComposition")
+#             self.loadSaveDatabuttonsWidget.hide()
+# #             loadDataLayout.addWidget(self.loadDataCollapsibleButton)
+
+
         ####################
         # Place the main paramteres (region and type selection)
         self.structuresCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -108,13 +124,14 @@ class CIP_BodyCompositionWidget():
          
         # Refresh labelmap info button
         self.btnRefresh = ctk.ctkPushButton()
-        self.btnRefresh.text = "  Refresh labelmap info"             
-        self.btnRefresh.toolTip = "Go to the previous slice that contains the selected label" 
+        self.btnRefresh.text = "  Refresh labelmap info"
+        self.btnRefresh.toolTip = "Load the labelmap information that has been painted"
         self.btnRefresh.setIcon(qt.QIcon("{0}/Reload.png".format(self.iconsPath)))
         self.btnRefresh.setIconSize(qt.QSize(20,20))
         self.btnRefresh.setStyleSheet("font-weight:bold; font-size:12px" )
-        self.btnRefresh.setFixedWidth(200)        
-        self.structuresLayout.addWidget(self.btnRefresh, 0, 0)
+        self.btnRefresh.setFixedWidth(200)
+        # At the moment we won' use this button
+        # self.structuresLayout.addWidget(self.btnRefresh, 0, 0)
         
 
         
@@ -137,7 +154,6 @@ class CIP_BodyCompositionWidget():
         
         self.structuresLayout.setColumnMinimumWidth(2,250)
         # Buttons for slice navigation and image analysis
-        
         
         self.btnGoToPreviousStructure = ctk.ctkPushButton()
         self.btnGoToPreviousStructure.text = " Previous slice"
@@ -171,8 +187,8 @@ class CIP_BodyCompositionWidget():
         
         
         self.btnRefresh2 = ctk.ctkPushButton()
-        self.btnRefresh2.text = "  Refresh labelmap info"             
-        self.btnRefresh2.toolTip = "Go to the previous slice that contains the selected label" 
+        self.btnRefresh2.text = "  Sync labelmap info"
+        self.btnRefresh2.toolTip = "Load the labelmap information that has been painted"
         self.btnRefresh2.setIcon(qt.QIcon("{0}/Reload.png".format(self.iconsPath)))
         self.btnRefresh2.setIconSize(qt.QSize(20,20))
         self.btnRefresh2.setStyleSheet("font-weight:bold; font-size:12px" )
@@ -236,13 +252,16 @@ class CIP_BodyCompositionWidget():
      
         self.statsTableFrame.layout().addWidget(self.tableView)
           
-        # Quick Load/Saving files buttons
-        # Default extension that will be used for labelmap nodes
-        self.labelmapNodeNameExtension = self.logic.settingGetOrSetDefault("CIP_BodyComposition/labelmapNodeNameExtension", "_bodyComposition")
-        
-        self.loadSaveDatabuttonsWidget = CIPUI.LoadSaveDataWidget(parent=self.parent)
-        self.loadSaveDatabuttonsWidget.setup(moduleName="CIP_BodyComposition")
-        self.loadSaveDatabuttonsWidget.hide()
+         #####
+        # Case navigator
+#         if SlicerUtil.isSlicerACILLoaded():
+#             caseNavigatorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
+#             caseNavigatorAreaCollapsibleButton.text = "Case navigator"
+#             self.layout.addWidget(caseNavigatorAreaCollapsibleButton, 0x0020)
+#             # Add a case list navigator
+#             from ACIL.ui import CaseNavigatorWidget
+#             self.caseNavigatorWidget = CaseNavigatorWidget(parentModuleName=self.moduleName
+#                                                            ,parentContainer=caseNavigatorAreaCollapsibleButton)
 
         # Check for updates in CIP
         #autoUpdate = SlicerUtil.settingGetOrSetDefault("CIP_BodyComposition", "AutoUpdate", 1)
@@ -256,38 +275,30 @@ class CIP_BodyCompositionWidget():
         self.checkMasterAndLabelMapNodes()
       
         # Listen for new nodes 
-        #slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
+        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
 #         self.nodeAddedModifiedObserverTag = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
 
         # Connections
         # Recall: we are not connecting here cbType because its items will be loaded dynamically in "__loadTypesComboBox__" method
         self.cbRegion.connect("currentIndexChanged (int)", self.onCbRegionCurrentIndexChanged)        
-        self.loadSaveDatabuttonsWidget.addObservable(self.loadSaveDatabuttonsWidget.EVENT_LOAD, self.onLoadData)
-        self.loadSaveDatabuttonsWidget.addObservable(self.loadSaveDatabuttonsWidget.EVENT_PRE_SAVE, self.onPreSaveData)
-        self.btnRefresh.connect("clicked()", self.onBtnRefreshClicked)   
-        self.btnRefresh2.connect("clicked()", self.onBtnRefreshClicked)   
+        # self.loadSaveDatabuttonsWidget.addObservable(self.loadSaveDatabuttonsWidget.EVENT_LOAD, self.onLoadData)
+        # self.loadSaveDatabuttonsWidget.addObservable(self.loadSaveDatabuttonsWidget.EVENT_PRE_SAVE, self.onPreSaveData)
+        self.btnRefresh2.connect("clicked()", self.onBtnReloadLabelmapClicked)
+        self.btnRefresh.connect("clicked()", self.onBtnRefreshClicked)
         self.btnAnalysis.connect("clicked()", self.populateStatisticsTable)
         self.btnAnalysis2.connect("clicked()", self.populateStatisticsTable)
         self.btnGoToNextStructure.connect("clicked()", self.onBtnNextClicked)     
         self.btnGoToPreviousStructure.connect("clicked()", self.onBtnPrevClicked)            
-        self.btnExport.connect("clicked()", self.onBtnExportClicked)             
-        
+        self.btnExport.connect("clicked()", self.onBtnExportClicked)
+
         # Add vertical spacer
-        #self.layout.addStretch(1)
-        
-        if (SlicerUtil.IsDevelopment):
-            # Reload button            
-            self.btnReload = qt.QPushButton("Reload")
-            self.btnReload.toolTip = "Reload this module."
-            self.btnReload.name = "Reload"
-            self.layout.addWidget(self.btnReload)
-            self.btnReload.connect('clicked()', self.onReload)
-        
+        self.layout.addStretch(1)
+
         self.refreshGUI()
         
         self.__setupCompositeNodes__()
-    
-                     
+
+
     def __setupCompositeNodes__(self):
         """Init the CompositeNodes so that the first one (typically Red) listen to events when the node is modified,
         and all the nodes are linked by default"""
@@ -385,24 +396,24 @@ class CIP_BodyCompositionWidget():
         #if self.disableEvents: return     # To avoid infinite loops
        
         self.__createColorNodes__()     # Recreate color map node when neccesary (for example if the user closed the scene)
-        if SlicerUtil.IsDevelopment: print "Entering checkMasterAndLabelMapNodes"
+        # if SlicerUtil.IsDevelopment: print ("DEBUG: Entering checkMasterAndLabelMapNodes")
         
-        if self.editorWidget.helper.master:
-            masterNode = self.editorWidget.helper.master
-            if SlicerUtil.IsDevelopment: print "Master node in Editor = " + masterNode.GetName()
+        if self.editorWidget.masterVolume:
+            masterNode = self.editorWidget.masterVolume
+            # if SlicerUtil.IsDevelopment: print ("DEBUG: Master node in Editor = " + masterNode.GetName())
         else:
-            if SlicerUtil.IsDevelopment: print "No master node in Editor. Retrieving from scene..."
+            # if SlicerUtil.IsDevelopment: print ("DEBUG: No master node in Editor. Retrieving from scene...")
             masterNode = self.getCurrentMasterNodeFromGUI()
                 
         if not masterNode:
-            if SlicerUtil.IsDevelopment: print "Still not master node. Exit"
+            #if SlicerUtil.IsDevelopment: print ("DEBUG: Still not master node. Exit")
             # There is no any volume node that the user is watching
             return 
         
         scene = slicer.mrmlScene
         self.disableEvents = True    
         
-        labelMapNode = self.editorWidget.helper.merge    
+        labelMapNode = self.editorWidget.labelmapVolume    
         if not labelMapNode:
             # First, try to search for an exact pattern "MASTER_bodycomposition"
             ext = "{0}{1}".format(masterNode.GetName(), self.labelmapNodeNameExtension)
@@ -416,16 +427,17 @@ class CIP_BodyCompositionWidget():
             else:
                 # Create new label map
                 labelMapNode = slicer.modules.volumes.logic().CreateAndAddLabelVolume(scene, masterNode, "{0}{1}".format(masterNode.GetName(), self.labelmapNodeNameExtension))                
-                if SlicerUtil.IsDevelopment: print "New label map node created: " + labelMapNode.GetName()
-        else:
-            if SlicerUtil.IsDevelopment:    print "There is already a labelMapNode in Editor: " + labelMapNode.GetName()
+                # if SlicerUtil.IsDevelopment: print "New label map node created: " + labelMapNode.GetName()
+        # else:
+        #     if SlicerUtil.IsDevelopment:    print "There is already a labelMapNode in Editor: " + labelMapNode.GetName()
         
-        displayNode = labelMapNode.GetDisplayNode()                
+        displayNode = labelMapNode.GetDisplayNode()
         if displayNode:
-            if SlicerUtil.IsDevelopment: print "Setting color for display node: " + displayNode.GetName()
+            # if SlicerUtil.IsDevelopment: print "Setting color for display node: " + displayNode.GetName()
             displayNode.SetAndObserveColorNodeID(self.colorTableNode.GetID())
         else:
-            print "There is no DisplayNode for label map " + labelMapNode.GetName()
+            # print "There is no DisplayNode for label map " + labelMapNode.GetName()
+            return
                     
         #slicer.app.applicationLogic().PropagateVolumeSelection(0)
         
@@ -499,7 +511,7 @@ class CIP_BodyCompositionWidget():
         
     def __setStructureProperties__(self):
         """Set the current label color, threshold and window for the selected combination Region-Type"""
-        #masterNode = self.editorWidget.helper.master
+        #masterNode = self.editorWidget.masterVolume
         masterNode = self.getCurrentGrayscaleNode()
         if not masterNode: 
             return
@@ -549,21 +561,21 @@ class CIP_BodyCompositionWidget():
         
         if self.labelMapSlices.has_key(volumeID) and not forceRefresh:     
             # The values were already calculated for this volume     
-            if SlicerUtil.IsDevelopment: print("Slices for volume {0} already calculated".format(volumeID))
+            # if SlicerUtil.IsDevelopment: print("Slices for volume {0} already calculated".format(volumeID))
             return
         
         # Calculate the values
-        if SlicerUtil.IsDevelopment: print("Calculating slices for Volume " + volumeID)        
-        self.labelMapSlices[volumeID] = self.logic.get_labelmap_slices(labelMapNode)
+        # if SlicerUtil.IsDevelopment: print("Calculating slices for Volume " + volumeID)
+        self.labelMapSlices[volumeID] = self.logic.getLabelmapSlices(labelMapNode)
          
     
     def getCurrentGrayscaleNode(self):
         """Get the grayscale node that is currently active in the widget"""
-        return self.editorWidget.helper.master
+        return self.editorWidget.masterVolume
     
     def getCurrentLabelMapNode(self):
         """Get the labelmap node that is currently active in the widget"""
-        return self.editorWidget.helper.merge
+        return self.editorWidget.labelmapVolume
     
     def setCurrentGrayscaleNode(self, node):
         """Get the grayscale node that is currently active in the widget"""
@@ -572,8 +584,9 @@ class CIP_BodyCompositionWidget():
     
     def setCurrentLabelMapNode(self, node):
         """Get the labelmap node that is currently active in the widget"""
-        self.editorWidget.helper.merge = node
-        self.editorWidget.helper.mergeName.setText( node.GetName() )
+        self.editorWidget.labelmapVolume = node
+        #self.editorWidget.helper.mergeNameLabel.setText( node.GetName() )
+
     
     def populateStatisticsTable(self):     
         # initialize Bar
@@ -594,8 +607,8 @@ class CIP_BodyCompositionWidget():
         
         try:
             # Perform the analysis (the result will be a list of StatsWrapper objects
-            labelAnalysisResults = self.logic.calculateStatistics(self.editorWidget.helper.master, self.editorWidget.helper.merge, 
-                                                                    labelmapSlices=self.labelMapSlices[self.editorWidget.helper.merge.GetID()], callbackStepFunction=self.updateProgressBar)
+            labelAnalysisResults = self.logic.calculateStatistics(self.editorWidget.masterVolume, self.editorWidget.labelmapVolume, 
+                                                                    labelmapSlices=self.labelMapSlices[self.editorWidget.labelmapVolume.GetID()], callbackStepFunction=self.updateProgressBar)
                         
             # Load rows
             row = 0
@@ -736,7 +749,7 @@ class CIP_BodyCompositionWidget():
                 
             # Expand the panel and collapse the rest of the widget ones
             self.statisticsCollapsibleButton.collapsed = False
-            self.loadSaveDatabuttonsWidget.collapseWidget(True)
+            #self.loadSaveDatabuttonsWidget.collapseWidget(True)
             self.structuresCollapsibleButton.collapsed = True
             self.__collapseEditorWidget__(False)
             
@@ -807,7 +820,12 @@ class CIP_BodyCompositionWidget():
         slices = self.getCurrentSlicesForCurrentLabel()
         if slices == None:
             # If the label is not present (or there is none selected) take all the slices with any label
-            slices = np.unique(np.concatenate([x for x in self.labelMapSlices[self.getCurrentLabelMapNode().GetID()].values()]))
+            allLabels = self.labelMapSlices[self.getCurrentLabelMapNode().GetID()]
+            if len(allLabels) == 0:
+                qt.QMessageBox.warning(slicer.util.mainWindow(), 'Warning',
+                        'There are no any values in the labelmap. Please press "Refresh labelmap info" button.' )
+                return
+            slices = np.unique(np.concatenate([x for x in allLabels.values()]))
         
         # Get the tolerance as an error factor when converting RAS-IJK. The value will depend on
         # the transformation matrix for this node
@@ -867,7 +885,7 @@ class CIP_BodyCompositionWidget():
         if node:
             nodeName = node.GetName()
             if self.getCurrentGrayscaleNode() and self.getCurrentGrayscaleNode().GetName() != nodeName:     
-                if SlicerUtil.IsDevelopment: print "There was a selection of a new master node: {0}. Previous: {1}. We will invoke checkMasterAndLabelMapNodes".format(node.GetName(), self.editorWidget.helper.master.GetName())
+                if SlicerUtil.IsDevelopment: print "There was a selection of a new master node: {0}. Previous: {1}. We will invoke checkMasterAndLabelMapNodes".format(node.GetName(), self.editorWidget.masterVolume.GetName())
                 # Update Editor Master node to perform the needed actions.
                 # We don't use "setVolumes" function because the interface must not be refeshed yet (it will be in checkMasterAndLabelMapNodes) 
                 self.setCurrentGrayscaleNode(node) 
@@ -925,15 +943,20 @@ class CIP_BodyCompositionWidget():
     def onPreSaveData(self):
         if SlicerUtil.IsDevelopment:
             print ("onPreSave: Set nodes to save")
-        self.loadSaveDatabuttonsWidget.currentVolumeDisplayed = self.editorWidget.helper.master
-        self.loadSaveDatabuttonsWidget.currentLabelMapDispayed = self.editorWidget.helper.merge
+        self.loadSaveDatabuttonsWidget.currentVolumeDisplayed = self.editorWidget.masterVolume
+        self.loadSaveDatabuttonsWidget.currentLabelMapDispayed = self.editorWidget.labelmapVolume
      
     def onBtnPrevClicked(self):        
         self.jumpSlice(backwards=True)
      
     def onBtnNextClicked(self):        
         self.jumpSlice(backwards=False)
-    
+
+    def onBtnReloadLabelmapClicked(self):
+        labelmap = self.getCurrentLabelMapNode()
+        if labelmap is not None:
+            self.__sliceChecking__(labelmap, forceRefresh=True)
+
     def onBtnExportClicked(self):
         self.exportTableToCSV()
 
@@ -943,78 +966,14 @@ class CIP_BodyCompositionWidget():
     def onAutoUpdateStateChanged(self, isAutoUpdate):
         SlicerUtil.setSetting("CIP_BodyComposition", "AutoUpdate", isAutoUpdate)
 
-#     def __onScalarNodeAdded__(self, node):
-#         if node.GetAttribute("LabelMap") == '0':            
-#             self.setCurrentGrayscaleNode(node)
-#             self.checkMasterAndLabelMapNodes(forceSlicesReload=True) 
-
-    def onReload(self, moduleName="CIP_BodyComposition"):
-        """Reload the module. Just for development purposes. 
-        This is a combination of the old and new style in modules writing"""
-        
-        try:
-#            ## Steve Piper code 
-#             oldPlugins = slicer.modules.CIP_BodyComposition
-#             slicer.modules.CIP_BodyComposition = {}
-#             for plugin in oldPlugins.values():
-#                 pluginModuleName = plugin.__module__.lower()
-#                 if hasattr(slicer.modules,pluginModuleName):
-#                     # for a plugin from an extension, need to get the source path
-#                     # from the module
-#                     module = getattr(slicer.modules,pluginModuleName)
-#                     sourceFile = module.path
-#                 else:
-#                     # for a plugin built with slicer itself, the file path comes
-#                     # from the pyc path noted as __file__ at startup time
-#                     sourceFile = plugin.sourceFile.replace('.pyc', '.py')
-#                 imp.load_source(plugin.__module__, sourceFile)
-#             oldPlugins = None
-#             source = '/Users/Jorge/Projects/BWH/ACILSlicer/CIP_BodyComposition/ACIL_Common/CIP_BodyCompositionParameters.py'
-#             source = CIP_BodyCompositionParameters
-#             imp.reload(source)
-            slicer.util.reloadScriptedModule(moduleName)            
-        except Exception as ex:
-        #Generic reload method for any scripted module.
-        #ModuleWizard will subsitute correct default moduleName.    
-            import imp, sys
-            print("Error when trying to reload the module:")
-            print (ex)
-            widgetName = moduleName + "Widget"
-            
-            # reload the source code
-            # - set source file path
-            # - load the module to the global space
-            filePath = eval('slicer.modules.%s.path' % moduleName.lower())
-            p = os.path.dirname(filePath)
-            if not sys.path.__contains__(p):
-                sys.path.insert(0,p)
-            fp = open(filePath, "r")
-            globals()[moduleName] = imp.load_module(
-                moduleName, fp, filePath, ('.py', 'r', imp.PY_SOURCE))
-            fp.close()
-            
-            # rebuild the widget
-            # - find and hide the existing widget
-            # - create a new widget in the existing parent
-            # parent = slicer.util.findChildren(name='%s Reload' % moduleName)[0].parent()
-            parent = self.parent
-            for child in parent.children():
-                try:
-                    child.hide()
-                except AttributeError:
-                    pass
-            globals()[widgetName.lower()] = eval(
-                'globals()["%s"].%s(parent)' % (moduleName, widgetName))
-            globals()[widgetName.lower()].setup()
-                
 #
 # CIP_BodyCompositionLogic
 # This class makes all the operations not related with the user interface (download and handle volumes, etc.)
 #
-class CIP_BodyCompositionLogic: 
+class CIP_BodyCompositionLogic(ScriptedLoadableModuleLogic):
     def __init__(self):
         """Constructor. """
-        #ScriptedLoadableModuleLogic.__init__(self)
+        ScriptedLoadableModuleLogic.__init__(self)
         #importCIP()            
         self.params = BodyCompositionParameters.BodyCompositionParameters()
         
@@ -1027,16 +986,16 @@ class CIP_BodyCompositionLogic:
         slicer.app.settings().setValue(settingName, settingDefaultValue)
         return settingDefaultValue
     
-    def get_labelmap_slices(self, vtkVolumeNode):
+    def getLabelmapSlices(self, labelmapNode):
         """For each label map, get the slices where it appears. Store the result in labelmapSlices object
-        (it will be used later for statistics)""" 
-        self.labelmapSlices = Util.get_labelmap_slices(vtkVolumeNode.GetImageData())
+        (it will be used later for statistics)"""
+        self.labelmapSlices = Util.get_labelmap_slices(labelmapNode.GetImageData())
         return self.labelmapSlices
-    
+
     def calculateStatistics(self, grayscaleNode, labelNode, labelmapSlices=None, callbackStepFunction = None):
         # Get the numpy arrays of both nodes. We do not use Slicer function beacuse we will need the imageData node to apply preprocessing vtk filters
         intensityImageData = grayscaleNode.GetImageData()
-        shape = list(intensityImageData.get_dimensions())
+        shape = list(intensityImageData.GetDimensions())
         shape.reverse()
         intensityScalars = intensityImageData.GetPointData().GetScalars()
         intensityArray = vtk.util.numpy_support.vtk_to_numpy(intensityScalars).reshape(shape)
@@ -1047,7 +1006,7 @@ class CIP_BodyCompositionLogic:
         if labelmapSlices:
             self.labelmapSlices = labelmapSlices
         else:
-            self.get_labelmap_slices(labelNode)
+            self.getLabelmapSlices(labelNode)
 
         # List where we will store all the "StatsWrapper" result objects
         self.stats = []
@@ -1151,8 +1110,8 @@ class CIP_BodyCompositionLogic:
                 resliceFilter.SetOutputDimensionality(2)
                 resliceFilter.SetInterpolationModeToNearestNeighbor()
                 mm=vtk.vtkMatrix4x4()
-                width = labelmapImageData.get_dimensions()[0]
-                height = labelmapImageData.get_dimensions()[1]
+                width = labelmapImageData.GetDimensions()[0]
+                height = labelmapImageData.GetDimensions()[1]
                 centerX = width/2
                 centerY = height/2
                 center=[centerX, centerY, 0]
@@ -1180,7 +1139,7 @@ class CIP_BodyCompositionLogic:
                     imData= closeFilter.GetOutput()
                     
                     # Convert imData in a numpy array
-                    shape = list(imData.get_dimensions())
+                    shape = list(imData.GetDimensions())
                     shape.reverse()                 
                     lArray = vtk.util.numpy_support.vtk_to_numpy(imData.GetPointData().GetScalars()).reshape(shape)
                                     

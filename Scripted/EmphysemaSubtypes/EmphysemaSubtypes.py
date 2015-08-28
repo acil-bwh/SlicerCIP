@@ -153,7 +153,7 @@ class EmphysemaSubtypesWidget:
       return False
     if not self.grayscaleNode.GetImageData() or not self.labelNode.GetImageData():
       return False
-    if self.grayscaleNode.GetImageData().get_dimensions() != self.labelNode.GetImageData().get_dimensions():
+    if self.grayscaleNode.GetImageData().GetDimensions() != self.labelNode.GetImageData().GetDimensions():
       return False
     return True
 

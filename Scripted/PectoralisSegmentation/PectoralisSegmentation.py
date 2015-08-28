@@ -289,7 +289,7 @@ class PectoralisSegmentationLogic:
     """
     # get the shape     
     input_image = inputVolume.GetImageData()
-    shape = list(input_image.get_dimensions())
+    shape = list(input_image.GetDimensions())
     shape.reverse()
     input_array = vtk.util.numpy_support.vtk_to_numpy(input_image.GetPointData().GetScalars()).reshape(shape)
     
@@ -312,7 +312,7 @@ class PectoralisSegmentationLogic:
     print("out volume shape")
     print(np.shape(outputVolume_temp2))
     outputVolume_temp2 = outputVolume_temp
-    shape = list(input_image.get_dimensions())
+    shape = list(input_image.GetDimensions())
     
     volumesLogic = slicer.modules.volumes.logic()
     outputVolume = volumesLogic.CloneVolume(slicer.mrmlScene, inputVolume, 'Volume_Out')

@@ -30,8 +30,8 @@ class Util:
         The order is: slice, row, column (Z,Y,X).
         UPGRADE: if we receive a vtkMRMLScalarVolumeNode (like a labelmap) we can now just invoke a = slicer.util.array(node.GetName()) 
         If we manipulate the array, the changes will reflect in the vtkNode calling node.GetImageData().Modified()
-        """    
-        shape = list(vtk_image_data.get_dimensions())
+        """
+        shape = list(vtk_image_data.GetDimensions())
         shape.reverse()
         numpyarray = vtk.util.numpy_support.vtk_to_numpy(vtk_image_data.GetPointData().GetScalars()).reshape(shape)
         return numpyarray

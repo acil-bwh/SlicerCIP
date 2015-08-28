@@ -253,7 +253,7 @@ class ParenchymaAnalysisWidget:
       return False
     if not self.inspNode.GetImageData() or not self.insplabelNode.GetImageData():
       return False
-    if self.inspNode.GetImageData().get_dimensions() != self.insplabelNode.GetImageData().get_dimensions():
+    if self.inspNode.GetImageData().GetDimensions() != self.insplabelNode.GetImageData().GetDimensions():
       return False
     return True
 
@@ -264,7 +264,7 @@ class ParenchymaAnalysisWidget:
       return False
     if not self.expNode.GetImageData() or not self.explabelNode.GetImageData():
       return False
-    if self.expNode.GetImageData().get_dimensions() != self.explabelNode.GetImageData().get_dimensions():
+    if self.expNode.GetImageData().GetDimensions() != self.explabelNode.GetImageData().GetDimensions():
       return False
     return True
 

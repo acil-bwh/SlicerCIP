@@ -46,6 +46,9 @@ self.labelSelector.showChildNodeTypes = False
 self.labelSelector.setMRMLScene( slicer.mrmlScene )
 self.labelSelector.setToolTip( "Pick the label map to edit" )
 self.labelSelectorFrame.layout().addWidget( self.labelSelector )
+# Node changed event
+self.labelSelectorFrame.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelected)
+def onVolumeSelected(self, node):.....
 
 
 ####################################################################################
@@ -118,13 +121,18 @@ slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdde
 
 
 
-
-
 ########################################################################
 # Capture mouse clicks
 self._greenSliceInteractor =
 slicer.ApplicationGUI.GetMainSliceGUI("Green").GetSliceViewer().GetRenderWidget().GetRenderWindowInteractor()
 self._greenSliceLeftButtonReleaseTag =
 self._greenSliceInteractor.AddObserver("LeftButtonReleaseEvent",self._helper.HandleClickInGreenSliceWindow)
+
+########################################################################
+# Get numpy array from Scalar node
+slicer.util.array(node.GetName())
+# Note: If we manipulate the array, the changes will reflect in the vtkNode calling node.GetImageData().Modified()
+        
+
 
 

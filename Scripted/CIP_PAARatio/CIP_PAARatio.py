@@ -262,11 +262,14 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         :return:
         """
         self.structuresButtonGroup.buttons()[0].setChecked(True)
+        print("DEBUG: jumping")
         self.jumpToTemptativeSlice(volumeId)
+        print("DEBUG: placing rulers")
         self.placeRuler()
         self.currentVolumesLoaded.add(volumeId)
 
         # Modify the zoom of the Red slice
+        print("DEBUG: moving FOV")
         redSliceNode = slicer.util.getFirstNodeByClassByName("vtkMRMLSliceNode", "Red")
         factor = 0.5
         newFOVx = redSliceNode.GetFieldOfView()[0] * factor
