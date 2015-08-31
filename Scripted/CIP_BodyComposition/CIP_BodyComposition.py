@@ -55,11 +55,13 @@ class CIP_BodyComposition(ScriptedLoadableModule):
 #######################################
 class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     """GUI object"""
+    @property
+    def moduleName (self):
+        return "CIP_BodyComposition"
 
     def __init__(self, parent = None):
         """Widget constructor (existing module)"""
         ScriptedLoadableModuleWidget.__init__(self, parent)
-        #VTKObservationMixin.__init__(self)
         if not parent:
             self.parent = slicer.qMRMLWidget()            
             self.parent.setLayout(qt.QVBoxLayout())            
@@ -74,16 +76,22 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         def onNodeAdded(self, caller, eventId, callData):
             """Node added to the Slicer scene"""
             if callData.GetClassName() == 'vtkMRMLScalarVolumeNode':
-                # if SlicerUtil.IsDevelopment: print ("New node node added to scene: {0}".format(callData.GetName()))
+                if SlicerUtil.IsDevelopment:
+                    print ("DEBUG: New node node added to scene: {0}".format(callData.GetName()))
                 self.checkMasterAndLabelMapNodes()
 
         self.onNodeAdded = partial(onNodeAdded, self)
         self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
 
+
     def enter(self):
         """Method that is invoked when we switch to the module in slicer user interface"""
+        if self.nodeObserver is None:
+            self.nodeObserver = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
         self.checkMasterAndLabelMapNodes()
-        
+
+    def exit(self):
+        slicer.mrmlScene.RemoveObserver(self.nodeObserver)
 
     def setup(self):
         """Init the widget """
@@ -254,14 +262,17 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
           
          #####
         # Case navigator
-#         if SlicerUtil.isSlicerACILLoaded():
-#             caseNavigatorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
-#             caseNavigatorAreaCollapsibleButton.text = "Case navigator"
-#             self.layout.addWidget(caseNavigatorAreaCollapsibleButton, 0x0020)
-#             # Add a case list navigator
-#             from ACIL.ui import CaseNavigatorWidget
-#             self.caseNavigatorWidget = CaseNavigatorWidget(parentModuleName=self.moduleName
-#                                                            ,parentContainer=caseNavigatorAreaCollapsibleButton)
+        if SlicerUtil.isSlicerACILLoaded():
+            caseNavigatorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
+            caseNavigatorAreaCollapsibleButton.text = "Case navigator"
+            # caseNavigatorAreaCollapsibleButton.setLayout(qt.QVBoxLayout())
+            self.layout.addWidget(caseNavigatorAreaCollapsibleButton, 0x0020)
+            # Add a case list navigator
+            from ACIL.ui import CaseNavigatorWidget
+            self.caseNavigatorWidget = CaseNavigatorWidget(parentModuleName=self.moduleName
+                                                           ,parentContainer=caseNavigatorAreaCollapsibleButton)
+            self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_LABELMAP_LOADED, self.onNavigatorLabelmapLoaded)
+
 
         # Check for updates in CIP
         #autoUpdate = SlicerUtil.settingGetOrSetDefault("CIP_BodyComposition", "AutoUpdate", 1)
@@ -275,7 +286,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.checkMasterAndLabelMapNodes()
       
         # Listen for new nodes 
-        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
+        self.nodeObserver = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
 #         self.nodeAddedModifiedObserverTag = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
 
         # Connections
@@ -283,13 +294,14 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.cbRegion.connect("currentIndexChanged (int)", self.onCbRegionCurrentIndexChanged)        
         # self.loadSaveDatabuttonsWidget.addObservable(self.loadSaveDatabuttonsWidget.EVENT_LOAD, self.onLoadData)
         # self.loadSaveDatabuttonsWidget.addObservable(self.loadSaveDatabuttonsWidget.EVENT_PRE_SAVE, self.onPreSaveData)
-        self.btnRefresh2.connect("clicked()", self.onBtnReloadLabelmapClicked)
+        self.btnRefresh2.connect("clicked()", self.onBtnSyncLabelmapClicked)
         self.btnRefresh.connect("clicked()", self.onBtnRefreshClicked)
         self.btnAnalysis.connect("clicked()", self.populateStatisticsTable)
         self.btnAnalysis2.connect("clicked()", self.populateStatisticsTable)
         self.btnGoToNextStructure.connect("clicked()", self.onBtnNextClicked)     
         self.btnGoToPreviousStructure.connect("clicked()", self.onBtnPrevClicked)            
         self.btnExport.connect("clicked()", self.onBtnExportClicked)
+
 
         # Add vertical spacer
         self.layout.addStretch(1)
@@ -423,7 +435,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                 nodes = slicer.util.getNodes("{0}*".format(ext))
             if len(nodes) > 0:
                 labelMapNode = nodes.values()[0]
-                if SlicerUtil.IsDevelopment: print "Retrieved labelMapNode " + labelMapNode.GetName()
             else:
                 # Create new label map
                 labelMapNode = slicer.modules.volumes.logic().CreateAndAddLabelVolume(scene, masterNode, "{0}{1}".format(masterNode.GetName(), self.labelmapNodeNameExtension))                
@@ -952,7 +963,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     def onBtnNextClicked(self):        
         self.jumpSlice(backwards=False)
 
-    def onBtnReloadLabelmapClicked(self):
+    def onBtnSyncLabelmapClicked(self):
         labelmap = self.getCurrentLabelMapNode()
         if labelmap is not None:
             self.__sliceChecking__(labelmap, forceRefresh=True)
@@ -966,6 +977,15 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     def onAutoUpdateStateChanged(self, isAutoUpdate):
         SlicerUtil.setSetting("CIP_BodyComposition", "AutoUpdate", isAutoUpdate)
 
+    def onNavigatorLabelmapLoaded(self, labelmapNode, split1, slit2):
+        """ Event triggered when a new labelmap is loaded in the navigator
+        :param labelmapNode:
+        :param split1:
+        :param slit2:
+        :return:
+        """
+        self.editorWidget.labelmapVolume = labelmapNode
+        self.checkMasterAndLabelMapNodes(forceSlicesReload=True)
 #
 # CIP_BodyCompositionLogic
 # This class makes all the operations not related with the user interface (download and handle volumes, etc.)

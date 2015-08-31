@@ -53,7 +53,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         def __onNodeAddedObserver__(self, caller, eventId, callData):
             """Node added to the Slicer scene"""
             if callData.GetClassName() == 'vtkMRMLScalarVolumeNode':
-                self.__newVolume__(callData)
+                self.__onNewVolumeLoaded__(callData)
 
         self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
         self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
@@ -186,7 +186,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             caseNavigatorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
             caseNavigatorAreaCollapsibleButton.text = "Case navigator"
             self.layout.addWidget(caseNavigatorAreaCollapsibleButton, 0x0020)
-            caseNavigatorLayout = qt.QVBoxLayout(caseNavigatorAreaCollapsibleButton)
+            # caseNavigatorLayout = qt.QVBoxLayout(caseNavigatorAreaCollapsibleButton)
 
             # Add a case list navigator
             from ACIL.ui import CaseNavigatorWidget
@@ -210,8 +210,10 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         # self.saveResultsOpenDirectoryDialogButton.connect('clicked()', self.onOpenDirectoryDialogButtonClicked)
         self.saveResultsDirectoryButton.connect("directoryChanged (str)", self.__onSaveResultsDirectoryChanged__)
         self.saveResultsButton.connect('clicked()', self.__onSaveResultsButtonClicked__)
-        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__)
-        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__)
+
+        self.observers = []
+        self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__))
+        self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__))
 
 
     def updateState(self):
@@ -280,6 +282,9 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
+        if len(self.observers) == 0:
+            self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__))
+            self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__))
         SlicerUtil.setFiducialsMode(True, True)
 
 
@@ -287,12 +292,20 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
         try:
             SlicerUtil.setFiducialsMode(False)
+            for observer in self.observers:
+                slicer.mrmlScene.RemoveObserver(observer)
+                self.observers.remove(observer)
         except:
             pass
 
     def cleanup(self):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
-        pass
+        try:
+            for observer in self.observers:
+                slicer.mrmlScene.RemoveObserver(observer)
+                self.observers.remove(observer)
+        except:
+            pass
 
     def __onNewVolumeLoaded__(self, newVolumeNode):
         # print("DEBUG: Current selected volume: ", self.volumeSelector.currentNodeID)
