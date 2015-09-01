@@ -184,7 +184,11 @@ class VolumeProbeWidget:
     self.medianField.setRange(-100000, 100000)
     self.medianField.setEnabled(0)
     parametersFormLayout.addRow("Median Value", self.medianField)
-    
+  
+    self.stdField = qt.QSpinBox()
+    self.stdField.setRange(-100000, 100000)
+    self.stdField.setEnabled(0)
+    parametersFormLayout.addRow("STD Value", self.stdField)
     
     # Add vertical spacer
     self.layout.addStretch(1)
@@ -200,6 +204,7 @@ class VolumeProbeWidget:
       min = pixels.min()
       max = pixels.max()
       mean = pixels.mean()
+      standardDeviation = pixels.std()
       med = self.median(pixelArray)
       for i in range(len(pixelArray)):
         self.histogramArray.InsertNextTuple1(pixels[i])
@@ -208,6 +213,7 @@ class VolumeProbeWidget:
     self.maxField.setValue(max)
     self.meanField.setValue(mean)
     self.medianField.setValue(med)
+    self.stdField.SetValue(standardDeviation)
     self.histogram.numberOfBins = self.numBins.value
     # This causes crash in slicer starting end of April 2015
     #self.histogram.build()
