@@ -35,23 +35,23 @@ class GeometryTopologyData:
     def __init__(self):
         self.__num_dimensions__ = 0
         self.coordinate_system = self.UNKNOWN
+        self.lps_to_ijk_transformation_matrix = None    # 4x4 transformation matrix to go from LPS to IJK (in the shape of a 4x4 list)
 
         self.points = []    # List of Point objects
         self.bounding_boxes = []    # List of BoundingBox objects
-        self.lps_to_ijk_transformation_matrix = None    # 4x4 transformation matrix to go from LPS to IJK (in the shape of a 4x4 list)
-    
+
     def add_point(self, point):
         """ Add a new Point to the structure
         :param point: Point object """
         self.points.append(point)
-    
+
     def add_bounding_box(self, bounding_box):
         """ Add a new BoundingBox to the structure
         :param bounding_box: BoundingBox object
         :return:
         """
         self.bounding_boxes.append(bounding_box)
-    
+
     def to_xml(self):
         """ Generate the XML string representation of this object.
         It doesn't use any special python module to keep compatibility with Slicer """
@@ -68,9 +68,9 @@ class GeometryTopologyData:
         points = "".join(map(lambda i:i.to_xml(), self.points))
         # Concatenate bounding boxes
         bounding_boxes = "".join(map(lambda i:i.to_xml(), self.bounding_boxes))
-        
+
         return output + points + bounding_boxes + "</GeometryTopologyData>"
-   
+
     @staticmethod
     def from_xml(xml):
         """ Build a GeometryTopologyData object from a xml string.
@@ -96,36 +96,39 @@ class GeometryTopologyData:
 
         # Points
         for point in root.findall("Point"):
-            coordinates = []
-            for coord in point.findall("Coordinate/value"):
-                coordinates.append(float(coord.text))
-            chest_region = int(point.find("ChestRegion").text)
-            chest_type = int(point.find("ChestType").text)
-            
-            # Description
-            desc = point.find("Description")
-            if desc is not None:
-                desc = desc.text
-                
-            geometry_topology.add_point(Point(coordinates, chest_region, chest_type, description=desc))
+            geometry_topology.add_point(Point.from_xml_node(point))
+
+            # coordinates = []
+            # for coord in point.findall("Coordinate/value"):
+            #     coordinates.append(float(coord.text))
+            # chest_region = int(point.find("ChestRegion").text)
+            # chest_type = int(point.find("ChestType").text)
+            #
+            # # Description
+            # desc = point.find("Description")
+            # if desc is not None:
+            #     desc = desc.text
+            #
+            # geometry_topology.add_point(Point(coordinates, chest_region, chest_type, description=desc))
 
         # BoundingBoxes
         for bb in root.findall("BoundingBox"):
-            coordinates_start = []
-            for coord in bb.findall("Start/value"):
-                coordinates_start.append(float(coord.text))
-            coordinates_size = []
-            for coord in bb.findall("Size/value"):
-                coordinates_size.append(float(coord.text))
-            chest_region = int(bb.find("ChestRegion").text)
-            chest_type = int(bb.find("ChestType").text)
-            
-            # Description
-            desc = bb.find("Description")
-            if desc is not None:
-                desc = desc.text
-                            
-            geometry_topology.add_bounding_box(BoundingBox(coordinates_start, coordinates_size, chest_region, chest_type, description=desc))
+            geometry_topology.add_bounding_box(BoundingBox.from_xml_node(point))
+            # coordinates_start = []
+            # for coord in bb.findall("Start/value"):
+            #     coordinates_start.append(float(coord.text))
+            # coordinates_size = []
+            # for coord in bb.findall("Size/value"):
+            #     coordinates_size.append(float(coord.text))
+            # chest_region = int(bb.find("ChestRegion").text)
+            # chest_type = int(bb.find("ChestType").text)
+            #
+            # # Description
+            # desc = bb.find("Description")
+            # if desc is not None:
+            #     desc = desc.text
+            #
+            # geometry_topology.add_bounding_box(BoundingBox(coordinates_start, coordinates_size, chest_region, chest_type, description=desc))
 
         return geometry_topology
 
@@ -196,14 +199,13 @@ class GeometryTopologyData:
         return "<LPStoIJKTransformationMatrix>%s</LPStoIJKTransformationMatrix>" % s
 
 
-
-
 class Point:
-    def __init__(self, coordinate, chest_region, chest_type, description=None, format_="%f"):
+    def __init__(self, chest_region, chest_type, feature_type, coordinate, description=None, format_="%f"):
         """
         :param coordinate: Vector of numeric coordinates
         :param chest_region: chestRegion Id
         :param chest_type: chestType Id
+        :param feature_type: feature type Id (artifacts and others)
         :param description: optional description of the content the element
         :param format_: Default format to print the xml output coordinate values (also acceptable: %i for integers or customized)
         :return:
@@ -211,9 +213,31 @@ class Point:
         self.coordinate = coordinate
         self.chest_region = chest_region
         self.chest_type = chest_type
+        self.feature_type = feature_type
         self.description = description
         self.format = format_
-    
+
+    @staticmethod
+    def from_xml_node(xml_point_node):
+        """ Return a new instance of a Point object from xml "Point" element
+        :param xml_point_node: xml Point element coming from a "find" instruction
+        :return: new instance of Point
+        """
+        print("Point: ", xml_point_node)
+        coordinates = []
+        for coord in xml_point_node.findall("Coordinate/value"):
+            coordinates.append(float(coord.text))
+        chest_region = int(xml_point_node.find("ChestRegion").text)
+        chest_type = int(xml_point_node.find("ChestType").text)
+        feature_type = int(xml_point_node.find("ImageFeature").text)
+
+        # Description
+        desc = xml_point_node.find("Description")
+        if desc is not None:
+            desc = desc.text
+
+        return Point(chest_region, chest_type, feature_type, coordinates, description=desc)
+
     def to_xml(self):
         """ Get the xml string representation of the point
         :return: xml string representation of the point
@@ -222,19 +246,19 @@ class Point:
         description_str = ''
         if self.description is not None:
             description_str = '<Description>%s</Description>' % self.description
-            
-        return '<Point><ChestRegion>%i</ChestRegion><ChestType>%i</ChestType>%s<Coordinate>%s</Coordinate></Point>' % \
-            (self.chest_region, self.chest_type, description_str, coords)
 
+        return '<Point><ChestRegion>%i</ChestRegion><ChestType>%i</ChestType><ImageFeature>%i</ImageFeature>%s<Coordinate>%s</Coordinate></Point>' % \
+            (self.chest_region, self.chest_type, self.feature_type, description_str, coords)
 
 
 class BoundingBox:
-    def __init__(self, start, size, chest_region, chest_type, description=None, format_="%f"):
+    def __init__(self, chest_region, chest_type, feature_type, start, size, description=None, format_="%f"):
         """
         :param start: vector of coordinates for the starting point of the Bounding Box
         :param size: vector that contains the size of the bounding box
         :param chest_region: chestRegion Id
         :param chest_type: chestType Id
+        :param feature_type: feature type Id (artifacts and others)
         :param description: optional description of the content the element
         :param format_: Default format to print the xml output coordinate values (also acceptable: %i for integers or customized)
         :return:
@@ -243,10 +267,35 @@ class BoundingBox:
         self.size = size
         self.chest_region = chest_region
         self.chest_type = chest_type
+        self.feature_type = feature_type
         self.description = description
         self.format = format_       # Default format to print the xml output coordinate values (also acceptable: %i or customized)
 
-    
+
+    @staticmethod
+    def from_xml_node(xml_bounding_box_node):
+        """ Return a new instance of a Point object from xml "BoundingBox" element
+        :param xml_bounding_box_node: xml BoundingBox element coming from a "find" instruction
+        :return: new instance of BoundingBox
+        """
+        coordinates_start = []
+        for coord in xml_bounding_box_node.findall("Start/value"):
+            coordinates_start.append(float(coord.text))
+        coordinates_size = []
+        for coord in xml_bounding_box_node.findall("Size/value"):
+            coordinates_size.append(float(coord.text))
+        chest_region = int(xml_bounding_box_node.find("ChestRegion").text)
+        chest_type = int(xml_bounding_box_node.find("ChestType").text)
+        feature_type = int(xml_bounding_box_node.find("ImageFeature").text)
+
+        # Description
+        desc = xml_bounding_box_node.find("Description")
+        if desc is not None:
+            desc = desc.text
+
+        return BoundingBox(chest_region, chest_type, feature_type, coordinates_start, coordinates_size, description=desc)
+
+
     def to_xml(self):
         """ Get the xml string representation of the bounding box
         :return: xml string representation of the bounding box
@@ -256,8 +305,8 @@ class BoundingBox:
         description_str = ''
         if self.description is not None:
             description_str = '<Description>%s</Description>' % self.description
-        return '<BoundingBox><ChestRegion>%i</ChestRegion><ChestType>%i</ChestType>%s<Start>%s</Start><Size>%s</Size></BoundingBox>' % \
-            (self.chest_region, self.chest_type, description_str, start_str, size_str)
+        return '<BoundingBox><ChestRegion>%i</ChestRegion><ChestType>%i</ChestType><ImageFeature>%i</ImageFeature>%s<Start>%s</Start><Size>%s</Size></BoundingBox>' % \
+            (self.chest_region, self.chest_type, self.feature_type, description_str, start_str, size_str)
             
 
 

@@ -4,34 +4,12 @@ Makefile
 cmake_install.cmake
 install_manifest.txt
 
-.idea/scopes/scope_settings.xml
-
-.idea/workspace.xml
-
-.project
-
-.pydevproject
-
-.idea/encodings.xml
-
-.idea/misc.xml
-
-.idea/modules.xml
-
-.idea/SlicerCIP.iml
-
-.idea/vcs.xml
+# Ignore hidden files and folders
+.*
+!/.gitignore
 
 *.pyc
 
-.idea/.name
-
-.idea/inspectionProfiles/profiles_settings.xml
-
-.idea/inspectionProfiles/Project_Default.xml
-
-.settings/org.eclipse.core.resources.prefs
-
-.cproject
-
 *.csv
+
+Scripted/CIP_ParenchymaSubtypeTraining/Results

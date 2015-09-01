@@ -9,7 +9,7 @@ import os
 
 from . import Util
 
-class SlicerUtil: 
+class SlicerUtil:
     # Constants    
     try:
         IsDevelopment = slicer.app.settings().value('Developer/DeveloperMode').lower() == 'true'
@@ -31,6 +31,17 @@ class SlicerUtil:
 
     CIP_ModulesCategory = ["Chest Imaging Platform.Modules"]
     CIP_ModuleName = "CIP_Common"
+
+    # Aligment
+    ALIGNMENT_HORIZONTAL_LEFT = 0x0001
+    ALIGNMENT_HORIZONTAL_RIGHT = 0x0002
+    ALIGNMENT_HORIZONTAL_CENTER = 0x0004
+    ALIGNMENT_HORIZONTAL_JUSTIFY = 0x0008
+
+    ALIGNMENT_VERTICAL_TOP = 0x0020
+    ALIGNMENT_VERTICAL_BOTTOM = 0x0040
+    ALIGNMENT_VERTICAL_CENTER = 0x0080
+
 
     @staticmethod
     def getModuleFolder(moduleName):
@@ -88,7 +99,7 @@ class SlicerUtil:
                 slice.repaint()
 
     @staticmethod
-    def is_SlicerACIL_loaded():
+    def isSlicerACILLoaded():
         """ Check the existence of the common ACIL module
         :return: True if the module is found
         """
@@ -287,6 +298,22 @@ class SlicerUtil:
         # Make sure that the node name is correct, because sometimes the scene adds a suffix
         node.SetName(nodeName)
         return node
+
+    @staticmethod
+    def getActiveVolumeIdInRedSlice():
+        """ Get the active volume in the Red Slice
+        :return: volume node id or None
+        """
+        layoutManager = slicer.app.layoutManager()
+        compositeNode = layoutManager.sliceWidget("Red").mrmlSliceCompositeNode()
+        backgroundNode = compositeNode.GetBackgroundVolumeID()
+        if backgroundNode is not None:
+            return backgroundNode
+        # If background is None, try foreground
+        backgroundNode = compositeNode.GetForegroundVolumeID()
+        return backgroundNode
+
+
         # @staticmethod
     # def gitUpdateCIP():
     #     if Util.AUTO_UPDATE_DISABLED:
