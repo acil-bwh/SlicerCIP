@@ -481,8 +481,8 @@ void qSlicerAirwayInspectorModuleWidget::saveAirwayImage(vtkMRMLAirwayNode* airw
    char fileName[10*256];
    vtkPNGWriter *writer = vtkPNGWriter::New();
    writer->SetInputData(airwayNode->GetAirwayImage());
-   sprintf(fileName,"%%s/s_%s.png", d->OutputDirectoryButton->directory().toStdString().c_str(),
-                                    d->FilePrefixLineEdit->text(), airwayNode->GetName());
+   sprintf(fileName,"%s/s_%s.png", d->OutputDirectoryButton->directory().toStdString().c_str(),
+                                    d->FilePrefixLineEdit->text().toStdString().c_str(), airwayNode->GetName());
    writer->SetFileName(fileName);
    writer->Write();
    writer->Delete();
