@@ -276,6 +276,9 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
 
    //this->Reslicer->GetOutput()->Print(std::cout);
 
+   this->WallSolver->SetDelta(0.1);
+   this->WallSolver->SetWallThreshold(node->GetThreshold());
+
    this->WallSolver->SetInputData(this->Reslicer->GetOutput());
 
    //this->WallSolver->SetInputData(this->Reslicer->GetOutput());
@@ -392,6 +395,7 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirwayImage(vtkImageData *reslic
   lut->SetValueRange(0,1);
   //lut->SetTableRange(-150,1500);
   lut->SetTableRange(range[0], range[1]);
+  lut->SetTableRange(-1000, -500);
   lut->Build();
   rgbFilter->SetLookupTable(lut);
 

@@ -91,8 +91,9 @@ void qSlicerAirwayInspectorModuleWidget::setup()
   Q_D(qSlicerAirwayInspectorModuleWidget);
   d->setupUi(this);
 
+  d->ThresholdSpinBox->setRange(-1000, -300);
+   d->ThresholdSpinBox->setValue(-850);
   // VTK/Qt
-
   d->qvtkWidget = new QVTKWidget;
   d->qvtkWidget->GetRenderWindow()->AddRenderer(this->Renderer);
   d->qvtkWidget->setFixedSize(200,200);

@@ -49,7 +49,7 @@ vtkMRMLAirwayNode::vtkMRMLAirwayNode()
   OrientationWXYZ[1];
   OrientationWXYZ[2];
   OrientationWXYZ[3];
-  Threshold = 0;
+  Threshold = -850;
   VolumeNodeID = 0;
 
   this->Mean = vtkDoubleArray::New();
