@@ -10,6 +10,8 @@ import traceback
 import numpy as np
 import time
 
+import SimpleITK as sitk
+
 class Util: 
     # Constants
     OK = 0
@@ -246,6 +248,16 @@ class Util:
             result.append(row)
         return result
 
+    @staticmethod
+    def centroid(numpyArray, labelId=1):
+        """ Calculate the coordinates of a centroid for a concrete labelId (default=1)
+        :param numpyArray: numpy array
+        :param labelId: label id (default = 1)
+        :return: numpy array with the coordinates (int format)
+        """
+        mean = np.mean(np.where(numpyArray == labelId), axis=1)
+        return np.asarray(np.round(mean, 0), np.int)
+
 
     @staticmethod
     def meshgrid_3D(dim_z, dim_y, dim_x):
@@ -320,7 +332,8 @@ class Util:
 
     @staticmethod
     def get_distance_map_numpy(dims, spacing, origin, meshgrid=None):
-        """ Get a distance map from every position in the array to the specified origin, having in mind the spacing
+        """ Get a distance map from every position in the array to the specified origin, having in mind the spacing.
+        The distance is powered to square
         :param dims: dimensions of the array (tuple, list, array...)
         :param spacing: spacinf (tuple, list, array...)
         :param origin: original point (tuple, list, array...)
@@ -335,9 +348,60 @@ class Util:
             y = meshgrid[1]
             x = meshgrid[2]
 
-        t1 = time.time()
+        #t1 = time.time()
         distanceMap = (origin[2]-x)**2*spacing[2] + (origin[1]-y)**2*spacing[1] + (origin[0]-z)**2*spacing[0]
-        t2 = time.time()
-        print("DEBUG: Time to calulate the distance map (numpy): {0} seconds".format(t2-t1))
+        #t2 = time.time()
+        #print("DEBUG: Time to calculate the distance map (numpy): {0} seconds".format(t2-t1))
         return distanceMap
+
+
+    @staticmethod
+    def get_distance_map_maurer(dims, spacing, origin):
+        """ Get a distance map from a particular point using ITK Maurer algorithm.
+        The distance is powered to square
+        It works much better than Danielson algorithms, but slower than Fast Marching
+        :param dims: list with the dimensions of the original volume (zyx)
+        :param spacing: list with the spacing of the original volume (zyx)
+        :param origin: list with the origin point (zyx)
+        :return: numpy array with the distance map
+        """
+        #t1 = time.time()
+        input = np.zeros(dims, np.byte)
+        input[origin[0], origin[1], origin[2]] = 1
+        image = sitk.GetImageFromArray(input)
+        image.SetSpacing(spacing)
+        filter = sitk.SignedMaurerDistanceMapImageFilter()
+        filter.SquaredDistanceOn()
+        filter.UseImageSpacingOn()
+        output = filter.Execute(image)
+        result = sitk.GetArrayFromImage(output)
+        #t2 = time.time()
+        # print("DEBUG: Time to calculate the distance map (maurer): {0} seconds".format(t2-t1))
+        return result
+
+    @staticmethod
+    def get_distance_map_fast_marching(dims, spacing, origin, stopping_value=None):
+        """ Get a distance map from a particular point using ITK FastMarching algorithm
+        :param dims: list with the dimensions of the original volume (zyx)
+        :param spacing: list with the spacing of the original volume (zyx)
+        :param origin: list with the origin point (zyx)
+        :param stopping_value: max distance from the origin. The algorithm will stop when it reaches this distance (
+        the voxels not visited will have a +Infinite value)
+        :return: numpy array with the distance map
+        """
+        #t1 = time.time()
+        # Speed map (all ones because the growth will be constant)
+        input = np.ones(dims, np.byte)
+        image = sitk.GetImageFromArray(input)
+        image.SetSpacing(spacing)
+        filter = sitk.FastMarchingImageFilter()
+        if stopping_value is not None:
+            filter.SetStoppingValue(stopping_value)
+        seeds = [[int(origin[2]), int(origin[1]), int(origin[0])]]  # Convert to int (otherwise sitk fails!)
+        filter.SetTrialPoints(seeds)
+        output = filter.Execute(image)
+        result = sitk.GetArrayFromImage(output)
+        #t2 = time.time()
+        # print("DEBUG: Time to calculate the distance map (fast marching): {0} seconds".format(t2-t1))
+        return result
 

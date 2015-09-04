@@ -655,7 +655,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         Create a new labelmap (currentLabelmap) and a model node with the result of the process.
         It also creates a numpy array associated with the labelmap (currentLabelmapArray)
         """
-        print("DEBUG: processing results from CLI...")
+        print("DEBUG: processing results from process Nodule CLI...")
         # Create vtk filters
         self.thresholdFilter = vtk.vtkImageThreshold()
         self.thresholdFilter.SetInputData(self.cliOutputScalarNode.GetImageData())
@@ -688,7 +688,11 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             slicer.mrmlScene.AddNode(displayNode)
             currentModelNode.AddAndObserveDisplayNodeID(displayNode.GetID())
 
-        self.updateModels(self.defaultThreshold)    # Use default threshold value
+        if self.onCLISegmentationFinishedCallback is not None:
+            # Delegate the responsibility of updating the models with a chosen threshold (regular case)
+            self.onCLISegmentationFinishedCallback()
+        else:
+            self.updateModels(self.defaultThreshold)    # Use default threshold value
 
         if newNode:
             # Align the model with the segmented labelmap applying a transformation
@@ -701,63 +705,49 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             threeDView = threeDWidget.threeDView()
             threeDView.resetFocalPoint()
 
-        if self.onCLISegmentationFinishedCallback is not None:
-            self.onCLISegmentationFinishedCallback()
 
     def updateModels(self, newThreshold, radius=30):
         """ Modify the threshold for the current volume (update the models)
         :param newThreshold: new threshold (all the voxels below this threshold will be considered nodule)
         """
+        print("DEBUG: updating models....")
         self.thresholdFilter.ThresholdByUpper(newThreshold)
         self.thresholdFilter.Update()
         self.marchingCubesFilter.SetValue(0, newThreshold)
         self.marchingCubesFilter.Update()
-
         self.currentLabelmapArray = slicer.util.array(self.currentLabelmap.GetName())
-        centroid = self.centroid(self.currentLabelmapArray)
+
+        centroid = Util.centroid(self.currentLabelmapArray)
         lmNode2 = slicer.util.getNode("Sphere")
         if lmNode2 is None:
             lmNode2 = SlicerUtil.cloneVolume(self.currentLabelmap, "Sphere")
         array = slicer.util.array(lmNode2.GetName())
         if self.currentDistanceMap is None:
             # Calculate the distance map for the specified origin
-            self.currentDistanceMap = self.getCurrentDistanceMap(self.currentVolume, centroid)
-        t1 = time.time()
+            self.currentDistanceMap = self.getCurrentDistanceMap(centroid)
         array[self.currentDistanceMap <= radius**2] = 2
-        print("DEBUG: time for ratius: ", time.time()-t1)
         lmNode2.GetImageData().Modified()
 
 
-
-
     ## OPERATIONS
-    @staticmethod
-    def getCurrentDistanceMap(volume, origin):
+    def getCurrentDistanceMap(self, origin, maxRadius=30):
         """ Calculate a distance map from the origin (zyx coords) in the specified volume
         :param volume: volume (it can be a labelmap too)
         :param origin: coordinates of the origin (ijk)
         :return:
         """
         # Get the dimensions of the volume
-        dims = volume.GetImageData().GetDimensions()
-        # Get the spacing of the volume (reverse it to have zyx format, same as the numpy array)
-        sp = volume.GetSpacing()
-        spacing = (sp[2], sp[1], sp[0])
+        dims = self.currentVolume.GetImageData().GetDimensions()
+        dims = (dims[2], dims[1], dims[0])
+        # Get the spacing of the volume (it must be "reversed" compared to the dimensions ob the object)
+        spacing = self.currentVolume.GetSpacing()
 
-        # self.currentMeshgrid = Util.meshgrid_3D(dims[2], dims[1], dims[0])
-        return Util.get_distance_map_numpy(dims, spacing, origin)
+        dm = Util.get_distance_map_fast_marching(dims, spacing, origin, stopping_value=maxRadius)
+        # Return a squared distance to make it easier to filter by radius
+        return dm * dm
 
 
-    @staticmethod
-    def centroid(numpyArray, labelId=1):
-        """ Calculate the coordinates of a centroid for a concrete labelId (default=1), considering the spacing of the volume
-        :param numpyArray: numpy array
-        :param spacing: spacing of the array (tuple, list...)
-        :param labelId: label id (default = 1)
-        :return: numpy array with the coordinates (int format)
-        """
-        mean = np.mean(np.where(numpyArray == labelId), axis=1)
-        return np.asarray(np.round(mean, 0), np.int)
+
 
 
 
