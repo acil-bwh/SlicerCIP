@@ -284,7 +284,7 @@ class SlicerUtil:
 
 
     @staticmethod
-    def getLabellmapFromScalar(vtkMRMLScalarVolumeNode, nodeName=""):
+    def getLabelmapFromScalar(vtkMRMLScalarVolumeNode, nodeName=""):
         """ Convert a vtkMRMLScalarVolumeNode node in an equivalent vtkMRMLLabelMapVolumeNode
         :param vtkMRMLScalarVolumeNode:
         :param nodeName: name of the result node (default: scalarNodeName_lm)

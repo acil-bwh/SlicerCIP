@@ -8,7 +8,7 @@ import vtk
 import os, sys
 import traceback
 import numpy as np
-
+import time
 
 class Util: 
     # Constants
@@ -245,3 +245,99 @@ class Util:
                 row.append(n)
             result.append(row)
         return result
+
+
+    @staticmethod
+    def meshgrid_3D(dim_z, dim_y, dim_x):
+        """ Get 3 matrixes to operate in a masked 3D space (see "meshgrid" function in numpy).
+        It assumes same size in the 3 dimensions (cube)
+        :param dim_z: length of the z dimension
+        :param dim_y: length of the y dimension
+        :param dim_x: length of the x dimension
+        :return: tuple with z, y, x meshgrid volumes
+        """
+        t1 = time.time()
+        ind0 = np.arange(dim_z)
+        ind1 = np.arange(dim_y)
+        ind2 = np.arange(dim_x)
+
+        try:
+            a, b, c = np.meshgrid(ind0, ind1, ind2)
+        except:
+            # Try "manual" way (3D introduced in numpy 1.8)
+            # Using numpy repetitions: about 7-8 seconds for a regular volume
+            # NOTE: Dimensions 0 and 1 are inverted to keep numpy meshgrid compatibility
+            t = np.repeat(ind0, dim_x)
+            t = t.reshape(dim_z, dim_x)
+            a = np.zeros([dim_y, dim_z, dim_x])
+            a[:, :, ind2] = t
+
+            t = np.repeat(ind1, dim_z)
+            b = np.repeat(t, dim_x)
+            b = b.reshape(dim_y, dim_z, dim_x)
+
+            c = np.zeros([dim_y, dim_z, dim_x], np.int)
+            c[ind1, :, :] = ind2
+
+            # Iterative version: more than 1 minute for a regular volume!
+            # a = np.zeros([dim_y, dim_z, dim_x], np.int)
+            # b = np.zeros([dim_y, dim_z, dim_x], np.int)
+            # c = np.zeros([dim_y, dim_z, dim_x], np.int)
+            # for i in range(dim_y):
+            #     for j in range(dim_z):
+            #         a[i, j:] = j
+            # for i in range(dim_y):
+            #     for j in range(dim_x):
+            #         b[i, :] = i
+            #         c[i, :, j] = j
+        t2 = time.time()
+        print("DEBUG: Time to build the meshgrid: {0} seconds".format(t2-t1))
+        return b, a, c      # For some reason numpy interchanges the first 2 dimensions...
+
+
+
+    # @staticmethod
+    # def get_sphere_mask_for_array(array, origin, radius, meshgrid=None):
+    #     """ Get a bool numpy array that can work as a mask of the source array "drawing" a sphere of radius "radius"
+    #     around a point "origin"
+    #     :param array: original array
+    #     :param origin: original point (3D tuple, list or array)
+    #     :param radius: radius of the sphere
+    #     :param meshgrid: 3-tuple with a meshgrid volume (3 volumes in total) of the same dimensions than "array" (in zyx format)
+    #                     If this parameter is null, the meshgrid will be build here and it will be returned in the function
+    #     :return: bool numpy array with the mask and a 3-tuple with the meshgrid built for this array (zyx)
+    #     """
+    #     if meshgrid is None:
+    #         z, y, x = Util.meshgrid_3D(array.shape[0], array.shape[1], array.shape[2])
+    #     else:
+    #         z = meshgrid[0]
+    #         y = meshgrid[1]
+    #         x = meshgrid[2]
+    #
+    #     masc = np.zeros(array.shape, np.bool)
+    #     masc[((origin[2]-x)**2) + ((origin[1]-y)**2) + ((origin[0]-z)**2) <= (radius**2)] = True
+    #     return masc
+
+    @staticmethod
+    def get_distance_map_numpy(dims, spacing, origin, meshgrid=None):
+        """ Get a distance map from every position in the array to the specified origin, having in mind the spacing
+        :param dims: dimensions of the array (tuple, list, array...)
+        :param spacing: spacinf (tuple, list, array...)
+        :param origin: original point (tuple, list, array...)
+        :param meshgrid: 3-tuple with a meshgrid volume (3 volumes in total) of the same dimensions than "array" (in zyx format)
+                        If this parameter is null, the meshgrid will be built here
+        :return: numpy array with the distance map
+        """
+        if meshgrid is None:
+            z, y, x = Util.meshgrid_3D(dims[0], dims[1], dims[2])
+        else:
+            z = meshgrid[0]
+            y = meshgrid[1]
+            x = meshgrid[2]
+
+        t1 = time.time()
+        distanceMap = (origin[2]-x)**2*spacing[2] + (origin[1]-y)**2*spacing[1] + (origin[0]-z)**2*spacing[0]
+        t2 = time.time()
+        print("DEBUG: Time to calulate the distance map (numpy): {0} seconds".format(t2-t1))
+        return distanceMap
+

@@ -152,6 +152,14 @@ def onNodeAdded(self, caller, eventId, callData):
 self.onNodeAdded = partial(onNodeAdded, self)
 self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
 
+#####################################################
+# Capture the scene closed event
+slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__)
+...
+def __onSceneClosed__(self, arg1, arg2):
+  ...
+
+
 # IMPORTANT: all these operations must be executed in the __init__ of the Widget
 ......
 slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
