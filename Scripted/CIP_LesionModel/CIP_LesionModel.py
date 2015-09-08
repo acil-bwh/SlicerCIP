@@ -3,7 +3,11 @@ import unittest
 from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
+
+
 import numpy as np
+import time
+
 # Add the CIP common library to the path if it has not been loaded yet
 try:
     from CIP.logic.SlicerUtil import SlicerUtil
@@ -71,6 +75,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.timer = qt.QTimer()
         self.timer.timeout.connect(self.checkAndRefreshModels)
         self.lastRefreshValue = -5000 # Just a value out of range
+        self.semaphoreOpen = False
 
         #
         # Create all the widgets. Example Area
@@ -165,8 +170,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.applySegmentationButton.connect('clicked()', self.onApplySegmentationButton)
         self.addFiducialButton.connect('clicked(bool)', self.onAddFiducialClicked)
 
-        #self.addFiducialsCheckbox.connect('stateChanged(int)', self.onAddFiducialsCheckboxClicked)
         self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onInputVolumeChanged)
+        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__)
         #self.distanceLevelSlider.connect('valueChanged(int)', self.onDistanceSliderChanged)
         #self.distanceLevelSlider.connect('sliderReleased()', self.onDistanceSliderChanged)
 
@@ -228,16 +233,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 self.timer.start(500)
 
         self.__refreshUI__()
-
-    def exit(self):
-        """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
-        # Disable chekbox of fiducials so that the cursor is not in "fiducials mode" forever if the
-        # user leaves the module
-        self.timer.stop()
-
-    def cleanup(self):
-        """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
-        self.timer.stop()
 
     def __refreshUI__(self):
         if self.inputVolumeSelector.currentNodeID != "":
@@ -361,7 +356,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """
         if forceRefresh or self.lastRefreshValue != self.distanceLevelSlider.value:
             # Refresh slides
-            print("DEBUG: updating labelmaps with value:", float(self.distanceLevelSlider.value)/100)
+            #print("DEBUG: updating labelmaps with value:", float(self.distanceLevelSlider.value)/100)
             self.logic.updateModels(float(self.distanceLevelSlider.value)/100)
             self.lastRefreshValue = self.distanceLevelSlider.value
 
@@ -396,19 +391,22 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.__refreshUI__()
 
     def onAddFiducialClicked(self, checked):
+        self.semaphoreOpen = True
         if not (self.__validateInputVolumeSelection__()):
             self.addFiducialButton.checked = False
             return
 
-        self.semaphoreOpen = True
         self.__setAddSeedsMode__(checked)
 
 
     def onApplySegmentationButton(self):
         if self.__validateInputVolumeSelection__():
-            result = self.logic.callCLI(self.inputVolumeSelector.currentNodeID, self.onCLISegmentationFinished)
+            result = self.logic.callNoduleSegmentationCLI(self.inputVolumeSelector.currentNodeID, self.onCLISegmentationFinished)
             self.progressBar.setCommandLineModuleNode(result)
             self.progressBar.visible = True
+
+            # Calculate meshgrid in parallel
+            #self.logic.buildMeshgrid(self.inputVolumeSelector.currentNode())
 
     def onFiducialsNodeModified(self, nodeID, event):
         #print("DEBUG: Fiducials node modified.", nodeID)
@@ -459,33 +457,73 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.timer.start(500)
 
 
+    def __onSceneClosed__(self, arg1, arg2):
+        self.logic = CIP_LesionModelLogic()
+        self.timer.stop()
+
+    def exit(self):
+        """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
+        # Disable chekbox of fiducials so that the cursor is not in "fiducials mode" forever if the
+        # user leaves the module
+        self.timer.stop()
+
+    def cleanup(self):
+        """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
+        self.timer.stop()
 
 # CIP_LesionModelLogic
 #
 class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     def __init__(self):
-        self.currentVolume = None
-        self.currentLabelmap = None
-        #self.currentLabelmapArray = None
-        self.cliOutputScalarNode = None
+        self.currentVolume = None           # Current active volume
+        self.currentLabelmap = None         # Current label map that contains the nodule segmentation for the current threshold (same size as the volume)
+        self.currentLabelmapArray = None    # Numpy array that represents the current label map
+        self.cliOutputScalarNode = None     # Scalar volume that the CLI returns. This will be a cropped volume
 
-        #self.cliOutputArray = None
-        self.currentModelNode = None
+        self.currentModelNodeId = None      # 3D model volume id
+        self.defaultThreshold = 0           # Default threshold for the map distance used in the nodule segmentation
         self.onCLISegmentationFinishedCallback = None
 
-        self.defaultThreshold = 0
+        # self.origin = None                  # Current origin (centroid of the nodule)
+        self.currentDistanceMap = None      # Current distance map from the specified origin
+
+    @property
+    def currentModelNode(self):
+        if self.currentModelNodeId is None:
+            return None
+        return slicer.util.getNode(self.currentModelNodeId)
 
 
-    def __createFiducialsListNode__(self, volumeId, fiducialsNodeName, onModifiedCallback=None):
+
+    ##############################
+    # General volume / fiducials methods
+    ##############################
+    def setActiveVolume(self, volumeID):
+        """ Set the current volume as active and try to load the preexisting associated structures
+        (labelmaps, CLI segmented nodes, numpy arrays...)
+        :param volumeID:
+        :return:
+        """
+        self.currentVolume = slicer.util.getNode(volumeID)
+
+        # Switch the fiducials node
+        fiducialsNode = self.getFiducialsListNode(volumeID)
+        markupsLogic = slicer.modules.markups.logic()
+        markupsLogic.SetActiveListID(fiducialsNode)
+
+        # Search for preexisting labelmap
+        labelmapName = self.currentVolume.GetID() + '_lm'
+        self.currentLabelmap = slicer.util.getNode(labelmapName)
+        segmentedNodeName = self.currentVolume.GetID() + '_segmentedlm'
+        self.cliOutputScalarNode = slicer.util.getNode(segmentedNodeName)
+
+    def __createFiducialsListNode__(self, fiducialsNodeName, onModifiedCallback=None):
         """ Create a new fiducials list node for the current volume
-        :param volumeId: fiducials list will be connected to this volume
+        :param fiducialsNodeName: fiducials node name that will be created
+        :param onModifiedCallback: function that will be connected to node's "ModifiedEvent"
         :return: True if the node was created or False if it already existed
         """
         markupsLogic = slicer.modules.markups.logic()
-
-        # Check if the node already exists
-        #fiducialsNodeName = volumeId + '_fiducialsNode'
-
         fiducialsNode = slicer.util.getNode(fiducialsNodeName)
         if fiducialsNode is not None:
             return False    # Node already created
@@ -532,12 +570,16 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             return fiducialsNode
 
         # Create new fiducials node
-        if self.__createFiducialsListNode__(volumeId, fiducialsNodeName, onModifiedCallback):
+        if self.__createFiducialsListNode__(fiducialsNodeName, onModifiedCallback):
             return slicer.util.getNode(fiducialsNodeName)   # return the created node
 
         return None     # The process failed
 
     def getNumberOfFiducials(self, volumeId):
+        """ Get the number of fiducials currently set for this volume
+        :param volumeId:
+        :return:
+        """
         fid = self.getFiducialsListNode(volumeId)
         if fid:
             return fid.GetNumberOfMarkups()
@@ -555,32 +597,11 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     #         result.append(points)
     #     return result
 
-    def setActiveVolume(self, volumeID):
-        """ Set the current volume as active and try to load the preexisting associated structures
-        (labelmaps, CLI segmented nodes, numpy arrays...)
-        :param volumeID:
-        :return:
-        """
-        self.currentVolume = slicer.util.getNode(volumeID)
 
-        # Switch the fiducials node
-        fiducialsNode = self.getFiducialsListNode(volumeID)
-        markupsLogic = slicer.modules.markups.logic()
-        markupsLogic.SetActiveListID(fiducialsNode)
-
-        # Search for preexisting labelmap
-        labelmapName = self.currentVolume.GetID() + '_lm'
-        self.currentLabelmap = slicer.util.getNode(labelmapName)
-        # if self.currentLabelmap is not None:
-        #     self.currentLabelmapArray = slicer.util.array(labelmapName)
-        # Search for preexisting segmented node
-        segmentedNodeName = self.currentVolume.GetID() + '_segmentedlm'
-        self.cliOutputScalarNode = slicer.util.getNode(segmentedNodeName)
-        # if self.cliOutputScalarNode is not None:
-        #     self.cliOutputArray = slicer.util.array(segmentedNodeName)
-
-
-    def callCLI(self, inputVolumeID, onCLISegmentationFinishedCallback=None):
+    ##############################
+    # CLI Nodule segmentation
+    ##############################
+    def callNoduleSegmentationCLI(self, inputVolumeID, onCLISegmentationFinishedCallback=None):
         """ Invoke the Lesion Segmentation CLI for the specified volume and fiducials.
         Note: the fiducials will be retrieved directly from the scene
         :param inputVolumeID:
@@ -601,17 +622,137 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         parameters["inputImage"] = inputVolumeID
         parameters["outputLevelSet"] = self.cliOutputScalarNode
         parameters["seedsFiducials"] = self.getFiducialsListNode(inputVolumeID)
+        parameters["fullSizeOutput"] = True
         self.invokedCLI = False     # Semaphore to avoid duplicated events
 
         module = slicer.modules.generatelesionsegmentation
         result = slicer.cli.run(module, None, parameters)
 
         # Observer when the state of the process is modified
-        result.AddObserver('ModifiedEvent', self.onCLIStateUpdated)
+        result.AddObserver('ModifiedEvent', self.__onNoduleSegmentationCLIStateUpdated__)
         # Function that will be invoked when the CLI finishes
         self.onCLISegmentationFinishedCallback = onCLISegmentationFinishedCallback
 
         return result
+
+    def __onNoduleSegmentationCLIStateUpdated__(self, caller, event):
+        """ Event triggered when the CLI status changes
+        :param caller:
+        :param event:
+        :return:
+        """
+        if caller.IsA('vtkMRMLCommandLineModuleNode') \
+              and not self.invokedCLI:      # Semaphore to avoid duplicated events
+            if caller.GetStatusString() == "Completed":
+                self.invokedCLI = True
+                self.__processNoduleSegmentationCLIResults__()
+            elif caller.GetStatusString() == "Completed with errors":
+                # TODO: print current parameters with caller.GetParameterDefault()
+                raise Exception("The Nodule Segmentation CLI failed")
+
+    def __processNoduleSegmentationCLIResults__(self):
+        """ Method called once that the cli has finished the process.
+        Create a new labelmap (currentLabelmap) and a model node with the result of the process.
+        It also creates a numpy array associated with the labelmap (currentLabelmapArray)
+        """
+        print("DEBUG: processing results from process Nodule CLI...")
+        # Create vtk filters
+        self.thresholdFilter = vtk.vtkImageThreshold()
+        self.thresholdFilter.SetInputData(self.cliOutputScalarNode.GetImageData())
+        self.thresholdFilter.SetReplaceOut(True)
+        self.thresholdFilter.SetOutValue(0)  # Value of the background
+        self.thresholdFilter.SetInValue(1)   # Value of the segmented nodule
+
+
+        labelmapName = self.currentVolume.GetID() + '_lm'
+        self.currentLabelmap = slicer.util.getNode(labelmapName)
+        if self.currentLabelmap is None:
+            # Create a labelmap with the same dimensions that the ct volume
+            self.currentLabelmap = SlicerUtil.getLabelmapFromScalar(self.cliOutputScalarNode, labelmapName)
+
+
+        self.currentLabelmap.SetImageDataConnection(self.thresholdFilter.GetOutputPort())
+        self.marchingCubesFilter = vtk.vtkMarchingCubes()
+        #self.marchingCubesFilter.SetInputConnection(self.thresholdFilter.GetOutputPort())
+        self.marchingCubesFilter.SetInputData(self.cliOutputScalarNode.GetImageData())
+        self.marchingCubesFilter.SetValue(0, self.defaultThreshold)
+
+        newNode = self.currentModelNode is None
+        if newNode:
+            # Create the result model node and connect it to the pipeline
+            modelsLogic = slicer.modules.models.logic()
+            currentModelNode = modelsLogic.AddModel(self.marchingCubesFilter.GetOutput())
+            self.currentModelNodeId = currentModelNode.GetID()
+            # Create a DisplayNode and associate it to the model, in order that transformations can work properly
+            displayNode = slicer.vtkMRMLModelDisplayNode()
+            slicer.mrmlScene.AddNode(displayNode)
+            currentModelNode.AddAndObserveDisplayNodeID(displayNode.GetID())
+
+        if self.onCLISegmentationFinishedCallback is not None:
+            # Delegate the responsibility of updating the models with a chosen threshold (regular case)
+            self.onCLISegmentationFinishedCallback()
+        else:
+            self.updateModels(self.defaultThreshold)    # Use default threshold value
+
+        if newNode:
+            # Align the model with the segmented labelmap applying a transformation
+            transformMatrix = vtk.vtkMatrix4x4()
+            self.currentLabelmap.GetIJKToRASMatrix(transformMatrix)
+            currentModelNode.ApplyTransformMatrix(transformMatrix)
+            # Center the 3D view in the seed/s
+            layoutManager = slicer.app.layoutManager()
+            threeDWidget = layoutManager.threeDWidget(0)
+            threeDView = threeDWidget.threeDView()
+            threeDView.resetFocalPoint()
+
+
+    def updateModels(self, newThreshold, radius=30):
+        """ Modify the threshold for the current volume (update the models)
+        :param newThreshold: new threshold (all the voxels below this threshold will be considered nodule)
+        """
+        print("DEBUG: updating models....")
+        self.thresholdFilter.ThresholdByUpper(newThreshold)
+        self.thresholdFilter.Update()
+        self.marchingCubesFilter.SetValue(0, newThreshold)
+        self.marchingCubesFilter.Update()
+        self.currentLabelmapArray = slicer.util.array(self.currentLabelmap.GetName())
+
+        centroid = Util.centroid(self.currentLabelmapArray)
+        lmNode2 = slicer.util.getNode("Sphere")
+        if lmNode2 is None:
+            lmNode2 = SlicerUtil.cloneVolume(self.currentLabelmap, "Sphere")
+        array = slicer.util.array(lmNode2.GetName())
+        if self.currentDistanceMap is None:
+            # Calculate the distance map for the specified origin
+            self.currentDistanceMap = self.getCurrentDistanceMap(centroid)
+        array[self.currentDistanceMap <= radius**2] = 2
+        lmNode2.GetImageData().Modified()
+
+
+    ## OPERATIONS
+    def getCurrentDistanceMap(self, origin, maxRadius=30):
+        """ Calculate a distance map from the origin (zyx coords) in the specified volume
+        :param volume: volume (it can be a labelmap too)
+        :param origin: coordinates of the origin (ijk)
+        :return:
+        """
+        # Get the dimensions of the volume
+        dims = self.currentVolume.GetImageData().GetDimensions()
+        dims = (dims[2], dims[1], dims[0])
+        # Get the spacing of the volume (it must be "reversed" compared to the dimensions ob the object)
+        spacing = self.currentVolume.GetSpacing()
+
+        dm = Util.get_distance_map_fast_marching(dims, spacing, origin, stopping_value=maxRadius)
+        # Return a squared distance to make it easier to filter by radius
+        return dm * dm
+
+
+
+
+
+
+
+
 
     # def __processCLIResults__(self):
     #     """ Method called once that the cli has finished the process.
@@ -645,8 +786,6 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     #     if self.onCLISegmentationFinishedCallback is not None:
     #         self.onCLISegmentationFinishedCallback()
 
-
-
     # def updateLabelmap(self, newValue):
     #     """ Update the labelmap representing the segmentation. Depending on the value the
     #     user will see a "bigger" or "smaller" segmentation.
@@ -656,78 +795,6 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     #         self.currentLabelmapArray[:] = 0
     #         self.currentLabelmapArray[self.cliOutputArray >= newValue] = 1
     #         self.currentLabelmap.GetImageData().Modified()
-
-
-
-
-    def onCLIStateUpdated(self, caller, event):
-      if caller.IsA('vtkMRMLCommandLineModuleNode') \
-              and caller.GetStatusString() == "Completed"\
-              and not self.invokedCLI:      # Semaphore to avoid duplicated events
-            self.invokedCLI = True
-            #self.__processCLIResults__()
-            self.__processCLIResultsVTK__()
-
-    def __processCLIResultsVTK__(self):
-        """ Method called once that the cli has finished the process.
-        Create a new labelmap and a model node with the result of the process
-        """
-        print("DEBUG: processing results from CLI...")
-        # Create vtk filters
-        self.thresholdFilter = vtk.vtkImageThreshold()
-        self.thresholdFilter.SetInputData(self.cliOutputScalarNode.GetImageData())
-        self.thresholdFilter.SetReplaceOut(True)
-        self.thresholdFilter.SetOutValue(0)  # Value of the background
-        self.thresholdFilter.SetInValue(1)   # Value of the segmented nodule
-
-
-        labelmapName = self.currentVolume.GetID() + '_lm'
-        self.currentLabelmap = slicer.util.getNode(labelmapName)
-        if self.currentLabelmap is None:
-            # Create a labelmap with the same dimensions that the ct volume
-            self.currentLabelmap = SlicerUtil.getLabelmapFromScalar(self.cliOutputScalarNode, labelmapName)
-            #self.currentLabelmap = Util.get_labelmap_from_scalar(self.currentVolume, labelmapName)
-
-        self.currentLabelmap.SetImageDataConnection(self.thresholdFilter.GetOutputPort())
-        self.marchingCubesFilter = vtk.vtkMarchingCubes()
-        #self.marchingCubesFilter.SetInputConnection(self.thresholdFilter.GetOutputPort())
-        self.marchingCubesFilter.SetInputData(self.cliOutputScalarNode.GetImageData())
-        self.marchingCubesFilter.SetValue(0, self.defaultThreshold)
-
-        newNode = self.currentModelNode is None
-        if newNode:
-            # Create the result model node and connect it to the pipeline
-            modelsLogic = slicer.modules.models.logic()
-            self.currentModelNode = modelsLogic.AddModel(self.marchingCubesFilter.GetOutput())
-            # Create a DisplayNode and associate it to the model, in order that transformations can work properly
-            displayNode = slicer.vtkMRMLModelDisplayNode()
-            slicer.mrmlScene.AddNode(displayNode)
-            self.currentModelNode.AddAndObserveDisplayNodeID(displayNode.GetID())
-
-        self.updateModels(self.defaultThreshold)    # Default value
-
-        if newNode:
-            # Align the model with the segmented labelmap applying a transformation
-            transformMatrix = vtk.vtkMatrix4x4()
-            self.currentLabelmap.GetIJKToRASMatrix(transformMatrix)
-            self.currentModelNode.ApplyTransformMatrix(transformMatrix)
-            # Center the 3D view in the seed/s
-            layoutManager = slicer.app.layoutManager()
-            threeDWidget = layoutManager.threeDWidget(0)
-            threeDView = threeDWidget.threeDView()
-            threeDView.resetFocalPoint()
-
-        if self.onCLISegmentationFinishedCallback is not None:
-            self.onCLISegmentationFinishedCallback()
-
-
-
-    def updateModels(self, newThreshold):
-        self.thresholdFilter.ThresholdByUpper(newThreshold)
-        self.thresholdFilter.Update()
-        self.marchingCubesFilter.SetValue(0, newThreshold)
-        self.marchingCubesFilter.Update()
-
 
     # def createAndAddToSceneWrapperScalarNode(self, bigNode, smallNode):
     #     # Clone the big node
@@ -743,6 +810,45 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     #     # Calculate the offsets
     #     offset = [copyArray.shape[0]-smallArray.shape[0], copyArray.shape[1]-smallArray.shape[1], copyArray.shape[2]-smallArray.shape[2]]
     #
+
+# import numpy as np
+# import math
+#
+# class CIP_Measurements(object):
+#     """ Class that will be used to perform all the measurements and other operations in Nodules module.
+#     The operations may be reused by another modules.
+#     """
+#     def __init__(self):
+#         pass
+#
+#     @staticmethod
+#     def centroid(numpyArray, labelId=1):
+#         """ Calculate the coordinates of a centroid for a concrete labelId (default=1)
+#         :param numpyArray: numpy array
+#         :param labelId: label id (dafault = 1)
+#         :return: numpy array with the coordinates (int format)
+#         """
+#         mean = np.mean(np.where(numpyArray == labelId), axis=1)
+#         return np.asarray(np.round(mean, 0), np.int)
+#
+#     @staticmethod
+#     def getSphereMaskArray(array, center, radius):
+#         """ Get a numpy array that represents a sphere around a center point of a particular radius
+#         :param array: original numpy array
+#         :param center: center point
+#         :param radius: radius of the sphere
+#         :return: numpy array with same size of the original one where all points inside the sphere are 1 and the
+#         rest of the points are 0
+#         """
+#         return Util.get_sphere_mask_for_array(array, center, radius)
+
+
+
+
+
+
+
+
 
 
 class CIP_LesionModelTest(ScriptedLoadableModuleTest):
@@ -765,15 +871,16 @@ class CIP_LesionModelTest(ScriptedLoadableModuleTest):
 
     def test_CIP_LesionModel_PrintMessage(self):
         self.delayDisplay("Starting the test")
-        logic = CIP_LesionModelLogic()
-
-        myMessage = "Print this test message in console"
-        logging.info("Starting the test with this message: " + myMessage)
-        expectedMessage = "I have printed this message: " + myMessage
-        logging.info("The expected message would be: " + expectedMessage)
-        responseMessage = logic.printMessage(myMessage)
-        logging.info("The response message was: " + responseMessage)
-        self.assertTrue(responseMessage == expectedMessage)
-        self.delayDisplay('Test passed!')
+        # logic = CIP_LesionModelLogic()
+        # myMessage = "Print this test message in console"
+        # logging.info("Starting the test with this message: " + myMessage)
+        # expectedMessage = "I have printed this message: " + myMessage
+        # logging.info("The expected message would be: " + expectedMessage)
+        # responseMessage = logic.printMessage(myMessage)
+        # logging.info("The response message was: " + responseMessage)
+        # self.assertTrue(responseMessage == expectedMessage)
+        # self.delayDisplay('Test passed!')
+        # t = unittest.TestCase()
+        self.fail("Test not implemented yet")
 
 
