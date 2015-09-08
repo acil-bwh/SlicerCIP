@@ -12,7 +12,7 @@ try:
 except Exception as ex:
     currentpath = os.path.dirname(os.path.realpath(__file__))
     # We assume that CIP_Common is in the development structure
-    path = os.path.normpath(currentpath + '/../../../SlicerCIP/Scripted/CIP_Common')
+    path = os.path.normpath(currentpath + '/../../Scripted/CIP_Common')
     if not os.path.exists(path):
         # We assume that CIP is a subfolder (Slicer behaviour)
         path = os.path.normpath(currentpath + '/CIP')
@@ -181,9 +181,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.removeButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.removeButton.setIconSize(qt.QSize(20,20))
         self.buttonsToolboxLayout.addWidget(self.removeButton, 1, 1, 1, 2, 2)
-
-
-
 
         ### Textboxes
         self.textboxesFrame = qt.QFrame()
