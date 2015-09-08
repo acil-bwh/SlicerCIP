@@ -38,6 +38,7 @@
 #include "vtkImageReader.h"
 #include "vtkNRRDWriter.h"
 #include "vtkPNGWriter.h"
+#include "vtkImageFlip.h"
 
 #include "QPainter.h"
 #include "QMainWindow.h"
@@ -97,12 +98,16 @@ void qSlicerAirwayInspectorModuleWidget::setup()
   d->qvtkWidget = new QVTKWidget;
   d->qvtkWidget->GetRenderWindow()->AddRenderer(this->Renderer);
   d->qvtkWidget->setFixedSize(200,200);
-  d->reportFormLayout->setWidget(2, QFormLayout::FieldRole, d->qvtkWidget);
+  d->horizontalLayout->addWidget(d->qvtkWidget);
 
   d->ReportTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
   d->ReportTable->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
   d->ReportTable->setColumnCount(4);
 	d->ReportTable->setHorizontalHeaderLabels(QString("Min;Max;Mean;Std").split(";"));
+  d->ReportTable->setVerticalHeaderLabels(QString("Inner Radius (mm);Outer Radius (mm);Wall Thickness (mm);" \
+          "Wall Intensity (HU);Peak WI (HU);Inner WI (HU);Outer WI (HU);WA%;Pi (mm);" \
+           "sqrt(WA) (mm);Ai (mm^2);Ao (mm^2);Vessel Intensity (HU);RL Inner Diam (mm);" \
+           "RL Outer Diam (mm);AP Inner Diam (mm);AP Outer Diam (mm);Lumen I (HU);Parenchyma I (HU);Energy;Power").split(";"));
 
   //d->ReportTable
 
@@ -272,7 +277,13 @@ void qSlicerAirwayInspectorModuleWidget::onInteractorEvent(vtkRenderWindowIntera
         logic->AddAirwayNode(d->InputVolumeComboBox->currentNode()->GetID(),
         x,y,z, d->ThresholdSpinBox->value());
 
+      if (d->ComputeCenterCheckBox->isChecked())
+        {
+        logic->ComputeCenter(airwayNode);
+        }
+
       d->AirwayComboBox->setCurrentNode(airwayNode);
+      this->analyzePressed();
       }
     }
 }
@@ -318,6 +329,7 @@ void qSlicerAirwayInspectorModuleWidget::setMRMLAirwayNode(vtkMRMLNode* mrmlNode
     d->MethodComboBox->setCurrentIndex(airwayNode->GetMethod());
     d->ReformatCheckBox->setChecked(airwayNode->GetReformat());
     }
+   this->updateReport(airwayNode);
 }
 
 //-----------------------------------------------------------------------------
@@ -358,8 +370,24 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
   d->ReportTable->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
 
 	int numCols = 4;
-  int numRows = airwayNode->GetMean()->GetNumberOfComponents();
+
+  if (airwayNode->GetMin()->GetNumberOfTuples() == 0 ||
+      airwayNode->GetMax()->GetNumberOfTuples() == 0 ||
+      airwayNode->GetMean()->GetNumberOfTuples() == 0 ||
+      airwayNode->GetStd()->GetNumberOfTuples() == 0)
+  {
+    return;
+  }
+  int numRows = airwayNode->GetMin()->GetNumberOfComponents();
+  numRows = numRows < airwayNode->GetMax()->GetNumberOfComponents() ? numRows : airwayNode->GetMax()->GetNumberOfComponents();
+  numRows = numRows < airwayNode->GetMean()->GetNumberOfComponents() ? numRows : airwayNode->GetMean()->GetNumberOfComponents();
+  numRows = numRows < airwayNode->GetStd()->GetNumberOfComponents() ? numRows : airwayNode->GetStd()->GetNumberOfComponents();
+
   d->ReportTable->setRowCount(numRows);
+  d->ReportTable->setVerticalHeaderLabels(QString("Inner Radius (mm);Outer Radius (mm);Wall Thickness (mm);" \
+          "Wall Intensity (HU);Peak WI (HU);Inner WI (HU);Outer WI (HU);WA%;Pi (mm);" \
+           "sqrt(WA) (mm);Ai (mm^2);Ao (mm^2);Vessel Intensity (HU);RL Inner Diam (mm);" \
+           "RL Outer Diam (mm);AP Inner Diam (mm);AP Outer Diam (mm);Lumen I (HU);Parenchyma I (HU);Energy;Power").split(";"));
 
 	//Add Table items here
   for (int i=0; i<numRows; i++)
@@ -381,12 +409,22 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
 	  d->ReportTable->setItem(i,3,stdItem);
     }
 
+  d->ReportTable->setMinimumHeight(420);
+  //d->ReportTable->setMaximumHeight(1000);
+  d->ReportTable->resizeColumnsToContents();
+  d->ReportTable->resizeRowsToContents();
+
   //d->MinSpinBox->setValue(airwayNode->GetMin());
   //d->MaxSpinBox->setValue(airwayNode->GetMax());
   //d->MeanSpinBox->setValue(airwayNode->GetMean());
   //d->StdSpinBox->setValue(airwayNode->GetStd());
 
   vtkImageData *image= airwayNode->GetAirwayImage();
+
+  vtkImageFlip *flip = vtkImageFlip::New();
+  flip->SetInputData(image);
+  flip->SetFilteredAxis(1);
+  flip->Update();
 
   //vtkImageReader *reader = vtkImageReader::New();
   //reader->SetFileName("C:\\tmp\\foo.png");
@@ -400,7 +438,7 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
 
   vtkSmartPointer<vtkImageMapper> imageMapper = vtkSmartPointer<vtkImageMapper>::New();
 
-  imageMapper->SetInputData(image);
+  imageMapper->SetInputData(flip->GetOutput());
 
   imageMapper->SetColorWindow(256);
   imageMapper->SetColorLevel(128);

@@ -94,15 +94,20 @@ public:
   vtkGetMacro(Reformat,int);
 
   // Description:
-  // Reformat airway along airway long axis
+  // Compute Center of reslice
   vtkBooleanMacro(ComputeCenter,int);
   vtkSetMacro(ComputeCenter,int);
   vtkGetMacro(ComputeCenter,int);
 
   // Description:
-  // Reformat airway along airway long axis
+  // Resolution
   vtkSetMacro(Resolution,double);
   vtkGetMacro(Resolution,double);
+
+  // Description:
+  // AirBaselineIntensity
+  vtkSetMacro(AirBaselineIntensity,double);
+  vtkGetMacro(AirBaselineIntensity,double);
 
   // Description:
   // Axis computation model:
@@ -189,6 +194,8 @@ private:
   double SegmentPercentage;
   int    SaveAirwayImage;
   char   *AirwayImagePrefix;
+
+  double AirBaselineIntensity;
 
   vtkImageData *AirwayImage;
   vtkPolyData  *InnerContour;

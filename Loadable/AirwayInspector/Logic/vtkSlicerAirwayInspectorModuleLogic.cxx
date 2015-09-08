@@ -20,6 +20,11 @@
 #include <vtkLookupTable.h>
 #include <vtkEllipseFitting.h>
 #include <vtkMatrix4x4.h>
+#include <vtkImageThreshold.h>
+#include <vtkImageReslice.h>
+#include <vtkImageThreshold.h>
+#include <vtkImageSeedConnectivity.h>
+#include <vtkComputeCentroid.h>
 
 #include <vtkImageResliceWithPlane.h>
 #include <vtkComputeAirwayWall.h>
@@ -106,26 +111,17 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
   inputImage->GetSpacing(sp);
   inputImage->GetDimensions(dim);
 
-  double resolution = node->GetResolution();
-
   //Create helper objects
   // Set up options
-  if (node->GetReformat())
-    {
-    this->Reslicer->InPlaneOff();
-    }
-  else
-    {
-    this->Reslicer->InPlaneOn();
-    }
-
+  double resolution = node->GetResolution();
+  this->Reslicer->SetInPlane(!node->GetReformat());
   this->Reslicer->SetInputData(inputImage);
   this->Reslicer->SetInterpolationModeToCubic();
-  this->Reslicer->ComputeCenterOff();
+  this->Reslicer->SetComputeCenter(node->GetComputeCenter());
   this->Reslicer->SetDimensions(256,256,1);
   this->Reslicer->SetSpacing(resolution,resolution,resolution);
-  //this->Reslicer->ComputeAxesOn();
-  this->Reslicer->ComputeAxesOff();
+  this->Reslicer->ComputeAxesOn();
+  //this->Reslicer->ComputeAxesOff();
 
   /***
   switch(this->GetAxisMode()) {
@@ -156,6 +152,10 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
 
   // Allocate data
   //Create point Data for each stats
+
+  this->WallSolver->SetMethod(node->GetMethod());
+  this->WallSolver->SetDelta(0.1);
+  this->WallSolver->SetWallThreshold(node->GetThreshold());
 
   std::string methodTag;
 
@@ -275,9 +275,6 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
    //writer->Write();
 
    //this->Reslicer->GetOutput()->Print(std::cout);
-
-   this->WallSolver->SetDelta(0.1);
-   this->WallSolver->SetWallThreshold(node->GetThreshold());
 
    this->WallSolver->SetInputData(this->Reslicer->GetOutput());
 
@@ -405,7 +402,6 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirwayImage(vtkImageData *reslic
 
   //Set Image voxels based on ellipse information
 
-  /***
   double sp[3];
   rgbImage->GetSpacing(sp);
   int npoints=128;
@@ -447,7 +443,6 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirwayImage(vtkImageData *reslic
       rgbImage->SetScalarComponentFromFloat(round(px),round(py),0,colorChannel[ii],255);
     }
   }
-  **/
   airwayImage->DeepCopy(rgbImage);
 
   lut->Delete();
@@ -475,3 +470,94 @@ void vtkSlicerAirwayInspectorModuleLogic::SetWallSolver(vtkComputeAirwayWall *re
   out->SetT(out->GetT());
   out->SetActivateSector(ref->GetActivateSector());
 }
+void vtkSlicerAirwayInspectorModuleLogic::ComputeCenter(vtkMRMLAirwayNode* node)
+{
+  vtkMRMLScalarVolumeNode *volumeNode = vtkMRMLScalarVolumeNode::SafeDownCast(
+    this->GetMRMLScene()->GetNodeByID(node->GetVolumeNodeID()));
+  if (volumeNode == 0)
+    {
+    return;
+    }
+
+  vtkImageData *inputImage = volumeNode->GetImageData();
+  double *p = node->GetXYZ();
+
+  double orig[3];
+  int dim[3];
+  double outsp[3];
+  inputImage->GetOrigin(orig);
+  inputImage->GetSpacing(outsp);
+  inputImage->GetDimensions(dim);
+
+  double pixelshift = 0.5;
+  double outcenter[3];
+  for (int i=0; i<3; i++)
+    {
+    outcenter[i] = dim[i]*0.5 - pixelshift;
+    }
+
+  //Create helper objects
+  // Set up options
+  vtkImageReslice* rFind = vtkImageReslice::New();
+  rFind->SetInputData(inputImage);
+  rFind->SetOutputDimensionality( 2 );
+  rFind->SetOutputExtent( 0, dim[0]-1,
+                          0, dim[1]-1,
+                          0, dim[2]-1);
+  rFind->SetOutputSpacing(outsp);
+  rFind->SetOutputOrigin(-1.0*outcenter[0]*outsp[0],
+                         -1.0*outcenter[1]*outsp[1],
+                         -1.0*outcenter[2]*outsp[2]);
+
+  rFind->SetResliceAxesDirectionCosines( 1, 0, 0, 0, 1, 0, 0, 0, 1);
+  rFind->SetResliceAxesOrigin(orig[0] + p[0]*outsp[0],
+                              orig[1] + p[1]*outsp[1],
+                              orig[2] + p[2]*outsp[2]);
+  rFind->SetInterpolationModeToLinear();
+  rFind->Update();
+
+  // Compute Threshold
+  vtkImageThreshold *th = vtkImageThreshold::New();
+  th->SetInputData(rFind->GetOutput());
+  th->ThresholdBetween(node->GetAirBaselineIntensity(),
+    node->GetAirBaselineIntensity() + node->GetThreshold());
+  th->SetInValue (1);
+  th->SetOutValue (0);
+  th->ReplaceInOn();
+  th->ReplaceOutOn();
+  th->SetOutputScalarTypeToUnsignedChar();
+  th->Update();
+
+  vtkImageSeedConnectivity *cc = vtkImageSeedConnectivity::New();
+  cc->SetInputData(th->GetOutput());
+  cc->AddSeed(outcenter[0]+0.5,outcenter[1]+0.5,outcenter[2]+0.5);
+  cc->SetInputConnectValue(1);
+  cc->SetOutputConnectedValue(1);
+  cc->SetOutputUnconnectedValue(0);
+  cc->Update();
+
+  //Flag is zero if not CC has been found.
+  int flag = cc->GetOutput()->GetScalarRange()[1];
+
+  vtkComputeCentroid *ccen = vtkComputeCentroid::New();
+  ccen->SetInputData(cc->GetOutput());
+  ccen->Update();
+  double *centroid = ccen->GetCentroid();
+
+  double wcp[3];
+  for (int k=0; k<3; k++)
+    {
+    wcp[k] = p[k] + centroid[k] - outcenter[k];
+    }
+
+  if (flag)
+    {
+    node->SetXYZ(wcp);
+    }
+
+  rFind->Delete();
+  th->Delete();
+  cc->Delete();
+  ccen->Delete();
+}
+

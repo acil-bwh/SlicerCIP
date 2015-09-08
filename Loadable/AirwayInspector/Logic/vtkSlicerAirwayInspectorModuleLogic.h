@@ -31,6 +31,8 @@ public:
                                    double x, double y, double z,
                                    double threshold);
 
+  void ComputeCenter(vtkMRMLAirwayNode* node);
+
   void CreateAirway(vtkMRMLAirwayNode *node);
 
   vtkGetObjectMacro (Reslicer, vtkImageResliceWithPlane);
