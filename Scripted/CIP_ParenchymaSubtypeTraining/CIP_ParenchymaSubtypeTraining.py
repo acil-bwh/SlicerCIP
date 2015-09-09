@@ -568,7 +568,6 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
             xml = f.read()
 
         geom = GTD.GeometryTopologyData.from_xml(xml)
-
         for point in geom.points:
             subtype = point.chest_type
             if subtype in self.params.mainTypes.keys():

@@ -199,10 +199,10 @@ class Util:
 
     @staticmethod
     def switch_ras_lps(coords):
-        """ Convert from RAS to LPS or viceversa (it is just flipping the first two axis)
+        """ Convert from RAS to LPS or viceversa (it is just flipping the first axis)
         :return: list of 3 RAS coordinates
         """
-        return [-coords[0], -coords[1], coords[2]]
+        return [-coords[0], coords[1], coords[2]]
 
 
     @staticmethod

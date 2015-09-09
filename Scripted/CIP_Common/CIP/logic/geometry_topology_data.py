@@ -223,13 +223,16 @@ class Point:
         :param xml_point_node: xml Point element coming from a "find" instruction
         :return: new instance of Point
         """
-        print("Point: ", xml_point_node)
         coordinates = []
         for coord in xml_point_node.findall("Coordinate/value"):
             coordinates.append(float(coord.text))
         chest_region = int(xml_point_node.find("ChestRegion").text)
         chest_type = int(xml_point_node.find("ChestType").text)
-        feature_type = int(xml_point_node.find("ImageFeature").text)
+        ft = xml_point_node.find("ImageFeature")
+        if ft is None:
+            feature_type = 0
+        else:
+            feature_type = int(xml_point_node.find("ImageFeature").text)
 
         # Description
         desc = xml_point_node.find("Description")
