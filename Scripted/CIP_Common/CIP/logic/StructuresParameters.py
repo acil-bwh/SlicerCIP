@@ -69,8 +69,8 @@ class StructuresParameters(object):
         - Plane
         """
     STRUCTURE_ID = 0                        # Structure (0-255)
-    CHESTREGION_ID = 1                      # ChestRegion id to which the structure is linked
-    CHESTTYPE_ID = 2                        # ChestRegion id to which the structure is linked
+    CHEST_REGION_ID = 1                     # ChestRegion id to which the structure is linked
+    CHEST_TYPE_ID = 2                       # ChestType id to which the structure is linked
     DESCRIPTION = 3                         # Description
     RED = 4                                 # Red level (0-1)
     GREEN = 5                               # Green level (0-1)
@@ -88,11 +88,11 @@ class StructuresParameters(object):
     
     def getRegionIdItem(self, structureId):
         """Get the Region id to which this structure is linked"""
-        return self.getItem(structureId)[self.CHESTREGION_ID]
+        return self.getItem(structureId)[self.CHEST_REGION_ID]
     
     def getTypeIdItem(self, structureId):
         """Get the Region id to which this structure is linked"""
-        return self.getItem(structureId)[self.CHESTTYPE_ID]
+        return self.getItem(structureId)[self.CHEST_TYPE_ID]
 
     def getDescriptionItem(self, structureId):
         """Return the full description label"""

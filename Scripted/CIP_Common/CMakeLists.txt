@@ -6,7 +6,6 @@ set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
   CIP/__init__.py
   CIP/logic/__init__.py
-  CIP/logic/BodyCompositionParameters.py
   CIP/logic/geometry_topology_data.py
   CIP/logic/SlicerUtil.py
   CIP/logic/StructuresParameters.py

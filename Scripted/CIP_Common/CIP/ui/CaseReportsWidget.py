@@ -3,15 +3,19 @@ import csv, os, time, pprint
 from __main__ import qt, ctk, slicer
 
 from CIP.logic import EventsTrigger
+from CIP.logic.SlicerUtil import *
 
 class CaseReportsWidget(EventsTrigger):
     # Events triggered by the widget
     EVENT_SAVE_BUTTON_CLICKED = 1
     EVENT_SHOW_REPORT = 2
-    #EVENT_DOWNLOAD = 3
     EVENT_CLEAN_CACHE = 3
 
-    def __init__(self, moduleName, columnNames, parent = None):
+    @property
+    def TIMESTAMP_COLUMN_NAME(self):
+        return self.logic.TIMESTAMP_COLUMN_NAME
+
+    def __init__(self, moduleName, columnNames, parent = None, filePreffix=""):
         """Widget constructor (existing module)"""
         EventsTrigger.__init__(self)
         
@@ -23,7 +27,7 @@ class CaseReportsWidget(EventsTrigger):
             self.parent = parent
         self.layout = self.parent.layout()
 
-        self.logic = CaseReportsLogic(moduleName, columnNames)
+        self.logic = CaseReportsLogic(moduleName, columnNames, filePreffix)
         self.__initEvents__()
         self.reportWindow = CaseReportsWindow(self)
 
@@ -32,17 +36,26 @@ class CaseReportsWidget(EventsTrigger):
     def setup(self):
         self.saveValuesButton = ctk.ctkPushButton()
         self.saveValuesButton.text = "Save"
+        self.saveValuesButton.setIcon(qt.QIcon("{0}/Save.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.saveValuesButton.setIconSize(qt.QSize(24,24))
         self.layout.addWidget(self.saveValuesButton)
 
         self.openButton = ctk.ctkPushButton()
         self.openButton.text = "Open"
+        self.openButton.setIcon(qt.QIcon("{0}/open_file.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.openButton.setIconSize(qt.QSize(24,24))
+
         self.layout.addWidget(self.openButton)
 
         self.exportButton = ctk.ctkPushButton()
         self.exportButton.text = "Export"
+        self.exportButton.setIcon(qt.QIcon("{0}/export-csv.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.exportButton.setIconSize(qt.QSize(24,24))
         self.layout.addWidget(self.exportButton)
 
         self.removeButton = ctk.ctkPushButton()
+        self.removeButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.removeButton.setIconSize(qt.QSize(24,24))
         self.removeButton.text = "Clean cache"
         self.layout.addWidget(self.removeButton)
 
@@ -55,26 +68,22 @@ class CaseReportsWidget(EventsTrigger):
         """Init all the structures required for events mechanism"""
         self.setEvents([self.EVENT_SAVE_BUTTON_CLICKED, self.EVENT_SHOW_REPORT, self.EVENT_CLEAN_CACHE])
 
-    # def addObservable(self, event, callback):
-    #     """Add a function that will be invoked when the corresponding event is triggered.
-    #     The list of possible events are: EVENT_LOAD, EVENT_SAVE, EVENT_SAVEALL.
-    #     Ex: myWidget.addObservable(myWidget.EVENT_LOAD, self.onFileLoaded)"""
-    #     if event not in self.events:
-    #         raise Exception("Event not recognized. It must be one of these: EVENT_SAVE_BUTTON_CLICKED, EVENT_SHOW_REPORT, EVENT_CLEAN_CACHE")
-    # 
-    #     # Add the event to the list of funcions that will be called when the matching event is triggered
-    #     self.eventsCallbacks.append((event, callback))
-    # 
-    # def triggerEvent(self, eventType, *params):
-    #     """Trigger one of the possible events from the object.
-    #     Ex:    self.triggerEvent(self.EVENT_SAVE) """
-    #     for callback in (item[1] for item in self.eventsCallbacks if item[0] == eventType):
-    #         callback(*params)
-
     def setColumnNames(self, columnNames):
+        """ Set the column names that will saved every time the user clicks "Save" button
+        :param columnNames:
+        """
         self.logic.columnNames = columnNames
 
     def saveCurrentValues(self, **kwargs):
+        """ Save a record.
+        The function will expect to be invoked with key-value parameters with the name of the columns.
+        Ex: self.reportsWidget.saveCurrentValues(
+                caseId = caseName,
+                regionType = stat.LabelCode,
+                label = stat.LabelDescription)
+        :param kwargs:
+        :return:
+        """
         self.logic.saveValues(**kwargs)
 
 
@@ -118,14 +127,23 @@ class CaseReportsWidget(EventsTrigger):
             self.triggerEvent(self.EVENT_CLEAN_CACHE)
 
 
+#############################
+##
 class CaseReportsLogic(object):
-    def __init__(self, moduleName, columnNames):
+    def __init__(self, moduleName, columnNames, filePreffix):
         self.__moduleName__ = moduleName
         p = os.path.dirname(slicer.util.getModule(moduleName).path)
         if os.sys.platform == "win32":
             p = p.replace("/", "\\")
-        self.__csvFilePath__ = os.path.join(p, "Resources", moduleName + ".storage.csv")
+        if filePreffix != "":
+            self.__csvFilePath__ = os.path.join(p, "Resources", "{0}.{1}.storage.csv".format(filePreffix, moduleName))
+        else:
+            self.__csvFilePath__ = os.path.join(p, "Resources", moduleName + ".storage.csv")
         self.__columnNames__ = columnNames
+
+    @property
+    def TIMESTAMP_COLUMN_NAME(self):
+        return "Timestamp"
 
     @property
     def columnNames(self):
@@ -139,7 +157,7 @@ class CaseReportsLogic(object):
         """ Column names with the date (timestamp) added as the first column
         :return:
         """
-        columns = ["Date"]
+        columns = [self.TIMESTAMP_COLUMN_NAME]
         columns.extend(self.columnNames)
         return columns
 
@@ -183,7 +201,6 @@ class CaseReportsLogic(object):
         with open(self.csvFilePath, 'a+b') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(orderedColumns)
-        #print("DEBUG: saved values in " + self.__csvFilePath__)
 
 
     def exportCSV(self, filePath):
@@ -249,8 +266,8 @@ class CaseReportsLogic(object):
         # Not found
         return None
 
-
     def remove(self):
+        """ Remove the whole results file """
         if os.path.exists(self.csvFilePath):
             os.remove(self.csvFilePath)
 

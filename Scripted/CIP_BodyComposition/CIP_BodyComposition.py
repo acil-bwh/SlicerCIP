@@ -4,15 +4,32 @@ It also performs a set of operations to analyze the different structures of
 the volume based on its label map, like Area, Mean, Std.Dev., etc.
 First version: Jorge Onieva (ACIL, jonieva@bwh.harvard.edu). 11/2014'''
 
-from __main__ import qt,vtk, ctk, slicer
-from slicer.ScriptedLoadableModule import *
-
 import os
 import sys
+import time
 
 import numpy as np
 
+from __main__ import qt,vtk, ctk, slicer
+from slicer.ScriptedLoadableModule import *
+
+
 # Add the CIP common library to the path if it has not been loaded yet
+try:
+    from CIP.logic.SlicerUtil import SlicerUtil
+except Exception as ex:
+    currentpath = os.path.dirname(os.path.realpath(__file__))
+    # We assume that CIP_Common is in the development structure
+    path = os.path.normpath(currentpath + '/../../Scripted/CIP_Common')
+    if not os.path.exists(path):
+        print("Path not found: " + path)
+        # We assume that CIP is a subfolder (Slicer behaviour)
+        path = os.path.normpath(currentpath + '/CIP')
+    sys.path.append(path)
+    print("The following path was manually added to the PythonPath in CIP_BodyComposition: " + path)
+    from CIP.logic.SlicerUtil import SlicerUtil
+
+
 try:
     from CIP.logic.SlicerUtil import SlicerUtil
 except Exception as ex:
@@ -23,11 +40,13 @@ except Exception as ex:
         # We assume that CIP is a subfolder (Slicer behaviour)
         path = os.path.normpath(currentpath + '/CIP')
     sys.path.append(path)
-    print("The following path was manually added to the PythonPath in CIP_BodyComposition: " + path)
+    print("The following path was manually added to the PythonPath in CIP_PAARatio: " + path)
     from CIP.logic.SlicerUtil import SlicerUtil
-    
+
+
 from CIP.logic import Util
-from CIP.logic import BodyCompositionParameters
+import BodyCompositionParameters
+from CIP.ui import CaseReportsWidget
 
 import CIP.ui as CIPUI
 
@@ -57,7 +76,8 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     """GUI object"""
     @property
     def moduleName (self):
-        return "CIP_BodyComposition"
+        return os.path.basename(__file__).replace(".py", "")
+        # return "CIP_BodyComposition"
 
     def __init__(self, parent = None):
         """Widget constructor (existing module)"""
@@ -82,6 +102,11 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
         self.onNodeAdded = partial(onNodeAdded, self)
         self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
+        self.nodeObserver = None
+
+        # Fields that are saved in the Reports Widget
+        self.storedColumnNames = ["date", "caseId", "regionType", "label", "count", "area",
+                                  "min", "max", "mean", "std", "median", "numSlices"]
 
 
     def enter(self):
@@ -98,6 +123,8 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         ScriptedLoadableModuleWidget.setup(self)
         
         self.logic = CIP_BodyCompositionLogic()
+        self.lastAnalysisResults = None
+
         self.colorTableNode = None
         self.disableEvents = False
         self.labelMapSlices = {}    # Dict. with the slices that contain data for each label in a label map volume
@@ -109,19 +136,8 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
       
         self.iconsPath = SlicerUtil.CIP_ICON_DIR     # Imported from CIP library
 
-        self.labelmapNodeNameExtension = self.logic.settingGetOrSetDefault("CIP_BodyComposition/labelmapNodeNameExtension", "_bodyComposition")
-
-        # Quick Load/Saving files buttons
-        # Default extension that will be used for labelmap nodes
-        # if SlicerUtil.isSlicerACILLoaded():
-#             self.loadDataCollapsibleButton = ctk.ctkCollapsibleButton()
-#             self.loadDataCollapsibleButton.text = "Load data"
-# #             loadDataLayout = qt.QVBoxLayout(self.loadDataCollapsibleButton)
-#             self.loadSaveDatabuttonsWidget = CIPUI.LoadSaveDataWidget(parent=self.parent)
-#             self.loadSaveDatabuttonsWidget.setup(moduleName="CIP_BodyComposition")
-#             self.loadSaveDatabuttonsWidget.hide()
-# #             loadDataLayout.addWidget(self.loadDataCollapsibleButton)
-
+        self.labelmapNodeNameExtension = self.logic.settingGetOrSetDefault("{0}/labelmapNodeNameExtension".format(self.moduleName)
+                                                                           , "_bodyComposition")
 
         ####################
         # Place the main paramteres (region and type selection)
@@ -138,11 +154,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.btnRefresh.setIconSize(qt.QSize(20,20))
         self.btnRefresh.setStyleSheet("font-weight:bold; font-size:12px" )
         self.btnRefresh.setFixedWidth(200)
-        # At the moment we won' use this button
-        # self.structuresLayout.addWidget(self.btnRefresh, 0, 0)
-        
 
-        
         # Chest regions combo box
         self.cbRegion = qt.QComboBox(self.structuresCollapsibleButton)        
         index=0
@@ -231,15 +243,12 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.btnAnalysis2.setFixedWidth(200)
         self.statsButtonsFrame.layout().addWidget(self.btnAnalysis2)
         
-        # Export data button
-        self.btnExport = ctk.ctkPushButton()
-        self.btnExport.text = "Export to CSV file"
-        self.btnExport.visible = False 
-        self.btnExport.setIcon(qt.QIcon("{0}/export-csv.png".format(self.iconsPath)))
-        self.btnExport.setIconSize(qt.QSize(24,24))
-        self.btnExport.setFixedWidth(200)
-        self.statsButtonsFrame.layout().addWidget(self.btnExport)
-        
+        # Reports widget
+        self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
+                                               parent=self.statsButtonsFrame)
+        self.reportsWidget.setup()
+
+
         # Statistics table
         self.statsTableFrame = qt.QFrame(self.statisticsCollapsibleButton)
         self.statsTableFrame.setLayout(qt.QVBoxLayout())
@@ -256,9 +265,17 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         policy.setVerticalStretch(0)
         self.tableView.setSizePolicy(policy)
         # Hide the table until we have some volume loaded
-        self.tableView.visible = False 
-     
+        self.tableView.visible = False
         self.statsTableFrame.layout().addWidget(self.tableView)
+
+        # Export to CSV data button
+        self.btnExport = ctk.ctkPushButton()
+        self.btnExport.text = "Export to CSV file"
+        self.btnExport.visible = False
+        self.btnExport.setIcon(qt.QIcon("{0}/export-csv.png".format(self.iconsPath)))
+        self.btnExport.setIconSize(qt.QSize(24,24))
+        self.btnExport.setFixedWidth(200)
+        self.statsTableFrame.layout().addWidget(self.btnExport)
           
          #####
         # Case navigator
@@ -273,6 +290,8 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                                                            ,parentContainer=caseNavigatorAreaCollapsibleButton)
             self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_LABELMAP_LOADED, self.onNavigatorLabelmapLoaded)
 
+        # Add vertical spacer
+        self.layout.addStretch(1)
 
         # Check for updates in CIP
         #autoUpdate = SlicerUtil.settingGetOrSetDefault("CIP_BodyComposition", "AutoUpdate", 1)
@@ -284,27 +303,20 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
          
         # Try to select the default volume 
         self.checkMasterAndLabelMapNodes()
-      
-        # Listen for new nodes 
-        self.nodeObserver = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
-#         self.nodeAddedModifiedObserverTag = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
 
         # Connections
         # Recall: we are not connecting here cbType because its items will be loaded dynamically in "__loadTypesComboBox__" method
-        self.cbRegion.connect("currentIndexChanged (int)", self.onCbRegionCurrentIndexChanged)        
-        # self.loadSaveDatabuttonsWidget.addObservable(self.loadSaveDatabuttonsWidget.EVENT_LOAD, self.onLoadData)
-        # self.loadSaveDatabuttonsWidget.addObservable(self.loadSaveDatabuttonsWidget.EVENT_PRE_SAVE, self.onPreSaveData)
+        self.cbRegion.connect("currentIndexChanged (int)", self.onCbRegionCurrentIndexChanged)
+        # Listen for new nodes
+        self.nodeObserver = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
         self.btnRefresh2.connect("clicked()", self.onBtnSyncLabelmapClicked)
         self.btnRefresh.connect("clicked()", self.onBtnRefreshClicked)
-        self.btnAnalysis.connect("clicked()", self.populateStatisticsTable)
-        self.btnAnalysis2.connect("clicked()", self.populateStatisticsTable)
+        self.btnAnalysis.connect("clicked()", self.onBtnAnalysisClicked)
+        self.btnAnalysis2.connect("clicked()", self.onBtnAnalysisClicked)
         self.btnGoToNextStructure.connect("clicked()", self.onBtnNextClicked)     
         self.btnGoToPreviousStructure.connect("clicked()", self.onBtnPrevClicked)            
         self.btnExport.connect("clicked()", self.onBtnExportClicked)
-
-
-        # Add vertical spacer
-        self.layout.addStretch(1)
+        self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
 
         self.refreshGUI()
         
@@ -314,7 +326,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     def __setupCompositeNodes__(self):
         """Init the CompositeNodes so that the first one (typically Red) listen to events when the node is modified,
         and all the nodes are linked by default"""
-        
         nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLSliceCompositeNode")
         # Call necessary to allow the iteration.
         nodes.InitTraversal()
@@ -618,12 +629,12 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         
         try:
             # Perform the analysis (the result will be a list of StatsWrapper objects
-            labelAnalysisResults = self.logic.calculateStatistics(self.editorWidget.masterVolume, self.editorWidget.labelmapVolume, 
+            self.lastAnalysisResults = self.logic.calculateStatistics(self.editorWidget.masterVolume, self.editorWidget.labelmapVolume,
                                                                     labelmapSlices=self.labelMapSlices[self.editorWidget.labelmapVolume.GetID()], callbackStepFunction=self.updateProgressBar)
                         
             # Load rows
             row = 0
-            for labelStat in labelAnalysisResults:                
+            for labelStat in self.lastAnalysisResults:
                 descr = labelStat.LabelDescription
                 if labelStat.AdditionalDescription:
                     descr = "{0}. {1}".format(descr, labelStat.AdditionalDescription) 
@@ -714,7 +725,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                 self.statisticsTableModel.setItem(row,col,item)
                 self.items.append(item)
                 
-                row+=1
+                row += 1
             
             # Set headers and colums data
             # IMPORTANT: for some reason, this does not work if we do it before adding the items
@@ -760,7 +771,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                 
             # Expand the panel and collapse the rest of the widget ones
             self.statisticsCollapsibleButton.collapsed = False
-            #self.loadSaveDatabuttonsWidget.collapseWidget(True)
             self.structuresCollapsibleButton.collapsed = True
             self.__collapseEditorWidget__(False)
             
@@ -867,8 +877,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     def exportTableToCSV(self):
         """Export the current statistics table to a CSV file"""
         # Open a filesavedialog in the most recent 
-        dir = self.loadSaveDatabuttonsWidget.logic.getLoadFilesDirectory()
-        fileName = qt.QFileDialog.getSaveFileName(self.parent, "Export to CSV file", dir)
+        fileName = qt.QFileDialog.getSaveFileName(self.parent, "Export to CSV file")
         if fileName:
             cols = self.statisticsTableModel.columnCount()
             # Start in column 1 (colors are not exported). Export headers        
@@ -950,13 +959,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                     self.setCurrentLabelMapNode(slicer.mrmlScene.GetNodeByID(i[1]))
              
         self.checkMasterAndLabelMapNodes(forceSlicesReload=True) 
-        
-    def onPreSaveData(self):
-        if SlicerUtil.IsDevelopment:
-            print ("onPreSave: Set nodes to save")
-        self.loadSaveDatabuttonsWidget.currentVolumeDisplayed = self.editorWidget.masterVolume
-        self.loadSaveDatabuttonsWidget.currentLabelMapDispayed = self.editorWidget.labelmapVolume
-     
+
     def onBtnPrevClicked(self):        
         self.jumpSlice(backwards=True)
      
@@ -967,6 +970,9 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         labelmap = self.getCurrentLabelMapNode()
         if labelmap is not None:
             self.__sliceChecking__(labelmap, forceRefresh=True)
+
+    def onBtnAnalysisClicked(self):
+        self.populateStatisticsTable()
 
     def onBtnExportClicked(self):
         self.exportTableToCSV()
@@ -986,6 +992,36 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         """
         self.editorWidget.labelmapVolume = labelmapNode
         self.checkMasterAndLabelMapNodes(forceSlicesReload=True)
+
+    def onSaveReport(self):
+        """ Save the current values in a persistent csv file
+        :return:
+        """
+        volumeId = self.editorWidget.masterVolume.GetID()
+        if self.lastAnalysisResults is None or volumeId == "":
+            qt.QMessageBox.warning(slicer.util.mainWindow(), "Data not existing", "No statistics calculated")
+            return
+
+        caseName = slicer.mrmlScene.GetNodeByID(volumeId).GetName()
+        for stat in self.lastAnalysisResults:
+            self.reportsWidget.saveCurrentValues(
+                date = time.strftime("%Y/%m/%d %H:%M:%S"),
+                caseId = caseName,
+                regionType = stat.LabelCode,
+                label = stat.LabelDescription,
+                count = stat.Count,
+                area = stat.AreaMm2,
+                min = stat.Min,
+                max = stat.Max,
+                mean = stat.Mean,
+                std = stat.StdDev,
+                median = stat.Median,
+                numSlices = stat.NumSlices
+            )
+        qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+
+
+
 #
 # CIP_BodyCompositionLogic
 # This class makes all the operations not related with the user interface (download and handle volumes, etc.)
@@ -1355,7 +1391,7 @@ class CIP_BodyCompositionLogic(ScriptedLoadableModuleLogic):
         
         
 class StatsWrapper(object):
-    """Class that contains the results of a statisitc analysis for a label. 
+    """Class that contains the results of a statistic analysis for a label.
     Just for organized storage purpose"""
     LabelCode = 0
     LabelDescription = ""
