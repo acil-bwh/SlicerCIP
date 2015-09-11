@@ -4,7 +4,6 @@ from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
 
-
 import numpy as np
 import time
 
@@ -14,7 +13,7 @@ try:
 except Exception as ex:
     currentpath = os.path.dirname(os.path.realpath(__file__))
     # We assume that CIP_Common is in the development structure
-    path = os.path.normpath(currentpath + '/../../../SlicerCIP/Scripted/CIP_Common')
+    path = os.path.normpath(currentpath + '/../../Scripted/CIP_Common')
     if not os.path.exists(path):
         # We assume that CIP is a subfolder (Slicer behaviour)
         path = os.path.normpath(currentpath + '/CIP')
@@ -38,7 +37,8 @@ class CIP_LesionModel(ScriptedLoadableModule):
         self.parent.title = "CIP_LesionModel"
         self.parent.categories = SlicerUtil.CIP_ModulesCategory
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
-        self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory", "Brigham and Women's Hospital"]
+        self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory",
+                                    "Brigham and Women's Hospital"]
         self.parent.helpText = """Segment and model a lung lesion"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
@@ -74,20 +74,19 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.logic = CIP_LesionModelLogic()
         self.timer = qt.QTimer()
         self.timer.timeout.connect(self.checkAndRefreshModels)
-        self.lastRefreshValue = -5000 # Just a value out of range
+        self.lastRefreshValue = -5000  # Just a value out of range
         self.semaphoreOpen = False
 
-        #
-        # Create all the widgets. Example Area
+        #######################
+        # Main area
         mainAreaCollapsibleButton = ctk.ctkCollapsibleButton()
         mainAreaCollapsibleButton.text = "Main parameters"
         self.layout.addWidget(mainAreaCollapsibleButton)
         # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
         self.mainAreaLayout = qt.QFormLayout(mainAreaCollapsibleButton)
 
-
         self.inputVolumeSelector = slicer.qMRMLNodeComboBox()
-        self.inputVolumeSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
+        self.inputVolumeSelector.nodeTypes = ("vtkMRMLScalarVolumeNode", "")
         self.inputVolumeSelector.selectNodeUponCreation = True
         self.inputVolumeSelector.autoFillBackground = True
         self.inputVolumeSelector.addEnabled = False
@@ -95,10 +94,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.inputVolumeSelector.removeEnabled = False
         self.inputVolumeSelector.showHidden = False
         self.inputVolumeSelector.showChildNodeTypes = False
-        self.inputVolumeSelector.setMRMLScene( slicer.mrmlScene )
-        #self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
+        self.inputVolumeSelector.setMRMLScene(slicer.mrmlScene)
+        # self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
         self.mainAreaLayout.addRow("Select an input volume", self.inputVolumeSelector)
-        
+
         # self.outputVolumeSelector = slicer.qMRMLNodeComboBox()
         # #self.outputVolumeSelector.nodeTypes = ( "vtkMRMLLabelMapVolumeNode", "" )
         # self.outputVolumeSelector.nodeTypes = ("vtkMRMLScalarVolumeNode", "" )
@@ -119,7 +118,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # self.addFiducialsCheckbox.text = "Add fiducials as seeds"
         # self.mainAreaLayout.addWidget(self.addFiducialsCheckbox)
 
-        self.fiducialsList = {}
         self.addFiducialButton = ctk.ctkPushButton()
         self.addFiducialButton.text = "Add new seed"
         self.addFiducialButton.setFixedWidth(100)
@@ -133,13 +131,13 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.fiducialsContainerFrame.setLayout(qt.QVBoxLayout())
         self.mainAreaLayout.addWidget(self.fiducialsContainerFrame)
 
-         # Example button with some common properties
+        # Example button with some common properties
         self.applySegmentationButton = ctk.ctkPushButton()
         self.applySegmentationButton.text = "Segment!"
         self.applySegmentationButton.toolTip = "This is the button toolTip"
         self.applySegmentationButton.setIcon(qt.QIcon("{0}/Reload.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.applySegmentationButton.setIconSize(qt.QSize(20,20))
-        self.applySegmentationButton.setStyleSheet("font-weight:bold; font-size:12px" )
+        self.applySegmentationButton.setIconSize(qt.QSize(20, 20))
+        self.applySegmentationButton.setStyleSheet("font-weight:bold; font-size:12px")
         self.applySegmentationButton.setFixedWidth(200)
         self.mainAreaLayout.addRow("Segment the node: ", self.applySegmentationButton)
 
@@ -147,33 +145,76 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.progressBar.visible = False
         self.mainAreaLayout.addWidget(self.progressBar)
 
-
         self.distanceLevelSlider = qt.QSlider()
-        self.distanceLevelSlider.orientation = 1 # Horizontal
+        self.distanceLevelSlider.orientation = 1  # Horizontal
         self.distanceLevelSlider.minimum = -50  # Ad-hoc value
         self.distanceLevelSlider.maximum = 50
         self.distanceLevelSlider.enabled = False
         self.mainAreaLayout.addRow("Select a threshold: ", self.distanceLevelSlider)
 
-        # Case navigator widget
-        caseNavigatorCollapsibleButton = ctk.ctkCollapsibleButton()
-        caseNavigatorCollapsibleButton.text = "Case navigator (advanced)"
-        self.layout.addWidget(caseNavigatorCollapsibleButton)
-        caseNavigatorAreaLayout = qt.QHBoxLayout(caseNavigatorCollapsibleButton)
+        ######################
+        # Anaysis area
+        analysisAreaCollapsibleButton = ctk.ctkCollapsibleButton()
+        analysisAreaCollapsibleButton.text = "Analysis"
+        self.layout.addWidget(analysisAreaCollapsibleButton)
+        # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
+        self.analysisAreaLayout = qt.QVBoxLayout(analysisAreaCollapsibleButton)
 
+        self.histogramIntensityCheckBox = qt.QCheckBox()
+        self.histogramIntensityCheckBox.setText("Histogram statistics")
+        self.histogramIntensityCheckBox.setChecked(True)
+        self.analysisAreaLayout.addWidget(self.histogramIntensityCheckBox)
+
+        self.localHistogramCheckBox = qt.QCheckBox()
+        self.localHistogramCheckBox.setText("Local histogram statistics (Parenchymal Volume)")
+        self.localHistogramCheckBox.setChecked(False)
+        self.analysisAreaLayout.addWidget(self.localHistogramCheckBox)
+
+        self.texturalCheckBox = qt.QCheckBox()
+        self.texturalCheckBox.setText("Textural statistics")
+        self.texturalCheckBox.setChecked(False)
+        self.analysisAreaLayout.addWidget(self.texturalCheckBox)
+
+        self.vasculaturityCheckBox = qt.QCheckBox()
+        self.vasculaturityCheckBox.setText("Vascularity statistics")
+        self.vasculaturityCheckBox.setChecked(False)
+        self.analysisAreaLayout.addWidget(self.vasculaturityCheckBox)
+
+        self.radiusTextBox = qt.QLineEdit()
+        self.radiusTextBox.setText("30")
+        self.analysisAreaLayout.addWidget(self.radiusTextBox)
+
+
+        runAnalysisButton = ctk.ctkPushButton()
+        runAnalysisButton.setText("Run selected analysis")
+        runAnalysisButton.setFixedWidth(200)
+        self.analysisAreaLayout.addWidget(runAnalysisButton)
+
+        ######################
+        # Case navigator widget
         if SlicerUtil.isSlicerACILLoaded():
             # Add a case list navigator
+            caseNavigatorCollapsibleButton = ctk.ctkCollapsibleButton()
+            caseNavigatorCollapsibleButton.text = "Case navigator (advanced)"
+            self.layout.addWidget(caseNavigatorCollapsibleButton)
+            caseNavigatorAreaLayout = qt.QHBoxLayout(caseNavigatorCollapsibleButton)
+
             from ACIL.ui import CaseNavigatorWidget
-            self.caseNavigatorWidget = CaseNavigatorWidget(parentModuleName="CIP_LesionModel", parentContainer=caseNavigatorAreaLayout)
+            self.caseNavigatorWidget = CaseNavigatorWidget(parentModuleName="CIP_LesionModel",
+                                                           parentContainer=caseNavigatorAreaLayout)
 
+
+        ######################
         # Connections
-        self.applySegmentationButton.connect('clicked()', self.onApplySegmentationButton)
-        self.addFiducialButton.connect('clicked(bool)', self.onAddFiducialClicked)
+        self.applySegmentationButton.connect('clicked()', self.__onApplySegmentationButtonClicked__)
+        self.addFiducialButton.connect('clicked(bool)', self.__onAddFiducialButtonClicked__)
 
-        self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onInputVolumeChanged)
+        self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onInputVolumeChanged__)
         slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__)
-        #self.distanceLevelSlider.connect('valueChanged(int)', self.onDistanceSliderChanged)
-        #self.distanceLevelSlider.connect('sliderReleased()', self.onDistanceSliderChanged)
+        # self.distanceLevelSlider.connect('valueChanged(int)', self.onDistanceSliderChanged)
+        # self.distanceLevelSlider.connect('sliderReleased()', self.onDistanceSliderChanged)
+
+        runAnalysisButton.connect("clicked()", self.__onRunAnalysisButtonClicked__)
 
         self.__refreshUI__()
 
@@ -212,8 +253,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # >>> headerItem.setIcon(qt.QIcon(":/Icons/Small/SlicerVisibleInvisible.png"))
         # >>> headerItem.setToolTip("Click in this column to show/hide markups in 2D and 3D")
 
-
-
     # def updateRow(self, index):
     #     #markupsNode = self.logic.getFiducialsListNode(self.inputVolumeSelector.currentNodeID)
     #     markupsNode = f
@@ -225,11 +264,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
         if self.inputVolumeSelector.currentNodeID != '':
-            self.logic.getFiducialsListNode(self.inputVolumeSelector.currentNodeID, self.onFiducialsNodeModified)
+            self.logic.getFiducialsListNode(self.inputVolumeSelector.currentNodeID, self.__onFiducialsNodeModified__)
             self.logic.setActiveVolume(self.inputVolumeSelector.currentNodeID)
 
             if not self.timer.isActive() \
-                and self.logic.currentLabelmap is not None:       # Segmentation was already performed
+                    and self.logic.currentLabelmap is not None:  # Segmentation was already performed
                 self.timer.start(500)
 
         self.__refreshUI__()
@@ -245,7 +284,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Apply segmentation button allowed only if there is at least one seed
         if self.inputVolumeSelector.currentNodeID != "" and \
-            self.logic.getNumberOfFiducials(self.inputVolumeSelector.currentNodeID) > 0:
+                        self.logic.getNumberOfFiducials(self.inputVolumeSelector.currentNodeID) > 0:
             self.applySegmentationButton.enabled = True
             self.applySegmentationButton.toolTip = "Run the segmentation algorithm"
         else:
@@ -264,13 +303,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
     def __removeFiducialsFrames__(self):
         """ Remove all the possible fiducial frames that can remain obsolete (for example after closing a scene)
-        :return:
         """
-        count = len(self.fiducialsContainerFrame.children())
-        if count > 1:
-            # There are frames to remove
-            for i in range(1, count):
-                self.fiducialsContainerFrame.children()[i].delete()
+        while len(self.fiducialsContainerFrame.children()) > 1:
+            self.fiducialsContainerFrame.children()[1].hide()
+            self.fiducialsContainerFrame.children()[1].delete()
 
     def __setAddSeedsMode__(self, enabled):
         """ When enabled, the cursor will be enabled to add new fiducials that will be used for the segmentation
@@ -278,9 +314,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         :return:
         """
         applicationLogic = slicer.app.applicationLogic()
-        interactionNode = applicationLogic.GetInteractionNode()
         if enabled:
-            #print("DEBUG: entering __setAddSeedsMode__ - after enabled")
+            # print("DEBUG: entering __setAddSeedsMode__ - after enabled")
             if self.__validateInputVolumeSelection__():
                 # Get the fiducials node
                 fiducialsNodeList = self.logic.getFiducialsListNode(self.inputVolumeSelector.currentNodeID)
@@ -290,16 +325,18 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 selectionNode = applicationLogic.GetSelectionNode()
                 selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLMarkupsFiducialNode")
 
-                #print("DEBUG: enabling fiducials again...")
-
-                # interactionNode.SwitchToSinglePlaceMode()
-                interactionNode.SetCurrentInteractionMode(1)    # Enable fiducials mode. TODO: NOT WORKING!! (I think because of a event handling problem)
+                # Enable fiducials mode
+                SlicerUtil.setFiducialsMode(True, False)
         else:
             # Regular cursor mode (not fiducials)
-            interactionNode.SetCurrentInteractionMode(2)
+            SlicerUtil.setFiducialsMode(False)
 
-    def _addFiducialRow_(self, fiducialsNode):
-        if self.semaphoreOpen:      # To avoid the problem of duplicated events
+    def addFiducialRow(self, fiducialsNode):
+        """ Add a new row in the fiducials checkboxes section
+        :param fiducialsNode:
+        :return:
+        """
+        if self.semaphoreOpen:  # To avoid the problem of duplicated events
             frame = qt.QFrame()
             frameLayout = qt.QHBoxLayout()
             frame.setLayout(frameLayout)
@@ -309,11 +346,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             # Checkbox to select/unselect
             selectFiducialsCheckbox = qt.QCheckBox()
             selectFiducialsCheckbox.checked = True
-            selectFiducialsCheckbox.text = "Seed " + str(n+1)
+            selectFiducialsCheckbox.text = "Seed " + str(n + 1)
             selectFiducialsCheckbox.toolTip = "Check/uncheck to include/exclude this seed"
             selectFiducialsCheckbox.objectName = n
             frameLayout.addWidget(selectFiducialsCheckbox)
-            selectFiducialsCheckbox.clicked.connect(lambda: self.onFiducialCheckClicked(selectFiducialsCheckbox))
+            selectFiducialsCheckbox.clicked.connect(lambda: self.__onFiducialCheckClicked__(selectFiducialsCheckbox))
 
 
             # Remove button?
@@ -331,8 +368,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
             self.semaphoreOpen = False
 
-        # self.fiducialsList[displayNodeID] = frame
-
     def __validateInputVolumeSelection__(self):
         """ Check there is a valid input and/or output volume selected. Otherwise show a warning message
         :return: True if the validations are passed or False otherwise
@@ -349,38 +384,45 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         return True
 
-
     def checkAndRefreshModels(self, forceRefresh=False):
-        """ Refresh the GUI if the slider value has changed since the last time
-        :return:
-        """
+        """ Refresh the GUI if the slider value has changed since the last time"""
         if forceRefresh or self.lastRefreshValue != self.distanceLevelSlider.value:
             # Refresh slides
-            #print("DEBUG: updating labelmaps with value:", float(self.distanceLevelSlider.value)/100)
-            self.logic.updateModels(float(self.distanceLevelSlider.value)/100)
+            # print("DEBUG: updating labelmaps with value:", float(self.distanceLevelSlider.value)/100)
+            self.logic.updateModels(float(self.distanceLevelSlider.value) / 100)
             self.lastRefreshValue = self.distanceLevelSlider.value
 
             # Refresh visible windows
             SlicerUtil.refreshActiveWindows()
 
-
     def activateCurrentLabelmap(self):
-        """ Display the right labelmap for the current background node if it exists...
-        :return:
-        """
-         # Set the current labelmap active
+        """ Display the right labelmap for the current background node if it exists"""
+        # Set the current labelmap active
         selectionNode = slicer.app.applicationLogic().GetSelectionNode()
         selectionNode.SetReferenceActiveVolumeID(self.inputVolumeSelector.currentNodeID)
 
         selectionNode.SetReferenceActiveLabelVolumeID(self.logic.currentLabelmap.GetID())
         slicer.app.applicationLogic().PropagateVolumeSelection(0)
 
-    ####
-    #### Events
-    def onInputVolumeChanged(self, node):
+    def calculateSelectedStatistics(self):
+        # Get the distance map to calculate the required sphere
+        self.logic.calculateCurrentDistanceMap()
+        if self.histogramIntensityCheckBox.checked:
+            stats = self.logic.calculateCurrentHistogramIntensityStats()
+        print("DEBUG: histogram statistics:")
+        print(stats)
+
+
+
+    ############
+    # Events
+    def __onInputVolumeChanged__(self, node):
+        """ Input volume selector changed
+        :param node: selected node
+        """
         if node is not None:
             # Create the fiducials node in case it doesn't exist yet
-            self.logic.getFiducialsListNode(node.GetID(), self.onFiducialsNodeModified)
+            self.logic.getFiducialsListNode(node.GetID(), self.__onFiducialsNodeModified__)
             # Switch to the current node
             self.logic.setActiveVolume(node.GetID())
 
@@ -390,7 +432,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         self.__refreshUI__()
 
-    def onAddFiducialClicked(self, checked):
+    def __onAddFiducialButtonClicked__(self, checked):
+        """ Click the add fiducial button so that we set the cursor in fiducial mode
+        :param checked:
+        :return:
+        """
         self.semaphoreOpen = True
         if not (self.__validateInputVolumeSelection__()):
             self.addFiducialButton.checked = False
@@ -398,19 +444,23 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         self.__setAddSeedsMode__(checked)
 
-
-    def onApplySegmentationButton(self):
+    def __onApplySegmentationButtonClicked__(self):
         if self.__validateInputVolumeSelection__():
-            result = self.logic.callNoduleSegmentationCLI(self.inputVolumeSelector.currentNodeID, self.onCLISegmentationFinished)
+            result = self.logic.callNoduleSegmentationCLI(self.inputVolumeSelector.currentNodeID,
+                                                          self.__onCLISegmentationFinished__)
             self.progressBar.setCommandLineModuleNode(result)
             self.progressBar.visible = True
 
             # Calculate meshgrid in parallel
-            #self.logic.buildMeshgrid(self.inputVolumeSelector.currentNode())
+            # self.logic.buildMeshgrid(self.inputVolumeSelector.currentNode())
 
-    def onFiducialsNodeModified(self, nodeID, event):
-        #print("DEBUG: Fiducials node modified.", nodeID)
-        self._addFiducialRow_(nodeID)
+    def __onFiducialsNodeModified__(self, nodeID, event):
+        """ The active fiducials node has been modified because we added or removed a fiducial
+        :param nodeID: Current node id
+        :param event:
+        """
+        # print("DEBUG: Fiducials node modified.", nodeID)
+        self.addFiducialRow(nodeID)
         self.__refreshUI__()
 
     # def onFiducialButtonClicked(self, button):
@@ -420,7 +470,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     #     fiducialsNode = slicer.util.getNode(logic.GetActiveListID())
     #     fiducialsNode.SetNthFiducialSelected(n, not button.checked)
 
-    def onFiducialCheckClicked(self, checkBox):
+    def __onFiducialCheckClicked__(self, checkBox):
         """ Click in one of the checkboxes that is associated with every fiducial
         :param checkBox: checkbox that has been clicked
         :return:
@@ -434,8 +484,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         if checkBox.checked:
             logic.JumpSlicesToNthPointInMarkup(fiducialsNode.GetID(), n, True)
 
-
-    def onCLISegmentationFinished(self):
+    def __onCLISegmentationFinished__(self):
         """ Triggered when the CLI segmentation has finished the work.
         This is achieved because this is the function that we specify as a callback
         when calling the function "callCLI" in the logic class
@@ -456,10 +505,16 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # Start the timer that will refresh all the visualization nodes
         self.timer.start(500)
 
+    def __onRunAnalysisButtonClicked__(self):
+        """ Calculate the selected statistics """
+        self.calculateSelectedStatistics()
+
 
     def __onSceneClosed__(self, arg1, arg2):
         self.logic = CIP_LesionModelLogic()
         self.timer.stop()
+        # Clean fiducials area
+        self.__removeFiducialsFrames__()
 
     def exit(self):
         """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
@@ -471,28 +526,33 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         self.timer.stop()
 
+
+#############################
 # CIP_LesionModelLogic
-#
+#############################
 class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     def __init__(self):
-        self.currentVolume = None           # Current active volume
-        self.currentLabelmap = None         # Current label map that contains the nodule segmentation for the current threshold (same size as the volume)
-        self.currentLabelmapArray = None    # Numpy array that represents the current label map
-        self.cliOutputScalarNode = None     # Scalar volume that the CLI returns. This will be a cropped volume
+        self.cipMeasurements = CIP_Measurements()
 
-        self.currentModelNodeId = None      # 3D model volume id
-        self.defaultThreshold = 0           # Default threshold for the map distance used in the nodule segmentation
+        self.currentVolume = None  # Current active volume
+        self.currentVolumeArray = None  # Numpy array that represents the current volume
+        self.currentLabelmap = None  # Current label map that contains the nodule segmentation for the current threshold (same size as the volume)
+        self.currentLabelmapArray = None  # Numpy array that represents the current label map
+        self.cliOutputScalarNode = None  # Scalar volume that the CLI returns. This will be a cropped volume
+
+        self.currentModelNodeId = None  # 3D model volume id
+        self.defaultThreshold = 0  # Default threshold for the map distance used in the nodule segmentation
         self.onCLISegmentationFinishedCallback = None
 
         # self.origin = None                  # Current origin (centroid of the nodule)
-        self.currentDistanceMap = None      # Current distance map from the specified origin
+        self.currentDistanceMap = None  # Current distance map from the specified origin
+
 
     @property
     def currentModelNode(self):
         if self.currentModelNodeId is None:
             return None
         return slicer.util.getNode(self.currentModelNodeId)
-
 
 
     ##############################
@@ -526,10 +586,10 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         markupsLogic = slicer.modules.markups.logic()
         fiducialsNode = slicer.util.getNode(fiducialsNodeName)
         if fiducialsNode is not None:
-            return False    # Node already created
+            return False  # Node already created
 
         # Create new fiducials node
-        fiducialListNodeID = markupsLogic.AddNewFiducialNode(fiducialsNodeName,slicer.mrmlScene)
+        fiducialListNodeID = markupsLogic.AddNewFiducialNode(fiducialsNodeName, slicer.mrmlScene)
         fiducialsNode = slicer.util.getNode(fiducialListNodeID)
         # Make the new fiducials node the active one
         markupsLogic.SetActiveListID(fiducialsNode)
@@ -537,9 +597,9 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         fiducialsNode.SetMarkupLabelFormat('')
         displayNode = fiducialsNode.GetDisplayNode()
         # displayNode.SetColor([1,0,0])
-        displayNode.SetSelectedColor([1,0,0])
+        displayNode.SetSelectedColor([1, 0, 0])
         displayNode.SetGlyphScale(4)
-        displayNode.SetGlyphType(8)     # Diamond shape (I'm so cool...)
+        displayNode.SetGlyphType(8)  # Diamond shape (I'm so cool...)
 
         # Add observer when specified
         if onModifiedCallback is not None:
@@ -571,9 +631,9 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
 
         # Create new fiducials node
         if self.__createFiducialsListNode__(fiducialsNodeName, onModifiedCallback):
-            return slicer.util.getNode(fiducialsNodeName)   # return the created node
+            return slicer.util.getNode(fiducialsNodeName)  # return the created node
 
-        return None     # The process failed
+        return None  # The process failed
 
     def getNumberOfFiducials(self, volumeId):
         """ Get the number of fiducials currently set for this volume
@@ -583,19 +643,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         fid = self.getFiducialsListNode(volumeId)
         if fid:
             return fid.GetNumberOfMarkups()
-        return None     # Error
-
-    # def getFiducialsList(self, volumeId):
-    #     """ Get a list of lists with the fiducials for this volume.
-    #      Each of them will contain a 3-point array of LPS coordinates that indicates the position of the fiducial
-    #     """
-    #     fiducialsNode = self.getFiducialsListNode(volumeId)
-    #     points = [0,0,0]
-    #     result = []
-    #     for i in range(fiducialsNode.GetNumberOfFiducials()):
-    #         fiducialsNode.GetMarkupPointLPS(i, 0, points)
-    #         result.append(points)
-    #     return result
+        return None  # Error
 
 
     ##############################
@@ -623,7 +671,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         parameters["outputLevelSet"] = self.cliOutputScalarNode
         parameters["seedsFiducials"] = self.getFiducialsListNode(inputVolumeID)
         parameters["fullSizeOutput"] = True
-        self.invokedCLI = False     # Semaphore to avoid duplicated events
+        self.invokedCLI = False  # Semaphore to avoid duplicated events
 
         module = slicer.modules.generatelesionsegmentation
         result = slicer.cli.run(module, None, parameters)
@@ -642,7 +690,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         :return:
         """
         if caller.IsA('vtkMRMLCommandLineModuleNode') \
-              and not self.invokedCLI:      # Semaphore to avoid duplicated events
+                and not self.invokedCLI:  # Semaphore to avoid duplicated events
             if caller.GetStatusString() == "Completed":
                 self.invokedCLI = True
                 self.__processNoduleSegmentationCLIResults__()
@@ -661,8 +709,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.thresholdFilter.SetInputData(self.cliOutputScalarNode.GetImageData())
         self.thresholdFilter.SetReplaceOut(True)
         self.thresholdFilter.SetOutValue(0)  # Value of the background
-        self.thresholdFilter.SetInValue(1)   # Value of the segmented nodule
-
+        self.thresholdFilter.SetInValue(1)  # Value of the segmented nodule
 
         labelmapName = self.currentVolume.GetID() + '_lm'
         self.currentLabelmap = slicer.util.getNode(labelmapName)
@@ -670,10 +717,9 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             # Create a labelmap with the same dimensions that the ct volume
             self.currentLabelmap = SlicerUtil.getLabelmapFromScalar(self.cliOutputScalarNode, labelmapName)
 
-
         self.currentLabelmap.SetImageDataConnection(self.thresholdFilter.GetOutputPort())
         self.marchingCubesFilter = vtk.vtkMarchingCubes()
-        #self.marchingCubesFilter.SetInputConnection(self.thresholdFilter.GetOutputPort())
+        # self.marchingCubesFilter.SetInputConnection(self.thresholdFilter.GetOutputPort())
         self.marchingCubesFilter.SetInputData(self.cliOutputScalarNode.GetImageData())
         self.marchingCubesFilter.SetValue(0, self.defaultThreshold)
 
@@ -692,7 +738,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             # Delegate the responsibility of updating the models with a chosen threshold (regular case)
             self.onCLISegmentationFinishedCallback()
         else:
-            self.updateModels(self.defaultThreshold)    # Use default threshold value
+            self.updateModels(self.defaultThreshold)  # Use default threshold value
 
         if newNode:
             # Align the model with the segmented labelmap applying a transformation
@@ -705,8 +751,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             threeDView = threeDWidget.threeDView()
             threeDView.resetFocalPoint()
 
-
-    def updateModels(self, newThreshold, radius=30):
+    def updateModels(self, newThreshold):
         """ Modify the threshold for the current volume (update the models)
         :param newThreshold: new threshold (all the voxels below this threshold will be considered nodule)
         """
@@ -717,133 +762,212 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.marchingCubesFilter.Update()
         self.currentLabelmapArray = slicer.util.array(self.currentLabelmap.GetName())
 
-        centroid = Util.centroid(self.currentLabelmapArray)
-        lmNode2 = slicer.util.getNode("Sphere")
-        if lmNode2 is None:
-            lmNode2 = SlicerUtil.cloneVolume(self.currentLabelmap, "Sphere")
-        array = slicer.util.array(lmNode2.GetName())
+
+
+    def calculateCurrentDistanceMap(self):
+        """ Calculate the distance map to the centroid for the current labelmap volume.
+        To that end, we have to calculate first the centroid.
+        Please note the results could be cached
+        :return:
+        """
+        # lmNode2 = slicer.util.getNode("Sphere")
+        # if lmNode2 is None:
+        #     lmNode2 = SlicerUtil.cloneVolume(self.currentLabelmap, "Sphere")
+        #array = slicer.util.array(lmNode2.GetName())
         if self.currentDistanceMap is None:
+            centroid = self.cipMeasurements.centroid(self.currentLabelmapArray)
             # Calculate the distance map for the specified origin
-            self.currentDistanceMap = self.getCurrentDistanceMap(centroid)
-        array[self.currentDistanceMap <= radius**2] = 2
-        lmNode2.GetImageData().Modified()
+            self.currentDistanceMap = self.cipMeasurements.get_current_distance_map(self.currentVolume, centroid)
+            #array[self.currentDistanceMap <= radius ** 2] = 2
+            #lmNode2.GetImageData().Modified()
+
+    def calculateCurrentHistogramIntensityStats(self):
+        """ Calculate the current histogram statistics and also get the current
+        numpy arrays for volume and labelmap
+        :return:
+        """
+        if self.currentVolumeArray is None:
+            self.currentVolumeArray = slicer.util.array(self.currentVolume.GetName())
+
+        if self.currentLabelmapArray is None:
+            self.currentLabelmapArray = slicer.util.array(self.currentLabelmap.GetName())
+
+        spacing = self.currentVolume.GetSpacing()
+        stats = self.cipMeasurements.histogram_intensity_basic_statistics_array(self.currentVolumeArray,
+                                                                    self.currentLabelmapArray, spacing)
+        return stats
 
 
-    ## OPERATIONS
-    def getCurrentDistanceMap(self, origin, maxRadius=30):
+
+
+
+        # def __processCLIResults__(self):
+        #     """ Method called once that the cli has finished the process.
+        #     Create a new labelmap with the result of the process
+        #     """
+        #     print("DEBUG: processing results from CLI...")
+        #     volumesLogic = slicer.modules.volumes.logic()
+        #
+        #     # Create a numpy array for the processed result
+        #     self.cliOutputArray =  slicer.util.array(self.cliOutputScalarNode.GetName())
+        #
+        #     # Remove the current labelmap if it already existed
+        #     slicer.mrmlScene.RemoveNode(self.currentLabelmap)
+        #     # Create a new labelmap for the segmented volume (we have to adapt it to the new labelmap type)
+        #     labelmapName = self.currentVolume.GetID() + '_lm'
+        #     self.currentLabelmap = Util.convertScalarToLabelmap(self.cliOutputScalarNode, labelmapName)
+        #     # Get a numpy array to work with the labelmap
+        #     self.currentLabelmapArray = slicer.util.array(labelmapName)
+        #
+        #     #print("DEBUG: labelmap array created. Shape: ", self.currentLabelmapArray.shape)
+        #     # Model render
+        #     logic = slicer.modules.volumerendering.logic()
+        #     displayNode = logic.GetFirstVolumeRenderingDisplayNode(self.currentLabelmap)
+        #     if displayNode is None:
+        #         # Create the rendering infrastructure
+        #         displayNode = logic.CreateVolumeRenderingDisplayNode()
+        #         slicer.mrmlScene.AddNode(displayNode)
+        #         logic.UpdateDisplayNodeFromVolumeNode(displayNode, self.currentLabelmap)
+        #
+        #     # Invoke the callback if specified
+        #     if self.onCLISegmentationFinishedCallback is not None:
+        #         self.onCLISegmentationFinishedCallback()
+
+        # def updateLabelmap(self, newValue):
+        #     """ Update the labelmap representing the segmentation. Depending on the value the
+        #     user will see a "bigger" or "smaller" segmentation.
+        #     This is based on numpy modification.
+
+        #     if self.currentLabelmap:
+        #         self.currentLabelmapArray[:] = 0
+        #         self.currentLabelmapArray[self.cliOutputArray >= newValue] = 1
+        #         self.currentLabelmap.GetImageData().Modified()
+
+        # def createAndAddToSceneWrapperScalarNode(self, bigNode, smallNode):
+        #     # Clone the big node
+        #     vl = slicer.modules.volumes.logic()
+        #     copyVol = vl.CloneVolume(slicer.mrmlScene, bigNode, bigNode.GetName() + "_copy")
+        #     # Get the associated numpy array
+        #     copyArray = slicer.util.array(copyVol.GetName())
+        #     # Reset all the values
+        #     copyArray[:] = 0
+        #     # Get the associated numpy array for the small node
+        #     smallArray = slicer.util.array(smallNode.GetName())
+        #
+        #     # Calculate the offsets
+        #     offset = [copyArray.shape[0]-smallArray.shape[0], copyArray.shape[1]-smallArray.shape[1], copyArray.shape[2]-smallArray.shape[2]]
+        #
+
+
+# import numpy as np
+# from CIP.logic import Util
+
+class CIP_Measurements(object):
+    """ Class that will be used to perform all the measurements and other operations in Nodules module.
+    The operations may be reused by another modules.
+    """
+    def __init__(self):
+        pass
+
+    def centroid(self, numpyArray, labelId=1):
+        """ Calculate the coordinates of a centroid for a concrete labelId (default=1)
+        :param numpyArray: numpy array
+        :param labelId: label id (dafault = 1)
+        :return: numpy array with the coordinates (int format)
+        """
+        mean = np.mean(np.where(numpyArray == labelId), axis=1)
+        return np.asarray(np.round(mean, 0), np.int)
+
+    def get_current_distance_map(self, volume, origin, max_radius=30):
         """ Calculate a distance map from the origin (zyx coords) in the specified volume
-        :param volume: volume (it can be a labelmap too)
+        :param volume: vtk scalar volume (it can be a labelmap too)
         :param origin: coordinates of the origin (ijk)
         :return:
         """
         # Get the dimensions of the volume
-        dims = self.currentVolume.GetImageData().GetDimensions()
+        dims = volume.GetImageData().GetDimensions()
         dims = (dims[2], dims[1], dims[0])
         # Get the spacing of the volume (it must be "reversed" compared to the dimensions ob the object)
-        spacing = self.currentVolume.GetSpacing()
+        spacing = volume.GetSpacing()
 
-        dm = Util.get_distance_map_fast_marching(dims, spacing, origin, stopping_value=maxRadius)
+        dm = Util.get_distance_map_fast_marching(dims, spacing, origin, stopping_value=max_radius)
         # Return a squared distance to make it easier to filter by radius
         return dm * dm
 
+    def histogram_intensity_basic_statistics_array(self, intensity_array, labelmap_array, spacing, label=1):
+        """ Get a dictionary with basic statistics based on histogram (average, max, min, etc.)
+        :param intensity_array: numpy array for the volume
+        :param labelmap_array: numpy array for the labelmap volume
+        :param spacing: 3 spacings
+        :param label: label to analyze (default: 1)
+        :return: dictionary with the following key-values:
+            - count (total pixel count)
+            - volume (total volume in mm3)
+            - mean (intensity)
+            - max (intensity)
+            - min (intensity)
+            - std (intensity)
+            - median (intensity)
+        """
+        # Get the numpy arrays
+        result = {
+            "count": 0,
+            "volume": 0,
+            "mean": 0,
+            "min": 0,
+            "max": 0,
+            "std": 0,
+            "median": 0
+        }
 
+        # Get all pixels with this label
+        t = (labelmap_array == label)
+        count = t.sum()
+        result["count"] = count
 
+        if count == 0:
+            # If all the values are 0, it is not neccesary to calculate anything else (just return an empty object)
+            return result
 
+        # Perform the calulations.
+        filtered = intensity_array[t]
+        result["volume"] = count * spacing[0] * spacing[1] * spacing[2]
+        result["mean"] = filtered.mean()
+        result["min"] = filtered.min()
+        result["max"] = filtered.max()
+        result["std"] = filtered.std()
+        result["median"] = np.median(filtered)
 
+        return result
 
+    def histogram_intensity_basic_statistics(self, intensity_volume, labelmap_volume, label=1, return_numpy_arrays=False):
+        """ Get a dictionary with basic statistics based on histogram (average, max, min, etc.)
+        :param intensity_volume: intensity vtk scalar volume
+        :param labelmap_volume: labelmap volume
+        :param label: label to analyze (default: 1)
+        :param return_numpy_arrays: when True, return the numpy arrays that represent the intensity and labelmap volumes
+        :return: dictionary with the following key-values:
+            - count (total pixel count)
+            - volume (total volume in mm3)
+            - average (intensity)
+            - max (intensity)
+            - min (intensity)
+            - std (intensity)
+            - median (intensity)
 
+            When "return_numpy_arrays==True", it also returns the intensity and labelmap numpy arrays corresponding
+            the volumes
+        """
+        # Get the numpy arrays
+        intensity_array = Util.vtk_to_numpy_array(intensity_volume.GetImageData())
+        labelmap_array = Util.vtk_to_numpy_array(labelmap_volume.GetImageData())
+        spacing = intensity_volume.GetSpacing()
+        results = self.histogram_intensity_basic_statistics_array(intensity_array, labelmap_array, spacing, label)
 
-
-    # def __processCLIResults__(self):
-    #     """ Method called once that the cli has finished the process.
-    #     Create a new labelmap with the result of the process
-    #     """
-    #     print("DEBUG: processing results from CLI...")
-    #     volumesLogic = slicer.modules.volumes.logic()
-    #
-    #     # Create a numpy array for the processed result
-    #     self.cliOutputArray =  slicer.util.array(self.cliOutputScalarNode.GetName())
-    #
-    #     # Remove the current labelmap if it already existed
-    #     slicer.mrmlScene.RemoveNode(self.currentLabelmap)
-    #     # Create a new labelmap for the segmented volume (we have to adapt it to the new labelmap type)
-    #     labelmapName = self.currentVolume.GetID() + '_lm'
-    #     self.currentLabelmap = Util.convertScalarToLabelmap(self.cliOutputScalarNode, labelmapName)
-    #     # Get a numpy array to work with the labelmap
-    #     self.currentLabelmapArray = slicer.util.array(labelmapName)
-    #
-    #     #print("DEBUG: labelmap array created. Shape: ", self.currentLabelmapArray.shape)
-    #     # Model render
-    #     logic = slicer.modules.volumerendering.logic()
-    #     displayNode = logic.GetFirstVolumeRenderingDisplayNode(self.currentLabelmap)
-    #     if displayNode is None:
-    #         # Create the rendering infrastructure
-    #         displayNode = logic.CreateVolumeRenderingDisplayNode()
-    #         slicer.mrmlScene.AddNode(displayNode)
-    #         logic.UpdateDisplayNodeFromVolumeNode(displayNode, self.currentLabelmap)
-    #
-    #     # Invoke the callback if specified
-    #     if self.onCLISegmentationFinishedCallback is not None:
-    #         self.onCLISegmentationFinishedCallback()
-
-    # def updateLabelmap(self, newValue):
-    #     """ Update the labelmap representing the segmentation. Depending on the value the
-    #     user will see a "bigger" or "smaller" segmentation.
-    #     This is based on numpy modification.
-
-    #     if self.currentLabelmap:
-    #         self.currentLabelmapArray[:] = 0
-    #         self.currentLabelmapArray[self.cliOutputArray >= newValue] = 1
-    #         self.currentLabelmap.GetImageData().Modified()
-
-    # def createAndAddToSceneWrapperScalarNode(self, bigNode, smallNode):
-    #     # Clone the big node
-    #     vl = slicer.modules.volumes.logic()
-    #     copyVol = vl.CloneVolume(slicer.mrmlScene, bigNode, bigNode.GetName() + "_copy")
-    #     # Get the associated numpy array
-    #     copyArray = slicer.util.array(copyVol.GetName())
-    #     # Reset all the values
-    #     copyArray[:] = 0
-    #     # Get the associated numpy array for the small node
-    #     smallArray = slicer.util.array(smallNode.GetName())
-    #
-    #     # Calculate the offsets
-    #     offset = [copyArray.shape[0]-smallArray.shape[0], copyArray.shape[1]-smallArray.shape[1], copyArray.shape[2]-smallArray.shape[2]]
-    #
-
-# import numpy as np
-# import math
-#
-# class CIP_Measurements(object):
-#     """ Class that will be used to perform all the measurements and other operations in Nodules module.
-#     The operations may be reused by another modules.
-#     """
-#     def __init__(self):
-#         pass
-#
-#     @staticmethod
-#     def centroid(numpyArray, labelId=1):
-#         """ Calculate the coordinates of a centroid for a concrete labelId (default=1)
-#         :param numpyArray: numpy array
-#         :param labelId: label id (dafault = 1)
-#         :return: numpy array with the coordinates (int format)
-#         """
-#         mean = np.mean(np.where(numpyArray == labelId), axis=1)
-#         return np.asarray(np.round(mean, 0), np.int)
-#
-#     @staticmethod
-#     def getSphereMaskArray(array, center, radius):
-#         """ Get a numpy array that represents a sphere around a center point of a particular radius
-#         :param array: original numpy array
-#         :param center: center point
-#         :param radius: radius of the sphere
-#         :return: numpy array with same size of the original one where all points inside the sphere are 1 and the
-#         rest of the points are 0
-#         """
-#         return Util.get_sphere_mask_for_array(array, center, radius)
-
-
-
+        if return_numpy_arrays:
+            return results, intensity_array, labelmap_array
+        else:
+            return results
 
 
 
@@ -882,5 +1006,3 @@ class CIP_LesionModelTest(ScriptedLoadableModuleTest):
         # self.delayDisplay('Test passed!')
         # t = unittest.TestCase()
         self.fail("Test not implemented yet")
-
-
