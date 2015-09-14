@@ -22,6 +22,11 @@ except Exception as ex:
     from CIP.logic.SlicerUtil import SlicerUtil
 
 from CIP.logic import Util
+import FeatureWidgetHelperLib
+import FeatureExtractionLib
+
+import collections
+import itertools
 
 
 #
@@ -152,43 +157,174 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.distanceLevelSlider.enabled = False
         self.mainAreaLayout.addRow("Select a threshold: ", self.distanceLevelSlider)
 
+        #######################
+        # Analysis area
+        self.featureKeys = []
+        ##
+        self.featureClassKeys = collections.OrderedDict()
+        # self.featureClassKeys["Node Information"] = ["Node"]
+        self.featureClassKeys["First-Order Statistics"] = ["Voxel Count", "Gray Levels", "Energy", "Entropy",
+                                                           "Minimum Intensity", "Maximum Intensity", "Mean Intensity",
+                                                           "Median Intensity", "Range", "Mean Deviation",
+                                                           "Root Mean Square", "Standard Deviation", "Skewness",
+                                                           "Kurtosis", "Variance", "Uniformity"]
+        self.featureClassKeys["Morphology and Shape"] = ["Volume mm^3", "Volume cc", "Surface Area mm^2",
+                                                         "Surface:Volume Ratio", "Compactness 1", "Compactness 2",
+                                                         "Maximum 3D Diameter", "Spherical Disproportion", "Sphericity"]
+        self.featureClassKeys["Texture: GLCM"] = ["Autocorrelation", "Cluster Prominence", "Cluster Shade",
+                                                  "Cluster Tendency", "Contrast", "Correlation", "Difference Entropy",
+                                                  "Dissimilarity", "Energy (GLCM)", "Entropy(GLCM)", "Homogeneity 1",
+                                                  "Homogeneity 2", "IMC1", "IDMN", "IDN", "Inverse Variance",
+                                                  "Maximum Probability", "Sum Average", "Sum Entropy", "Sum Variance",
+                                                  "Variance (GLCM)"]  # IMC2 missing
+        self.featureClassKeys["Texture: GLRL"] = ["SRE", "LRE", "GLN", "RLN", "RP", "LGLRE", "HGLRE", "SRLGLE",
+                                                  "SRHGLE", "LRLGLE", "LRHGLE"]
+        self.featureClassKeys["Geometrical Measures"] = ["Extruded Surface Area", "Extruded Volume",
+                                                         "Extruded Surface:Volume Ratio"]
+        self.featureClassKeys["Renyi Dimensions"] = ["Box-Counting Dimension", "Information Dimension",
+                                                     "Correlation Dimension"]
+
+        # used to map feature class to a list of auto-generated feature checkbox widgets
+        self.featureWidgets = collections.OrderedDict()
+        for key in self.featureClassKeys.keys():
+            self.featureWidgets[key] = list()
+
+        self.HeterogeneityCADCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.HeterogeneityCADCollapsibleButton.text = "HeterogeneityCAD Features Selection"
+        self.layout.addWidget(self.HeterogeneityCADCollapsibleButton)
+        self.featuresHeterogeneityCADLayout = qt.QFormLayout(self.HeterogeneityCADCollapsibleButton)
+
+        # auto-generate QTabWidget Tabs and QCheckBoxes (subclassed in FeatureWidgetHelperLib)
+        self.tabsFeatureClasses = FeatureWidgetHelperLib.CheckableTabsWidget()
+        self.featuresHeterogeneityCADLayout.addRow(self.tabsFeatureClasses)
+
+        gridWidth, gridHeight = 3, 9
+        for featureClass in self.featureClassKeys:
+            # by default, features from the following features classes are checked:
+            if featureClass in ["First-Order Statistics"]:
+                        # , "Morphology and Shape", "Texture: GLCM",
+                        #         "Texture: GLRL"]:
+                check = True
+            else:
+                check = False
+            tabFeatureClass = qt.QWidget()
+            tabFeatureClass.setLayout(qt.QGridLayout())
+            # featureList = (feature for feature in self.featureClassKeys[featureClass])
+            gridLayoutCoordinates = ((row, col) for col in range(gridWidth) for row in range(gridHeight))
+            for featureName in self.featureClassKeys[featureClass]:
+                row, col = next(gridLayoutCoordinates, None)
+                if featureName is None or row is None or col is None:
+                    break
+                featureCheckboxWidget = FeatureWidgetHelperLib.FeatureWidget()
+                featureCheckboxWidget.Setup(featureName=featureName, checkStatus=check)
+
+                tabFeatureClass.layout().addWidget(featureCheckboxWidget, row, col)
+                self.featureWidgets[featureClass].append(featureCheckboxWidget)
+            self.tabsFeatureClasses.addTab(tabFeatureClass, featureClass, self.featureWidgets[featureClass],
+                                           checkStatus=check)
+
+        self.tabsFeatureClasses.setCurrentIndex(1)
+
+        # Convert the ordered dictionary to a flat list that contains all the features
+        self.featureWidgetList = list(itertools.chain.from_iterable(self.featureWidgets.values()))
+        self.featureMainCategoriesStringList = list(self.featureWidgets.keys())
+        # or reduce(lambda x,y: x+y, self.featureWidgets.values())
+
+        ########## Parameter options
+        # add parameters for top-level feature classes
+        # self.tabsFeatureClasses.addParameter("Geometrical Measures", "Extrusion Parameter 1")
+        # self.tabsFeatureClasses.addParameter("Texture: GLCM", "GLCM Matrix Parameter 1")
+        # self.tabsFeatureClasses.addParameter("Texture: GLRL", "GLRL Matrix Parameter 1")
+        #
+        # # compile dict of feature classes with parameter names and values
+        # self.featureClassParametersDict = collections.OrderedDict()
+        # for featureClassWidget in self.tabsFeatureClasses.getFeatureClassWidgets():
+        #     featureClassName = featureClassWidget.getName()
+        #     self.featureClassParametersDict[featureClassName] = collections.OrderedDict()
+        #     self.updateFeatureClassParameterDict(0, featureClassWidget)
+        #     for parameterName in featureClassWidget.widgetMenu.parameters:
+        #         featureClassWidget.getParameterEditWindow(parameterName).connect('intValueChanged(int)',
+        #                                                                          lambda intValue,
+        #                                                                                 featureClassWidget=featureClassWidget: self.updateFeatureClassParameterDict(
+        #                                                                              intValue, featureClassWidget))
+
+        # add parameters for individual features
+        # for featureWidget in self.heterogeneityFeatureWidgets:
+        #     if featureWidget.getName() == "Voxel Count":
+        #         featureWidget.addParameter("Example Parameter 1")
+        #         featureWidget.addParameter("Example Parameter 2")
+        #     if featureWidget.getName() == "Gray Levels":
+        #         featureWidget.addParameter("Example Parameter 1-GL")
+        #         featureWidget.addParameter("Example Parameter 2-GL")
+
+        # compile dict of features with parameter names and values
+        # self.featureParametersDict = collections.OrderedDict()
+        # for featureWidget in self.heterogeneityFeatureWidgets:
+        #     featureName = featureWidget.getName()
+        #     self.featureParametersDict[featureName] = collections.OrderedDict()
+        #     self.updateFeatureParameterDict(0, featureWidget)
+        #     for parameterName in featureWidget.widgetMenu.parameters:
+        #         featureWidget.getParameterEditWindow(parameterName).connect('intValueChanged(int)', lambda intValue,
+        #                                                                                                    featureWidget=featureWidget: self.updateFeatureParameterDict(
+        #             intValue, featureWidget))  # connect intvaluechanged signals to updateParamaterDict function
+        ##########
+
+        # Feature Buttons Frame and Layout
+        self.featureButtonFrame = qt.QFrame(self.HeterogeneityCADCollapsibleButton)
+        self.featureButtonFrame.setLayout(qt.QHBoxLayout())
+        self.featuresHeterogeneityCADLayout.addRow(self.featureButtonFrame)
+
+        # HeterogeneityCAD Apply Button
+        self.HeterogeneityCADButton = qt.QPushButton("Apply HeterogeneityCAD", self.featureButtonFrame)
+        self.HeterogeneityCADButton.toolTip = "Analyze input volume using selected Heterogeneity Features."
+        self.featureButtonFrame.layout().addWidget(self.HeterogeneityCADButton)
+        self.HeterogeneityCADButton.connect('clicked()', self.onHeterogeneityCADButtonClicked)
+
+        # Save Button
+        self.saveButton = qt.QPushButton("Save to File", self.featureButtonFrame)
+        self.saveButton.toolTip = "Save analyses to CSV file"
+        self.saveButton.enabled = False
+        self.featureButtonFrame.layout().addWidget(self.saveButton)
+        # self.saveButton.connect('clicked()', self.onSave)
+
         ######################
         # Anaysis area
-        analysisAreaCollapsibleButton = ctk.ctkCollapsibleButton()
-        analysisAreaCollapsibleButton.text = "Analysis"
-        self.layout.addWidget(analysisAreaCollapsibleButton)
-        # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
-        self.analysisAreaLayout = qt.QVBoxLayout(analysisAreaCollapsibleButton)
-
-        self.histogramIntensityCheckBox = qt.QCheckBox()
-        self.histogramIntensityCheckBox.setText("Histogram statistics")
-        self.histogramIntensityCheckBox.setChecked(True)
-        self.analysisAreaLayout.addWidget(self.histogramIntensityCheckBox)
-
-        self.localHistogramCheckBox = qt.QCheckBox()
-        self.localHistogramCheckBox.setText("Local histogram statistics (Parenchymal Volume)")
-        self.localHistogramCheckBox.setChecked(False)
-        self.analysisAreaLayout.addWidget(self.localHistogramCheckBox)
-
-        self.texturalCheckBox = qt.QCheckBox()
-        self.texturalCheckBox.setText("Textural statistics")
-        self.texturalCheckBox.setChecked(False)
-        self.analysisAreaLayout.addWidget(self.texturalCheckBox)
-
-        self.vasculaturityCheckBox = qt.QCheckBox()
-        self.vasculaturityCheckBox.setText("Vascularity statistics")
-        self.vasculaturityCheckBox.setChecked(False)
-        self.analysisAreaLayout.addWidget(self.vasculaturityCheckBox)
-
-        self.radiusTextBox = qt.QLineEdit()
-        self.radiusTextBox.setText("30")
-        self.analysisAreaLayout.addWidget(self.radiusTextBox)
-
-
+        # analysisAreaCollapsibleButton = ctk.ctkCollapsibleButton()
+        # analysisAreaCollapsibleButton.text = "Analysis"
+        # self.layout.addWidget(analysisAreaCollapsibleButton)
+        # # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
+        # self.analysisAreaLayout = qt.QVBoxLayout(analysisAreaCollapsibleButton)
+        #
+        # self.histogramIntensityCheckBox = qt.QCheckBox()
+        # self.histogramIntensityCheckBox.setText("Histogram statistics")
+        # self.histogramIntensityCheckBox.setChecked(True)
+        # self.analysisAreaLayout.addWidget(self.histogramIntensityCheckBox)
+        #
+        # self.localHistogramCheckBox = qt.QCheckBox()
+        # self.localHistogramCheckBox.setText("Local histogram statistics (Parenchymal Volume)")
+        # self.localHistogramCheckBox.setChecked(False)
+        # self.analysisAreaLayout.addWidget(self.localHistogramCheckBox)
+        #
+        # self.texturalCheckBox = qt.QCheckBox()
+        # self.texturalCheckBox.setText("Textural statistics")
+        # self.texturalCheckBox.setChecked(False)
+        # self.analysisAreaLayout.addWidget(self.texturalCheckBox)
+        #
+        # self.vasculaturityCheckBox = qt.QCheckBox()
+        # self.vasculaturityCheckBox.setText("Vascularity statistics")
+        # self.vasculaturityCheckBox.setChecked(False)
+        # self.analysisAreaLayout.addWidget(self.vasculaturityCheckBox)
+        #
+        # self.radiusTextBox = qt.QLineEdit()
+        # self.radiusTextBox.setText("30")
+        # self.analysisAreaLayout.addWidget(self.radiusTextBox)
+        #
+        #
         runAnalysisButton = ctk.ctkPushButton()
         runAnalysisButton.setText("Run selected analysis")
         runAnalysisButton.setFixedWidth(200)
-        self.analysisAreaLayout.addWidget(runAnalysisButton)
+        # self.analysisAreaLayout.addWidget(runAnalysisButton)
+        self.featureButtonFrame.layout().addWidget(runAnalysisButton)
 
         ######################
         # Case navigator widget
@@ -407,12 +543,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def calculateSelectedStatistics(self):
         # Get the distance map to calculate the required sphere
         self.logic.calculateCurrentDistanceMap()
-        if self.histogramIntensityCheckBox.checked:
-            stats = self.logic.calculateCurrentHistogramIntensityStats()
+        # if self.histogramIntensityCheckBox.checked:
+        stats = self.logic.calculateCurrentHistogramIntensityStats()
         print("DEBUG: histogram statistics:")
         print(stats)
-
-
 
     ############
     # Events
@@ -509,7 +643,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """ Calculate the selected statistics """
         self.calculateSelectedStatistics()
 
-
     def __onSceneClosed__(self, arg1, arg2):
         self.logic = CIP_LesionModelLogic()
         self.timer.stop()
@@ -526,6 +659,44 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         self.timer.stop()
 
+    def updateFeatureParameterDict(self, intValue, featureWidget):
+        featureName = featureWidget.getName()
+        self.featureParametersDict[featureName].update(featureWidget.getParameterDict())
+
+    def updateFeatureClassParameterDict(self, intValue, featureClassWidget):
+        featureClassName = featureClassWidget.getName()
+        self.featureClassParametersDict[featureClassName].update(featureClassWidget.getParameterDict())
+
+    def onHeterogeneityCADButtonClicked(self):
+        self.featureKeys = []
+        self.featureClassKeys = set() # no duplicate keys allowed in set()
+
+        # build list of features and feature classes based on what is checked by the user
+        for featureClass in self.featureWidgets:
+          for widget in self.featureWidgets[featureClass]:
+            if widget.checked:
+              self.featureKeys.append(str(widget.text))
+              self.featureClassKeys.add(featureClass)
+
+        # if (len(self.inputDataNodes) == 0):
+        #   qt.QMessageBox.information(slicer.util.mainWindow(),"HeterogeneityCAD", "Please add data node(s) of class 'vtkMRMLScalarVolumeNode' to the Nodes List")
+        #   return
+        # if not (self.labelmapNode):
+        #   qt.QMessageBox.information(slicer.util.mainWindow(),"HeterogeneityCAD", "Please provide a Label Map that specifies a Region-Of-Interest in your image nodes")
+        #   return
+        if (len(self.featureKeys) == 0):
+          qt.QMessageBox.information(slicer.util.mainWindow(),"HeterogeneityCAD", "Please select at least one feature from the menu to calculate")
+          return
+
+        # for dataNode in self.inputDataNodes:
+        nodeLogic = FeatureExtractionLogic(self.logic.currentVolume, self.logic.currentVolumeArray,
+                                           self.logic.currentLabelmap, self.logic.currentLabelmapArray,
+                                            self.featureClassKeys, self.featureKeys)
+        # self.FeatureVectors.append(nodeLogic.getFeatureVector())
+        print("DEBUG: Obtained results: ")
+        print(nodeLogic.getFeatureVector())
+        # self.populateStatistics(self.FeatureVectors)
+        self.saveButton.enabled = True
 
 #############################
 # CIP_LesionModelLogic
@@ -535,9 +706,9 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.cipMeasurements = CIP_Measurements()
 
         self.currentVolume = None  # Current active volume
-        self.currentVolumeArray = None  # Numpy array that represents the current volume
+        self.__currentVolumeArray__ = None  # Numpy array that represents the current volume
         self.currentLabelmap = None  # Current label map that contains the nodule segmentation for the current threshold (same size as the volume)
-        self.currentLabelmapArray = None  # Numpy array that represents the current label map
+        self.__currentLabelmapArray__ = None  # Numpy array that represents the current label map
         self.cliOutputScalarNode = None  # Scalar volume that the CLI returns. This will be a cropped volume
 
         self.currentModelNodeId = None  # 3D model volume id
@@ -547,13 +718,30 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         # self.origin = None                  # Current origin (centroid of the nodule)
         self.currentDistanceMap = None  # Current distance map from the specified origin
 
-
     @property
     def currentModelNode(self):
         if self.currentModelNodeId is None:
             return None
         return slicer.util.getNode(self.currentModelNodeId)
+    
+    @property
+    def currentVolumeArray(self):
+        if self.__currentVolumeArray__ is None and self.currentVolume is not None:
+            self.__currentVolumeArray__ = slicer.util.array(self.currentVolume.GetName())
+        return self.__currentVolumeArray__
+    @currentVolumeArray.setter
+    def currentVolumeArray(self, value):
+        self.__currentVolumeArray__ = value
 
+    
+    @property
+    def currentLabelmapArray(self):
+        if self.__currentLabelmapArray__ is None and self.currentLabelmap is not None:
+            self.__currentLabelmapArray__ = slicer.util.array(self.currentLabelmap.GetName())
+        return self.__currentLabelmapArray__
+    @currentLabelmapArray.setter
+    def currentLabelmapArray(self, value):
+        self.__currentLabelmapArray__ = value
 
     ##############################
     # General volume / fiducials methods
@@ -644,7 +832,6 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if fid:
             return fid.GetNumberOfMarkups()
         return None  # Error
-
 
     ##############################
     # CLI Nodule segmentation
@@ -762,8 +949,6 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.marchingCubesFilter.Update()
         self.currentLabelmapArray = slicer.util.array(self.currentLabelmap.GetName())
 
-
-
     def calculateCurrentDistanceMap(self):
         """ Calculate the distance map to the centroid for the current labelmap volume.
         To that end, we have to calculate first the centroid.
@@ -773,13 +958,13 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         # lmNode2 = slicer.util.getNode("Sphere")
         # if lmNode2 is None:
         #     lmNode2 = SlicerUtil.cloneVolume(self.currentLabelmap, "Sphere")
-        #array = slicer.util.array(lmNode2.GetName())
+        # array = slicer.util.array(lmNode2.GetName())
         if self.currentDistanceMap is None:
             centroid = self.cipMeasurements.centroid(self.currentLabelmapArray)
             # Calculate the distance map for the specified origin
             self.currentDistanceMap = self.cipMeasurements.get_current_distance_map(self.currentVolume, centroid)
-            #array[self.currentDistanceMap <= radius ** 2] = 2
-            #lmNode2.GetImageData().Modified()
+            # array[self.currentDistanceMap <= radius ** 2] = 2
+            # lmNode2.GetImageData().Modified()
 
     def calculateCurrentHistogramIntensityStats(self):
         """ Calculate the current histogram statistics and also get the current
@@ -794,7 +979,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
 
         spacing = self.currentVolume.GetSpacing()
         stats = self.cipMeasurements.histogram_intensity_basic_statistics_array(self.currentVolumeArray,
-                                                                    self.currentLabelmapArray, spacing)
+                                                                                self.currentLabelmapArray, spacing)
         return stats
 
 
@@ -866,6 +1051,7 @@ class CIP_Measurements(object):
     """ Class that will be used to perform all the measurements and other operations in Nodules module.
     The operations may be reused by another modules.
     """
+
     def __init__(self):
         pass
 
@@ -940,7 +1126,8 @@ class CIP_Measurements(object):
 
         return result
 
-    def histogram_intensity_basic_statistics(self, intensity_volume, labelmap_volume, label=1, return_numpy_arrays=False):
+    def histogram_intensity_basic_statistics(self, intensity_volume, labelmap_volume, label=1,
+                                             return_numpy_arrays=False):
         """ Get a dictionary with basic statistics based on histogram (average, max, min, etc.)
         :param intensity_volume: intensity vtk scalar volume
         :param labelmap_volume: labelmap volume
@@ -968,11 +1155,6 @@ class CIP_Measurements(object):
             return results, intensity_array, labelmap_array
         else:
             return results
-
-
-
-
-
 
 
 class CIP_LesionModelTest(ScriptedLoadableModuleTest):
@@ -1006,3 +1188,140 @@ class CIP_LesionModelTest(ScriptedLoadableModuleTest):
         # self.delayDisplay('Test passed!')
         # t = unittest.TestCase()
         self.fail("Test not implemented yet")
+
+import math
+import operator
+class FeatureExtractionLogic:
+    def __init__(self, volumeNode, volumeNodeArray, labelmapNode, labelmapNodeArray,
+                 featureCategoriesKeys, featureKeys):
+        self.volumeNode = volumeNode
+        self.volumeNodeArray = volumeNodeArray
+        self.labelmapNode = labelmapNode
+        self.labelmapNodeArray = labelmapNodeArray
+        self.featureCategoriesKeys = featureCategoriesKeys
+        self.featureKeys = featureKeys
+        print("DEBUG: FeatureCategoriesKeys: ", self.featureCategoriesKeys)
+        print("DEBUG: FeatureKeys: ", self.featureKeys)
+        # initialize Progress Bar
+        self.progressBar = qt.QProgressDialog(slicer.util.mainWindow())
+        self.progressBar.minimumDuration = 0
+        self.progressBar.show()
+        self.progressBar.setValue(0)
+        self.progressBar.setMaximum(len(self.featureKeys))
+        self.progressBar.labelText = 'Calculating for %s: ' % self.volumeNode.GetName()
+    
+        # create Numpy Arrays 
+        # self.nodeArrayVolume = self.createNumpyArray(self.volumeNode)
+        # self.nodeArrayLabelMapROI = self.createNumpyArray(self.labelmapNode)
+        
+        # extract voxel coordinates (ijk) and values from self.dataNode within the ROI defined by self.labelmapNode
+        self.targetVoxels, self.targetVoxelsCoordinates = self.tumorVoxelsAndCoordinates(self.labelmapNodeArray, self.volumeNodeArray)
+        
+        # create a padded, rectangular matrix with shape equal to the shape of the tumor
+        self.matrix, self.matrixCoordinates = self.paddedTumorMatrixAndCoordinates(self.targetVoxels, self.targetVoxelsCoordinates)
+        
+        # get Histogram data
+        self.bins, self.grayLevels, self.numGrayLevels = self.getHistogramData(self.targetVoxels)
+        
+        ########
+        # Manage feature classes for Heterogeneity feature calculations and consolidate into self.FeatureVector
+        # TODO: create a parent class for all feature classes
+        self.FeatureVector = collections.OrderedDict()
+
+        # Node Information         
+        # self.updateProgressBar(self.progressBar, self.dataNode.GetName(), "Node Information", len(self.FeatureVector))
+        # self.nodeInformation = FeatureExtractionLib.NodeInformation(self.dataNode, self.labelmapNode, self.featureKeys)
+        # self.FeatureVector.update( self.nodeInformation.EvaluateFeatures() )
+
+        # First Order Statistics
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "First Order Statistics", len(self.FeatureVector))
+        self.firstOrderStatistics = FeatureExtractionLib.FirstOrderStatistics(self.targetVoxels, self.bins, self.numGrayLevels, self.featureKeys)
+        self.FeatureVector.update( self.firstOrderStatistics.EvaluateFeatures() )
+
+        # Shape/Size and Morphological Features)
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Morphology Statistics", len(self.FeatureVector))
+        # extend padding by one row/column for all 6 directions
+        maxDimsSA = tuple(map(operator.add, self.matrix.shape, ([2,2,2])))
+        matrixSA, matrixSACoordinates = self.padMatrix(self.matrix, self.matrixCoordinates, maxDimsSA, self.targetVoxels)
+        self.morphologyStatistics = FeatureExtractionLib.MorphologyStatistics(self.labelmapNode, matrixSA, matrixSACoordinates, self.targetVoxels, self.featureKeys)
+        self.FeatureVector.update( self.morphologyStatistics.EvaluateFeatures() )
+         
+        # Texture Features(GLCM)
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "GLCM Texture Features", len(self.FeatureVector))
+        self.textureFeaturesGLCM = FeatureExtractionLib.TextureGLCM(self.grayLevels, self.numGrayLevels, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
+        self.FeatureVector.update( self.textureFeaturesGLCM.EvaluateFeatures() )
+
+        # Texture Features(GLRL)
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "GLRL Texture Features", len(self.FeatureVector))
+        self.textureFeaturesGLRL = FeatureExtractionLib.TextureGLRL(self.grayLevels, self.numGrayLevels, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
+        self.FeatureVector.update( self.textureFeaturesGLRL.EvaluateFeatures() )
+
+        # Geometrical Measures
+        # TODO: progress bar does not update to Geometrical Measures while calculating (create separate thread?)
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Geometrical Measures", len(self.FeatureVector))
+        self.geometricalMeasures = FeatureExtractionLib.GeometricalMeasures(self.labelmapNode, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
+        self.FeatureVector.update( self.geometricalMeasures.EvaluateFeatures() )
+
+        # Renyi Dimensions
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Renyi Dimensions", len(self.FeatureVector))
+        # extend padding to dimension lengths equal to next power of 2
+        maxDims = tuple( [int(pow(2, math.ceil(np.log2(np.max(self.matrix.shape)))))] * 3 )
+        matrixPadded, matrixPaddedCoordinates = self.padMatrix(self.matrix, self.matrixCoordinates, maxDims, self.targetVoxels)
+        self.renyiDimensions = FeatureExtractionLib.RenyiDimensions(matrixPadded, matrixPaddedCoordinates, self.featureKeys)
+        self.FeatureVector.update( self.renyiDimensions.EvaluateFeatures() )
+        
+        # close progress bar
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Populating Summary Table", len(self.FeatureVector))
+        self.progressBar.close()
+        self.progressBar = None
+        
+        # filter for user-queried features only
+        self.FeatureVector = collections.OrderedDict((k, self.FeatureVector[k]) for k in self.featureKeys)
+        
+    # def createNumpyArray (self, imageNode):
+    #     # Generate Numpy Array from vtkMRMLScalarVolumeNode
+    #     imageData = vtk.vtkImageData()
+    #     imageData = imageNode.GetImageData()
+    #     shapeData = list(imageData.GetDimensions())
+    #     shapeData.reverse()
+    #     return (vtk.util.numpy_support.vtk_to_numpy(imageData.GetPointData().GetScalars()).reshape(shapeData))
+    
+    def tumorVoxelsAndCoordinates(self, arrayROI, arrayDataNode):
+        coordinates = np.where(arrayROI != 0) # can define specific label values to target or avoid
+        values = arrayDataNode[coordinates].astype('int64')
+        return(values, coordinates)
+        
+    def paddedTumorMatrixAndCoordinates(self, targetVoxels, targetVoxelsCoordinates):
+        ijkMinBounds = np.min(targetVoxelsCoordinates, 1)
+        ijkMaxBounds = np.max(targetVoxelsCoordinates, 1) 
+        matrix = np.zeros(ijkMaxBounds - ijkMinBounds + 1)
+        matrixCoordinates = tuple(map(operator.sub, targetVoxelsCoordinates, tuple(ijkMinBounds)))
+        matrix[matrixCoordinates] = targetVoxels
+        return(matrix, matrixCoordinates)
+        
+    def getHistogramData(self, voxelArray):
+        # with np.histogram(), all but the last bin is half-open, so make one extra bin container
+        binContainers = np.arange(voxelArray.min(), voxelArray.max()+2)
+        bins = np.histogram(voxelArray, bins=binContainers)[0] # frequencies 
+        grayLevels = np.unique(voxelArray) # discrete gray levels
+        numGrayLevels = grayLevels.size
+        return (bins, grayLevels, numGrayLevels)
+        
+    def padMatrix(self, a, matrixCoordinates, dims, voxelArray):
+        # pads matrix 'a' with zeros and resizes 'a' to a cube with dimensions increased to the next greatest power of 2
+        # numpy version 1.7 has np.pad function
+                 
+        # center coordinates onto padded matrix    # consider padding with NaN or eps = np.spacing(1)
+        pad = tuple(map(operator.div, tuple(map(operator.sub, dims, a.shape)), ([2,2,2])))
+        matrixCoordinatesPadded = tuple(map(operator.add, matrixCoordinates, pad))
+        matrix2 = np.zeros(dims)
+        matrix2[matrixCoordinatesPadded] = voxelArray
+        return (matrix2, matrixCoordinatesPadded)
+    
+    def updateProgressBar(self, progressBar, nodeName, nextFeatureString, totalSteps):
+        slicer.app.processEvents()
+        progressBar.labelText = 'Calculating %s: %s' % (nodeName, nextFeatureString)
+        progressBar.setValue(totalSteps)
+
+    def getFeatureVector(self):
+        return (self.FeatureVector)
