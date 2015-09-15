@@ -198,11 +198,35 @@ class Util:
 
 
     @staticmethod
-    def switch_ras_lps(coords):
+    def __switch_ras_lps__(coords):
         """ Convert from RAS to LPS or viceversa (it is just flipping the first axis)
+        :return: list of 3 coordinates
+        """
+        lps_to_ras_matrix = vtk.vtkMatrix4x4()
+        lps_to_ras_matrix.SetElement(0, 0, -1)
+        lps_to_ras_matrix.SetElement(1, 1, -1)
+
+        cl = list(coords)
+        cl.append(1)
+
+        return list(lps_to_ras_matrix.MultiplyPoint(cl)[:-1])
+
+    @staticmethod
+    def ras_to_lps(coords):
+        """ Convert coordinates from LPS to RAS
+        :param coords:
+        :return: list of 3 LPS coordinates
+        """
+        return Util.__switch_ras_lps__(coords)
+
+    @staticmethod
+    def lps_to_ras(coords):
+        """ Convert coordinates from LPS to RAS
+        :param coords:
         :return: list of 3 RAS coordinates
         """
-        return [-coords[0], coords[1], coords[2]]
+        return Util.__switch_ras_lps__(coords)
+
 
 
     @staticmethod

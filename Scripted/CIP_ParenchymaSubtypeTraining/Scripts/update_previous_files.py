@@ -43,7 +43,7 @@ for file_name in files:
                 if change_coords:
                     print("B:replace ", point.coordinate)
                     # Switch to LPS (RAS will be assumed)
-                    point.coordinate = Util.switch_ras_lps(point.coordinate)
+                    point.coordinate = Util.ras_to_lps(point.coordinate)
                     print("To: ", point.coordinate)
                 points.append(point)
         # Replace the points

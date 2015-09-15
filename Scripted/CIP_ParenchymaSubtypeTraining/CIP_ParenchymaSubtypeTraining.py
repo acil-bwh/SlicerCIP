@@ -279,6 +279,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         if f:
             self.logic.loadFiducials(volumeNode, f)
             self.saveResultsDirectoryButton.directory = os.path.dirname(f)
+            qt.QMessageBox.information(slicer.util.mainWindow(), "File loaded", "File loaded successfully")
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
@@ -520,8 +521,8 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
                 desc = fidListNode.GetNthMarkupDescription(i)
                 typeId = int(desc.split("_")[0])
                 artifactId = int(desc.split("_")[1])
-                # Switch to LPS
-                lps_coords = Util.switch_ras_lps(list(pos))
+                # Switch coordinates from RAS to LPS
+                lps_coords = Util.ras_to_lps(list(pos))
                 p = GTD.Point(0, typeId, artifactId, lps_coords)
                 topology.add_point(p)
 
@@ -580,9 +581,9 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
             fidList = self.setActiveFiducialsListNode(volumeNode, mainType, subtype, point.feature_type)
             # Check if the coordinate system is RAS (and make the corresponding transform otherwise)
             if geom.coordinate_system == geom.LPS:
-                coord = Util.switch_ras_lps(point.coordinate)
+                coord = Util.lps_to_ras(point.coordinate)
             elif geom.coordinate_system == geom.IJK:
-                coord = Util.ras_to_ijk(volumeNode, point.coordinate)
+                coord = Util.ijk_to_ras(volumeNode, point.coordinate)
             else:
                 # Try default mode (RAS)
                 coord = point.coordinate

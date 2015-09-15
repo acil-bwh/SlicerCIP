@@ -4,6 +4,9 @@ from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
 
+import collections
+import itertools
+
 import numpy as np
 import time
 
@@ -22,12 +25,10 @@ except Exception as ex:
     from CIP.logic.SlicerUtil import SlicerUtil
 
 from CIP.logic import Util
+from CIP.ui import CaseReportsWidget
+
 import FeatureWidgetHelperLib
 import FeatureExtractionLib
-
-import collections
-import itertools
-
 
 #
 # CIP_LesionModel
@@ -57,18 +58,25 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
-    # def __init__(self, parent=None):
-    #     """Widget constructor (existing module)"""
-    #     ScriptedLoadableModuleWidget.__init__(self, parent)
-    #     from functools import partial
-    #     def onNodeAdded(self, caller, eventId, callData):
-    #       """Node added to the Slicer scene"""
-    #       if callData.GetClassName() == 'vtkMRMLMarkupsFiducialNode':
-    #         self.onNewFiducialAdded(callData)
-    #
-    #     self.onNodeAdded = partial(onNodeAdded, self)
-    #     self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
-    #     slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
+    def __init__(self, parent=None):
+        """Widget constructor (existing module)"""
+        ScriptedLoadableModuleWidget.__init__(self, parent)
+        # from functools import partial
+        # def onNodeAdded(self, caller, eventId, callData):
+        #   """Node added to the Slicer scene"""
+        #   if callData.GetClassName() == 'vtkMRMLMarkupsFiducialNode':
+        #     self.onNewFiducialAdded(callData)
+        #
+        # self.onNodeAdded = partial(onNodeAdded, self)
+        # self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
+        # slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
+        self.__storedColumnNames__ = None
+
+
+    # @property
+    # def storedColumnNames(self):
+    #     if self.__storedColumnNames__ is None:
+
 
 
     def setup(self):
@@ -281,11 +289,16 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.HeterogeneityCADButton.connect('clicked()', self.onHeterogeneityCADButtonClicked)
 
         # Save Button
-        self.saveButton = qt.QPushButton("Save to File", self.featureButtonFrame)
-        self.saveButton.toolTip = "Save analyses to CSV file"
-        self.saveButton.enabled = False
-        self.featureButtonFrame.layout().addWidget(self.saveButton)
+        # self.saveButton = qt.QPushButton("Save to File", self.featureButtonFrame)
+        # self.saveButton.toolTip = "Save analyses to CSV file"
+        # self.saveButton.enabled = False
+        # self.featureButtonFrame.layout().addWidget(self.saveButton)
         # self.saveButton.connect('clicked()', self.onSave)
+
+         # Reports widget
+        # self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
+        #                                        parent=self.statsButtonsFrame)
+        # self.reportsWidget.setup()
 
         ######################
         # Anaysis area
