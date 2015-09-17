@@ -79,7 +79,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.__featureClasses__ = None
         self.selectedMainFeaturesKeys = set()
         self.selectedFeatureKeys = set()
-        self.noduleResults = None
+        self.analysisResults = dict()
 
     @property
     def storedColumnNames(self):
@@ -87,7 +87,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         :return:
         """
         if self.__storedColumnNames__ is None:
-            self.__storedColumnNames__ = ["CaseId"]
+            self.__storedColumnNames__ = ["CaseId", "Date"]
             # Create a single features list with all the "child" features
             self.__storedColumnNames__.extend(itertools.chain.from_iterable(self.featureClasses.itervalues()))
             # for featureList in self.featureClassKeys.itervalues():
@@ -194,22 +194,21 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.mainAreaLayout.addRow("Select a threshold: ", self.distanceLevelSlider)
 
         # Different radius selection
-        w = self
-        w.radiusFrame = qt.QFrame()
-        w.radiusFrameLayout = qt.QGridLayout(w.radiusFrame)
-        w.r15Checkbox = qt.QCheckBox()
-        w.r15Checkbox.setText("15")
-        w.radiusFrameLayout.addWidget(w.r15Checkbox, 0, 0)
-        w.r20Checkbox = qt.QCheckBox()
-        w.r20Checkbox.setText("20")
-        w.radiusFrameLayout.addWidget(w.r20Checkbox, 1, 0)
-        w.rOtherCheckbox = qt.QCheckBox()
-        w.rOtherCheckbox.setText("Other")
-        w.radiusFrameLayout.addWidget(w.rOtherCheckbox, 2, 0)
-        w.otherRadiusTextbox = qt.QLineEdit()
-        # w.otherRadiusTextbox.setFixedWidth(80)
-        w.radiusFrameLayout.addWidget(w.otherRadiusTextbox, 2, 1)
-        self.mainAreaLayout.addRow("Sphere radius:", w.radiusFrame)
+        self.radiusFrame = qt.QFrame()
+        self.radiusFrameLayout = qt.QGridLayout(self.radiusFrame)
+        self.r15Checkbox = qt.QCheckBox()
+        self.r15Checkbox.setText("15")
+        self.radiusFrameLayout.addWidget(self.r15Checkbox, 0, 0)
+        self.r20Checkbox = qt.QCheckBox()
+        self.r20Checkbox.setText("20")
+        self.radiusFrameLayout.addWidget(self.r20Checkbox, 1, 0)
+        self.rOtherCheckbox = qt.QCheckBox()
+        self.rOtherCheckbox.setText("Other")
+        self.radiusFrameLayout.addWidget(self.rOtherCheckbox, 2, 0)
+        self.otherRadiusTextbox = qt.QLineEdit()
+        # self.otherRadiusTextbox.setFixedWidth(80)
+        self.radiusFrameLayout.addWidget(self.otherRadiusTextbox, 2, 1)
+        self.mainAreaLayout.addRow("Sphere radius (mm):", self.radiusFrame)
 
         # used to map feature class to a list of auto-generated feature checkbox widgets
         self.featureWidgets = collections.OrderedDict()
@@ -603,13 +602,19 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             return
 
         # Analysis for the volume and the nodule:
-        self.noduleResults = FeatureExtractionLogic(self.logic.currentVolume, self.logic.currentVolumeArray,
-                                             self.logic.currentLabelmap, self.logic.currentLabelmapArray,
-                                             self.featureClasses, self.selectedFeatureKeys)
-        results = self.noduleResults.run()
+        keyName = self.inputVolumeSelector.currentNode().GetName()
+        self.analysisResults[keyName] = FeatureExtractionLogic(self.logic.currentVolume, self.logic.currentVolumeArray,
+                                             self.logic.currentLabelmapArray, self.featureClasses, self.selectedFeatureKeys)
+        
+        results = self.analysisResults[keyName].run()
         # self.FeatureVectors.append(nodeLogic.getFeatureVector())
         print("DEBUG: Obtained results for the nodule: ")
-        print(results.AnalysisResultsDict)
+        print(results)
+        
+        # print("DEBUG: analyzing spheres...")
+        # if self.r15Checkbox.checked:
+        #     keyName = self.inputVolumeSelector.GetName() + "__r15"
+        #     labelmap, labelmapArray = self.logic.getLabelmap(15)
 
 
 
@@ -622,10 +627,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """ Save the current values in a persistent csv file
         :return:
         """
-        if self.noduleResults is not None:
-            volumeName = self.noduleResults.volumeNode.GetName()
-            self.noduleResults.AnalysisResultsDict["CaseId"] = volumeName
-            self.reportsWidget.saveCurrentValues(**self.noduleResults.AnalysisResultsDict)
+        # TODO: include spheres and use "Date" column
+        if self.analysisResults is not None:
+            volumeName = self.inputVolumeSelector.currentNode().GetName()
+            self.analysisResults[volumeName].AnalysisResultsDict["CaseId"] = volumeName
+            self.reportsWidget.saveCurrentValues(**self.analysisResults[volumeName].AnalysisResultsDict)
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
 
 
@@ -772,6 +778,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
 
         # self.origin = None                  # Current origin (centroid of the nodule)
         self.currentDistanceMap = None  # Current distance map from the specified origin
+
+        self.spheresLabelmaps = dict()
 
     @property
     def currentModelNode(self):
@@ -1038,8 +1046,14 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
                                                                                 self.currentLabelmapArray, spacing)
         return stats
 
-
-
+    def getSphereLabelMap(self, radius):
+        """ Get a labelmap that contains a sphere centered in the nodule centroid, with radius "radius" and that
+        EXCLUDES the nodule itself.
+        If the results are not cached, this method creates the volume and calculates the labelmap
+        :param radius:
+        :return:
+        """
+        pass
 
 
         # def __processCLIResults__(self):

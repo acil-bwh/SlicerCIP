@@ -10,11 +10,9 @@ from . import *
 import FeatureExtractionLib
 
 class FeatureExtractionLogic:
-    def __init__(self, volumeNode, volumeNodeArray, labelmapNode, labelmapNodeArray,
-                 featureCategoriesKeys, featureKeys):
+    def __init__(self, volumeNode, volumeNodeArray, labelmapNodeArray, featureCategoriesKeys, featureKeys):
         self.volumeNode = volumeNode
         self.volumeNodeArray = volumeNodeArray
-        self.labelmapNode = labelmapNode
         self.labelmapNodeArray = labelmapNodeArray
         self.featureCategoriesKeys = featureCategoriesKeys
         self.featureKeys = featureKeys
@@ -72,7 +70,7 @@ class FeatureExtractionLogic:
         # extend padding by one row/column for all 6 directions
         maxDimsSA = tuple(map(operator.add, self.matrix.shape, ([2,2,2])))
         matrixSA, matrixSACoordinates = self.padMatrix(self.matrix, self.matrixCoordinates, maxDimsSA, self.targetVoxels)
-        self.morphologyStatistics = FeatureExtractionLib.MorphologyStatistics(self.labelmapNode, matrixSA, matrixSACoordinates, self.targetVoxels, self.featureKeys)
+        self.morphologyStatistics = FeatureExtractionLib.MorphologyStatistics(self.volumeNode.GetSpacing(), matrixSA, matrixSACoordinates, self.targetVoxels, self.featureKeys)
         self.__analysisResultsDict__.update( self.morphologyStatistics.EvaluateFeatures() )
 
         # Texture Features(GLCM)
@@ -88,7 +86,7 @@ class FeatureExtractionLogic:
         # Geometrical Measures
         # TODO: progress bar does not update to Geometrical Measures while calculating (create separate thread?)
         self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Geometrical Measures", len(self.__analysisResultsDict__))
-        self.geometricalMeasures = FeatureExtractionLib.GeometricalMeasures(self.labelmapNode, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
+        self.geometricalMeasures = FeatureExtractionLib.GeometricalMeasures(self.volumeNode.GetSpacing(), self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
         self.__analysisResultsDict__.update( self.geometricalMeasures.EvaluateFeatures() )
 
         # Renyi Dimensions
@@ -107,6 +105,7 @@ class FeatureExtractionLogic:
         # filter for user-queried features only
         self.__analysisResultsDict__ = collections.OrderedDict((k, self.__analysisResultsDict__[k]) for k in self.featureKeys)
 
+        return self.__analysisResultsDict__
 
     # def createNumpyArray (self, imageNode):
     #     # Generate Numpy Array from vtkMRMLScalarVolumeNode
