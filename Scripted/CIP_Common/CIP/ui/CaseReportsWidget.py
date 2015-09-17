@@ -172,23 +172,20 @@ class CaseReportsLogic(object):
     def saveValues(self, **kwargs):
         """ Save a new row of information in the current csv file that stores the data  (from a dictionary of items)
         :param kwargs: dictionary of values
-        :return:
         """
         # Check that we have all the "columns"
         if len(kwargs) != len(self.columnNames):
-            print("REPORTS WIDGET ERROR when saving values. There is a wrong number of arguments. ")
+            print("WARNING. There is a wrong number of arguments in ReportsWidget. ")
             print("Current columns: ")
             pprint.pprint(self.columnNames)
             print("Total: {0}".format(len(self.columnNames)))
             print("Args passed: ")
             pprint.pprint(kwargs)
             print("Total: {0}".format(len(kwargs)))
-            return False
 
         for key in kwargs:
             if key not in self.columnNames:
-                print("ERROR: Column {0} is not included in the list of columns".format(key))
-                return False
+                print("WARNING: Column {0} is not included in the list of columns".format(key))
         # Add the values in the right order (there are not obligatory fields)
         orderedColumns = []
         # Always add a timestamp as the first value

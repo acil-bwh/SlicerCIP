@@ -26,6 +26,19 @@ class FeatureExtractionLogic:
         self.progressBar.setMaximum(len(self.featureKeys))
         self.progressBar.labelText = 'Calculating for %s: ' % self.volumeNode.GetName()
 
+        self.__analysisResultsDict__ = None
+
+    @property
+    def AnalysisResultsDict(self):
+        """ Dictionary with FeatureKey-FeatureValue for all the analysis performed
+        :return:
+        """
+        return self.__analysisResultsDict__
+
+    def run(self):
+        """ Run all the selected analysis
+        :return: Dictionary of Feature-Value with all the features analyzed
+        """
         # create Numpy Arrays
         # self.nodeArrayVolume = self.createNumpyArray(self.volumeNode)
         # self.nodeArrayLabelMapROI = self.createNumpyArray(self.labelmapNode)
@@ -42,57 +55,58 @@ class FeatureExtractionLogic:
         ########
         # Manage feature classes for Heterogeneity feature calculations and consolidate into self.FeatureVector
         # TODO: create a parent class for all feature classes
-        self.FeatureVector = collections.OrderedDict()
+        self.__analysisResultsDict__ = collections.OrderedDict()
 
         # Node Information
-        # self.updateProgressBar(self.progressBar, self.dataNode.GetName(), "Node Information", len(self.FeatureVector))
+        # self.updateProgressBar(self.progressBar, self.dataNode.GetName(), "Node Information", len(self.__featureDict__))
         # self.nodeInformation = FeatureExtractionLib.NodeInformation(self.dataNode, self.labelmapNode, self.featureKeys)
-        # self.FeatureVector.update( self.nodeInformation.EvaluateFeatures() )
+        # self.__featureDict__.update( self.nodeInformation.EvaluateFeatures() )
 
         # First Order Statistics
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "First Order Statistics", len(self.FeatureVector))
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "First Order Statistics", len(self.__analysisResultsDict__))
         self.firstOrderStatistics = FeatureExtractionLib.FirstOrderStatistics(self.targetVoxels, self.bins, self.numGrayLevels, self.featureKeys)
-        self.FeatureVector.update( self.firstOrderStatistics.EvaluateFeatures() )
+        self.__analysisResultsDict__.update( self.firstOrderStatistics.EvaluateFeatures() )
 
         # Shape/Size and Morphological Features)
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Morphology Statistics", len(self.FeatureVector))
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Morphology Statistics", len(self.__analysisResultsDict__))
         # extend padding by one row/column for all 6 directions
         maxDimsSA = tuple(map(operator.add, self.matrix.shape, ([2,2,2])))
         matrixSA, matrixSACoordinates = self.padMatrix(self.matrix, self.matrixCoordinates, maxDimsSA, self.targetVoxels)
         self.morphologyStatistics = FeatureExtractionLib.MorphologyStatistics(self.labelmapNode, matrixSA, matrixSACoordinates, self.targetVoxels, self.featureKeys)
-        self.FeatureVector.update( self.morphologyStatistics.EvaluateFeatures() )
+        self.__analysisResultsDict__.update( self.morphologyStatistics.EvaluateFeatures() )
 
         # Texture Features(GLCM)
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "GLCM Texture Features", len(self.FeatureVector))
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "GLCM Texture Features", len(self.__analysisResultsDict__))
         self.textureFeaturesGLCM = FeatureExtractionLib.TextureGLCM(self.grayLevels, self.numGrayLevels, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
-        self.FeatureVector.update( self.textureFeaturesGLCM.EvaluateFeatures() )
+        self.__analysisResultsDict__.update( self.textureFeaturesGLCM.EvaluateFeatures() )
 
         # Texture Features(GLRL)
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "GLRL Texture Features", len(self.FeatureVector))
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "GLRL Texture Features", len(self.__analysisResultsDict__))
         self.textureFeaturesGLRL = FeatureExtractionLib.TextureGLRL(self.grayLevels, self.numGrayLevels, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
-        self.FeatureVector.update( self.textureFeaturesGLRL.EvaluateFeatures() )
+        self.__analysisResultsDict__.update( self.textureFeaturesGLRL.EvaluateFeatures() )
 
         # Geometrical Measures
         # TODO: progress bar does not update to Geometrical Measures while calculating (create separate thread?)
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Geometrical Measures", len(self.FeatureVector))
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Geometrical Measures", len(self.__analysisResultsDict__))
         self.geometricalMeasures = FeatureExtractionLib.GeometricalMeasures(self.labelmapNode, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
-        self.FeatureVector.update( self.geometricalMeasures.EvaluateFeatures() )
+        self.__analysisResultsDict__.update( self.geometricalMeasures.EvaluateFeatures() )
 
         # Renyi Dimensions
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Renyi Dimensions", len(self.FeatureVector))
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Renyi Dimensions", len(self.__analysisResultsDict__))
         # extend padding to dimension lengths equal to next power of 2
         maxDims = tuple( [int(pow(2, math.ceil(np.log2(np.max(self.matrix.shape)))))] * 3 )
         matrixPadded, matrixPaddedCoordinates = self.padMatrix(self.matrix, self.matrixCoordinates, maxDims, self.targetVoxels)
         self.renyiDimensions = FeatureExtractionLib.RenyiDimensions(matrixPadded, matrixPaddedCoordinates, self.featureKeys)
-        self.FeatureVector.update( self.renyiDimensions.EvaluateFeatures() )
+        self.__analysisResultsDict__.update( self.renyiDimensions.EvaluateFeatures() )
 
         # close progress bar
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Populating Summary Table", len(self.FeatureVector))
+        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Populating Summary Table", len(self.__analysisResultsDict__))
         self.progressBar.close()
         self.progressBar = None
 
         # filter for user-queried features only
-        self.FeatureVector = collections.OrderedDict((k, self.FeatureVector[k]) for k in self.featureKeys)
+        self.__analysisResultsDict__ = collections.OrderedDict((k, self.__analysisResultsDict__[k]) for k in self.featureKeys)
+
 
     # def createNumpyArray (self, imageNode):
     #     # Generate Numpy Array from vtkMRMLScalarVolumeNode
@@ -139,5 +153,4 @@ class FeatureExtractionLogic:
         progressBar.labelText = 'Calculating %s: %s' % (nodeName, nextFeatureString)
         progressBar.setValue(totalSteps)
 
-    def getFeatureVector(self):
-        return (self.FeatureVector)
+

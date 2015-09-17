@@ -30,6 +30,7 @@ from CIP.ui import CaseReportsWidget
 
 import FeatureWidgetHelperLib
 
+
 #
 # CIP_LesionModel
 #
@@ -71,12 +72,58 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
         # slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
         self.__storedColumnNames__ = None
+        self.__initVars__()
 
+    def __initVars__(self):
+        self.logic = CIP_LesionModelLogic()
+        self.__featureClasses__ = None
+        self.selectedMainFeaturesKeys = set()
+        self.selectedFeatureKeys = set()
+        self.noduleResults = None
 
-    # @property
-    # def storedColumnNames(self):
-    #     if self.__storedColumnNames__ is None:
+    @property
+    def storedColumnNames(self):
+        """ Column names that will be stored in the CaseReportsWidget
+        :return:
+        """
+        if self.__storedColumnNames__ is None:
+            self.__storedColumnNames__ = ["CaseId"]
+            # Create a single features list with all the "child" features
+            self.__storedColumnNames__.extend(itertools.chain.from_iterable(self.featureClasses.itervalues()))
+            # for featureList in self.featureClassKeys.itervalues():
+                # for feature in self.featureClassKeys[mainFeature]:
+                #     self.__storedColumnNames__.append("{0}-{1}".format(mainFeature, feature))
+        return self.__storedColumnNames__
 
+    @property
+    def featureClasses(self):
+        """ Dictionary that contains all MainFeature-ChildFeatures values
+        :return:
+        """
+        if self.__featureClasses__ is None:
+            self.__featureClasses__ = collections.OrderedDict()
+            # self.featureClassKeys["Node Information"] = ["Node"]
+            self.__featureClasses__["First-Order Statistics"] = ["Voxel Count", "Gray Levels", "Energy", "Entropy",
+                                                               "Minimum Intensity", "Maximum Intensity", "Mean Intensity",
+                                                               "Median Intensity", "Range", "Mean Deviation",
+                                                               "Root Mean Square", "Standard Deviation", "Skewness",
+                                                               "Kurtosis", "Variance", "Uniformity"]
+            self.__featureClasses__["Morphology and Shape"] = ["Volume mm^3", "Volume cc", "Surface Area mm^2",
+                                                             "Surface:Volume Ratio", "Compactness 1", "Compactness 2",
+                                                             "Maximum 3D Diameter", "Spherical Disproportion", "Sphericity"]
+            self.__featureClasses__["Texture: GLCM"] = ["Autocorrelation", "Cluster Prominence", "Cluster Shade",
+                                                      "Cluster Tendency", "Contrast", "Correlation", "Difference Entropy",
+                                                      "Dissimilarity", "Energy (GLCM)", "Entropy(GLCM)", "Homogeneity 1",
+                                                      "Homogeneity 2", "IMC1", "IDMN", "IDN", "Inverse Variance",
+                                                      "Maximum Probability", "Sum Average", "Sum Entropy", "Sum Variance",
+                                                      "Variance (GLCM)"]  # IMC2 missing
+            self.__featureClasses__["Texture: GLRL"] = ["SRE", "LRE", "GLN", "RLN", "RP", "LGLRE", "HGLRE", "SRLGLE",
+                                                      "SRHGLE", "LRLGLE", "LRHGLE"]
+            self.__featureClasses__["Geometrical Measures"] = ["Extruded Surface Area", "Extruded Volume",
+                                                             "Extruded Surface:Volume Ratio"]
+            self.__featureClasses__["Renyi Dimensions"] = ["Box-Counting Dimension", "Information Dimension",
+                                                         "Correlation Dimension"]
+        return self.__featureClasses__
 
 
     def setup(self):
@@ -84,11 +131,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """
         ScriptedLoadableModuleWidget.setup(self)
 
-        self.logic = CIP_LesionModelLogic()
+        self.semaphoreOpen = False
         self.timer = qt.QTimer()
         self.timer.timeout.connect(self.checkAndRefreshModels)
         self.lastRefreshValue = -5000  # Just a value out of range
-        self.semaphoreOpen = False
 
         #######################
         # Main area
@@ -110,26 +156,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.inputVolumeSelector.setMRMLScene(slicer.mrmlScene)
         # self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
         self.mainAreaLayout.addRow("Select an input volume", self.inputVolumeSelector)
-
-        # self.outputVolumeSelector = slicer.qMRMLNodeComboBox()
-        # #self.outputVolumeSelector.nodeTypes = ( "vtkMRMLLabelMapVolumeNode", "" )
-        # self.outputVolumeSelector.nodeTypes = ("vtkMRMLScalarVolumeNode", "" )
-        # self.outputVolumeSelector.selectNodeUponCreation = True
-        # self.outputVolumeSelector.autoFillBackground = True
-        # self.outputVolumeSelector.addEnabled = True
-        # self.outputVolumeSelector.noneEnabled = False
-        # self.outputVolumeSelector.removeEnabled = True
-        # self.outputVolumeSelector.renameEnabled = True
-        # self.outputVolumeSelector.showHidden = False
-        # self.outputVolumeSelector.showChildNodeTypes = False
-        # self.outputVolumeSelector.setMRMLScene( slicer.mrmlScene )
-        # #self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
-        # self.mainAreaLayout.addRow("Select a labelmap volume", self.outputVolumeSelector)
-
-        # self.addFiducialsCheckbox = qt.QCheckBox()
-        # self.addFiducialsCheckbox.checked = False
-        # self.addFiducialsCheckbox.text = "Add fiducials as seeds"
-        # self.mainAreaLayout.addWidget(self.addFiducialsCheckbox)
 
         self.addFiducialButton = ctk.ctkPushButton()
         self.addFiducialButton.text = "Add new seed"
@@ -154,10 +180,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.applySegmentationButton.setFixedWidth(200)
         self.mainAreaLayout.addRow("Segment the node: ", self.applySegmentationButton)
 
+        # CLI progress bar
         self.progressBar = slicer.qSlicerCLIProgressBar()
         self.progressBar.visible = False
         self.mainAreaLayout.addWidget(self.progressBar)
 
+        # Threshold
         self.distanceLevelSlider = qt.QSlider()
         self.distanceLevelSlider.orientation = 1  # Horizontal
         self.distanceLevelSlider.minimum = -50  # Ad-hoc value
@@ -165,36 +193,27 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.distanceLevelSlider.enabled = False
         self.mainAreaLayout.addRow("Select a threshold: ", self.distanceLevelSlider)
 
-        #######################
-        # Analysis area
-        self.featureKeys = []
-        ##
-        self.featureClassKeys = collections.OrderedDict()
-        # self.featureClassKeys["Node Information"] = ["Node"]
-        self.featureClassKeys["First-Order Statistics"] = ["Voxel Count", "Gray Levels", "Energy", "Entropy",
-                                                           "Minimum Intensity", "Maximum Intensity", "Mean Intensity",
-                                                           "Median Intensity", "Range", "Mean Deviation",
-                                                           "Root Mean Square", "Standard Deviation", "Skewness",
-                                                           "Kurtosis", "Variance", "Uniformity"]
-        self.featureClassKeys["Morphology and Shape"] = ["Volume mm^3", "Volume cc", "Surface Area mm^2",
-                                                         "Surface:Volume Ratio", "Compactness 1", "Compactness 2",
-                                                         "Maximum 3D Diameter", "Spherical Disproportion", "Sphericity"]
-        self.featureClassKeys["Texture: GLCM"] = ["Autocorrelation", "Cluster Prominence", "Cluster Shade",
-                                                  "Cluster Tendency", "Contrast", "Correlation", "Difference Entropy",
-                                                  "Dissimilarity", "Energy (GLCM)", "Entropy(GLCM)", "Homogeneity 1",
-                                                  "Homogeneity 2", "IMC1", "IDMN", "IDN", "Inverse Variance",
-                                                  "Maximum Probability", "Sum Average", "Sum Entropy", "Sum Variance",
-                                                  "Variance (GLCM)"]  # IMC2 missing
-        self.featureClassKeys["Texture: GLRL"] = ["SRE", "LRE", "GLN", "RLN", "RP", "LGLRE", "HGLRE", "SRLGLE",
-                                                  "SRHGLE", "LRLGLE", "LRHGLE"]
-        self.featureClassKeys["Geometrical Measures"] = ["Extruded Surface Area", "Extruded Volume",
-                                                         "Extruded Surface:Volume Ratio"]
-        self.featureClassKeys["Renyi Dimensions"] = ["Box-Counting Dimension", "Information Dimension",
-                                                     "Correlation Dimension"]
+        # Different radius selection
+        w = self
+        w.radiusFrame = qt.QFrame()
+        w.radiusFrameLayout = qt.QGridLayout(w.radiusFrame)
+        w.r15Checkbox = qt.QCheckBox()
+        w.r15Checkbox.setText("15")
+        w.radiusFrameLayout.addWidget(w.r15Checkbox, 0, 0)
+        w.r20Checkbox = qt.QCheckBox()
+        w.r20Checkbox.setText("20")
+        w.radiusFrameLayout.addWidget(w.r20Checkbox, 1, 0)
+        w.rOtherCheckbox = qt.QCheckBox()
+        w.rOtherCheckbox.setText("Other")
+        w.radiusFrameLayout.addWidget(w.rOtherCheckbox, 2, 0)
+        w.otherRadiusTextbox = qt.QLineEdit()
+        # w.otherRadiusTextbox.setFixedWidth(80)
+        w.radiusFrameLayout.addWidget(w.otherRadiusTextbox, 2, 1)
+        self.mainAreaLayout.addRow("Sphere radius:", w.radiusFrame)
 
         # used to map feature class to a list of auto-generated feature checkbox widgets
         self.featureWidgets = collections.OrderedDict()
-        for key in self.featureClassKeys.keys():
+        for key in self.featureClasses.keys():
             self.featureWidgets[key] = list()
 
         self.HeterogeneityCADCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -207,11 +226,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.featuresHeterogeneityCADLayout.addRow(self.tabsFeatureClasses)
 
         gridWidth, gridHeight = 3, 9
-        for featureClass in self.featureClassKeys:
+        for featureClass in self.featureClasses:
             # by default, features from the following features classes are checked:
-            if featureClass in ["First-Order Statistics"]:
-                        # , "Morphology and Shape", "Texture: GLCM",
-                        #         "Texture: GLRL"]:
+            if featureClass in ["First-Order Statistics", "Morphology and Shape"]:
+                # , "Texture: GLCM",
+                #         "Texture: GLRL"]:
                 check = True
             else:
                 check = False
@@ -219,7 +238,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             tabFeatureClass.setLayout(qt.QGridLayout())
             # featureList = (feature for feature in self.featureClassKeys[featureClass])
             gridLayoutCoordinates = ((row, col) for col in range(gridWidth) for row in range(gridHeight))
-            for featureName in self.featureClassKeys[featureClass]:
+            for featureName in self.featureClasses[featureClass]:
                 row, col = next(gridLayoutCoordinates, None)
                 if featureName is None or row is None or col is None:
                     break
@@ -283,22 +302,16 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.featuresHeterogeneityCADLayout.addRow(self.featureButtonFrame)
 
         # HeterogeneityCAD Apply Button
-        self.HeterogeneityCADButton = qt.QPushButton("Apply HeterogeneityCAD", self.featureButtonFrame)
-        self.HeterogeneityCADButton.toolTip = "Analyze input volume using selected Heterogeneity Features."
+        self.HeterogeneityCADButton = qt.QPushButton("Analyze!", self.featureButtonFrame)
+        self.HeterogeneityCADButton.toolTip = "Analyze input volume using selected Features."
         self.featureButtonFrame.layout().addWidget(self.HeterogeneityCADButton)
-        self.HeterogeneityCADButton.connect('clicked()', self.onHeterogeneityCADButtonClicked)
 
-        # Save Button
-        # self.saveButton = qt.QPushButton("Save to File", self.featureButtonFrame)
-        # self.saveButton.toolTip = "Save analyses to CSV file"
-        # self.saveButton.enabled = False
-        # self.featureButtonFrame.layout().addWidget(self.saveButton)
-        # self.saveButton.connect('clicked()', self.onSave)
 
-         # Reports widget
-        # self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
-        #                                        parent=self.statsButtonsFrame)
-        # self.reportsWidget.setup()
+
+        # Reports widget
+        self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
+                                               parent=self.featureButtonFrame)
+        self.reportsWidget.setup()
 
         ######################
         # Anaysis area
@@ -333,11 +346,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # self.analysisAreaLayout.addWidget(self.radiusTextBox)
         #
         #
-        runAnalysisButton = ctk.ctkPushButton()
-        runAnalysisButton.setText("Run selected analysis")
-        runAnalysisButton.setFixedWidth(200)
-        # self.analysisAreaLayout.addWidget(runAnalysisButton)
-        self.featureButtonFrame.layout().addWidget(runAnalysisButton)
+        # runAnalysisButton = ctk.ctkPushButton()
+        # runAnalysisButton.setText("Run selected analysis")
+        # runAnalysisButton.setFixedWidth(200)
+        # # self.analysisAreaLayout.addWidget(runAnalysisButton)
+        # self.featureButtonFrame.layout().addWidget(runAnalysisButton)
 
         ######################
         # Case navigator widget
@@ -363,7 +376,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # self.distanceLevelSlider.connect('valueChanged(int)', self.onDistanceSliderChanged)
         # self.distanceLevelSlider.connect('sliderReleased()', self.onDistanceSliderChanged)
 
-        runAnalysisButton.connect("clicked()", self.__onRunAnalysisButtonClicked__)
+        # runAnalysisButton.connect("clicked()", self.__onRunAnalysisButtonClicked__)
+        self.HeterogeneityCADButton.connect('clicked()', self.onAnalyzeButtonClicked)
+
+        self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
 
         self.__refreshUI__()
 
@@ -553,13 +569,65 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         selectionNode.SetReferenceActiveLabelVolumeID(self.logic.currentLabelmap.GetID())
         slicer.app.applicationLogic().PropagateVolumeSelection(0)
 
-    def calculateSelectedStatistics(self):
-        # Get the distance map to calculate the required sphere
-        self.logic.calculateCurrentDistanceMap()
-        # if self.histogramIntensityCheckBox.checked:
-        stats = self.logic.calculateCurrentHistogramIntensityStats()
-        print("DEBUG: histogram statistics:")
-        print(stats)
+    # def calculateSelectedStatistics(self):
+    #     # Get the distance map to calculate the required sphere
+    #     self.logic.calculateCurrentDistanceMap()
+    #     # if self.histogramIntensityCheckBox.checked:
+    #     stats = self.logic.calculateCurrentHistogramIntensityStats()
+    #     print("DEBUG: histogram statistics:")
+    #     print(stats)
+
+    def runAnalysis(self):
+        # build list of features and feature classes based on what is checked by the user
+        self.selectedMainFeaturesKeys = set()
+        self.selectedFeatureKeys = set()
+
+        for featureClass in self.featureWidgets:
+            for widget in self.featureWidgets[featureClass]:
+                if widget.checked:
+                    self.selectedMainFeaturesKeys.add(featureClass)
+                    self.selectedFeatureKeys.add(str(widget.text))
+
+        if self.inputVolumeSelector.currentNode() is None:
+            # TODO: disable the button until segmentation is done
+            qt.QMessageBox.warning(slicer.util.mainWindow(), "Select a volume",
+                                   "Please select and segment an input volume")
+            return
+        if self.logic.currentLabelmap is None:
+            qt.QMessageBox.warning(slicer.util.mainWindow(), "Select a labelmap",
+                                   "Please select and segment a labelmap volume")
+            return
+        if len(self.selectedFeatureKeys) == 0:
+            qt.QMessageBox.information(slicer.util.mainWindow(), "Select a feature",
+                                       "Please select at least one feature from the menu to calculate")
+            return
+
+        # Analysis for the volume and the nodule:
+        self.noduleResults = FeatureExtractionLogic(self.logic.currentVolume, self.logic.currentVolumeArray,
+                                             self.logic.currentLabelmap, self.logic.currentLabelmapArray,
+                                             self.featureClasses, self.selectedFeatureKeys)
+        results = self.noduleResults.run()
+        # self.FeatureVectors.append(nodeLogic.getFeatureVector())
+        print("DEBUG: Obtained results for the nodule: ")
+        print(results.AnalysisResultsDict)
+
+
+
+
+
+        # self.populateStatistics(self.FeatureVectors)
+        # self.saveButton.enabled = True
+
+    def onSaveReport(self):
+        """ Save the current values in a persistent csv file
+        :return:
+        """
+        if self.noduleResults is not None:
+            volumeName = self.noduleResults.volumeNode.GetName()
+            self.noduleResults.AnalysisResultsDict["CaseId"] = volumeName
+            self.reportsWidget.saveCurrentValues(**self.noduleResults.AnalysisResultsDict)
+            qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+
 
     ############
     # Events
@@ -652,13 +720,13 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # Start the timer that will refresh all the visualization nodes
         self.timer.start(500)
 
-    def __onRunAnalysisButtonClicked__(self):
-        """ Calculate the selected statistics """
-        self.calculateSelectedStatistics()
+    # def __onRunAnalysisButtonClicked__(self):
+    #     """ Calculate the selected statistics """
+    #     self.calculateSelectedStatistics()
 
     def __onSceneClosed__(self, arg1, arg2):
-        self.logic = CIP_LesionModelLogic()
         self.timer.stop()
+        self.__initVars__()
         # Clean fiducials area
         self.__removeFiducialsFrames__()
 
@@ -680,36 +748,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         featureClassName = featureClassWidget.getName()
         self.featureClassParametersDict[featureClassName].update(featureClassWidget.getParameterDict())
 
-    def onHeterogeneityCADButtonClicked(self):
-        self.featureKeys = []
-        self.featureClassKeys = set() # no duplicate keys allowed in set()
+    def onAnalyzeButtonClicked(self):
+        self.runAnalysis()
 
-        # build list of features and feature classes based on what is checked by the user
-        for featureClass in self.featureWidgets:
-          for widget in self.featureWidgets[featureClass]:
-            if widget.checked:
-              self.featureKeys.append(str(widget.text))
-              self.featureClassKeys.add(featureClass)
 
-        # if (len(self.inputDataNodes) == 0):
-        #   qt.QMessageBox.information(slicer.util.mainWindow(),"HeterogeneityCAD", "Please add data node(s) of class 'vtkMRMLScalarVolumeNode' to the Nodes List")
-        #   return
-        # if not (self.labelmapNode):
-        #   qt.QMessageBox.information(slicer.util.mainWindow(),"HeterogeneityCAD", "Please provide a Label Map that specifies a Region-Of-Interest in your image nodes")
-        #   return
-        if (len(self.featureKeys) == 0):
-          qt.QMessageBox.information(slicer.util.mainWindow(),"HeterogeneityCAD", "Please select at least one feature from the menu to calculate")
-          return
-
-        # for dataNode in self.inputDataNodes:
-        nodeLogic = FeatureExtractionLogic(self.logic.currentVolume, self.logic.currentVolumeArray,
-                                           self.logic.currentLabelmap, self.logic.currentLabelmapArray,
-                                            self.featureClassKeys, self.featureKeys)
-        # self.FeatureVectors.append(nodeLogic.getFeatureVector())
-        print("DEBUG: Obtained results: ")
-        print(nodeLogic.getFeatureVector())
-        # self.populateStatistics(self.FeatureVectors)
-        # self.saveButton.enabled = True
 
 #############################
 # CIP_LesionModelLogic
@@ -736,22 +778,23 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if self.currentModelNodeId is None:
             return None
         return slicer.util.getNode(self.currentModelNodeId)
-    
+
     @property
     def currentVolumeArray(self):
         if self.__currentVolumeArray__ is None and self.currentVolume is not None:
             self.__currentVolumeArray__ = slicer.util.array(self.currentVolume.GetName())
         return self.__currentVolumeArray__
+
     @currentVolumeArray.setter
     def currentVolumeArray(self, value):
         self.__currentVolumeArray__ = value
 
-    
     @property
     def currentLabelmapArray(self):
         if self.__currentLabelmapArray__ is None and self.currentLabelmap is not None:
             self.__currentLabelmapArray__ = slicer.util.array(self.currentLabelmap.GetName())
         return self.__currentLabelmapArray__
+
     @currentLabelmapArray.setter
     def currentLabelmapArray(self, value):
         self.__currentLabelmapArray__ = value
@@ -1201,4 +1244,3 @@ class CIP_LesionModelTest(ScriptedLoadableModuleTest):
         # self.delayDisplay('Test passed!')
         # t = unittest.TestCase()
         self.fail("Test not implemented yet")
-
