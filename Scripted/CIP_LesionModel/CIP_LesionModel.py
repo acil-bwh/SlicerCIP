@@ -203,11 +203,14 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.r20Checkbox.setText("20")
         self.radiusFrameLayout.addWidget(self.r20Checkbox, 1, 0)
         self.rOtherCheckbox = qt.QCheckBox()
+        self.r25Checkbox = qt.QCheckBox()
+        self.r25Checkbox.setText("25")
+        self.radiusFrameLayout.addWidget(self.r25Checkbox, 2, 0)
         self.rOtherCheckbox.setText("Other")
-        self.radiusFrameLayout.addWidget(self.rOtherCheckbox, 2, 0)
+        self.radiusFrameLayout.addWidget(self.rOtherCheckbox, 3, 0)
         self.otherRadiusTextbox = qt.QLineEdit()
         # self.otherRadiusTextbox.setFixedWidth(80)
-        self.radiusFrameLayout.addWidget(self.otherRadiusTextbox, 2, 1)
+        self.radiusFrameLayout.addWidget(self.otherRadiusTextbox, 3, 1)
         self.mainAreaLayout.addRow("Sphere radius (mm):", self.radiusFrame)
 
         # used to map feature class to a list of auto-generated feature checkbox widgets
@@ -580,6 +583,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # build list of features and feature classes based on what is checked by the user
         self.selectedMainFeaturesKeys = set()
         self.selectedFeatureKeys = set()
+        self.analysisResults = dict()
 
         for featureClass in self.featureWidgets:
             for widget in self.featureWidgets[featureClass]:
@@ -600,40 +604,80 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             qt.QMessageBox.information(slicer.util.mainWindow(), "Select a feature",
                                        "Please select at least one feature from the menu to calculate")
             return
-
+        start = time.time()
         # Analysis for the volume and the nodule:
         keyName = self.inputVolumeSelector.currentNode().GetName()
-        self.analysisResults[keyName] = FeatureExtractionLogic(self.logic.currentVolume, self.logic.currentVolumeArray,
+        logic = FeatureExtractionLogic(self.logic.currentVolume, self.logic.currentVolumeArray,
                                              self.logic.currentLabelmapArray, self.featureClasses, self.selectedFeatureKeys)
         
-        results = self.analysisResults[keyName].run()
+        self.analysisResults[keyName] = logic.run()
         # self.FeatureVectors.append(nodeLogic.getFeatureVector())
         print("DEBUG: Obtained results for the nodule: ")
-        print(results)
-        
-        # print("DEBUG: analyzing spheres...")
-        # if self.r15Checkbox.checked:
-        #     keyName = self.inputVolumeSelector.GetName() + "__r15"
-        #     labelmap, labelmapArray = self.logic.getLabelmap(15)
+        print(self.analysisResults[keyName])
 
+        if self.r15Checkbox.checked or self.r20Checkbox.checked or self.r25Checkbox.checked \
+                or (self.rOtherCheckbox.checked and self.otherRadiusTextbox.text != ""):
+            print("DEBUG: analyzing spheres...")
+            self.logic.calculateCurrentDistanceMap()
+            if self.r15Checkbox.checked:
+                self.__runAnalysisSphere__(15)
+            if self.r20Checkbox.checked:
+                self.__runAnalysisSphere__(20)
+            if self.r25Checkbox.checked:
+                self.__runAnalysisSphere__(25)
+            if self.rOtherCheckbox.checked:
+                r = int(self.otherRadiusTextbox.text)
+                self.__runAnalysisSphere__(r)
 
-
-
-
+        t = time.time() - start
+        qt.QMessageBox.information(slicer.util.mainWindow(), "Process finished",
+                                   "Analysis finished. Total time: {0} seconds".format(t))
         # self.populateStatistics(self.FeatureVectors)
         # self.saveButton.enabled = True
+
+    def __runAnalysisSphere__(self, radius):
+        """ Run the selected features for an sphere of radius r (excluding the nodule itself)
+        :param radius:
+        :return:
+        """
+        keyName = "{0}__r{1}".format(self.inputVolumeSelector.currentNode().GetName(), radius)
+        labelmapArray = self.logic.getSphereLabelMap(radius)
+        slicer.app.processEvents()
+        logic = FeatureExtractionLogic(self.logic.currentVolume, self.logic.currentVolumeArray,
+                                            labelmapArray, self.featureClasses, self.selectedFeatureKeys,
+                                            "__r{0}".format(radius))
+
+        self.analysisResults[keyName] = logic.run()
+        print("DEBUG: Results for the sphere of radius ", radius)
+        print(self.analysisResults[keyName])
 
     def onSaveReport(self):
         """ Save the current values in a persistent csv file
         :return:
         """
-        # TODO: include spheres and use "Date" column
-        if self.analysisResults is not None:
-            volumeName = self.inputVolumeSelector.currentNode().GetName()
-            self.analysisResults[volumeName].AnalysisResultsDict["CaseId"] = volumeName
-            self.reportsWidget.saveCurrentValues(**self.analysisResults[volumeName].AnalysisResultsDict)
-            qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+        date = time.strftime("%Y/%m/%d %H:%M:%S")
+        keyName = self.inputVolumeSelector.currentNode().GetName()
+        self.__saveSubReport__(keyName, date)
+        keyName = self.inputVolumeSelector.currentNode().GetName() + "__r15"
+        self.__saveSubReport__(keyName, date)
+        keyName = self.inputVolumeSelector.currentNode().GetName() + "__r20"
+        self.__saveSubReport__(keyName, date)
+        keyName = self.inputVolumeSelector.currentNode().GetName() + "__r25"
+        self.__saveSubReport__(keyName, date)
+        keyName = "{0}__r{1}".format(self.inputVolumeSelector.currentNode().GetName(), self.otherRadiusTextbox.text)
+        self.__saveSubReport__(keyName, date)
+        qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
 
+
+    def __saveSubReport__(self, keyName, date):
+        """ Save a report in Case Reports Widget for this case and a concrete radius
+        :param keyName: CaseId[__rXX] where XX = sphere radius
+        :param date: timestamp global to all records
+        """
+        if keyName in self.analysisResults and self.analysisResults[keyName] is not None:
+            self.analysisResults[keyName]["CaseId"] = keyName
+            self.analysisResults[keyName]["Date"] = date
+            self.reportsWidget.saveCurrentValues(**self.analysisResults[keyName])
 
     ############
     # Events
@@ -1046,15 +1090,31 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
                                                                                 self.currentLabelmapArray, spacing)
         return stats
 
-    def getSphereLabelMap(self, radius):
+    def getSphereLabelMap(self, radius, forceRefresh=False):
         """ Get a labelmap that contains a sphere centered in the nodule centroid, with radius "radius" and that
         EXCLUDES the nodule itself.
         If the results are not cached, this method creates the volume and calculates the labelmap
-        :param radius:
-        :return:
+        :param radius: radius of the sphere
+        :param forceRefresh: when False (default), we will look for a cached labelmap
+        :return: labelmap array for a sphere of this radius
         """
-        pass
+        if self.spheresLabelmaps.has_key(radius) and not forceRefresh:
+            return self.spheresLabelmaps[radius]
+        # DEBUG: temporarily create a node to visualize results
+        # copyVolume = SlicerUtil.cloneVolume(self.currentLabelmap, "copy" + str(radius))
+        # array = slicer.util.array(copyVolume.GetName())
+        # Init with the current segmented nodule labelmap
+        array = np.copy(self.currentLabelmapArray)
+        # Mask with the voxels that are inside the radius of the sphere
+        array[self.currentDistanceMap <= radius] = 1
+        # Exclude the nodule
+        array[self.currentLabelmapArray == 1] = 0
+        # Cache the result
+        self.spheresLabelmaps[radius] = array
 
+        #copyVolume.GetImageData().Modified()
+
+        return array
 
         # def __processCLIResults__(self):
         #     """ Method called once that the cli has finished the process.

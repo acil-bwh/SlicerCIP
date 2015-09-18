@@ -246,7 +246,7 @@ class SlicerUtil:
         :param copyVolumeName: desired name of the labelmap (with a suffix if a node with that name already exists in the scene)
         :param mrmlScene: slicer.mrmlScene by default
         :param cloneImageData: clone also the vtkImageData node
-        :return:
+        :return: cloned volume
         """
         scene = slicer.mrmlScene if mrmlScene is None else mrmlScene
 

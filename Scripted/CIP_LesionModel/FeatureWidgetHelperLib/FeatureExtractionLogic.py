@@ -10,19 +10,16 @@ from . import *
 import FeatureExtractionLib
 
 class FeatureExtractionLogic:
-    def __init__(self, volumeNode, volumeNodeArray, labelmapNodeArray, featureCategoriesKeys, featureKeys):
+    def __init__(self, volumeNode, volumeNodeArray, labelmapNodeArray, featureCategoriesKeys, featureKeys, additionalProgressbarDesc=""):
         self.volumeNode = volumeNode
         self.volumeNodeArray = volumeNodeArray
         self.labelmapNodeArray = labelmapNodeArray
         self.featureCategoriesKeys = featureCategoriesKeys
         self.featureKeys = featureKeys
+        self.additionalProgressbarDesc = additionalProgressbarDesc
         # initialize Progress Bar
         self.progressBar = qt.QProgressDialog(slicer.util.mainWindow())
         self.progressBar.minimumDuration = 0
-        self.progressBar.show()
-        self.progressBar.setValue(0)
-        self.progressBar.setMaximum(len(self.featureKeys))
-        self.progressBar.labelText = 'Calculating for %s: ' % self.volumeNode.GetName()
 
         self.__analysisResultsDict__ = None
 
@@ -37,6 +34,11 @@ class FeatureExtractionLogic:
         """ Run all the selected analysis
         :return: Dictionary of Feature-Value with all the features analyzed
         """
+        self.progressBar.show()
+        self.progressBar.setValue(0)
+        self.progressBar.setMaximum(len(self.featureKeys))
+        self.progressBar.labelText = 'Calculating for {0}{1}: '.format(self.volumeNode.GetName(), self.additionalProgressbarDesc)
+
         # create Numpy Arrays
         # self.nodeArrayVolume = self.createNumpyArray(self.volumeNode)
         # self.nodeArrayLabelMapROI = self.createNumpyArray(self.labelmapNode)
@@ -60,13 +62,15 @@ class FeatureExtractionLogic:
         # self.nodeInformation = FeatureExtractionLib.NodeInformation(self.dataNode, self.labelmapNode, self.featureKeys)
         # self.__featureDict__.update( self.nodeInformation.EvaluateFeatures() )
 
+        progressBarDesc = self.volumeNode.GetName() + self.additionalProgressbarDesc
+
         # First Order Statistics
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "First Order Statistics", len(self.__analysisResultsDict__))
+        self.updateProgressBar(self.progressBar, progressBarDesc, "First Order Statistics", len(self.__analysisResultsDict__))
         self.firstOrderStatistics = FeatureExtractionLib.FirstOrderStatistics(self.targetVoxels, self.bins, self.numGrayLevels, self.featureKeys)
         self.__analysisResultsDict__.update( self.firstOrderStatistics.EvaluateFeatures() )
 
         # Shape/Size and Morphological Features)
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Morphology Statistics", len(self.__analysisResultsDict__))
+        self.updateProgressBar(self.progressBar, progressBarDesc, "Morphology Statistics", len(self.__analysisResultsDict__))
         # extend padding by one row/column for all 6 directions
         maxDimsSA = tuple(map(operator.add, self.matrix.shape, ([2,2,2])))
         matrixSA, matrixSACoordinates = self.padMatrix(self.matrix, self.matrixCoordinates, maxDimsSA, self.targetVoxels)
@@ -74,23 +78,23 @@ class FeatureExtractionLogic:
         self.__analysisResultsDict__.update( self.morphologyStatistics.EvaluateFeatures() )
 
         # Texture Features(GLCM)
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "GLCM Texture Features", len(self.__analysisResultsDict__))
+        self.updateProgressBar(self.progressBar, progressBarDesc, "GLCM Texture Features", len(self.__analysisResultsDict__))
         self.textureFeaturesGLCM = FeatureExtractionLib.TextureGLCM(self.grayLevels, self.numGrayLevels, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
         self.__analysisResultsDict__.update( self.textureFeaturesGLCM.EvaluateFeatures() )
 
         # Texture Features(GLRL)
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "GLRL Texture Features", len(self.__analysisResultsDict__))
+        self.updateProgressBar(self.progressBar, progressBarDesc, "GLRL Texture Features", len(self.__analysisResultsDict__))
         self.textureFeaturesGLRL = FeatureExtractionLib.TextureGLRL(self.grayLevels, self.numGrayLevels, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
         self.__analysisResultsDict__.update( self.textureFeaturesGLRL.EvaluateFeatures() )
 
         # Geometrical Measures
         # TODO: progress bar does not update to Geometrical Measures while calculating (create separate thread?)
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Geometrical Measures", len(self.__analysisResultsDict__))
+        self.updateProgressBar(self.progressBar, progressBarDesc, "Geometrical Measures", len(self.__analysisResultsDict__))
         self.geometricalMeasures = FeatureExtractionLib.GeometricalMeasures(self.volumeNode.GetSpacing(), self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
         self.__analysisResultsDict__.update( self.geometricalMeasures.EvaluateFeatures() )
 
         # Renyi Dimensions
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Renyi Dimensions", len(self.__analysisResultsDict__))
+        self.updateProgressBar(self.progressBar, progressBarDesc, "Renyi Dimensions", len(self.__analysisResultsDict__))
         # extend padding to dimension lengths equal to next power of 2
         maxDims = tuple( [int(pow(2, math.ceil(np.log2(np.max(self.matrix.shape)))))] * 3 )
         matrixPadded, matrixPaddedCoordinates = self.padMatrix(self.matrix, self.matrixCoordinates, maxDims, self.targetVoxels)
@@ -98,7 +102,7 @@ class FeatureExtractionLogic:
         self.__analysisResultsDict__.update( self.renyiDimensions.EvaluateFeatures() )
 
         # close progress bar
-        self.updateProgressBar(self.progressBar, self.volumeNode.GetName(), "Populating Summary Table", len(self.__analysisResultsDict__))
+        self.updateProgressBar(self.progressBar, progressBarDesc, "Populating Summary Table", len(self.__analysisResultsDict__))
         self.progressBar.close()
         self.progressBar = None
 
