@@ -22,8 +22,6 @@ class ParenchymalVolume:
             self.keysToAnalyze = keysToAnalyze.intersection(allKeys)
         else:
             self.keysToAnalyze = self.getAllEmphysemaTypes().keys()
-        # for key in keys:
-        #     self.parenchymalVolumeStatistics[key] = "self.compareVolumes({0})".format(self.parenchymalVolumeStatistics[key])
 
     @staticmethod
     def getAllEmphysemaTypes():
@@ -31,20 +29,16 @@ class ParenchymalVolume:
         :return: dictionary of Type(string)-[numeric_code, description]
         """
         return {
-            # "MILDPARASEPTALEMPHYSEMA": 10
-            # "MODERATEPARASEPTALEMPHYSEMA": 11,
-            # "SEVEREPARASEPTALEMPHYSEMA": 12,
-            # "MILDCENTRILOBULAREMPHYSEMA": 16,
-            # "MODERATECENTRILOBULAREMPHYSEMA": 17,
-            # "SEVERECENTRILOBULAREMPHYSEMA": 18,
-            # "MILDPANLOBULAREMPHYSEMA": 19,
-            # "MODERATEPANLOBULAREMPHYSEMA": 20,
-            # "SEVEREPANLOBULAREMPHYSEMA": 21
             "Emphysema": 5,
             "Mild paraseptal emphysema": 10,
             "Moderate paraseptal emphysema": 11,
             "Severe paraseptal emphysema": 12,
-
+            "Mild centrilobular emphysema": 16,
+            "Moderate centrilobular emphysema": 17,
+            "Severe centilobular emphysema": 18,
+            "Mild panlobular emphysema": 19,
+            "Moderate panlobular emphysema": 20,
+            "Severe panlobular emphysema": 21
         }
 
     @staticmethod

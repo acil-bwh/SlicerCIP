@@ -107,8 +107,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.__featureClasses__["First-Order Statistics"] = ["Voxel Count", "Gray Levels", "Energy", "Entropy",
                                                                "Minimum Intensity", "Maximum Intensity", "Mean Intensity",
                                                                "Median Intensity", "Range", "Mean Deviation",
-                                                               "Root Mean Square", "Standard Deviation", "Skewness",
-                                                               "Kurtosis", "Variance", "Uniformity"]
+                                                               "Root Mean Square", "Standard Deviation", "Ventilation Heterogeneity",
+                                                                 "Skewness", "Kurtosis", "Variance", "Uniformity"]
             self.__featureClasses__["Morphology and Shape"] = ["Volume mm^3", "Volume cc", "Surface Area mm^2",
                                                              "Surface:Volume Ratio", "Compactness 1", "Compactness 2",
                                                              "Maximum 3D Diameter", "Spherical Disproportion", "Sphericity"]
@@ -247,7 +247,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         gridWidth, gridHeight = 3, 9
         for featureClass in self.featureClasses:
             # by default, features from the following features classes are checked:
-            if featureClass in ["First-Order Statistics", "Morphology and Shape", "Parenchymal Volume"]:
+            if featureClass in ["First-Order Statistics", "Morphology and Shape"]:
                 # , "Texture: GLCM",
                 #         "Texture: GLRL"]:
                 check = True
@@ -269,7 +269,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.tabsFeatureClasses.addTab(tabFeatureClass, featureClass, self.featureWidgets[featureClass],
                                            checkStatus=check)
 
-        self.tabsFeatureClasses.setCurrentIndex(1)
+        self.tabsFeatureClasses.setCurrentIndex(0)
 
         # Convert the ordered dictionary to a flat list that contains all the features
         self.featureWidgetList = list(itertools.chain.from_iterable(self.featureWidgets.values()))
@@ -658,7 +658,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 self.__runAnalysisSphere__(25, labelmapWholeVolumeArray)
             if self.rOtherCheckbox.checked:
                 r = int(self.otherRadiusTextbox.text)
-                self.__runAnalysisSphere__(r)
+                self.__runAnalysisSphere__(r, labelmapWholeVolumeArray)
 
         t = time.time() - start
         qt.QMessageBox.information(slicer.util.mainWindow(), "Process finished",
@@ -843,6 +843,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 # CIP_LesionModelLogic
 #############################
 class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
+    MAX_TUMOR_RADIUS = 30
+
     def __init__(self):
         self.currentVolume = None  # Current active volume
         self.__currentVolumeArray__ = None  # Numpy array that represents the current volume
@@ -856,8 +858,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
 
         # self.origin = None                  # Current origin (centroid of the nodule)
         self.currentDistanceMap = None  # Current distance map from the specified origin
-
-        self.spheresLabelmaps = dict()
+        self.currentCentroid = None     # Centroid of the nodule
+        self.spheresLabelmaps = dict()  # Labelmap of spheres for a particular radius
 
     @property
     def currentModelNode(self):
@@ -1080,6 +1082,16 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             threeDView = threeDWidget.threeDView()
             threeDView.resetFocalPoint()
 
+    ##########
+    # Calculations
+    def __invalidateDistances__(self):
+        """ Invalidate the current nodule centroid, distance maps, etc.
+        """
+        self.currentDistanceMap = None
+        self.currentCentroid = None
+        self.spheresLabelmaps = dict()
+
+
     def updateModels(self, newThreshold):
         """ Modify the threshold for the current volume (update the models)
         :param newThreshold: new threshold (all the voxels below this threshold will be considered nodule)
@@ -1090,6 +1102,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.marchingCubesFilter.SetValue(0, newThreshold)
         self.marchingCubesFilter.Update()
         self.currentLabelmapArray = slicer.util.array(self.currentLabelmap.GetName())
+        # Invalidate distances (the nodule is going to change)
+        self.__invalidateDistances__()
         # Refresh 3D view
         viewNode = slicer.util.getNode('vtkMRMLViewNode*')
         viewNode.Modified()
@@ -1103,15 +1117,14 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if self.currentDistanceMap is None:
             centroid = self.centroid(self.currentLabelmapArray)
             # Calculate the distance map for the specified origin
-            # Get the dimensions of the volume
+            # Get the dimensions of the volume in ZYX coords
             dims = list(self.currentVolume.GetImageData().GetDimensions())
             dims.reverse()
-            spacing = self.currentVolume.GetSpacing()
+            # Get spacing in ZYX
+            spacing = list(self.currentVolume.GetSpacing())
+            spacing.reverse()
 
-            self.currentDistanceMap = Util.fast_marching_distance_map(dims, spacing, centroid, stopping_value=30)
-            # Reshape to zyx
-            # shape = self.currentDistanceMap.shape
-            # self.currentDistanceMap = self.currentDistanceMap.reshape(shape[2], shape[1], shape[0])
+            self.currentDistanceMap = Util.fast_marching_distance_map(dims, spacing, centroid, stopping_value=self.MAX_TUMOR_RADIUS)
 
     def calculateCurrentHistogramIntensityStats(self):
         """ Calculate the current histogram statistics and also get the current
@@ -1129,26 +1142,39 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
                                                                                 self.currentLabelmapArray, spacing)
         return stats
 
-    def getSphereLabelMap(self, radius, forceRefresh=False):
-        """ Get a labelmap that contains a sphere centered in the nodule centroid, with radius "radius" and that
+    def getSphereLabelMap(self, radius):
+        """ Get a labelmap numpy array that contains a sphere centered in the nodule centroid, with radius "radius" and that
         EXCLUDES the nodule itself.
         If the results are not cached, this method creates the volume and calculates the labelmap
         :param radius: radius of the sphere
-        :param forceRefresh: when False (default), we will look for a cached labelmap
         :return: labelmap array for a sphere of this radius
         """
-        if self.spheresLabelmaps.has_key(radius) and not forceRefresh:
+        # If the shere was already calculated, return the results
+        if self.spheresLabelmaps.has_key(radius):
             return self.spheresLabelmaps[radius]
         # Init with the current segmented nodule labelmap
-        #array = np.zeros(self.currentLabelmapArray.shape, np.bool)
         # Mask with the voxels that are inside the radius of the sphere
         array = self.currentDistanceMap <= radius
         # Exclude the nodule
         array[self.currentLabelmapArray == 1] = 0
         # Cache the result
         self.spheresLabelmaps[radius] = array
-
+        # Create a mrml labelmap node for sphere visualization purposes (this step could be skipped)
+        self.__createLabelmapSphereVolume__(array, radius)
         return array
+
+    def __createLabelmapSphereVolume__(self, array, radius):
+        """ Create a Labelmap volume cloning the current global labelmap with the ROI sphere for visualization purposes
+        :param array: labelmap array
+        :param radius: radius of the sphere (used for naming the volume)
+        :return: volume created
+        """
+        node = SlicerUtil.cloneVolume(self.currentLabelmap, "{0}_r{1}".format(self.currentVolume.GetName(), radius))
+        arr = slicer.util.array(node.GetName())
+        arr[:] = array
+        node.GetImageData().Modified()
+        return node
+
 
     def centroid(self, numpyArray, labelId=1):
         """ Calculate the coordinates of a centroid for a concrete labelId (default=1)
@@ -1158,181 +1184,6 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         """
         mean = np.mean(np.where(numpyArray == labelId), axis=1)
         return np.asarray(np.round(mean, 0), np.int)
-
-        # def __processCLIResults__(self):
-        #     """ Method called once that the cli has finished the process.
-        #     Create a new labelmap with the result of the process
-        #     """
-        #     print("DEBUG: processing results from CLI...")
-        #     volumesLogic = slicer.modules.volumes.logic()
-        #
-        #     # Create a numpy array for the processed result
-        #     self.cliOutputArray =  slicer.util.array(self.cliOutputScalarNode.GetName())
-        #
-        #     # Remove the current labelmap if it already existed
-        #     slicer.mrmlScene.RemoveNode(self.currentLabelmap)
-        #     # Create a new labelmap for the segmented volume (we have to adapt it to the new labelmap type)
-        #     labelmapName = self.currentVolume.GetID() + '_lm'
-        #     self.currentLabelmap = Util.convertScalarToLabelmap(self.cliOutputScalarNode, labelmapName)
-        #     # Get a numpy array to work with the labelmap
-        #     self.currentLabelmapArray = slicer.util.array(labelmapName)
-        #
-        #     #print("DEBUG: labelmap array created. Shape: ", self.currentLabelmapArray.shape)
-        #     # Model render
-        #     logic = slicer.modules.volumerendering.logic()
-        #     displayNode = logic.GetFirstVolumeRenderingDisplayNode(self.currentLabelmap)
-        #     if displayNode is None:
-        #         # Create the rendering infrastructure
-        #         displayNode = logic.CreateVolumeRenderingDisplayNode()
-        #         slicer.mrmlScene.AddNode(displayNode)
-        #         logic.UpdateDisplayNodeFromVolumeNode(displayNode, self.currentLabelmap)
-        #
-        #     # Invoke the callback if specified
-        #     if self.onCLISegmentationFinishedCallback is not None:
-        #         self.onCLISegmentationFinishedCallback()
-
-        # def updateLabelmap(self, newValue):
-        #     """ Update the labelmap representing the segmentation. Depending on the value the
-        #     user will see a "bigger" or "smaller" segmentation.
-        #     This is based on numpy modification.
-
-        #     if self.currentLabelmap:
-        #         self.currentLabelmapArray[:] = 0
-        #         self.currentLabelmapArray[self.cliOutputArray >= newValue] = 1
-        #         self.currentLabelmap.GetImageData().Modified()
-
-        # def createAndAddToSceneWrapperScalarNode(self, bigNode, smallNode):
-        #     # Clone the big node
-        #     vl = slicer.modules.volumes.logic()
-        #     copyVol = vl.CloneVolume(slicer.mrmlScene, bigNode, bigNode.GetName() + "_copy")
-        #     # Get the associated numpy array
-        #     copyArray = slicer.util.array(copyVol.GetName())
-        #     # Reset all the values
-        #     copyArray[:] = 0
-        #     # Get the associated numpy array for the small node
-        #     smallArray = slicer.util.array(smallNode.GetName())
-        #
-        #     # Calculate the offsets
-        #     offset = [copyArray.shape[0]-smallArray.shape[0], copyArray.shape[1]-smallArray.shape[1], copyArray.shape[2]-smallArray.shape[2]]
-        #
-
-
-
-# import numpy as np
-# from CIP.logic import Util
-
-# class CIP_Measurements(object):
-#     """ Class that will be used to perform all the measurements and other operations in Nodules module.
-#     The operations may be reused by another modules.
-#     """
-#
-#     def __init__(self):
-#         pass
-#
-#     def centroid(self, numpyArray, labelId=1):
-#         """ Calculate the coordinates of a centroid for a concrete labelId (default=1)
-#         :param numpyArray: numpy array
-#         :param labelId: label id (dafault = 1)
-#         :return: numpy array with the coordinates (int format)
-#         """
-#         mean = np.mean(np.where(numpyArray == labelId), axis=1)
-#         return np.asarray(np.round(mean, 0), np.int)
-#
-#     def get_current_distance_map(self, volume, origin, max_radius=30):
-#         """ Calculate a distance map from the origin (xyz coords) in the specified volume
-#         :param volume: vtk scalar volume (it can be a labelmap too)
-#         :param origin: coordinates of the origin (xyz)
-#         :return: numpy array
-#         """
-#         # Get the dimensions of the volume
-#         dims = volume.GetImageData().GetDimensions()
-#         #dims = (dims[2], dims[1], dims[0])
-#         # spacing = list(volume.GetSpacing())
-#         # spacing.reverse()
-#         spacing = volume.GetSpacing()
-#
-#         dm = Util.fast_marching_distance_map(dims, spacing, origin, stopping_value=max_radius)
-#         # Return a squared distance to make it easier to filter by radius
-#         dm *= dm
-#         # Reshape the array to adapt it to zyx format handled by slicer numpy arrays
-#         dm.reshape()
-#
-#     def histogram_intensity_basic_statistics_array(self, intensity_array, labelmap_array, spacing, label=1):
-#         """ Get a dictionary with basic statistics based on histogram (average, max, min, etc.)
-#         :param intensity_array: numpy array for the volume
-#         :param labelmap_array: numpy array for the labelmap volume
-#         :param spacing: 3 spacings
-#         :param label: label to analyze (default: 1)
-#         :return: dictionary with the following key-values:
-#             - count (total pixel count)
-#             - volume (total volume in mm3)
-#             - mean (intensity)
-#             - max (intensity)
-#             - min (intensity)
-#             - std (intensity)
-#             - median (intensity)
-#         """
-#         # Get the numpy arrays
-#         result = {
-#             "count": 0,
-#             "volume": 0,
-#             "mean": 0,
-#             "min": 0,
-#             "max": 0,
-#             "std": 0,
-#             "median": 0
-#         }
-#
-#         # Get all pixels with this label
-#         t = (labelmap_array == label)
-#         count = t.sum()
-#         result["count"] = count
-#
-#         if count == 0:
-#             # If all the values are 0, it is not neccesary to calculate anything else (just return an empty object)
-#             return result
-#
-#         # Perform the calulations.
-#         filtered = intensity_array[t]
-#         result["volume"] = count * spacing[0] * spacing[1] * spacing[2]
-#         result["mean"] = filtered.mean()
-#         result["min"] = filtered.min()
-#         result["max"] = filtered.max()
-#         result["std"] = filtered.std()
-#         result["median"] = np.median(filtered)
-#
-#         return result
-#
-#     def histogram_intensity_basic_statistics(self, intensity_volume, labelmap_volume, label=1,
-#                                              return_numpy_arrays=False):
-#         """ Get a dictionary with basic statistics based on histogram (average, max, min, etc.)
-#         :param intensity_volume: intensity vtk scalar volume
-#         :param labelmap_volume: labelmap volume
-#         :param label: label to analyze (default: 1)
-#         :param return_numpy_arrays: when True, return the numpy arrays that represent the intensity and labelmap volumes
-#         :return: dictionary with the following key-values:
-#             - count (total pixel count)
-#             - volume (total volume in mm3)
-#             - average (intensity)
-#             - max (intensity)
-#             - min (intensity)
-#             - std (intensity)
-#             - median (intensity)
-#
-#             When "return_numpy_arrays==True", it also returns the intensity and labelmap numpy arrays corresponding
-#             the volumes
-#         """
-#         # Get the numpy arrays
-#         intensity_array = Util.vtk_to_numpy_array(intensity_volume.GetImageData())
-#         labelmap_array = Util.vtk_to_numpy_array(labelmap_volume.GetImageData())
-#         spacing = intensity_volume.GetSpacing()
-#         results = self.histogram_intensity_basic_statistics_array(intensity_array, labelmap_array, spacing, label)
-#
-#         if return_numpy_arrays:
-#             return results, intensity_array, labelmap_array
-#         else:
-#             return results
-
 
 class CIP_LesionModelTest(ScriptedLoadableModuleTest):
     """

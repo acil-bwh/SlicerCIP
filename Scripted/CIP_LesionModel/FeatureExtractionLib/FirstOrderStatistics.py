@@ -10,10 +10,9 @@ class FirstOrderStatistics:
     def __init__(self, parameterValues, bins, grayLevels, allKeys):
         """
         :param parameterValues: 3D array with the coordinates of the voxels where the labelmap is not 0
-        :param bins:
-        :param grayLevels:
-        :param allKeys:
-        :return:
+        :param bins: bins for histogram
+        :param grayLevels: number of different gray levels
+        :param allKeys: all feature keys that have been selected for analysis
         """
         self.firstOrderStatistics = collections.OrderedDict()
         self.firstOrderStatistics["Voxel Count"] = "self.voxelCount(self.parameterValues)"
@@ -28,6 +27,7 @@ class FirstOrderStatistics:
         self.firstOrderStatistics["Mean Deviation"] = "self.meanDeviation(self.parameterValues)"
         self.firstOrderStatistics["Root Mean Square"] = "self.rootMeanSquared(self.parameterValues)"
         self.firstOrderStatistics["Standard Deviation"] = "self.standardDeviation(self.parameterValues)"
+        self.firstOrderStatistics["Ventilation Heterogeneity"] = "self.ventilationHeterogeneity(self.parameterValues)"
         self.firstOrderStatistics["Skewness"] = "self.skewnessValue(self.parameterValues)"
         self.firstOrderStatistics["Kurtosis"] = "self.kurtosisValue(self.parameterValues)"
         self.firstOrderStatistics["Variance"] = "self.varianceValue(self.parameterValues)"
@@ -74,9 +74,21 @@ class FirstOrderStatistics:
     def standardDeviation(self, parameterArray):
         return (numpy.std(parameterArray))
 
+    def ventilationHeterogeneity(self, parameterArray):
+        arr = parameterArray.astype(numpy.float)
+        # interpolate the array for a range [0, -999.9999] (-1000 would give us problems in the min value)
+        a = arr.min()
+        b = arr.max()
+        y = -999.9999
+        z = 0
+        arr = (arr-a)*(z-y) / (b-a) + y
+        # Apply formula
+        arr = -arr / (arr + 1000)
+        arr = arr ** (1/3.0)
+        return arr.std()
+
     def _moment(self, a, moment=1, axis=0):
         # Modified from SciPy module
-
         if moment == 1:
             return numpy.float64(0.0)
         else:

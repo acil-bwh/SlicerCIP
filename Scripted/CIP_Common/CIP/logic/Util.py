@@ -406,9 +406,9 @@ class Util:
     @staticmethod
     def fast_marching_distance_map(dims, spacing, origin, stopping_value=None):
         """ Get a distance map from a particular point using ITK FastMarching algorithm
-        :param dims: list with the dimensions of the original volume (xyz)
-        :param spacing: list with the spacing of the original volume (xyz)
-        :param origin: list with the origin point (xyz)
+        :param dims: list with the dimensions of the original volume
+        :param spacing: list with the spacing of the original volume
+        :param origin: list with the origin point
         :param stopping_value: max distance from the origin. The algorithm will stop when it reaches this distance (
         the voxels not visited will have a +Infinite value)
         :return: numpy array with the distance map
@@ -417,18 +417,19 @@ class Util:
         # Speed map (all ones because the growth will be constant)
         input = np.ones(dims, np.int32)
         image = sitk.GetImageFromArray(input)
-        image.SetSpacing(spacing)
+        # IMPORTANT: for ITK-numpy compatibility reasons, we have to reverse the spacing
+        spacingReversed = list(spacing)
+        spacingReversed.reverse()
+        image.SetSpacing(spacingReversed)
         filter = sitk.FastMarchingImageFilter()
         if stopping_value is not None:
             filter.SetStoppingValue(stopping_value)
-        seeds = [[int(origin[2]), int(origin[1]), int(origin[0])]]  # Convert to int (otherwise sitk fails!)
+        # For ITK compatibility reasons, we have to reverse the coordinates of the origin and convert to int
+        seeds = [[int(origin[2]), int(origin[1]), int(origin[0])]]
         filter.SetTrialPoints(seeds)
         output = filter.Execute(image)
         result = sitk.GetArrayFromImage(output)
-        # Adapt to xyz
-        #result = result.reshape(result.shape[1], result.shape[0], result.shape[2])
         #t2 = time.time()
         # print("DEBUG: Time to calculate the distance map (fast marching): {0} seconds".format(t2-t1))
-        #result[result > stopping_value] = 255
         return result
 
