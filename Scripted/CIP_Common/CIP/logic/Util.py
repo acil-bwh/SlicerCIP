@@ -176,7 +176,7 @@ class Util:
     @staticmethod
     def ras_to_ijk(volume_node, ras_coords):
         """ Transform a list of RAS coords to IJK
-        :return: list of IJK coordinates (length 3)
+        :return: list of IJK coordinates (xyz)
         """
         rastoijk=vtk.vtkMatrix4x4()
         volume_node.GetRASToIJKMatrix(rastoijk)
@@ -188,7 +188,7 @@ class Util:
     @staticmethod
     def ijk_to_ras(volume_node, ijk_coords):
         """ Transform a list of IJK coords to RAS
-        :return: list of RAS coordinates (length 3)
+        :return: list of RAS coordinates (xyz)
         """
         ijktoras=vtk.vtkMatrix4x4()
         volume_node.GetIJKToRASMatrix(ijktoras)
@@ -404,18 +404,18 @@ class Util:
         return result
 
     @staticmethod
-    def get_distance_map_fast_marching(dims, spacing, origin, stopping_value=None):
+    def fast_marching_distance_map(dims, spacing, origin, stopping_value=None):
         """ Get a distance map from a particular point using ITK FastMarching algorithm
-        :param dims: list with the dimensions of the original volume (zyx)
-        :param spacing: list with the spacing of the original volume (zyx)
-        :param origin: list with the origin point (zyx)
+        :param dims: list with the dimensions of the original volume (xyz)
+        :param spacing: list with the spacing of the original volume (xyz)
+        :param origin: list with the origin point (xyz)
         :param stopping_value: max distance from the origin. The algorithm will stop when it reaches this distance (
         the voxels not visited will have a +Infinite value)
         :return: numpy array with the distance map
         """
         #t1 = time.time()
         # Speed map (all ones because the growth will be constant)
-        input = np.ones(dims, np.byte)
+        input = np.ones(dims, np.int32)
         image = sitk.GetImageFromArray(input)
         image.SetSpacing(spacing)
         filter = sitk.FastMarchingImageFilter()
@@ -425,7 +425,10 @@ class Util:
         filter.SetTrialPoints(seeds)
         output = filter.Execute(image)
         result = sitk.GetArrayFromImage(output)
+        # Adapt to xyz
+        #result = result.reshape(result.shape[1], result.shape[0], result.shape[2])
         #t2 = time.time()
         # print("DEBUG: Time to calculate the distance map (fast marching): {0} seconds".format(t2-t1))
+        #result[result > stopping_value] = 255
         return result
 

@@ -10,13 +10,28 @@ from . import *
 import FeatureExtractionLib
 
 class FeatureExtractionLogic:
-    def __init__(self, volumeNode, volumeNodeArray, labelmapNodeArray, featureCategoriesKeys, featureKeys, additionalProgressbarDesc=""):
+    def __init__(self, volumeNode, volumeNodeArray, labelmapROIArray, featureCategoriesKeys, featureKeys,
+                 additionalProgressbarDesc="", labelmapWholeVolumeArray = None):
+        """
+        :param volumeNode: VTK intensities volume node
+        :param volumeNodeArray: numpy array that represents volumeNode
+        :param labelmapROIArray: numpy array with the labelmap of the area to study
+        :param featureCategoriesKeys: main categories that have some feature that is going to be analyzed
+        :param featureKeys: features that are going to be analyzed
+        :param additionalProgressbarDesc: additional description that will be displayed in the progress bar
+            for each one of the main categories while the analysis is performed
+        :param labelmapWholeVolumeArray: numpy array that represents a labelmap for the whole volume (different
+            from 'labelMapROIArray' that represents just the area of interest that is going to be analyzed)
+        :return:
+        """
         self.volumeNode = volumeNode
         self.volumeNodeArray = volumeNodeArray
-        self.labelmapNodeArray = labelmapNodeArray
+        self.labelmapROIArray = labelmapROIArray
         self.featureCategoriesKeys = featureCategoriesKeys
         self.featureKeys = featureKeys
         self.additionalProgressbarDesc = additionalProgressbarDesc
+        self.labelmapWholeVolumeArray = labelmapWholeVolumeArray
+
         # initialize Progress Bar
         self.progressBar = qt.QProgressDialog(slicer.util.mainWindow())
         self.progressBar.minimumDuration = 0
@@ -39,12 +54,15 @@ class FeatureExtractionLogic:
         self.progressBar.setMaximum(len(self.featureKeys))
         self.progressBar.labelText = 'Calculating for {0}{1}: '.format(self.volumeNode.GetName(), self.additionalProgressbarDesc)
 
+        print("DEBUG: running the following categories: ", self.featureCategoriesKeys)
+        print("DEBUG: running the following features: ", self.featureKeys)
+
         # create Numpy Arrays
         # self.nodeArrayVolume = self.createNumpyArray(self.volumeNode)
         # self.nodeArrayLabelMapROI = self.createNumpyArray(self.labelmapNode)
 
         # extract voxel coordinates (ijk) and values from self.dataNode within the ROI defined by self.labelmapNode
-        self.targetVoxels, self.targetVoxelsCoordinates = self.tumorVoxelsAndCoordinates(self.labelmapNodeArray, self.volumeNodeArray)
+        self.targetVoxels, self.targetVoxelsCoordinates = self.tumorVoxelsAndCoordinates(self.labelmapROIArray, self.volumeNodeArray)
 
         # create a padded, rectangular matrix with shape equal to the shape of the tumor
         self.matrix, self.matrixCoordinates = self.paddedTumorMatrixAndCoordinates(self.targetVoxels, self.targetVoxelsCoordinates)
@@ -65,41 +83,59 @@ class FeatureExtractionLogic:
         progressBarDesc = self.volumeNode.GetName() + self.additionalProgressbarDesc
 
         # First Order Statistics
-        self.updateProgressBar(self.progressBar, progressBarDesc, "First Order Statistics", len(self.__analysisResultsDict__))
-        self.firstOrderStatistics = FeatureExtractionLib.FirstOrderStatistics(self.targetVoxels, self.bins, self.numGrayLevels, self.featureKeys)
-        self.__analysisResultsDict__.update( self.firstOrderStatistics.EvaluateFeatures() )
+        if "First-Order Statistics" in self.featureCategoriesKeys:
+            self.updateProgressBar(self.progressBar, progressBarDesc, "First-Order Statistics", len(self.__analysisResultsDict__))
+            self.firstOrderStatistics = FeatureExtractionLib.FirstOrderStatistics(self.targetVoxels, self.bins, self.numGrayLevels, self.featureKeys)
+            self.__analysisResultsDict__.update( self.firstOrderStatistics.EvaluateFeatures() )
 
         # Shape/Size and Morphological Features)
-        self.updateProgressBar(self.progressBar, progressBarDesc, "Morphology Statistics", len(self.__analysisResultsDict__))
-        # extend padding by one row/column for all 6 directions
-        maxDimsSA = tuple(map(operator.add, self.matrix.shape, ([2,2,2])))
-        matrixSA, matrixSACoordinates = self.padMatrix(self.matrix, self.matrixCoordinates, maxDimsSA, self.targetVoxels)
-        self.morphologyStatistics = FeatureExtractionLib.MorphologyStatistics(self.volumeNode.GetSpacing(), matrixSA, matrixSACoordinates, self.targetVoxels, self.featureKeys)
-        self.__analysisResultsDict__.update( self.morphologyStatistics.EvaluateFeatures() )
+        if "Morphology and Shape" in self.featureCategoriesKeys:
+            self.updateProgressBar(self.progressBar, progressBarDesc, "Morphology and Shape Statistics", len(self.__analysisResultsDict__))
+            # extend padding by one row/column for all 6 directions
+            if len(self.matrix) == 0:
+                matrixSA = self.matrix
+                matrixSACoordinates = self.matrixCoordinates
+            else:
+                maxDimsSA = tuple(map(operator.add, self.matrix.shape, ([2,2,2])))
+                matrixSA, matrixSACoordinates = self.padMatrix(self.matrix, self.matrixCoordinates, maxDimsSA, self.targetVoxels)
+            self.morphologyStatistics = FeatureExtractionLib.MorphologyStatistics(self.volumeNode.GetSpacing(), matrixSA, matrixSACoordinates, self.targetVoxels, self.featureKeys)
+            self.__analysisResultsDict__.update( self.morphologyStatistics.EvaluateFeatures() )
 
         # Texture Features(GLCM)
-        self.updateProgressBar(self.progressBar, progressBarDesc, "GLCM Texture Features", len(self.__analysisResultsDict__))
-        self.textureFeaturesGLCM = FeatureExtractionLib.TextureGLCM(self.grayLevels, self.numGrayLevels, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
-        self.__analysisResultsDict__.update( self.textureFeaturesGLCM.EvaluateFeatures() )
+        if "Texture: GLCM" in self.featureCategoriesKeys:
+            self.updateProgressBar(self.progressBar, progressBarDesc, "GLCM Texture Features", len(self.__analysisResultsDict__))
+            self.textureFeaturesGLCM = FeatureExtractionLib.TextureGLCM(self.grayLevels, self.numGrayLevels, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
+            self.__analysisResultsDict__.update( self.textureFeaturesGLCM.EvaluateFeatures() )
 
         # Texture Features(GLRL)
-        self.updateProgressBar(self.progressBar, progressBarDesc, "GLRL Texture Features", len(self.__analysisResultsDict__))
-        self.textureFeaturesGLRL = FeatureExtractionLib.TextureGLRL(self.grayLevels, self.numGrayLevels, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
-        self.__analysisResultsDict__.update( self.textureFeaturesGLRL.EvaluateFeatures() )
+        if "Texture: GLRL" in self.featureCategoriesKeys:
+            self.updateProgressBar(self.progressBar, progressBarDesc, "GLRL Texture Features", len(self.__analysisResultsDict__))
+            self.textureFeaturesGLRL = FeatureExtractionLib.TextureGLRL(self.grayLevels, self.numGrayLevels, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
+            self.__analysisResultsDict__.update( self.textureFeaturesGLRL.EvaluateFeatures() )
 
         # Geometrical Measures
         # TODO: progress bar does not update to Geometrical Measures while calculating (create separate thread?)
-        self.updateProgressBar(self.progressBar, progressBarDesc, "Geometrical Measures", len(self.__analysisResultsDict__))
-        self.geometricalMeasures = FeatureExtractionLib.GeometricalMeasures(self.volumeNode.GetSpacing(), self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
-        self.__analysisResultsDict__.update( self.geometricalMeasures.EvaluateFeatures() )
+        if "Geometrical Measures" in self.featureCategoriesKeys:
+            self.updateProgressBar(self.progressBar, progressBarDesc, "Geometrical Measures", len(self.__analysisResultsDict__))
+            self.geometricalMeasures = FeatureExtractionLib.GeometricalMeasures(self.volumeNode.GetSpacing(), self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
+            self.__analysisResultsDict__.update( self.geometricalMeasures.EvaluateFeatures() )
 
         # Renyi Dimensions
-        self.updateProgressBar(self.progressBar, progressBarDesc, "Renyi Dimensions", len(self.__analysisResultsDict__))
-        # extend padding to dimension lengths equal to next power of 2
-        maxDims = tuple( [int(pow(2, math.ceil(np.log2(np.max(self.matrix.shape)))))] * 3 )
-        matrixPadded, matrixPaddedCoordinates = self.padMatrix(self.matrix, self.matrixCoordinates, maxDims, self.targetVoxels)
-        self.renyiDimensions = FeatureExtractionLib.RenyiDimensions(matrixPadded, matrixPaddedCoordinates, self.featureKeys)
-        self.__analysisResultsDict__.update( self.renyiDimensions.EvaluateFeatures() )
+        if "Renyi Dimensions" in self.featureCategoriesKeys:
+            self.updateProgressBar(self.progressBar, progressBarDesc, "Renyi Dimensions", len(self.__analysisResultsDict__))
+            # extend padding to dimension lengths equal to next power of 2
+            maxDims = tuple( [int(pow(2, math.ceil(np.log2(np.max(self.matrix.shape)))))] * 3 )
+            matrixPadded, matrixPaddedCoordinates = self.padMatrix(self.matrix, self.matrixCoordinates, maxDims, self.targetVoxels)
+            self.renyiDimensions = FeatureExtractionLib.RenyiDimensions(matrixPadded, matrixPaddedCoordinates, self.featureKeys)
+            self.__analysisResultsDict__.update( self.renyiDimensions.EvaluateFeatures() )
+
+        # Parenchymal Volume
+        if "Parenchymal Volume" in self.featureCategoriesKeys:
+            self.updateProgressBar(self.progressBar, progressBarDesc, "Parenchymal Volume", len(self.__analysisResultsDict__))
+            self.parenchymalVolume = FeatureExtractionLib.ParenchymalVolume(self.labelmapWholeVolumeArray, self.labelmapROIArray,
+                                                        self.volumeNode.GetSpacing(), self.featureKeys)
+            self.__analysisResultsDict__.update(self.parenchymalVolume.evaluateFeatures())
+
 
         # close progress bar
         self.updateProgressBar(self.progressBar, progressBarDesc, "Populating Summary Table", len(self.__analysisResultsDict__))
@@ -125,12 +161,17 @@ class FeatureExtractionLogic:
         return(values, coordinates)
 
     def paddedTumorMatrixAndCoordinates(self, targetVoxels, targetVoxelsCoordinates):
+        if len(targetVoxels) == 0:
+            # Nothing to analyze
+            empty = np.array([])
+            return (empty, (empty, empty, empty))
+
         ijkMinBounds = np.min(targetVoxelsCoordinates, 1)
         ijkMaxBounds = np.max(targetVoxelsCoordinates, 1)
         matrix = np.zeros(ijkMaxBounds - ijkMinBounds + 1)
         matrixCoordinates = tuple(map(operator.sub, targetVoxelsCoordinates, tuple(ijkMinBounds)))
         matrix[matrixCoordinates] = targetVoxels
-        return(matrix, matrixCoordinates)
+        return (matrix, matrixCoordinates)
 
     def getHistogramData(self, voxelArray):
         # with np.histogram(), all but the last bin is half-open, so make one extra bin container

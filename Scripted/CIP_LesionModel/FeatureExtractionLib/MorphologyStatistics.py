@@ -27,11 +27,13 @@ class MorphologyStatistics:
         self.morphologyStatistics[
             "Sphericity"] = 'self.sphericityValue(self.morphologyStatistics["Surface Area mm^2"], self.morphologyStatistics["Volume mm^3"])'
 
+        self.keys = set(allKeys).intersection(self.morphologyStatistics.keys())
+
         self.labelNodeSpacing = labelNodeSpacing
         self.matrixSA = matrixSA
         self.matrixSACoordinates = matrixSACoordinates
         self.matrixSAValues = matrixSAValues
-        self.keys = set(allKeys).intersection(self.morphologyStatistics.keys())
+
 
         self.cubicMMPerVoxel = reduce(lambda x, y: x * y, self.labelNodeSpacing)
         self.ccPerCubicMM = 0.001
@@ -109,15 +111,17 @@ class MorphologyStatistics:
 
     def EvaluateFeatures(self):
         # Evaluate dictionary elements corresponding to user-selected keys
-
         if not self.keys:
             return (self.morphologyStatistics)
+        if len(self.matrixSA) == 0:
+            for key in self.keys:
+                self.morphologyStatistics[key] = 0
+        else:
+            # Volume and Surface Area are pre-calculated even if only one morphology metric is user-selected
+            self.morphologyStatistics["Volume mm^3"] = eval(self.morphologyStatistics["Volume mm^3"])
+            self.morphologyStatistics["Surface Area mm^2"] = eval(self.morphologyStatistics["Surface Area mm^2"])
 
-        # Volume and Surface Area are pre-calculated even if only one morphology metric is user-selected
-        self.morphologyStatistics["Volume mm^3"] = eval(self.morphologyStatistics["Volume mm^3"])
-        self.morphologyStatistics["Surface Area mm^2"] = eval(self.morphologyStatistics["Surface Area mm^2"])
-
-        for key in self.keys:
-            if isinstance(self.morphologyStatistics[key], basestring):
-                self.morphologyStatistics[key] = eval(self.morphologyStatistics[key])
-        return (self.morphologyStatistics)
+            for key in self.keys:
+                if isinstance(self.morphologyStatistics[key], basestring):
+                    self.morphologyStatistics[key] = eval(self.morphologyStatistics[key])
+        return self.morphologyStatistics
