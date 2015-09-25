@@ -608,6 +608,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                     self.selectedMainFeaturesKeys.add(featureClass)
                     self.selectedFeatureKeys.add(str(widget.text))
 
+        # Preconditions
         if self.inputVolumeSelector.currentNode() is None:
             # TODO: disable the button until segmentation is done
             qt.QMessageBox.warning(slicer.util.mainWindow(), "Select a volume",
@@ -624,6 +625,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         if "Parenchymal Volume" in self.selectedMainFeaturesKeys and self.labelMapSelector.currentNode() is None:
             qt.QMessageBox.warning(slicer.util.mainWindow(), "Select a labelmap",
                     "Please select labelmap for the whole volume if you want to run Parenchymal Volume analysis")
+            return
+
+        if self.rOtherCheckbox.checked and int(self.otherRadiusTextbox.text) > self.logic.MAX_TUMOR_RADIUS:
+            qt.QMessageBox.warning(slicer.util.mainWindow(), "Invalid value",
+                    "The radius of the sphere must have a maximum value of {0}".format(self.logic.MAX_TUMOR_RADIUS))
             return
 
         # Analysis for the volume and the nodule:

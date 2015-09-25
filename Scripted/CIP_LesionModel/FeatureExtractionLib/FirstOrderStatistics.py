@@ -75,16 +75,13 @@ class FirstOrderStatistics:
         return (numpy.std(parameterArray))
 
     def ventilationHeterogeneity(self, parameterArray):
-        arr = parameterArray.astype(numpy.float)
-        # interpolate the array for a range [0, -999.9999] (-1000 would give us problems in the min value)
-        a = arr.min()
-        b = arr.max()
-        y = -999.9999
-        z = 0
-        arr = (arr-a)*(z-y) / (b-a) + y
+        # Keep just the points that are in the range (-1000, 0]
+        arr = parameterArray[((parameterArray > -1000) & (parameterArray <= 0))]
+        # Convert to float to apply the formula
+        arr = arr.astype(numpy.float)
         # Apply formula
         arr = -arr / (arr + 1000)
-        arr = arr ** (1/3.0)
+        arr **= (1/3.0)
         return arr.std()
 
     def _moment(self, a, moment=1, axis=0):
