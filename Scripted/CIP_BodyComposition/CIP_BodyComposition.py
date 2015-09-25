@@ -1045,7 +1045,8 @@ class CIP_BodyCompositionLogic(ScriptedLoadableModuleLogic):
     def getLabelmapSlices(self, labelmapNode):
         """For each label map, get the slices where it appears. Store the result in labelmapSlices object
         (it will be used later for statistics)"""
-        self.labelmapSlices = Util.get_labelmap_slices(labelmapNode.GetImageData())
+        numpyArray = slicer.util.array(labelmapNode.GetID())
+        self.labelmapSlices = Util.get_labelmap_slices(numpyArray)
         return self.labelmapSlices
 
     def calculateStatistics(self, grayscaleNode, labelNode, labelmapSlices=None, callbackStepFunction = None):

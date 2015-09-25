@@ -3,12 +3,13 @@ import unittest
 from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
-
 import collections
 import itertools
-
 import numpy as np
 import time
+
+import SimpleITK as sitk
+
 from FeatureWidgetHelperLib import FeatureExtractionLogic
 
 # Add the CIP common library to the path if it has not been loaded yet
@@ -331,45 +332,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
                                                parent=self.featureButtonFrame)
         self.reportsWidget.setup()
-
-        ######################
-        # Anaysis area
-        # analysisAreaCollapsibleButton = ctk.ctkCollapsibleButton()
-        # analysisAreaCollapsibleButton.text = "Analysis"
-        # self.layout.addWidget(analysisAreaCollapsibleButton)
-        # # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
-        # self.analysisAreaLayout = qt.QVBoxLayout(analysisAreaCollapsibleButton)
-        #
-        # self.histogramIntensityCheckBox = qt.QCheckBox()
-        # self.histogramIntensityCheckBox.setText("Histogram statistics")
-        # self.histogramIntensityCheckBox.setChecked(True)
-        # self.analysisAreaLayout.addWidget(self.histogramIntensityCheckBox)
-        #
-        # self.localHistogramCheckBox = qt.QCheckBox()
-        # self.localHistogramCheckBox.setText("Local histogram statistics (Parenchymal Volume)")
-        # self.localHistogramCheckBox.setChecked(False)
-        # self.analysisAreaLayout.addWidget(self.localHistogramCheckBox)
-        #
-        # self.texturalCheckBox = qt.QCheckBox()
-        # self.texturalCheckBox.setText("Textural statistics")
-        # self.texturalCheckBox.setChecked(False)
-        # self.analysisAreaLayout.addWidget(self.texturalCheckBox)
-        #
-        # self.vasculaturityCheckBox = qt.QCheckBox()
-        # self.vasculaturityCheckBox.setText("Vascularity statistics")
-        # self.vasculaturityCheckBox.setChecked(False)
-        # self.analysisAreaLayout.addWidget(self.vasculaturityCheckBox)
-        #
-        # self.radiusTextBox = qt.QLineEdit()
-        # self.radiusTextBox.setText("30")
-        # self.analysisAreaLayout.addWidget(self.radiusTextBox)
-        #
-        #
-        # runAnalysisButton = ctk.ctkPushButton()
-        # runAnalysisButton.setText("Run selected analysis")
-        # runAnalysisButton.setFixedWidth(200)
-        # # self.analysisAreaLayout.addWidget(runAnalysisButton)
-        # self.featureButtonFrame.layout().addWidget(runAnalysisButton)
 
         ######################
         # Case navigator widget
@@ -1121,32 +1083,22 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         :return:
         """
         if self.currentDistanceMap is None:
-            centroid = self.centroid(self.currentLabelmapArray)
+            centroid = Util.centroid(self.currentLabelmapArray)
             # Calculate the distance map for the specified origin
             # Get the dimensions of the volume in ZYX coords
-            dims = list(self.currentVolume.GetImageData().GetDimensions())
-            dims.reverse()
-            # Get spacing in ZYX
-            spacing = list(self.currentVolume.GetSpacing())
-            spacing.reverse()
-
-            self.currentDistanceMap = Util.fast_marching_distance_map(dims, spacing, centroid, stopping_value=self.MAX_TUMOR_RADIUS)
-
-    def calculateCurrentHistogramIntensityStats(self):
-        """ Calculate the current histogram statistics and also get the current
-        numpy arrays for volume and labelmap
-        :return:
-        """
-        if self.currentVolumeArray is None:
-            self.currentVolumeArray = slicer.util.array(self.currentVolume.GetName())
-
-        if self.currentLabelmapArray is None:
-            self.currentLabelmapArray = slicer.util.array(self.currentLabelmap.GetName())
-
-        spacing = self.currentVolume.GetSpacing()
-        stats = self.cipMeasurements.histogram_intensity_basic_statistics_array(self.currentVolumeArray,
-                                                                                self.currentLabelmapArray, spacing)
-        return stats
+            dims = Util.vtk_numpy_coordinate(self.currentVolume.GetImageData().GetDimensions())
+            # Speed map (all ones because the growth will be constant).
+            # The dimensions are reversed because we want the format in ZYX coordinates
+            input = np.ones(dims, np.int32)
+            sitkImage = sitk.GetImageFromArray(input)
+            sitkImage.SetSpacing(self.currentVolume.GetSpacing())
+            fastMarchingFilter = sitk.FastMarchingImageFilter()
+            fastMarchingFilter.SetStoppingValue(self.MAX_TUMOR_RADIUS)
+            # Reverse the coordinate of the centroid
+            seeds = [Util.numpy_itk_coordinate(centroid)]
+            fastMarchingFilter.SetTrialPoints(seeds)
+            output = fastMarchingFilter.Execute(sitkImage)
+            self.currentDistanceMap = sitk.GetArrayFromImage(output)
 
     def getSphereLabelMap(self, radius):
         """ Get a labelmap numpy array that contains a sphere centered in the nodule centroid, with radius "radius" and that
@@ -1181,15 +1133,6 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         node.GetImageData().Modified()
         return node
 
-
-    def centroid(self, numpyArray, labelId=1):
-        """ Calculate the coordinates of a centroid for a concrete labelId (default=1)
-        :param numpyArray: numpy array
-        :param labelId: label id (dafault = 1)
-        :return: numpy array with the coordinates (int format)
-        """
-        mean = np.mean(np.where(numpyArray == labelId), axis=1)
-        return np.asarray(np.round(mean, 0), np.int)
 
 class CIP_LesionModelTest(ScriptedLoadableModuleTest):
     """
