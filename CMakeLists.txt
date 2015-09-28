@@ -71,10 +71,11 @@ endif()
 
 
 #-----------------------------------------------------------------------------
-set(CPACK_INSTALL_CMAKE_PROJECTS "${CPACK_INSTALL_CMAKE_PROJECTS};${CMAKE_BINARY_DIR};${EXTENSION_NAME};ALL;/")
-#Package CIP into SlicerCIP build….
+#Package CIP into SlicerCIP build (CIP needs to be installed first before packaging extension)
 set(CPACK_INSTALL_CMAKE_PROJECTS "${CPACK_INSTALL_CMAKE_PROJECTS};${CIP_DIR};CIP;RuntimeLibraries;/")
 set(CPACK_INSTALL_CMAKE_PROJECTS "${CPACK_INSTALL_CMAKE_PROJECTS};${CIP_DIR};CIP;Runtime;/")
 
-include(${Slicer_EXTENSION_CPACK})
+#Package entire extension build including cli-modules
+set(CPACK_INSTALL_CMAKE_PROJECTS "${CPACK_INSTALL_CMAKE_PROJECTS};${CMAKE_BINARY_DIR};${EXTENSION_NAME};ALL;/")
 
+include(${Slicer_EXTENSION_CPACK})

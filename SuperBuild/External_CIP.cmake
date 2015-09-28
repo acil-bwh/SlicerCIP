@@ -40,10 +40,13 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DLIBXML2_LIBRARIES:PATH=${vtklibxml2_LIBRARIES}
       -DBUILD_GENERATEMODEL:BOOL=OFF
       -DBUILD_GENERATESIMPLELUNGMASK:BOOL=OFF # temporarily off due to lack of VtkGlue
-      -DBUILD_ComputeAirwayWallFromParticles:BOOL=OFF # temporarily off due to lack of VtkGlue      
+      -DBUILD_ComputeAirwayWallFromParticles:BOOL=OFF # temporarily off due to lack of VtkGlue
       -DCIP_BUILD_TESTING_PYTHON:BOOL=OFF # to exclude cip_python from CIP build
       -DSLICER_PYTHON_CMD:FILEPATH=${PYTHON_EXECUTABLE}
       -DSlicerExecutionModel_DIR:STRING=${SlicerExecutionModel_DIR}
+      -DSlicer_BUILD_CLI:BOOL=ON
+      -DSlicer_BUILD_CLI_SUPPORT:BOOL=ON
+      -DSlicerExecutionModel_DEFAULT_CLI_EXECUTABLE_LINK_FLAGS:STRING=-Wl,-rpath,@loader_path/../../../../../
       -DCIP_CLI_LIBRARY_OUTPUT_DIRECTORY:PATH=${CMAKE_BINARY_DIR}/${EXTENSION_BUILD_SUBDIRECTORY}/${Slicer_CLIMODULES_LIB_DIR}
       -DCIP_CLI_ARCHIVE_OUTPUT_DIRECTORY:PATH=${CMAKE_BINARY_DIR}/${EXTENSION_BUILD_SUBDIRECTORY}/${Slicer_CLIMODULES_LIB_DIR}
       -DCIP_CLI_RUNTIME_OUTPUT_DIRECTORY:PATH=${CMAKE_BINARY_DIR}/${EXTENSION_BUILD_SUBDIRECTORY}/${Slicer_CLIMODULES_BIN_DIR}
@@ -56,11 +59,11 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DCMAKE_C_FLAGS:STRING=${ep_common_c_flags}
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DBUILD_TESTING:BOOL=OFF
-    #CONFIGURE_COMMAND ${CMAKE_COMMAND} 
+    #CONFIGURE_COMMAND ${CMAKE_COMMAND}
     #-E echo
     #  "This CONFIGURE_COMMAND is just here as a placeholder."
     #  "Remove this line to enable configuring of a real CMake based external project"
-    #BUILD_COMMAND ${CMAKE_COMMAND} 
+    #BUILD_COMMAND ${CMAKE_COMMAND}
     #-E echo
     #  "This BUILD_COMMAND is just here as a placeholder."
     #  "Remove this line to enable building of a real CMake based external project"
