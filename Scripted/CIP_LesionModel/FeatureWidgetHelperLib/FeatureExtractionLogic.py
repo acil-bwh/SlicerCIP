@@ -4,8 +4,8 @@ import math
 import operator
 import numpy as np
 import collections
-
-
+import time
+import logging
 from . import *
 import FeatureExtractionLib
 
@@ -15,7 +15,7 @@ class FeatureExtractionLogic:
         """
         :param volumeNode: VTK intensities volume node
         :param volumeNodeArray: numpy array that represents volumeNode
-        :param labelmapROIArray: numpy array with the labelmap of the area to study
+        :param labelmapROIArray: numpy array with the labelmap of the area to study (ex: tumor)
         :param featureCategoriesKeys: main categories that have some feature that is going to be analyzed
         :param featureKeys: features that are going to be analyzed
         :param additionalProgressbarDesc: additional description that will be displayed in the progress bar
@@ -37,6 +37,7 @@ class FeatureExtractionLogic:
         self.progressBar.minimumDuration = 0
 
         self.__analysisResultsDict__ = None
+        self.__analysisTimingDict__ = None
 
     @property
     def AnalysisResultsDict(self):
@@ -45,36 +46,53 @@ class FeatureExtractionLogic:
         """
         return self.__analysisResultsDict__
 
-    def run(self):
+    @property
+    def AnalysisTimingsDict(self):
+        """ Dictionary with FeatureKey-FeatureValue for all the analysis performed
+        :return:
+        """
+        return self.__analysisTimingDict__
+
+    def run(self, printTiming=False):
         """ Run all the selected analysis
-        :return: Dictionary of Feature-Value with all the features analyzed
+        :return:
+            If printTiming==False: Dictionary of Feature-Value with all the features analyzed
+            else: tuple with 2 dictionaries (1 of Feature-Value and another one with Feature-Timing)
         """
         self.progressBar.show()
         self.progressBar.setValue(0)
         self.progressBar.setMaximum(len(self.featureKeys))
         self.progressBar.labelText = 'Calculating for {0}{1}: '.format(self.volumeNode.GetName(), self.additionalProgressbarDesc)
 
-        print("DEBUG: running the following categories: ", self.featureCategoriesKeys)
-        print("DEBUG: running the following features: ", self.featureKeys)
+        #print("DEBUG: running the following categories: ", self.featureCategoriesKeys)
+        #print("DEBUG: running the following features: ", self.featureKeys)
 
         # create Numpy Arrays
         # self.nodeArrayVolume = self.createNumpyArray(self.volumeNode)
         # self.nodeArrayLabelMapROI = self.createNumpyArray(self.labelmapNode)
-
+        t1 = time.time()
         # extract voxel coordinates (ijk) and values from self.dataNode within the ROI defined by self.labelmapNode
         self.targetVoxels, self.targetVoxelsCoordinates = self.tumorVoxelsAndCoordinates(self.labelmapROIArray, self.volumeNodeArray)
+        if printTiming:
+            print("Time to calculate tumorVoxelsAndCoordinates: {0} seconds".format(time.time() - t1))
 
         # create a padded, rectangular matrix with shape equal to the shape of the tumor
+        t1 = time.time()
         self.matrix, self.matrixCoordinates = self.paddedTumorMatrixAndCoordinates(self.targetVoxels, self.targetVoxelsCoordinates)
+        if printTiming:
+            print("Time to calculate paddedTumorMatrixAndCoordinates: {0} seconds".format(time.time() - t1))
 
         # get Histogram data
+        t1 = time.time()
         self.bins, self.grayLevels, self.numGrayLevels = self.getHistogramData(self.targetVoxels)
+        if printTiming:
+            print("Time to calculate histogram: {0} seconds".format(time.time() - t1))
 
         ########
         # Manage feature classes for Heterogeneity feature calculations and consolidate into self.FeatureVector
         # TODO: create a parent class for all feature classes
         self.__analysisResultsDict__ = collections.OrderedDict()
-
+        self.__analysisTimingDict__ = collections.OrderedDict()
         # Node Information
         # self.updateProgressBar(self.progressBar, self.dataNode.GetName(), "Node Information", len(self.__featureDict__))
         # self.nodeInformation = FeatureExtractionLib.NodeInformation(self.dataNode, self.labelmapNode, self.featureKeys)
@@ -86,7 +104,14 @@ class FeatureExtractionLogic:
         if "First-Order Statistics" in self.featureCategoriesKeys:
             self.updateProgressBar(self.progressBar, progressBarDesc, "First-Order Statistics", len(self.__analysisResultsDict__))
             self.firstOrderStatistics = FeatureExtractionLib.FirstOrderStatistics(self.targetVoxels, self.bins, self.numGrayLevels, self.featureKeys)
-            self.__analysisResultsDict__.update( self.firstOrderStatistics.EvaluateFeatures() )
+            t1 = time.time()
+            results = self.firstOrderStatistics.EvaluateFeatures(printTiming)
+            if printTiming:
+                self.__analysisResultsDict__.update(results[0])
+                self.__analysisTimingDict__.update(results[1])
+                print("Time to calculate First Order Statistics: {0} seconds".format(time.time() - t1))
+            else:
+                self.__analysisResultsDict__.update(results)
 
         # Shape/Size and Morphological Features)
         if "Morphology and Shape" in self.featureCategoriesKeys:
@@ -99,26 +124,54 @@ class FeatureExtractionLogic:
                 maxDimsSA = tuple(map(operator.add, self.matrix.shape, ([2,2,2])))
                 matrixSA, matrixSACoordinates = self.padMatrix(self.matrix, self.matrixCoordinates, maxDimsSA, self.targetVoxels)
             self.morphologyStatistics = FeatureExtractionLib.MorphologyStatistics(self.volumeNode.GetSpacing(), matrixSA, matrixSACoordinates, self.targetVoxels, self.featureKeys)
-            self.__analysisResultsDict__.update( self.morphologyStatistics.EvaluateFeatures() )
+            t1 = time.time()
+            results = self.morphologyStatistics.EvaluateFeatures(printTiming)
+            if printTiming:
+                self.__analysisResultsDict__.update(results[0])
+                self.__analysisTimingDict__.update(results[1])
+                print("Time to calculate Morphology and Shape: {0} seconds".format(time.time() - t1))
+            else:
+                self.__analysisResultsDict__.update(results)
 
         # Texture Features(GLCM)
         if "Texture: GLCM" in self.featureCategoriesKeys:
             self.updateProgressBar(self.progressBar, progressBarDesc, "GLCM Texture Features", len(self.__analysisResultsDict__))
             self.textureFeaturesGLCM = FeatureExtractionLib.TextureGLCM(self.grayLevels, self.numGrayLevels, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
-            self.__analysisResultsDict__.update( self.textureFeaturesGLCM.EvaluateFeatures() )
+            t1 = time.time()
+            results =self.textureFeaturesGLCM.EvaluateFeatures(printTiming)
+            if printTiming:
+                self.__analysisResultsDict__.update(results[0])
+                self.__analysisTimingDict__.update(results[1])
+                print("Time to calculate Texture: GLCM: {0} seconds".format(time.time() - t1))
+            else:
+                self.__analysisResultsDict__.update(results)
 
         # Texture Features(GLRL)
         if "Texture: GLRL" in self.featureCategoriesKeys:
             self.updateProgressBar(self.progressBar, progressBarDesc, "GLRL Texture Features", len(self.__analysisResultsDict__))
             self.textureFeaturesGLRL = FeatureExtractionLib.TextureGLRL(self.grayLevels, self.numGrayLevels, self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
-            self.__analysisResultsDict__.update( self.textureFeaturesGLRL.EvaluateFeatures() )
+            t1 = time.time()
+            results =self.textureFeaturesGLRL.EvaluateFeatures(printTiming)
+            if printTiming:
+                self.__analysisResultsDict__.update(results[0])
+                self.__analysisTimingDict__.update(results[1])
+                print("Time to calculate Texture: GLRL: {0} seconds".format(time.time() - t1))
+            else:
+                self.__analysisResultsDict__.update(results)
 
         # Geometrical Measures
         # TODO: progress bar does not update to Geometrical Measures while calculating (create separate thread?)
         if "Geometrical Measures" in self.featureCategoriesKeys:
             self.updateProgressBar(self.progressBar, progressBarDesc, "Geometrical Measures", len(self.__analysisResultsDict__))
             self.geometricalMeasures = FeatureExtractionLib.GeometricalMeasures(self.volumeNode.GetSpacing(), self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
-            self.__analysisResultsDict__.update( self.geometricalMeasures.EvaluateFeatures() )
+            results =self.geometricalMeasures.EvaluateFeatures(printTiming)
+            if printTiming:
+                t1 = time.time()
+                self.__analysisResultsDict__.update(results[0])
+                self.__analysisTimingDict__.update(results[1])
+                print("Time to calculate Geometrical Measures: {0} seconds".format(time.time() - t1))
+            else:
+                self.__analysisResultsDict__.update(results)
 
         # Renyi Dimensions
         if "Renyi Dimensions" in self.featureCategoriesKeys:
@@ -127,15 +180,28 @@ class FeatureExtractionLogic:
             maxDims = tuple( [int(pow(2, math.ceil(np.log2(np.max(self.matrix.shape)))))] * 3 )
             matrixPadded, matrixPaddedCoordinates = self.padMatrix(self.matrix, self.matrixCoordinates, maxDims, self.targetVoxels)
             self.renyiDimensions = FeatureExtractionLib.RenyiDimensions(matrixPadded, matrixPaddedCoordinates, self.featureKeys)
-            self.__analysisResultsDict__.update( self.renyiDimensions.EvaluateFeatures() )
+            t1 = time.time()
+            results =self.renyiDimensions.EvaluateFeatures(printTiming)
+            if printTiming:
+                self.__analysisResultsDict__.update(results[0])
+                self.__analysisTimingDict__.update(results[1])
+                print("Time to calculate Renyi Dimensions: {0} seconds".format(time.time() - t1))
+            else:
+                self.__analysisResultsDict__.update(results)
 
         # Parenchymal Volume
         if "Parenchymal Volume" in self.featureCategoriesKeys:
             self.updateProgressBar(self.progressBar, progressBarDesc, "Parenchymal Volume", len(self.__analysisResultsDict__))
             self.parenchymalVolume = FeatureExtractionLib.ParenchymalVolume(self.labelmapWholeVolumeArray, self.labelmapROIArray,
                                                         self.volumeNode.GetSpacing(), self.featureKeys)
-            self.__analysisResultsDict__.update(self.parenchymalVolume.evaluateFeatures())
-
+            t1 = time.time()
+            results =self.parenchymalVolume.EvaluateFeatures(printTiming)
+            if printTiming:
+                self.__analysisResultsDict__.update(results[0])
+                self.__analysisTimingDict__.update(results[1])
+                print("Time to calculate Parenchymal Volume: {0} seconds".format(time.time() - t1))
+            else:
+                self.__analysisResultsDict__.update(results)
 
         # close progress bar
         self.updateProgressBar(self.progressBar, progressBarDesc, "Populating Summary Table", len(self.__analysisResultsDict__))
@@ -145,7 +211,10 @@ class FeatureExtractionLogic:
         # filter for user-queried features only
         self.__analysisResultsDict__ = collections.OrderedDict((k, self.__analysisResultsDict__[k]) for k in self.featureKeys)
 
-        return self.__analysisResultsDict__
+        if not printTiming:
+            return self.__analysisResultsDict__
+        else:
+            return self.__analysisResultsDict__, self.__analysisTimingDict__
 
     # def createNumpyArray (self, imageNode):
     #     # Generate Numpy Array from vtkMRMLScalarVolumeNode

@@ -10,6 +10,7 @@ class GeometricalMeasures:
     def __init__(self, labelNodeSpacing, parameterMatrix, parameterMatrixCoordinates, parameterValues, allKeys):
         # need non-linear scaling of surface heights for normalization (reduce computational time)
         self.GeometricalMeasures = collections.OrderedDict()
+        self.GeometricalMeasuresTiming = collections.OrderedDict()
         self.GeometricalMeasures[
             "Extruded Surface Area"] = "self.extrudedSurfaceArea(self.labelNodeSpacing, self.extrudedMatrix, self.extrudedMatrixCoordinates, self.parameterValues)"
         self.GeometricalMeasures[
@@ -89,11 +90,20 @@ class GeometricalMeasures:
             extrudedMatrix[slice4D] = 1
         return (extrudedMatrix, extrudedMatrixCoordinates)
 
-    def EvaluateFeatures(self):
+    def EvaluateFeatures(self, printTiming=False):
         # Evaluate dictionary elements corresponding to user-selected keys
         if not self.keys:
             return (self.GeometricalMeasures)
 
-        for key in self.keys:
-            self.GeometricalMeasures[key] = eval(self.GeometricalMeasures[key])
-        return (self.GeometricalMeasures)
+        if printTiming:
+            import time
+            for key in self.keys:
+                t1 = time.time()
+                self.GeometricalMeasures[key] = eval(self.GeometricalMeasures[key])
+                self.GeometricalMeasuresTiming[key] = time.time() - t1
+
+            return self.GeometricalMeasures, self.GeometricalMeasuresTiming
+        else:
+            for key in self.keys:
+                self.GeometricalMeasures[key] = eval(self.GeometricalMeasures[key])
+            return self.GeometricalMeasures

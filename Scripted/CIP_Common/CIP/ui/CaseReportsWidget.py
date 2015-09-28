@@ -294,9 +294,20 @@ class CaseReportsWindow(qt.QWidget):
 
         self.exportButton = ctk.ctkPushButton()
         self.exportButton.text = "Export"
+        self.exportButton.setFixedWidth(150)
+        self.exportButton.setIcon(qt.QIcon("{0}/export-csv.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.exportButton.setIconSize(qt.QSize(24,24))
         self.mainLayout.addWidget(self.exportButton)
 
+        self.removeButton = ctk.ctkPushButton()
+        self.removeButton.text = "Clean cache"
+        self.removeButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.removeButton.setIconSize(qt.QSize(24,24))
+        self.removeButton.setFixedWidth(150)
+        self.mainLayout.addWidget(self.removeButton)
+
         self.exportButton.connect('clicked()', parent.onExport)
+        self.removeButton.connect('clicked()', parent.onRemoveStoredData)
 
 
     def load(self, columnNames, data):

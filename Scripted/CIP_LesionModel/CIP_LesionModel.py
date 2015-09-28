@@ -7,7 +7,6 @@ import collections
 import itertools
 import numpy as np
 import time
-
 import SimpleITK as sitk
 
 from FeatureWidgetHelperLib import FeatureExtractionLogic
@@ -82,6 +81,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.selectedMainFeaturesKeys = set()
         self.selectedFeatureKeys = set()
         self.analysisResults = dict()
+        self.analysisResultsTiming = dict()
 
     @property
     def storedColumnNames(self):
@@ -364,49 +364,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         self.__refreshUI__()
 
-
-        # self.fiducialsTableView = qt.QTableView()
-        # self.fiducialsTableView.sortingEnabled = True
-        # #self.tableView.minimumHeight = 550
-        # # Unsuccesful attempts to autoscale the table
-        # #self.tableView.maximumHeight = 800
-        # policy = self.fiducialsTableView.sizePolicy
-        # policy.setVerticalPolicy(qt.QSizePolicy.Expanding)
-        # policy.setHorizontalPolicy(qt.QSizePolicy.Expanding)
-        # policy.setVerticalStretch(0)
-        # self.fiducialsTableView.setSizePolicy(policy)
-        # # Hide the table until we have some volume loaded
-        # self.fiducialsTableView.visible = False
-        # # Create model for the table
-        # self.fiducialsTableModel = qt.QStandardItemModel()
-        # self.fiducialsTableView.setModel(self.fiducialsTableModel)
-        # self.fiducialsTableView.verticalHeader().visible = False
-        #
-        # self.statsTableFrame.layout().addWidget(self.fiducialsTableView)
-        #         >>> t = qt.QTableWidget()
-        # >>> w = slicer.modules.CIP_LesionModelWidget
-        # >>> w.mainAreaLayout.addWidget(t)
-        # >>> t.setColumnCount(4)
-        # >>> t.setHorizontalHeaderLabels(["","","Name",""])
-        # >>> headerItem = t.horizontalHeaderItem(0)
-        # >>> headerItem.setIcon(qt.QIcon(":/Icons/MarkupsSelected.png"))
-        # >>> headerItem.setToolTip("Click in this column to select/deselect seeds")
-        # >>> headerItem = t.horizontalHeaderItem(1)
-        # >>> headerItem.setIcon(qt.QIcon(":/Icons/Small/SlicerLockUnlock.png"))
-        # >>> t.setColumnWidth(0,30)
-        # >>> t.setColumnWidth(1,30)
-        # >>> t.setHorizontalHeaderLabels(["","","Name",""])
-        # >>> headerItem.setIcon(qt.QIcon(":/Icons/Small/SlicerVisibleInvisible.png"))
-        # >>> headerItem.setToolTip("Click in this column to show/hide markups in 2D and 3D")
-
-    # def updateRow(self, index):
-    #     #markupsNode = self.logic.getFiducialsListNode(self.inputVolumeSelector.currentNodeID)
-    #     markupsNode = f
-    #     selectedItem = qt.QTableWidgetItem()
-    #     selectedItem.setCheckState(markupsNode.GetNthMarkupVisibility(index))
-    #
-
-
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
         if self.inputVolumeSelector.currentNodeID != '':
@@ -498,16 +455,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             frameLayout.addWidget(selectFiducialsCheckbox)
             selectFiducialsCheckbox.clicked.connect(lambda: self.__onFiducialCheckClicked__(selectFiducialsCheckbox))
 
-
-            # Remove button?
-            # fidButton = ctk.ctkPushButton()
-            # n = fiducialsNode.GetNumberOfFiducials() - 1
-            # fidButton.text = "Fiducial " + str(n)
-            # #fidButton.objectName = displayNodeID
-            # fidButton.objectName = n
-            # fidButton.checkable = True
-            # fidButton.clicked.connect(lambda: self.onFiducialButtonClicked(fidButton))
-
             # frame.layout().addWidget(fidButton)
             self.fiducialsContainerFrame.layout().addWidget(frame)
             self.addFiducialButton.checked = False
@@ -550,19 +497,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         selectionNode.SetReferenceActiveLabelVolumeID(self.logic.currentLabelmap.GetID())
         slicer.app.applicationLogic().PropagateVolumeSelection(0)
 
-    # def calculateSelectedStatistics(self):
-    #     # Get the distance map to calculate the required sphere
-    #     self.logic.calculateCurrentDistanceMap()
-    #     # if self.histogramIntensityCheckBox.checked:
-    #     stats = self.logic.calculateCurrentHistogramIntensityStats()
-    #     print("DEBUG: histogram statistics:")
-    #     print(stats)
-
     def runAnalysis(self):
         # build list of features and feature classes based on what is checked by the user
         self.selectedMainFeaturesKeys = set()
         self.selectedFeatureKeys = set()
         self.analysisResults = dict()
+        self.analysisResultsTiming = dict()
 
         for featureClass in self.featureWidgets:
             for widget in self.featureWidgets[featureClass]:
@@ -601,12 +541,22 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                                     self.selectedMainFeaturesKeys.difference(["Parenchymal Volume"]),
                                     self.selectedFeatureKeys.difference(self.featureClasses["Parenchymal Volume"]))
 
+        print("******** Nodule analysis results...")
         start = time.time()
+        t1 = start
+        results = logic.run(self.logic.PRINT_TIMING)
+        t2 = time.time()
 
-        self.analysisResults[keyName] = logic.run()
-        # self.FeatureVectors.append(nodeLogic.getFeatureVector())
-        print("DEBUG: Obtained results for the nodule: ")
+        if self.logic.PRINT_TIMING:
+            self.analysisResults[keyName] = results[0]
+            self.analysisResultsTiming[keyName] = results[1]
+        else:
+            self.analysisResults[keyName] = results
         print(self.analysisResults[keyName])
+
+        if self.logic.PRINT_TIMING:
+            print("Elapsed time for the nodule analysis (TOTAL={0} seconds:".format(t2-t1))
+            print(self.analysisResultsTiming[keyName])
 
         if self.r15Checkbox.checked or self.r20Checkbox.checked or self.r25Checkbox.checked \
                 or (self.rOtherCheckbox.checked and self.otherRadiusTextbox.text != ""):
@@ -616,7 +566,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             else:
                 labelmapWholeVolumeArray = None
 
-            print("DEBUG: analyzing spheres...")
+            #print("DEBUG: analyzing spheres...")
             self.logic.getCurrentDistanceMap()
             if self.r15Checkbox.checked:
                 self.__runAnalysisSphere__(15, labelmapWholeVolumeArray)
@@ -629,6 +579,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 self.__runAnalysisSphere__(r, labelmapWholeVolumeArray)
 
         t = time.time() - start
+        if self.logic.PRINT_TIMING:
+            print("********* TOTAL ANALYSIS TIME: {0} SECONDS".format(t))
         qt.QMessageBox.information(slicer.util.mainWindow(), "Process finished",
                                    "Analysis finished. Total time: {0} seconds".format(t))
         # self.populateStatistics(self.FeatureVectors)
@@ -640,10 +592,15 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         :return:
         """
         keyName = "{0}__r{1}".format(self.inputVolumeSelector.currentNode().GetName(), radius)
+        t1 = time.time()
         labelmapArray = self.logic.getSphereLabelMap(radius)
+        getSphereTime = time.time() - t1
+        if self.logic.PRINT_TIMING:
+            print("Time elapsed to get a sphere labelmap of radius {0}: {1} seconds".format(radius, getSphereTime))
         slicer.app.processEvents()
         if labelmapArray.max() == 0:
-            results =  {}
+            # Nothing to analyze
+            results = {}
             for key in self.selectedFeatureKeys:
                 results[key] = 0
             self.analysisResults[keyName] = results
@@ -651,9 +608,19 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             logic = FeatureExtractionLogic(self.logic.currentVolume, self.logic.currentVolumeArray,
                                                 labelmapArray, self.selectedMainFeaturesKeys, self.selectedFeatureKeys,
                                                 "__r{0}".format(radius), labelmapWholeVolumeArray)
-            self.analysisResults[keyName] = logic.run()
-        print("DEBUG: Results for the sphere of radius ", radius)
-        print(self.analysisResults[keyName])
+            t1 = time.time()
+            result = logic.run(printTiming=self.logic.PRINT_TIMING)
+            t2 = time.time()
+            print("********* Results for the sphere of radius {0}:".format(radius))
+            if self.logic.PRINT_TIMING:
+                self.analysisResults[keyName] = result[0]
+                print(result[0])
+                self.analysisResultsTiming[keyName] = result[1]
+                print("*** Elapsed time for the sphere radius {0} analysis (TOTAL={1} seconds:".format(radius, t2-t1))
+                print (result[1])
+            else:
+                self.analysisResults[keyName] = result
+                print result
 
     def onSaveReport(self):
         """ Save the current values in a persistent csv file
@@ -682,6 +649,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.analysisResults[keyName]["CaseId"] = keyName
             self.analysisResults[keyName]["Date"] = date
             self.reportsWidget.saveCurrentValues(**self.analysisResults[keyName])
+
+            if self.logic.PRINT_TIMING:
+                # Save also timing report
+                self.analysisResultsTiming[keyName]["CaseId"] = keyName + "_timing"
+                self.analysisResultsTiming[keyName]["Date"] = date
+                self.reportsWidget.saveCurrentValues(**self.analysisResultsTiming[keyName])
 
     ############
     # Events
@@ -812,6 +785,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 #############################
 class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     MAX_TUMOR_RADIUS = 30
+    PRINT_TIMING = True
 
     def __init__(self):
         self.currentVolume = None  # Current active volume

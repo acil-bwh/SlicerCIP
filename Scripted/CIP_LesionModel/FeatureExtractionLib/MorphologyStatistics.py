@@ -9,6 +9,7 @@ import collections
 class MorphologyStatistics:
     def __init__(self, labelNodeSpacing, matrixSA, matrixSACoordinates, matrixSAValues, allKeys):
         self.morphologyStatistics = collections.OrderedDict()
+        self.morphologyStatisticsTiming = collections.OrderedDict()
         self.morphologyStatistics["Volume mm^3"] = 'self.volumeMM3(self.matrixSAValues, self.cubicMMPerVoxel)'
         self.morphologyStatistics[
             "Volume cc"] = 'self.volumeCC(self.matrixSAValues, self.cubicMMPerVoxel, self.ccPerCubicMM)'
@@ -109,7 +110,7 @@ class MorphologyStatistics:
     def sphericityValue(self, surfaceArea, volumeMM3):
         return (((math.pi) ** (1 / 3.0) * (6 * volumeMM3) ** (2 / 3.0)) / (surfaceArea))
 
-    def EvaluateFeatures(self):
+    def EvaluateFeatures(self, printTiming=False):
         # Evaluate dictionary elements corresponding to user-selected keys
         if not self.keys:
             return (self.morphologyStatistics)
@@ -118,10 +119,26 @@ class MorphologyStatistics:
                 self.morphologyStatistics[key] = 0
         else:
             # Volume and Surface Area are pre-calculated even if only one morphology metric is user-selected
+            if printTiming:
+                import time
+                t1 = time.time()
             self.morphologyStatistics["Volume mm^3"] = eval(self.morphologyStatistics["Volume mm^3"])
+            if printTiming:
+                self.morphologyStatisticsTiming["Volume mm^3"] = time.time() - t1
             self.morphologyStatistics["Surface Area mm^2"] = eval(self.morphologyStatistics["Surface Area mm^2"])
+            if printTiming:
+                t1 = time.time()
+                self.morphologyStatisticsTiming["Surface Area mm^2"] = time.time() - t1
 
-            for key in self.keys:
-                if isinstance(self.morphologyStatistics[key], basestring):
-                    self.morphologyStatistics[key] = eval(self.morphologyStatistics[key])
-        return self.morphologyStatistics
+            if printTiming:
+                for key in self.keys:
+                    if isinstance(self.morphologyStatistics[key], basestring):
+                        t1 = time.time()
+                        self.morphologyStatistics[key] = eval(self.morphologyStatistics[key])
+                        self.morphologyStatisticsTiming[key] = time.time() - t1
+                return self.morphologyStatistics, self.morphologyStatisticsTiming
+            else:
+                for key in self.keys:
+                    if isinstance(self.morphologyStatistics[key], basestring):
+                        self.morphologyStatistics[key] = eval(self.morphologyStatistics[key])
+                return self.morphologyStatistics

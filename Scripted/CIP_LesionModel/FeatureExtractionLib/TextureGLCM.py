@@ -12,6 +12,8 @@ class TextureGLCM:
     def __init__(self, grayLevels, numGrayLevels, parameterMatrix, parameterMatrixCoordinates, parameterValues,
                  allKeys):
         self.textureFeaturesGLCM = collections.OrderedDict()
+        self.textureFeaturesGLCMTiming = collections.OrderedDict()
+
         self.textureFeaturesGLCM["Autocorrelation"] = "self.autocorrelationGLCM(self.P_glcm, self.prodMatrix)"
         self.textureFeaturesGLCM[
             "Cluster Prominence"] = "self.clusterProminenceGLCM(self.P_glcm, self.sumMatrix, self.ux, self.uy)"
@@ -45,9 +47,6 @@ class TextureGLCM:
         self.parameterValues = parameterValues
         self.Ng = numGrayLevels
         self.keys = set(allKeys).intersection(self.textureFeaturesGLCM.keys())
-
-        # normalization step:
-        self.CalculateCoefficients()
 
     def CalculateCoefficients(self):
         """ Calculate generic coefficients that will be reused in different markers
@@ -371,11 +370,32 @@ class TextureGLCM:
 
         return (out)
 
-    def EvaluateFeatures(self):
+    def EvaluateFeatures(self, printTiming=False):
         if not self.keys:
-            return (self.textureFeaturesGLCM)
+            if not printTiming:
+                return self.textureFeaturesGLCM
+            else:
+                self.textureFeaturesGLCMTiming.update
+                return self.textureFeaturesGLCM, self.textureFeaturesGLCMTiming
+        # normalization step:
+        if not printTiming:
+            self.CalculateCoefficients()
+        else:
+            import time
+            t1 = time.time()
+            self.CalculateCoefficients()
+            print("Time to calculate coefficients in GLCM: {0} seconds".format(time.time() - t1))
 
-        # Evaluate dictionary elements corresponding to user selected keys
-        for key in self.keys:
-            self.textureFeaturesGLCM[key] = eval(self.textureFeaturesGLCM[key])
-        return (self.textureFeaturesGLCM)
+        if not printTiming:
+            # Evaluate dictionary elements corresponding to user selected keys
+            for key in self.keys:
+                self.textureFeaturesGLCM[key] = eval(self.textureFeaturesGLCM[key])
+            return self.textureFeaturesGLCM
+        else:
+            # Evaluate dictionary elements corresponding to user selected keys
+            for key in self.keys:
+                t1 = time.time()
+                self.textureFeaturesGLCM[key] = eval(self.textureFeaturesGLCM[key])
+                self.textureFeaturesGLCMTiming[key] = time.time() - t1
+            return self.textureFeaturesGLCM, self.textureFeaturesGLCMTiming
+

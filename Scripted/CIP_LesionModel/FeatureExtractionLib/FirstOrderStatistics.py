@@ -4,7 +4,7 @@ import numpy
 import math
 import operator
 import collections
-
+import time
 
 class FirstOrderStatistics:
     def __init__(self, parameterValues, bins, grayLevels, allKeys):
@@ -15,6 +15,7 @@ class FirstOrderStatistics:
         :param allKeys: all feature keys that have been selected for analysis
         """
         self.firstOrderStatistics = collections.OrderedDict()
+        self.firstOrderStatisticsTiming = collections.OrderedDict()
         self.firstOrderStatistics["Voxel Count"] = "self.voxelCount(self.parameterValues)"
         self.firstOrderStatistics["Gray Levels"] = "self.grayLevelCount(self.grayLevels)"
         self.firstOrderStatistics["Energy"] = "self.energyValue(self.parameterValues)"
@@ -135,12 +136,19 @@ class FirstOrderStatistics:
     def uniformityValue(self, bins):
         return (numpy.sum(bins ** 2))
 
-    def EvaluateFeatures(self):
+    def EvaluateFeatures(self, printTiming=False):
         # Evaluate dictionary elements corresponding to user-selected keys
-
         if not self.keys:
             return (self.firstOrderStatistics)
 
-        for key in self.keys:
-            self.firstOrderStatistics[key] = eval(self.firstOrderStatistics[key])
-        return (self.firstOrderStatistics)
+        if printTiming:
+            for key in self.keys:
+                t1 = time.time()
+                self.firstOrderStatistics[key] = eval(self.firstOrderStatistics[key])
+                self.firstOrderStatisticsTiming[key] = time.time() - t1
+
+            return self.firstOrderStatistics, self.firstOrderStatisticsTiming
+        else:
+            for key in self.keys:
+                self.firstOrderStatistics[key] = eval(self.firstOrderStatistics[key])
+            return self.firstOrderStatistics

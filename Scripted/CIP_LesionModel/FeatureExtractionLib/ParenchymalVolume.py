@@ -1,6 +1,6 @@
 from __main__ import vtk, qt, ctk, slicer
 import numpy as np
-
+from collections import OrderedDict
 
 class ParenchymalVolume:
     def __init__(self, parenchymaLabelmapArray, sphereWithoutTumorLabelmapArray, spacing, keysToAnalyze=None):
@@ -15,7 +15,8 @@ class ParenchymalVolume:
         self.parenchymaLabelmapArray = parenchymaLabelmapArray
         self.sphereWithoutTumorLabelmapArray = sphereWithoutTumorLabelmapArray
         self.spacing = spacing
-        self.parenchymalVolumeStatistics = {}
+        self.parenchymalVolumeStatistics = OrderedDict()
+        self.parenchymalVolumeStatisticsTiming = OrderedDict()
 
         allKeys = self.getAllEmphysemaTypes().keys()
         if keysToAnalyze is not None:
@@ -58,10 +59,19 @@ class ParenchymalVolume:
         # Result: SV / PV
         return float(sphereVolume) / totalVolume
 
-    def evaluateFeatures(self):
+    def evaluateFeatures(self, printTiming = False):
         # Evaluate dictionary elements corresponding to user-selected keys
-        self.parenchymalVolumeStatistics = {}
         types = self.getAllEmphysemaTypes()
-        for key in self.keysToAnalyze:
-            self.parenchymalVolumeStatistics[key] = self.analyzeType(types[key])
-        return self.parenchymalVolumeStatistics
+
+        if not printTiming:
+            for key in self.keysToAnalyze:
+                self.parenchymalVolumeStatistics[key] = self.analyzeType(types[key])
+            return self.parenchymalVolumeStatistics
+
+        else:
+            import time
+            t1 = time.time()
+            for key in self.keysToAnalyze:
+                self.parenchymalVolumeStatistics[key] = self.analyzeType(types[key])
+                self.parenchymalVolumeStatisticsTiming[key] = time.time() - t1
+            return self.parenchymalVolumeStatistics, self.parenchymalVolumeStatisticsTiming
