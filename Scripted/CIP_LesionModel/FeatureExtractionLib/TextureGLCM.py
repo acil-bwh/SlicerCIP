@@ -10,7 +10,7 @@ import collections
 
 class TextureGLCM:
     def __init__(self, grayLevels, numGrayLevels, parameterMatrix, parameterMatrixCoordinates, parameterValues,
-                 allKeys):
+                 allKeys, checkStopProcessFunction):
         self.textureFeaturesGLCM = collections.OrderedDict()
         self.textureFeaturesGLCMTiming = collections.OrderedDict()
 
@@ -47,6 +47,8 @@ class TextureGLCM:
         self.parameterValues = parameterValues
         self.Ng = numGrayLevels
         self.keys = set(allKeys).intersection(self.textureFeaturesGLCM.keys())
+        # Callback function to stop the process if the user decided so. CalculateCoefficients can take a long time to run...
+        self.checkStopProcessFunction = checkStopProcessFunction
 
     def CalculateCoefficients(self):
         """ Calculate generic coefficients that will be reused in different markers
@@ -344,7 +346,10 @@ class TextureGLCM:
 
         indices = zip(*matrixCoordinates)
 
-        for h, c, r in indices:
+
+        for iteration in range(len(indices)):
+        #for h, c, r in indices:
+            h, c, r = indices[iteration]
             for angles_idx in xrange(directions):
                 angle = angles[angles_idx]
 
@@ -367,10 +372,13 @@ class TextureGLCM:
                             j_idx = numpy.nonzero(grayLevels == j)
                             # if i >= grayLevels.min and i <= grayLevels.max and j >= grayLevels.min and j <= grayLevels.max:
                             out[i_idx, j_idx, distances_idx, angles_idx] += 1
+            # Check if the user has cancelled the process
+            if iteration % 10 == 0:
+                self.checkStopProcessFunction()
 
         return (out)
 
-    def EvaluateFeatures(self, printTiming=False):
+    def EvaluateFeatures(self, printTiming=False, checkStopProcessFunction=None):
         if not self.keys:
             if not printTiming:
                 return self.textureFeaturesGLCM
@@ -390,6 +398,8 @@ class TextureGLCM:
             # Evaluate dictionary elements corresponding to user selected keys
             for key in self.keys:
                 self.textureFeaturesGLCM[key] = eval(self.textureFeaturesGLCM[key])
+                if checkStopProcessFunction is not None:
+                    checkStopProcessFunction()
             return self.textureFeaturesGLCM
         else:
             # Evaluate dictionary elements corresponding to user selected keys
@@ -397,5 +407,7 @@ class TextureGLCM:
                 t1 = time.time()
                 self.textureFeaturesGLCM[key] = eval(self.textureFeaturesGLCM[key])
                 self.textureFeaturesGLCMTiming[key] = time.time() - t1
+                if checkStopProcessFunction is not None:
+                    checkStopProcessFunction()
             return self.textureFeaturesGLCM, self.textureFeaturesGLCMTiming
 

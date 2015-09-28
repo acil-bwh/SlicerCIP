@@ -136,7 +136,7 @@ class FirstOrderStatistics:
     def uniformityValue(self, bins):
         return (numpy.sum(bins ** 2))
 
-    def EvaluateFeatures(self, printTiming=False):
+    def EvaluateFeatures(self, printTiming=False, checkStopProcessFunction=None):
         # Evaluate dictionary elements corresponding to user-selected keys
         if not self.keys:
             return (self.firstOrderStatistics)
@@ -146,9 +146,13 @@ class FirstOrderStatistics:
                 t1 = time.time()
                 self.firstOrderStatistics[key] = eval(self.firstOrderStatistics[key])
                 self.firstOrderStatisticsTiming[key] = time.time() - t1
+                if checkStopProcessFunction is not None:
+                    checkStopProcessFunction()
 
             return self.firstOrderStatistics, self.firstOrderStatisticsTiming
         else:
             for key in self.keys:
                 self.firstOrderStatistics[key] = eval(self.firstOrderStatistics[key])
+                if checkStopProcessFunction is not None:
+                    checkStopProcessFunction()
             return self.firstOrderStatistics

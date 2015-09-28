@@ -90,7 +90,7 @@ class GeometricalMeasures:
             extrudedMatrix[slice4D] = 1
         return (extrudedMatrix, extrudedMatrixCoordinates)
 
-    def EvaluateFeatures(self, printTiming=False):
+    def EvaluateFeatures(self, printTiming=False, checkStopProcessFunction=None):
         # Evaluate dictionary elements corresponding to user-selected keys
         if not self.keys:
             return (self.GeometricalMeasures)
@@ -101,9 +101,13 @@ class GeometricalMeasures:
                 t1 = time.time()
                 self.GeometricalMeasures[key] = eval(self.GeometricalMeasures[key])
                 self.GeometricalMeasuresTiming[key] = time.time() - t1
+                if checkStopProcessFunction is not None:
+                    checkStopProcessFunction()
 
             return self.GeometricalMeasures, self.GeometricalMeasuresTiming
         else:
             for key in self.keys:
                 self.GeometricalMeasures[key] = eval(self.GeometricalMeasures[key])
+                if checkStopProcessFunction is not None:
+                    checkStopProcessFunction()
             return self.GeometricalMeasures

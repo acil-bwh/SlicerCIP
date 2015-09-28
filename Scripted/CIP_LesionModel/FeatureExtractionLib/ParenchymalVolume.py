@@ -59,13 +59,15 @@ class ParenchymalVolume:
         # Result: SV / PV
         return float(sphereVolume) / totalVolume
 
-    def evaluateFeatures(self, printTiming = False):
+    def evaluateFeatures(self, printTiming = False, checkStopProcessFunction=None):
         # Evaluate dictionary elements corresponding to user-selected keys
         types = self.getAllEmphysemaTypes()
 
         if not printTiming:
             for key in self.keysToAnalyze:
                 self.parenchymalVolumeStatistics[key] = self.analyzeType(types[key])
+                if checkStopProcessFunction is not None:
+                    checkStopProcessFunction()
             return self.parenchymalVolumeStatistics
 
         else:
@@ -74,4 +76,6 @@ class ParenchymalVolume:
             for key in self.keysToAnalyze:
                 self.parenchymalVolumeStatistics[key] = self.analyzeType(types[key])
                 self.parenchymalVolumeStatisticsTiming[key] = time.time() - t1
+                if checkStopProcessFunction is not None:
+                    checkStopProcessFunction()
             return self.parenchymalVolumeStatistics, self.parenchymalVolumeStatisticsTiming

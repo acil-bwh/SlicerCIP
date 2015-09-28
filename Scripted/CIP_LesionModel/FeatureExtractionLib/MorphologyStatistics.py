@@ -110,7 +110,7 @@ class MorphologyStatistics:
     def sphericityValue(self, surfaceArea, volumeMM3):
         return (((math.pi) ** (1 / 3.0) * (6 * volumeMM3) ** (2 / 3.0)) / (surfaceArea))
 
-    def EvaluateFeatures(self, printTiming=False):
+    def EvaluateFeatures(self, printTiming=False, checkStopProcessFunction=None):
         # Evaluate dictionary elements corresponding to user-selected keys
         if not self.keys:
             return (self.morphologyStatistics)
@@ -136,9 +136,13 @@ class MorphologyStatistics:
                         t1 = time.time()
                         self.morphologyStatistics[key] = eval(self.morphologyStatistics[key])
                         self.morphologyStatisticsTiming[key] = time.time() - t1
+                        if checkStopProcessFunction is not None:
+                            checkStopProcessFunction()
                 return self.morphologyStatistics, self.morphologyStatisticsTiming
             else:
                 for key in self.keys:
                     if isinstance(self.morphologyStatistics[key], basestring):
                         self.morphologyStatistics[key] = eval(self.morphologyStatistics[key])
+                        if checkStopProcessFunction is not None:
+                            checkStopProcessFunction()
                 return self.morphologyStatistics

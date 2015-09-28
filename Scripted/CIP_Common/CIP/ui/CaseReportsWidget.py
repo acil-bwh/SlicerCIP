@@ -27,11 +27,13 @@ class CaseReportsWidget(EventsTrigger):
             self.parent = parent
         self.layout = self.parent.layout()
 
+        self.__showWarningWhenIncompleteColumns__ = True
         self.logic = CaseReportsLogic(moduleName, columnNames, filePreffix)
         self.__initEvents__()
         self.reportWindow = CaseReportsWindow(self)
-
-
+    @property
+    def showWarningWhenWrongColumns(self):
+        return self.__showWarningWhenIncompleteColumns__
 
     def setup(self):
         self.saveValuesButton = ctk.ctkPushButton()
@@ -86,6 +88,24 @@ class CaseReportsWidget(EventsTrigger):
         """
         self.logic.saveValues(**kwargs)
 
+    def enableSaveButton(self, enabled):
+        """ Enable/Disable the "Save" button
+        :param enabled: True/False
+        """
+        self.saveValuesButton.setEnabled(enabled)
+
+    def showSaveButton(self, show):
+        """ Show/hide the save button (it can be hidden when the data are saved obligatory)
+        :param show: show == True
+        """
+        self.saveValuesButton.setVisible(show)
+
+    def showWarnigMessages(self, showMessages):
+        """ Show/Hide warning messages when the columns passed when saving some values are not exactly the ones expected
+        :param showMessages: True/False
+        """
+        self.__showWarningWhenIncompleteColumns__ = showMessages
+        self.logic.showWarningWhenIncompleteColumns = showMessages
 
     ###############
     # EVENTS
@@ -140,6 +160,7 @@ class CaseReportsLogic(object):
         else:
             self.__csvFilePath__ = os.path.join(p, "Resources", moduleName + ".storage.csv")
         self.__columnNames__ = columnNames
+        self.showWarningWhenIncompleteColumns = True
 
     @property
     def TIMESTAMP_COLUMN_NAME(self):
@@ -174,7 +195,7 @@ class CaseReportsLogic(object):
         :param kwargs: dictionary of values
         """
         # Check that we have all the "columns"
-        if len(kwargs) != len(self.columnNames):
+        if len(kwargs) != len(self.columnNames) and self.showWarningWhenIncompleteColumns:
             print("WARNING. There is a wrong number of arguments in ReportsWidget. ")
             print("Current columns: ")
             pprint.pprint(self.columnNames)

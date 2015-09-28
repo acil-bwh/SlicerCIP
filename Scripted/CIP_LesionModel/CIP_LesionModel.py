@@ -173,6 +173,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.labelMapSelector.showHidden = False
         self.labelMapSelector.showChildNodeTypes = False
         self.labelMapSelector.setMRMLScene(slicer.mrmlScene)
+        self.labelMapSelector.toolTip = "Select a labelmap if you want to run Parenchymal Volume analysis"
         self.mainAreaLayout.addRow("Select a labelmap", self.labelMapSelector)
 
         self.addFiducialButton = ctk.ctkPushButton()
@@ -194,7 +195,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.applySegmentationButton.toolTip = "This is the button toolTip"
         self.applySegmentationButton.setIcon(qt.QIcon("{0}/Reload.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.applySegmentationButton.setIconSize(qt.QSize(20, 20))
-        self.applySegmentationButton.setStyleSheet("font-weight:bold; font-size:12px")
+        self.applySegmentationButton.setStyleSheet("font-weight:bold; font-size:12px; color: white; background-color:#274EE2")
         self.applySegmentationButton.setFixedWidth(200)
         self.mainAreaLayout.addRow("Segment the node: ", self.applySegmentationButton)
 
@@ -322,16 +323,19 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.featuresHeterogeneityCADLayout.addRow(self.featureButtonFrame)
 
         # HeterogeneityCAD Apply Button
-        self.HeterogeneityCADButton = qt.QPushButton("Analyze!", self.featureButtonFrame)
-        self.HeterogeneityCADButton.toolTip = "Analyze input volume using selected Features."
-        self.featureButtonFrame.layout().addWidget(self.HeterogeneityCADButton)
-
-
+        self.runAnalysisButton = qt.QPushButton("Analyze!", self.featureButtonFrame)
+        self.runAnalysisButton.toolTip = "Analyze input volume using selected Features."
+        self.runAnalysisButton.setIcon(qt.QIcon("{0}/analyze.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.runAnalysisButton.setIconSize(qt.QSize(24, 24))
+        self.runAnalysisButton.setStyleSheet("font-weight:bold; font-size:12px; color: white; background-color:#274EE2")
+        self.featureButtonFrame.layout().addWidget(self.runAnalysisButton)
 
         # Reports widget
         self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
                                                parent=self.featureButtonFrame)
         self.reportsWidget.setup()
+        self.reportsWidget.showSaveButton(False)
+        self.reportsWidget.showWarnigMessages(False)
 
         ######################
         # Case navigator widget
@@ -358,9 +362,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.distanceLevelSlider.connect('sliderReleased()', self.checkAndRefreshModels)
 
         # runAnalysisButton.connect("clicked()", self.__onRunAnalysisButtonClicked__)
-        self.HeterogeneityCADButton.connect('clicked()', self.onAnalyzeButtonClicked)
+        self.runAnalysisButton.connect('clicked()', self.onAnalyzeButtonClicked)
 
-        self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
+        self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.__saveReport__)
 
         self.__refreshUI__()
 
@@ -394,13 +398,17 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.applySegmentationButton.enabled = False
             self.applySegmentationButton.toolTip = "Add at least one seed before running the algorithm"
 
-        # Level slider active after running the segmentation algorithm
+        # Level slider and Analyze button active after running the segmentation algorithm
         if self.logic.cliOutputScalarNode is not None:
             self.distanceLevelSlider.enabled = True
             self.distanceLevelSlider.toolTip = "Move the slide to adjust the threshold for the model"
+            self.runAnalysisButton.setEnabled(True)
+            self.runAnalysisButton.toolTip = "Run all the checked analysis"
         else:
             self.distanceLevelSlider.enabled = False
-            self.distanceLevelSlider.toolTip = "Please run the segmentation algorithm first"
+            self.distanceLevelSlider.toolTip = "Please run the segmentation algorithm first (click ""Segment"" button)"
+            self.runAnalysisButton.setEnabled(False)
+            self.runAnalysisButton.toolTip = "Please run the segmentation algorithm first (click ""Segment"" button)"
 
         self.progressBar.visible = self.distanceLevelSlider.enabled
 
@@ -534,57 +542,59 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                     "The radius of the sphere must have a maximum value of {0}".format(self.logic.MAX_TUMOR_RADIUS))
             return
 
-        # Analysis for the volume and the nodule:
-        keyName = self.inputVolumeSelector.currentNode().GetName()
-        logic = FeatureExtractionLogic(self.logic.currentVolume, self.logic.currentVolumeArray,
-                                    self.logic.currentLabelmapArray,
-                                    self.selectedMainFeaturesKeys.difference(["Parenchymal Volume"]),
-                                    self.selectedFeatureKeys.difference(self.featureClasses["Parenchymal Volume"]))
+        try:
+            # Analysis for the volume and the nodule:
+            keyName = self.inputVolumeSelector.currentNode().GetName()
+            logic = FeatureExtractionLogic(self.logic.currentVolume, self.logic.currentVolumeArray,
+                                        self.logic.currentLabelmapArray,
+                                        self.selectedMainFeaturesKeys.difference(["Parenchymal Volume"]),
+                                        self.selectedFeatureKeys.difference(self.featureClasses["Parenchymal Volume"]))
 
-        print("******** Nodule analysis results...")
-        start = time.time()
-        t1 = start
-        results = logic.run(self.logic.PRINT_TIMING)
-        t2 = time.time()
+            print("******** Nodule analysis results...")
+            start = time.time()
+            t1 = start
+            results = logic.run(self.logic.PRINT_TIMING)
+            t2 = time.time()
 
-        if self.logic.PRINT_TIMING:
-            self.analysisResults[keyName] = results[0]
-            self.analysisResultsTiming[keyName] = results[1]
-        else:
-            self.analysisResults[keyName] = results
-        print(self.analysisResults[keyName])
-
-        if self.logic.PRINT_TIMING:
-            print("Elapsed time for the nodule analysis (TOTAL={0} seconds:".format(t2-t1))
-            print(self.analysisResultsTiming[keyName])
-
-        if self.r15Checkbox.checked or self.r20Checkbox.checked or self.r25Checkbox.checked \
-                or (self.rOtherCheckbox.checked and self.otherRadiusTextbox.text != ""):
-            runParenchymalVolume = "Parenchymal Volume" in self.selectedMainFeaturesKeys
-            if runParenchymalVolume:
-                labelmapWholeVolumeArray = slicer.util.array(self.labelMapSelector.currentNode().GetName())
+            if self.logic.PRINT_TIMING:
+                self.analysisResults[keyName] = results[0]
+                self.analysisResultsTiming[keyName] = results[1]
             else:
-                labelmapWholeVolumeArray = None
+                self.analysisResults[keyName] = results
+            print(self.analysisResults[keyName])
 
-            #print("DEBUG: analyzing spheres...")
-            self.logic.getCurrentDistanceMap()
-            if self.r15Checkbox.checked:
-                self.__runAnalysisSphere__(15, labelmapWholeVolumeArray)
-            if self.r20Checkbox.checked:
-                self.__runAnalysisSphere__(20, labelmapWholeVolumeArray)
-            if self.r25Checkbox.checked:
-                self.__runAnalysisSphere__(25, labelmapWholeVolumeArray)
-            if self.rOtherCheckbox.checked:
-                r = int(self.otherRadiusTextbox.text)
-                self.__runAnalysisSphere__(r, labelmapWholeVolumeArray)
+            if self.logic.PRINT_TIMING:
+                print("Elapsed time for the nodule analysis (TOTAL={0} seconds:".format(t2-t1))
+                print(self.analysisResultsTiming[keyName])
 
-        t = time.time() - start
-        if self.logic.PRINT_TIMING:
-            print("********* TOTAL ANALYSIS TIME: {0} SECONDS".format(t))
-        qt.QMessageBox.information(slicer.util.mainWindow(), "Process finished",
-                                   "Analysis finished. Total time: {0} seconds".format(t))
-        # self.populateStatistics(self.FeatureVectors)
-        # self.saveButton.enabled = True
+            if self.r15Checkbox.checked or self.r20Checkbox.checked or self.r25Checkbox.checked \
+                    or (self.rOtherCheckbox.checked and self.otherRadiusTextbox.text != ""):
+                runParenchymalVolume = "Parenchymal Volume" in self.selectedMainFeaturesKeys
+                if runParenchymalVolume:
+                    labelmapWholeVolumeArray = slicer.util.array(self.labelMapSelector.currentNode().GetName())
+                else:
+                    labelmapWholeVolumeArray = None
+
+                #print("DEBUG: analyzing spheres...")
+                self.logic.getCurrentDistanceMap()
+                if self.r15Checkbox.checked:
+                    self.__runAnalysisSphere__(15, labelmapWholeVolumeArray)
+                if self.r20Checkbox.checked:
+                    self.__runAnalysisSphere__(20, labelmapWholeVolumeArray)
+                if self.r25Checkbox.checked:
+                    self.__runAnalysisSphere__(25, labelmapWholeVolumeArray)
+                if self.rOtherCheckbox.checked:
+                    r = int(self.otherRadiusTextbox.text)
+                    self.__runAnalysisSphere__(r, labelmapWholeVolumeArray)
+
+            t = time.time() - start
+            if self.logic.PRINT_TIMING:
+                print("********* TOTAL ANALYSIS TIME: {0} SECONDS".format(t))
+            self.__saveReport__(showConfirmation=False)
+            qt.QMessageBox.information(slicer.util.mainWindow(), "Process finished",
+                                       "Analysis finished. Total time: {0} seconds".format(t))
+        except StopIteration:
+            qt.QMessageBox.warning(slicer.util.mainWindow(), "Process cancelled", "The process has been cancelled by the user")
 
     def __runAnalysisSphere__(self, radius, labelmapWholeVolumeArray):
         """ Run the selected features for an sphere of radius r (excluding the nodule itself)
@@ -622,9 +632,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 self.analysisResults[keyName] = result
                 print result
 
-    def onSaveReport(self):
+    def __saveReport__(self, showConfirmation=True):
         """ Save the current values in a persistent csv file
-        :return:
         """
         date = time.strftime("%Y/%m/%d %H:%M:%S")
         keyName = self.inputVolumeSelector.currentNode().GetName()
@@ -637,7 +646,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.__saveSubReport__(keyName, date)
         keyName = "{0}__r{1}".format(self.inputVolumeSelector.currentNode().GetName(), self.otherRadiusTextbox.text)
         self.__saveSubReport__(keyName, date)
-        qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+        if showConfirmation:
+            qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
 
 
     def __saveSubReport__(self, keyName, date):

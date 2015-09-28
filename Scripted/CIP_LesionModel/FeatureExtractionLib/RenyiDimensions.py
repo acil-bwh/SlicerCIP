@@ -20,7 +20,7 @@ class RenyiDimensions:
         self.allKeys = allKeys
         
              
-    def EvaluateFeatures(self, printTiming=False):     
+    def EvaluateFeatures(self, printTiming=False, checkStopProcessFunction=None):
         keys = set(self.allKeys).intersection(self.renyiDimensions.keys())
         if not printTiming:
             if not keys:
@@ -29,6 +29,8 @@ class RenyiDimensions:
             #Evaluate dictionary elements corresponding to user selected keys
             for key in keys:
                 self.renyiDimensions[key] = eval(self.renyiDimensions[key])
+                if checkStopProcessFunction is not None:
+                    checkStopProcessFunction()
             return self.renyiDimensions
         else:
             if not keys:
@@ -40,6 +42,8 @@ class RenyiDimensions:
                 t1 = time.time()
                 self.renyiDimensions[key] = eval(self.renyiDimensions[key])
                 self.renyiDimensionTiming[key] = time.time() - t1
+                if checkStopProcessFunction is not None:
+                    checkStopProcessFunction()
             return self.renyiDimensions, self.renyiDimensionTiming
         
             

@@ -297,7 +297,7 @@ class TextureGLRL:
 
         return (P_out)
 
-    def EvaluateFeatures(self, printTiming=False):
+    def EvaluateFeatures(self, printTiming=False, checkStopProcessFunction=None):
         if not self.keys:
             if not printTiming:
                 return self.textureFeaturesGLRL
@@ -316,6 +316,8 @@ class TextureGLRL:
             # Evaluate dictionary elements corresponding to user selected keys
             for key in self.keys:
                 self.textureFeaturesGLRL[key] = eval(self.textureFeaturesGLRL[key])
+                if checkStopProcessFunction is not None:
+                    checkStopProcessFunction()
             return self.textureFeaturesGLRL
         else:
             # Evaluate dictionary elements corresponding to user selected keys
@@ -323,4 +325,6 @@ class TextureGLRL:
                 t1 = time.time()
                 self.textureFeaturesGLRL[key] = eval(self.textureFeaturesGLRL[key])
                 self.textureFeaturesGLRLTiming[key] = time.time() - t1
+                if checkStopProcessFunction is not None:
+                    checkStopProcessFunction()
             return self.textureFeaturesGLRL, self.textureFeaturesGLRLTiming
