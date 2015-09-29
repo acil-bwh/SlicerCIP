@@ -21,15 +21,24 @@ set(MODULE_PYTHON_SCRIPTS
 set(MODULE_PYTHON_RESOURCES
   CIP/ui/Resources/BodyCompositionColorMap.ctbl
   CIP/ui/Resources/StructuresColorMap.ctbl
-  CIP/ui/Resources/Icons/previous.png
-  CIP/ui/Resources/Icons/next.png
   CIP/ui/Resources/Icons/1415667870_kview.png
+  CIP/ui/Resources/Icons/ACIL.png
   CIP/ui/Resources/Icons/ACIL_Blank.png
-  CIP/ui/Resources/Icons/export-csv.png
   CIP/ui/Resources/Icons/Load.png
+  CIP/ui/Resources/Icons/Reload.png
   CIP/ui/Resources/Icons/Save.png
   CIP/ui/Resources/Icons/SaveAll.png
-  CIP/ui/Resources/Icons/Reload.png
+  CIP/ui/Resources/Icons/analyze.png
+  CIP/ui/Resources/Icons/delete.png
+  CIP/ui/Resources/Icons/export-csv.png
+  CIP/ui/Resources/Icons/move_down.png
+  CIP/ui/Resources/Icons/move_up.png
+  CIP/ui/Resources/Icons/next.png
+  CIP/ui/Resources/Icons/open_file.png
+  CIP/ui/Resources/Icons/previous.png
+  CIP/ui/Resources/Icons/recycle.png
+  CIP/ui/Resources/Icons/ruler.png
+  CIP/ui/Resources/Icons/rulers.png
   )
 
 #-----------------------------------------------------------------------------

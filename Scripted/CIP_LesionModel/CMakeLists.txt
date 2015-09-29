@@ -4,6 +4,17 @@ set(MODULE_NAME CIP_LesionModel)
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
+  FeatureExtractionLib/__init__
+  FeatureExtractionLib/FirstOrderStatistics
+  FeatureExtractionLib/MorphologyStatistics
+  FeatureExtractionLib/TextureGLCM
+  FeatureExtractionLib/TextureGLRL
+  FeatureExtractionLib/RenyiDimensions
+  FeatureExtractionLib/GeometricalMeasures
+  FeatureExtractionLib/ParenchymalVolume
+  FeatureWidgetHelperLib/__init__
+  FeatureWidgetHelperLib/FeatureDescriptionLabel
+  FeatureWidgetHelperLib/FeatureWidgets
   )
 
 set(MODULE_PYTHON_RESOURCES
