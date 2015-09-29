@@ -42,12 +42,14 @@ class CIP_LesionModel(ScriptedLoadableModule):
 
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = "CIP_LesionModel"
+        self.parent.title = "Lung nodule analyzer"
         self.parent.categories = SlicerUtil.CIP_ModulesCategory
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
         self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory",
                                     "Brigham and Women's Hospital"]
-        self.parent.helpText = """Segment and model a lung lesion"""
+        self.parent.helpText = """This module allows to segment benign nodules and tumors in the lung.
+            Besides, it analyzes a lot of different features inside the nodule and in its surroundings,
+            in concentric spheres of different radius centered in the centroid of the nodule"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 
