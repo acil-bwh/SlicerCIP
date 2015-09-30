@@ -4,6 +4,7 @@ import numpy
 import math
 import operator
 import collections
+import time
 
 
 # from decimal import *
@@ -50,7 +51,7 @@ class TextureGLCM:
         # Callback function to stop the process if the user decided so. CalculateCoefficients can take a long time to run...
         self.checkStopProcessFunction = checkStopProcessFunction
 
-    def CalculateCoefficients(self):
+    def CalculateCoefficients(self, printTiming=False):
         """ Calculate generic coefficients that will be reused in different markers
         IMPORTANT!! This method is VERY inefficient when the nodule is big (because
         of the function calculate_glcm at least). If these
@@ -62,9 +63,11 @@ class TextureGLCM:
         distances = numpy.array([1])
         directions = 26
         self.P_glcm = numpy.zeros((self.Ng, self.Ng, distances.size, directions))
+        t1 = time.time()
         self.P_glcm = self.calculate_glcm(self.grayLevels, self.parameterMatrix, self.parameterMatrixCoordinates,
                                           distances, directions, self.Ng, self.P_glcm)
-
+        if printTiming:
+            print("- Time to calculate glmc matrix: {0} secs".format(time.time() - t1))
         # make each GLCM symmetric an optional parameter
         # if symmetric:
         # Pt = numpy.transpose(P, (1, 0, 2, 3))
@@ -123,6 +126,8 @@ class TextureGLCM:
         self.HXY2 = (-1) * numpy.sum(
             numpy.sum((self.pxy * numpy.where(self.pxy != 0, numpy.log2(self.pxy), numpy.log2(self.eps))), 0),
             0)  # shape = (distances.size, directions)
+        if printTiming:
+            print("- Time to calculate total glmc coefficients: {0} secs".format(time.time() - t1))
 
     def autocorrelationGLCM(self, P_glcm, prodMatrix, meanFlag=True):
         ac = numpy.sum(numpy.sum(P_glcm * prodMatrix[:, :, None, None], 0), 0)
@@ -386,13 +391,7 @@ class TextureGLCM:
                 self.textureFeaturesGLCMTiming.update
                 return self.textureFeaturesGLCM, self.textureFeaturesGLCMTiming
         # normalization step:
-        if not printTiming:
-            self.CalculateCoefficients()
-        else:
-            import time
-            t1 = time.time()
-            self.CalculateCoefficients()
-            print("Time to calculate coefficients in GLCM: {0} seconds".format(time.time() - t1))
+        self.CalculateCoefficients(printTiming)
 
         if not printTiming:
             # Evaluate dictionary elements corresponding to user selected keys

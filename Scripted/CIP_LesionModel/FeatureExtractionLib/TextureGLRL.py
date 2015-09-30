@@ -310,7 +310,7 @@ class TextureGLRL:
             import time
             t1 = time.time()
             self.CalculateCoefficients()
-            print("Time to calculate coefficients in GLRL: {0} seconds".format(time.time() - t1))
+            print("- Time to calculate coefficients in GLRL: {0} seconds".format(time.time() - t1))
 
         if not printTiming:
             # Evaluate dictionary elements corresponding to user selected keys

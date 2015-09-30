@@ -53,7 +53,7 @@ class FeatureExtractionLogic:
         """
         return self.__analysisTimingDict__
 
-    def run(self, printTiming=False):
+    def run(self, resultsStorage, printTiming=False, resultsStorageTiming=None):
         """ Run all the selected analysis
         :return:
             If printTiming==False: Dictionary of Feature-Value with all the features analyzed
@@ -94,9 +94,11 @@ class FeatureExtractionLogic:
         ########
         # Manage feature classes for Heterogeneity feature calculations and consolidate into self.FeatureVector
         # TODO: create a parent class for all feature classes
-        self.__analysisResultsDict__ = collections.OrderedDict()
-        self.__analysisTimingDict__ = collections.OrderedDict()
-
+        # self.__analysisResultsDict__ = collections.OrderedDict()
+        # self.__analysisTimingDict__ = collections.OrderedDict()
+        self.__analysisResultsDict__ = resultsStorage
+        if printTiming:
+            self.__analysisTimingDict__ = resultsStorageTiming
         progressBarDesc = self.volumeNode.GetName() + self.additionalProgressbarDesc
 
         # First Order Statistics
@@ -164,9 +166,9 @@ class FeatureExtractionLogic:
         if "Geometrical Measures" in self.featureCategoriesKeys:
             self.updateProgressBar(progressBarDesc, "Geometrical Measures", len(self.__analysisResultsDict__))
             self.geometricalMeasures = FeatureExtractionLib.GeometricalMeasures(self.volumeNode.GetSpacing(), self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)
+            t1 = time.time()
             results =self.geometricalMeasures.EvaluateFeatures(printTiming, self.checkStopProcess)
             if printTiming:
-                t1 = time.time()
                 self.__analysisResultsDict__.update(results[0])
                 self.__analysisTimingDict__.update(results[1])
                 print("Time to calculate Geometrical Measures: {0} seconds".format(time.time() - t1))

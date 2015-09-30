@@ -21,6 +21,7 @@ class RenyiDimensions:
         
              
     def EvaluateFeatures(self, printTiming=False, checkStopProcessFunction=None):
+        self.checkStopProcessFunction=checkStopProcessFunction
         keys = set(self.allKeys).intersection(self.renyiDimensions.keys())
         if not printTiming:
             if not keys:
@@ -74,6 +75,8 @@ class RenyiDimensions:
                     for k in xrange(0, maxDim-siz+1, siz):
                         box = numpy.array([ c[i,j,k], c[i+siz2,j,k], c[i,j+siz2,k], c[i+siz2,j+siz2,k], c[i,j,k+siz2], c[i+siz2,j,k+siz2], c[i,j+siz2,k+siz2], c[i+siz2,j+siz2,k+siz2] ])
                         c[i,j,k] =    numpy.any(box != 0) if (q==0) else numpy.sum(box)**q
+                    if self.checkStopProcessFunction is not None:
+                        self.checkStopProcessFunction()
                         #print (i, j, k, '                ', c[i,j,k])
             pi = c[0:(maxDim-siz+1):siz, 0:(maxDim-siz+1):siz, 0:(maxDim-siz+1):siz]                            
             if (q == 1):             

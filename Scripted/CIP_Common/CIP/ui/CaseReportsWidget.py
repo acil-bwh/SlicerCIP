@@ -216,8 +216,13 @@ class CaseReportsLogic(object):
                 orderedColumns.append(kwargs[column])
             else:
                 orderedColumns.append('')
+
+        fileExists = os.path.isfile(self.csvFilePath)
         with open(self.csvFilePath, 'a+b') as csvfile:
             writer = csv.writer(csvfile)
+            # If file is empty, save also the column names
+            if not fileExists:
+                writer.writerow(self.columnNames)
             writer.writerow(orderedColumns)
 
 

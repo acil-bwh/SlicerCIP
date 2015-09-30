@@ -59,7 +59,7 @@ class ParenchymalVolume:
         # Result: SV / PV
         return float(sphereVolume) / totalVolume
 
-    def evaluateFeatures(self, printTiming = False, checkStopProcessFunction=None):
+    def EvaluateFeatures(self, printTiming = False, checkStopProcessFunction=None):
         # Evaluate dictionary elements corresponding to user-selected keys
         types = self.getAllEmphysemaTypes()
 
