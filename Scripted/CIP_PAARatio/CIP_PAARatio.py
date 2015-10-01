@@ -248,25 +248,24 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
 
     def jumpToTemptativeSlice(self, volumeId):
+        """ Jump the red window to a predefined slice based on the size of the volume
+        :param volumeId:
+        """
+        # Get the default coordinates of the ruler
         aorta1, aorta2, pa1, pa2 = self.logic.getDefaultCoords(volumeId)
-        print("DEBUG: moving to slice ", aorta1[2])
         # Set the display in the right slice
         self.moveRedWindowToSlice(aorta1[2])
 
     def placeDefaultRulers(self, volumeId):
         """ Set the Aorta and PA rulers to a default estimated position and jump to that slice
         :param volumeId:
-        :return:
         """
         self.structuresButtonGroup.buttons()[0].setChecked(True)
-        print("DEBUG: jumping")
         self.jumpToTemptativeSlice(volumeId)
-        print("DEBUG: placing rulers")
         self.placeRuler()
         self.currentVolumesLoaded.add(volumeId)
 
         # Modify the zoom of the Red slice
-        print("DEBUG: moving FOV")
         redSliceNode = slicer.util.getFirstNodeByClassByName("vtkMRMLSliceNode", "Red")
         factor = 0.5
         newFOVx = redSliceNode.GetFieldOfView()[0] * factor
@@ -278,25 +277,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
         redSliceNode.UpdateMatrices()
 
-    #     if volumeId == '':
-    #         self.showUnselectedVolumeWarningMessage()
-    #         return
-    #
-    #     rulerNodeAorta, isNewAorta, rulerNodePA, isNewPA = self.logic.createDefaultRulers(volumeId)
-    #
-    #     if isNewAorta:
-    #         rulerNodeAorta.AddObserver(vtk.vtkCommand.ModifiedEvent, self.onRulerUpdated)
-    #     if isNewPA:
-    #         rulerNodePA.AddObserver(vtk.vtkCommand.ModifiedEvent, self.onRulerUpdated)
-    #
-    #     # Get the coordinates of one of the rulers and jump to that slice
-    #     coords = [0, 0, 0, 0]
-    #     # Get current RAS coords
-    #     rulerNodeAorta.GetPositionWorldCoordinates1(coords)
-    #     # Set the display in the right slice
-    #     self.moveRedWindowToSlice(coords[2])
-    #
-    #     self.refreshTextboxes()
 
     def placeRuler(self):
         """ Place one or the two rulers in the current visible slice in Red node
@@ -364,27 +344,9 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.moveRedWindowToSlice(newSlice)
 
     def removeRulers(self):
-        """ Remove the selected rulers
+        """ Remove all the rulers related to the current volume node
         :return:
         """
-        # volumeId = self.volumeSelector.currentNodeId
-        #
-        # if volumeId == '':
-        #     self.showUnselectedVolumeWarningMessage()
-        #     return
-        #
-        # selectedStructure = self.getCurrentSelectedStructure()
-        # if selectedStructure == self.logic.NONE:
-        #     self.showUnselectedStructureWarningMessage()
-        #     return
-        #
-        # if selectedStructure == self.logic.BOTH:
-        #     # Move both rulers
-        #     self.logic.removeRuler(volumeId, self.logic.AORTA)
-        #     self.logic.removeRuler(volumeId, self.logic.PA)
-        # else:
-        #     self.logic.removeRuler(volumeId, selectedStructure)
-
         self.logic.removeRulers(self.volumeSelector.currentNodeId)
         self.refreshTextboxes(reset=True)
 
@@ -459,7 +421,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
     def onVolumeSelectorChanged(self, node):
         #if node is not None and node.GetID() not in self.currentVolumesLoaded:
         if node is not None:
-            print("DEBUG: processing node " + node.GetID())
             # New node. Load default rulers
             if node.GetID() not in self.currentVolumesLoaded:
                 self.placeDefaultRulers(node.GetID())
