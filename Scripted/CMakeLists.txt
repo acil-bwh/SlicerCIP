@@ -5,9 +5,9 @@ include(SlicerMacroBuildScriptedModule)
 set(modules
   #Example
   InteractiveLobeSegmentation
-  LungRegistration
-  ParenchymaAnalysis
-  EmphysemaSubtypes
+  #LungRegistration
+  #ParenchymaAnalysis
+  #EmphysemaSubtypes
   CIP_Common
   CIP_BodyComposition
   CIP_GetImage
