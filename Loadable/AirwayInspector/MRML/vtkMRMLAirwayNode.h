@@ -100,14 +100,19 @@ public:
   vtkGetMacro(ComputeCenter,int);
 
   // Description:
-  // Resolution
-  vtkSetMacro(Resolution,double);
-  vtkGetMacro(Resolution,double);
+  // SegmentPercentage
+  vtkSetMacro(SegmentPercentage,double);
+  vtkGetMacro(SegmentPercentage,double);
 
   // Description:
   // AirBaselineIntensity
   vtkSetMacro(AirBaselineIntensity,double);
   vtkGetMacro(AirBaselineIntensity,double);
+
+  // Description:
+  // Resolution
+  vtkSetMacro(Resolution,double);
+  vtkGetMacro(Resolution,double);
 
   // Description:
   // Axis computation model:

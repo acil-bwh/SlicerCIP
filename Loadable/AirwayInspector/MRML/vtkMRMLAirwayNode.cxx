@@ -65,6 +65,8 @@ vtkMRMLAirwayNode::vtkMRMLAirwayNode()
   this->Method = 1;
   this->AxisMode = HESSIAN;
   this->Reformat = 0;
+  this->Threshold = -850;
+  this->ComputeCenter = 1;
 
   this->AirBaselineIntensity = -1024;
 
@@ -108,6 +110,17 @@ void vtkMRMLAirwayNode::WriteXML(ostream& of, int nIndent)
                             << this->OrientationWXYZ[1] << " "
                             << this->OrientationWXYZ[2] << " "
                             << this->OrientationWXYZ[3] << "\"";
+
+  of << indent << " method=\"" << this->Method << "\"";
+  of << indent << " axisMode=\"" << this->AxisMode << "\"";
+  of << indent << " reformat=\"" << this->Reformat << "\"";
+  of << indent << " computeCenter=\"" << this->ComputeCenter << "\"";
+  of << indent << " airBaselineIntensity=\"" << this->AirBaselineIntensity << "\"";
+  of << indent << " segmentPercentage=\"" << this->SegmentPercentage << "\"";
+  of << indent << " resolution=\"" << this->Resolution << "\"";
+  of << indent << " reconstruction=\"" << this->Reconstruction << "\"";
+  of << indent << " airwayImagePrefix=\"" << this->AirwayImagePrefix << "\"";
+  of << indent << " saveAirwayImage=\"" << this->SaveAirwayImage << "\"";
 
   of << indent << " min=\"" << this->Min << "\"";
   of << indent << " max=\"" << this->Max << "\"";
@@ -180,6 +193,66 @@ void vtkMRMLAirwayNode::ReadXMLAttributes(const char** atts)
       {
       this->SetVolumeNodeID(attValue);
       }
+    else if (!strcmp(attName, "method"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> Method;
+      }
+    else if (!strcmp(attName, "axisMode"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> AxisMode;
+      }
+    else if (!strcmp(attName, "reformat"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> Reformat;
+      }
+    else if (!strcmp(attName, "computeCenter"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> ComputeCenter;
+      }
+    else if (!strcmp(attName, "airBaselineIntensity"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> AirBaselineIntensity;
+      }
+    else if (!strcmp(attName, "segmentPercentage"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> SegmentPercentage;
+      }
+    else if (!strcmp(attName, "resolution"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> Resolution;
+      }
+    else if (!strcmp(attName, "reconstruction"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> Reconstruction;
+      }
+    else if (!strcmp(attName, "airwayImagePrefix"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> AirwayImagePrefix;
+      }
+    else if (!strcmp(attName, "saveAirwayImage"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> SaveAirwayImage ;
+      }
     }
   this->EndModify(disabledModify);
 }
@@ -199,10 +272,21 @@ void vtkMRMLAirwayNode::Copy(vtkMRMLNode *anode)
   this->SetXYZ(node->GetXYZ());
   this->SetOrientationWXYZ(node->GetOrientationWXYZ());
   this->SetThreshold(node->GetThreshold());
-  //this->SetMin(node->GetMin());
-  //this->SetMax(node->GetMax());
-  //this->SetMean(node->GetMean());
-  //this->SetStd(node->GetStd());
+  this->SetMethod(node->GetMethod());
+  this->SetAxisMode(node->GetAxisMode());
+  this->SetReformat(node->GetReformat());
+  this->SetComputeCenter(node->GetComputeCenter());
+  this->SetAirBaselineIntensity(node->GetAirBaselineIntensity());
+  this->SetSegmentPercentage(node->GetSegmentPercentage());
+  this->SetResolution(node->GetResolution());
+  this->SetReconstruction(node->GetReconstruction());
+  this->SetAirwayImagePrefix(node->GetAirwayImagePrefix());
+  this->SetSaveAirwayImage(node->GetSaveAirwayImage());
+
+  this->Min->DeepCopy(node->GetMin());
+  this->Max->DeepCopy(node->GetMax());
+  this->Mean->DeepCopy(node->GetMean());
+  this->Std->DeepCopy(node->GetStd());
 }
 
 //----------------------------------------------------------------------------
@@ -214,6 +298,16 @@ void vtkMRMLAirwayNode::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "XYZ: " << this->XYZ << "\n";
   os << indent << "OrientationWXYZ: " << this->OrientationWXYZ << "\n";
   os << indent << "Threshold: " << this->Threshold << "\n";
+  os << indent << "Method: " << this->Method << "\n";
+  os << indent << "AxisMode: " << this->AxisMode << "\n";
+  os << indent << "Reformat: " << this->Reformat << "\n";
+  os << indent << "ComputeCenter: " << this->ComputeCenter << "\n";
+  os << indent << "AirBaselineIntensity: " << this->AirBaselineIntensity << "\n";
+  os << indent << "SegmentPercentage: " << this->SegmentPercentage << "\n";
+  os << indent << "Resolution: " << this->Resolution << "\n";
+  os << indent << "Reconstruction: " << this->Reconstruction << "\n";
+  os << indent << "AirwayImagePrefix: " << this->AirwayImagePrefix << "\n";
+  os << indent << "SaveAirwayImage: " << this->SaveAirwayImage << "\n";
   os << indent << "Min: " << this->Min << "\n";
   os << indent << "Max: " << this->Max << "\n";
   os << indent << "Mean: " << this->Mean << "\n";

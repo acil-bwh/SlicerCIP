@@ -1,6 +1,8 @@
 // Annotation includes
 #include "vtkSlicerAirwayInspectorModuleLogic.h"
 
+#include <vtkPNGWriter.h>
+
 // MRML includes
 #include <vtkMRMLScene.h>
 #include <vtkMRMLAirwayNode.h>
@@ -102,6 +104,11 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirway(vtkMRMLAirwayNode *node)
     }
 
   vtkImageData *inputImage = volumeNode->GetImageData();
+
+  if (node->GetComputeCenter())
+    {
+    this->ComputeCenter(node);
+    }
 
   double orig[3];
   int dim[3];
@@ -401,48 +408,52 @@ void vtkSlicerAirwayInspectorModuleLogic::CreateAirwayImage(vtkImageData *reslic
   vtkImageData *rgbImage=rgbFilter->GetOutput();
 
   //Set Image voxels based on ellipse information
+  if (eifit && eofit)
+    {
+    double sp[3];
+    rgbImage->GetSpacing(sp);
+    int npoints=128;
 
-  double sp[3];
-  rgbImage->GetSpacing(sp);
-  int npoints=128;
+    vtkEllipseFitting *arr[2];
+    arr[0]=eifit;
+    arr[1]=eofit;
+    vtkEllipseFitting *eFit;
 
-  vtkEllipseFitting *arr[2];
-  arr[0]=eifit;
-  arr[1]=eofit;
-  vtkEllipseFitting *eFit;
+    float centerX = (eifit->GetCenter()[0] + eofit->GetCenter()[0])/2.0;
+    float centerY = (eifit->GetCenter()[1] + eofit->GetCenter()[1])/2.0;
 
-  float centerX = (eifit->GetCenter()[0] + eofit->GetCenter()[0])/2.0;
-  float centerY = (eifit->GetCenter()[1] + eofit->GetCenter()[1])/2.0;
+    int colorChannel[2];
+    colorChannel[0]=0;
+    colorChannel[1]=1;
+    for (int ii=0;ii<2;ii++)
+      {
+      //eFit = static_cast <vtkEllipseFitting > (arr->GetNextItemAsObject());
+      eFit =arr[ii];
+      int rx,ry;
+      for (int k=0;k<npoints;k++) {
+        float t = -3.14159 + 2.0 * 3.14159 * k/(npoints -1.0);
+        float angle = eFit->GetAngle();
+        float px = centerX + eFit->GetMajorAxisLength() *cos(t) * cos(angle) -
+                             eFit->GetMinorAxisLength() * sin(t) * sin(angle);
+        float py = centerY + eFit->GetMajorAxisLength() *cos(t) * sin(angle) +
+                             eFit->GetMinorAxisLength() * sin(t) * cos(angle);
 
-  int colorChannel[2];
-  colorChannel[0]=0;
-  colorChannel[1]=1;
-  for (int ii=0;ii<2;ii++) {
-    //eFit = static_cast <vtkEllipseFitting > (arr->GetNextItemAsObject());
-    eFit =arr[ii];
-    int rx,ry;
-    for (int k=0;k<npoints;k++) {
-      float t = -3.14159 + 2.0 * 3.14159 * k/(npoints -1.0);
-      float angle = eFit->GetAngle();
-      float px = centerX + eFit->GetMajorAxisLength() *cos(t) * cos(angle) -
-                           eFit->GetMinorAxisLength() * sin(t) * sin(angle);
-      float py = centerY + eFit->GetMajorAxisLength() *cos(t) * sin(angle) +
-                           eFit->GetMinorAxisLength() * sin(t) * cos(angle);
+        //Set Image Value with antialiasing
+        //rx= floor(px);
+        //ry= floor(py);
+        //rgbImage->SetScalarComponentFromFloat(rx,ry,0,colorChannel[ii],255*(1-(rx-px))*(1-(ry-py)));
+        //So on and so forth...
+        // Simple NN
+        for (int cc=0;cc<rgbImage->GetNumberOfScalarComponents();cc++)
+          {
+	        rgbImage->SetScalarComponentFromFloat(round(px),round(py),0,cc,0);
+          }
 
-      //Set Image Value with antialiasing
-      //rx= floor(px);
-      //ry= floor(py);
-      //rgbImage->SetScalarComponentFromFloat(rx,ry,0,colorChannel[ii],255*(1-(rx-px))*(1-(ry-py)));
-      //So on and so forth...
-      // Simple NN
-      for (int cc=0;cc<rgbImage->GetNumberOfScalarComponents();cc++)
-        {
-	      rgbImage->SetScalarComponentFromFloat(round(px),round(py),0,cc,0);
+        rgbImage->SetScalarComponentFromFloat(round(px),round(py),0,colorChannel[ii],255);
         }
-
-      rgbImage->SetScalarComponentFromFloat(round(px),round(py),0,colorChannel[ii],255);
+      }
     }
-  }
+
   airwayImage->DeepCopy(rgbImage);
 
   lut->Delete();
@@ -470,6 +481,8 @@ void vtkSlicerAirwayInspectorModuleLogic::SetWallSolver(vtkComputeAirwayWall *re
   out->SetT(out->GetT());
   out->SetActivateSector(ref->GetActivateSector());
 }
+
+/////////////////////////////////
 void vtkSlicerAirwayInspectorModuleLogic::ComputeCenter(vtkMRMLAirwayNode* node)
 {
   vtkMRMLScalarVolumeNode *volumeNode = vtkMRMLScalarVolumeNode::SafeDownCast(
@@ -482,12 +495,31 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeCenter(vtkMRMLAirwayNode* node)
   vtkImageData *inputImage = volumeNode->GetImageData();
   double *p = node->GetXYZ();
 
+  // convert RAS to IJK
+  vtkMatrix4x4 *rasToIJK = vtkMatrix4x4::New();
+  volumeNode->GetRASToIJKMatrix(rasToIJK);
+  double xyz[4];
+  xyz[0] = p[0];
+  xyz[1] = p[1];
+  xyz[2] = p[2];
+  xyz[3] = 1;
+  double *tmp = rasToIJK->MultiplyDoublePoint(xyz);
+  double ijk[3];
+  ijk[0] = tmp[0];
+  ijk[1] = tmp[1];
+  ijk[2] = tmp[2];
+
   double orig[3];
   int dim[3];
+  dim[0] = 128;
+  dim[1] = 128;
+  dim[2] = 1;
   double outsp[3];
+  double volsp[3];
   inputImage->GetOrigin(orig);
-  inputImage->GetSpacing(outsp);
-  inputImage->GetDimensions(dim);
+
+  volumeNode->GetSpacing(outsp);
+  inputImage->GetSpacing(volsp);
 
   double pixelshift = 0.5;
   double outcenter[3];
@@ -505,16 +537,26 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeCenter(vtkMRMLAirwayNode* node)
                           0, dim[1]-1,
                           0, dim[2]-1);
   rFind->SetOutputSpacing(outsp);
-  rFind->SetOutputOrigin(-1.0*outcenter[0]*outsp[0],
-                         -1.0*outcenter[1]*outsp[1],
-                         -1.0*outcenter[2]*outsp[2]);
+  rFind->SetOutputOrigin(-1.0*outcenter[0]*volsp[0],
+                         -1.0*outcenter[1]*volsp[1],
+                         -1.0*outcenter[2]*volsp[2]);
 
   rFind->SetResliceAxesDirectionCosines( 1, 0, 0, 0, 1, 0, 0, 0, 1);
-  rFind->SetResliceAxesOrigin(orig[0] + p[0]*outsp[0],
-                              orig[1] + p[1]*outsp[1],
-                              orig[2] + p[2]*outsp[2]);
+  rFind->SetResliceAxesOrigin(orig[0] + ijk[0]*volsp[0],
+                              orig[1] + ijk[1]*volsp[1],
+                              orig[2] + ijk[2]*volsp[2]);
   rFind->SetInterpolationModeToLinear();
   rFind->Update();
+
+  /// DEBUG
+  vtkImageData *img = vtkImageData::New();
+  this->CreateAirwayImage(rFind->GetOutput(),0,0,img);
+  vtkPNGWriter *writer = vtkPNGWriter::New();
+  writer->SetInputData(img);
+  writer->SetFileName("C:\\tmp\\slice.png");
+  writer->Write();
+  writer->Delete();
+  /// END DEBUG
 
   // Compute Threshold
   vtkImageThreshold *th = vtkImageThreshold::New();
@@ -547,7 +589,13 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeCenter(vtkMRMLAirwayNode* node)
   double wcp[3];
   for (int k=0; k<3; k++)
     {
-    wcp[k] = p[k] + centroid[k] - outcenter[k];
+    wcp[k] = ijk[k] + centroid[k] - outcenter[k];
+    // IJK to RAS
+    rasToIJK->Invert();
+    tmp = rasToIJK->MultiplyDoublePoint(wcp);
+    wcp[0] = tmp[0];
+    wcp[1] = tmp[1];
+    wcp[2] = tmp[2];
     }
 
   if (flag)

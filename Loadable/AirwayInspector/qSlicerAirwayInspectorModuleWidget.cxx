@@ -93,7 +93,7 @@ void qSlicerAirwayInspectorModuleWidget::setup()
   d->setupUi(this);
 
   d->ThresholdSpinBox->setRange(-1000, -300);
-   d->ThresholdSpinBox->setValue(-850);
+  d->ThresholdSpinBox->setValue(-850);
   // VTK/Qt
   d->qvtkWidget = new QVTKWidget;
   d->qvtkWidget->GetRenderWindow()->AddRenderer(this->Renderer);
@@ -277,11 +277,6 @@ void qSlicerAirwayInspectorModuleWidget::onInteractorEvent(vtkRenderWindowIntera
         logic->AddAirwayNode(d->InputVolumeComboBox->currentNode()->GetID(),
         x,y,z, d->ThresholdSpinBox->value());
 
-      if (d->ComputeCenterCheckBox->isChecked())
-        {
-        logic->ComputeCenter(airwayNode);
-        }
-
       d->AirwayComboBox->setCurrentNode(airwayNode);
       this->analyzePressed();
       }
@@ -315,12 +310,23 @@ void qSlicerAirwayInspectorModuleWidget::setMRMLVolumeNode(vtkMRMLNode* mrmlNode
     }
 }
 
+///////////////////////////////
 void qSlicerAirwayInspectorModuleWidget::setMRMLAirwayNode(vtkMRMLNode* mrmlNode)
 {
   Q_D(qSlicerAirwayInspectorModuleWidget);
 
   vtkMRMLAirwayNode* airwayNode = vtkMRMLAirwayNode::SafeDownCast(
     d->AirwayComboBox->currentNode());
+
+   this->updateWidgetFromMRML(airwayNode);
+
+   this->updateReport(airwayNode);
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerAirwayInspectorModuleWidget::updateWidgetFromMRML(vtkMRMLAirwayNode* airwayNode)
+{
+  Q_D(qSlicerAirwayInspectorModuleWidget);
 
   if (airwayNode)
     {
@@ -329,7 +335,20 @@ void qSlicerAirwayInspectorModuleWidget::setMRMLAirwayNode(vtkMRMLNode* mrmlNode
     d->MethodComboBox->setCurrentIndex(airwayNode->GetMethod());
     d->ReformatCheckBox->setChecked(airwayNode->GetReformat());
     }
-   this->updateReport(airwayNode);
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerAirwayInspectorModuleWidget::updateMRMLFromWidget(vtkMRMLAirwayNode* airwayNode)
+{
+  Q_D(qSlicerAirwayInspectorModuleWidget);
+
+  if (airwayNode)
+    {
+    airwayNode->SetComputeCenter(d->ComputeCenterCheckBox->isChecked());
+    airwayNode->SetThreshold(d->ThresholdSpinBox->value());
+    airwayNode->SetMethod(d->MethodComboBox->currentIndex());
+    airwayNode->SetReformat(d->ReformatCheckBox->isChecked());
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -341,11 +360,10 @@ void qSlicerAirwayInspectorModuleWidget::analyzePressed()
     d->AirwayComboBox->currentNode());
 
   vtkSlicerAirwayInspectorModuleLogic *airwayLogic = vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
-  if (airwayLogic && airwayNode)
+  if (airwayLogic)
     {
-    airwayNode->SetMethod(d->MethodComboBox->currentIndex());
-    airwayNode->SetReformat(d->ReformatCheckBox->isChecked());
-    airwayNode->SetThreshold(d->ThresholdSpinBox->value());
+    this->updateMRMLFromWidget(airwayNode);
+
     airwayLogic->CreateAirway(airwayNode);
     }
 

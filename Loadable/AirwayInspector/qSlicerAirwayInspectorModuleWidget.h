@@ -72,6 +72,8 @@ protected:
   void updateReport(vtkMRMLAirwayNode* airwayNode);
   void createColorImage(vtkImageData* image);
   void saveAirwayImage(vtkMRMLAirwayNode* airwayNode);
+  void updateWidgetFromMRML(vtkMRMLAirwayNode* airwayNode);
+  void updateMRMLFromWidget(vtkMRMLAirwayNode* airwayNode);
 
 protected slots:
   void setMRMLVolumeNode(vtkMRMLNode*);
