@@ -127,7 +127,7 @@ void qSlicerParticlesDisplayModule::setup()
     new qSlicerParticlesReader(particlesDisplayLogic, this));
   coreIOManager->registerIO(new qSlicerNodeWriter(
     "Particles", QString("ParticlesFile"),
-    QStringList() << "vtkMRMLParticlesNode", this));
+    QStringList() << "vtkMRMLParticlesNode", true, this));
 }
 
 //-----------------------------------------------------------------------------
