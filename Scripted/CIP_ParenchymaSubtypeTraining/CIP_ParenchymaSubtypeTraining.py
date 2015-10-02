@@ -418,6 +418,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         fidNode = slicer.util.getNode(fidListID)
         displayNode = fidNode.GetDisplayNode()
         displayNode.SetSelectedColor(self.params.getColor(typeId, artifactId))
+        displayNode.SetTextScale(1.5)
         # print("DEBUG: Type Id = {0}. Color for the fiducial: ".format(typeId), self.params.getColor(typeId))
 
         # Add an observer when a new markup is added
