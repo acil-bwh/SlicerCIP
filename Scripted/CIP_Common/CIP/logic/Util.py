@@ -185,12 +185,15 @@ class Util:
         return l
 
     @staticmethod
-    def numpy_itk_coordinate(numpy_coordinate):
+    def numpy_itk_coordinate(numpy_coordinate, convert_to_int=True):
         """ Adapt a coordinate in numpy to a ITK format (ie in a reversed order and converted to int type)
         :param numpy_coordinate: coordinate in numpy (zyx)
+        :param convert_to_int: convert the coordinate to int type, needed for SimpleITK image coordinates
         :return: coordinate in ITK (xyz)
         """
-        return [int(numpy_coordinate[2]), int(numpy_coordinate[1]), int(numpy_coordinate[0])]
+        if convert_to_int:
+            return [int(numpy_coordinate[2]), int(numpy_coordinate[1]), int(numpy_coordinate[0])]
+        return [numpy_coordinate[2], numpy_coordinate[1], numpy_coordinate[0]]
 
     @staticmethod
     def numpy_vtk_coordinate(numpy_coordinate):

@@ -262,7 +262,8 @@ class SlicerUtil:
         clonedVolume = slicer.mrmlScene.CreateNodeByClass(volumeNode.GetClassName())
         clonedVolume.CopyWithScene(volumeNode)
 
-        clonedVolume.SetName(scene.GetUniqueNameByString(copyVolumeName))
+        #clonedVolume.SetName(scene.GetUniqueNameByString(copyVolumeName))
+        clonedVolume.SetName(copyVolumeName)
         if displayNodeCopy is not None:
             clonedVolume.SetAndObserveDisplayNodeID(displayNodeCopy.GetID())
         else:
@@ -312,6 +313,19 @@ class SlicerUtil:
         # If background is None, try foreground
         backgroundNode = compositeNode.GetForegroundVolumeID()
         return backgroundNode
+
+
+    @staticmethod
+    def changeLayout(layoutNumber):
+        """ Change the general layout in Slicer
+        :param layoutNumber: layout id number
+        """
+        applicationLogic = slicer.app.applicationLogic()
+        interactionNode = applicationLogic.GetInteractionNode()
+        interactionNode.Reset()
+        interactionNode.SwitchToPersistentPlaceMode()
+        layoutManager = slicer.app.layoutManager()
+        layoutManager.setLayout(layoutNumber)
 
 
         # @staticmethod
