@@ -229,8 +229,6 @@ fiducialsNode.SetNthMarkupVisibility(1, False)  --> hide fiducial
 originalActiveListID = markupsLogic.GetActiveListID()
 markupsLogic.SetActiveListID(fiducialList)
 
-
-
 # Modify visual properties of the fiducials set (example)
 displayNode = fiducialList.GetDisplayNode()
 displayNode.SetTextScale(6.)
@@ -240,9 +238,12 @@ displayNode.SetSelectedColor((1,1,0)) # Enabled fiducials (default)
 displayNode.SetColor((1,1,0.4))   # Disabled fiducials
 displayNode.SetVisibility(True)
 
-
-
 fiducialList.SetAttribute("AssociatedNodeID", associatedNode.GetID()) ???
+
+# Get the position of a fiducial
+pos = [0,0,0]
+activeNode = markupsLogic.GetActiveListID()
+activeNode.GetNthFiducialPosition(0, pos) ==> it stores in pos the RAS coordinates
 
 
 ####################################################################################

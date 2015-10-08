@@ -63,15 +63,21 @@ class Util:
     ##################
     # COORDINATE SYSTEMS
     @staticmethod
-    def ras_to_ijk(volume_node, ras_coords):
+    def ras_to_ijk(volume_node, ras_coords, convert_to_int=True):
         """ Transform a list of RAS coords to IJK
+        :param volume_node: vtk mrml scalar node
+        :param ras_coords: list or array of RAS coordinates
+        :param convert_to_int: return IJK coordinates as integer
         :return: list of IJK coordinates (xyz)
         """
         rastoijk=vtk.vtkMatrix4x4()
         volume_node.GetRASToIJKMatrix(rastoijk)
         cl = list(ras_coords)
         cl.append(1)
-        return list(rastoijk.MultiplyPoint(cl)[:-1])
+        l = list(rastoijk.MultiplyPoint(cl)[:-1])
+        if convert_to_int:
+            return [int(l[0]), int(l[1]), int(l[2])]
+        return l
 
     @staticmethod
     def ijk_to_ras(volume_node, ijk_coords):

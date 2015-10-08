@@ -1000,6 +1000,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.thresholdFilter.SetOutValue(0)  # Value of the background
         self.thresholdFilter.SetInValue(1)  # Value of the segmented nodule
 
+
         labelmapName = self.currentVolume.GetName() + '_nodulelm'
         self.currentLabelmap = slicer.util.getNode(labelmapName)
         if self.currentLabelmap is None:

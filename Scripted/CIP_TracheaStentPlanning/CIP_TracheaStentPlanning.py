@@ -61,6 +61,9 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         # Create objects that can be used anywhere in the module. Example: in most cases there should be just one
         # object of the logic class
         self.logic = CIP_TracheaStentPlanningLogic()
+        self.timer = qt.QTimer()
+        self.timer.setInterval(200)
+        self.lastThreshold = -1
 
 
         # Init the positions of the different fiducials for each stent type
@@ -245,6 +248,25 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.mainAreaLayout.addWidget(self.applyButton, 3, 0, 1, 2)
         #self.layout.setAlignment(2)
 
+        # Threshold
+        label = qt.QLabel("Fine tuning")
+        self.mainAreaLayout.addWidget(label, 4, 0)
+
+        self.thresholdLevelSlider = qt.QSlider()
+        self.thresholdLevelSlider.orientation = 1  # Horizontal
+        # self.thresholdLevelSlider.setTickInterval(1)
+        self.thresholdLevelSlider.setTickPosition(2)
+        self.thresholdLevelSlider.minimum = 1
+        self.thresholdLevelSlider.maximum = 20
+        self.thresholdLevelSlider.setValue(10)
+        self.thresholdLevelSlider.setSingleStep(5)
+        self.thresholdLevelSlider.enabled = True
+        self.mainAreaLayout.addWidget(self.thresholdLevelSlider, 4, 1, 1, 2)
+
+        # self.generate3DModelButton = qt.QPushButton("Generate 3D model")
+        # self.generate3DModelButton.toolTip = "Run the algorithm."
+        # self.generate3DModelButton.setFixedSize(150, 45)
+        # self.mainAreaLayout.addWidget(self.generate3DModelButton, 5, 0, 1, 2)
 
         self.layout.addStretch(1)
 
@@ -256,12 +278,11 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.greenViewButton.connect('clicked()', self.__onGreenViewButton__)
 
         self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onCurrentNodeChanged__)
-        self.applyButton.connect('clicked(bool)', self.__onApplyButton__)
         self.stentTypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onStentTypesRadioButtonClicked__)
-
-        #self.fiducialTypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onTypesRadioButtonClicked__)
-        #self.addFiducialButton.connect('clicked(bool)',self.onAddFiducialClicked)
-
+        self.applyButton.connect('clicked(bool)', self.__onApplyButton__)
+        self.thresholdLevelSlider.connect('sliderReleased()', self.__applyThreshold__)
+        self.thresholdLevelSlider.connect('sliderStepChanged()', self.__applyThreshold__)
+        # self.generate3DModelButton.connect('clicked(bool)', self.__onGenerate3DModelButton__)
 
         if self.inputVolumeSelector.currentNodeID != "":
             self.logic.setActiveVolume(self.inputVolumeSelector.currentNodeID)
@@ -314,7 +335,16 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         """
         stentType = self.logic.stentTypes[self.stentTypesRadioButtonGroup.checkedId()][0]
         self.logic.runSegmentation(stentType)
-        # qt.QMessageBox.information(slicer.util.mainWindow(), 'OK!', 'The test was ok. Review the console for details')
+        self.timer.timeout.connect(self.__applyThreshold__)
+        
+    def __applyThreshold__(self):
+        """ Fine tuning of the segmentation
+        :return:
+        """
+        val = self.thresholdLevelSlider.value
+        if val != self.lastThreshold:
+            self.lastThreshold = val
+            self.logic.labelmapThreshold(val / 10.0)
 
     ############
     ##  Events
@@ -373,7 +403,11 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
     #     pass
 
     def __onApplyButton__(self):
-       self.__runSegmentation__()
+        self.thresholdLevelSlider.setValue(10)
+        self.__runSegmentation__()
+
+    def __onGenerate3DModelButton__(self):
+        self.logic.update3DModel()
 
 #
 # CIP_TracheaStentPlanningLogic
@@ -391,7 +425,6 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
     
     
     def __init__(self):
-
         self.line=dict()
         self.tube=dict()
         for tag in ['cl1','cl2','cl3']:
@@ -411,11 +444,15 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
             'TStent': ["Bottom ", "Lower", "Middle", "Outside"]
         }
 
-        # for st in self.stentTypes:
-        #     for fl in self.fiducialList[st]:
-        #         self.__createFiducialsListNode__(st+fl)
-        self.currentVolumeId = None
-        self.removedNode = False
+        self.currentVolumeId = None         # Active volume
+        # Results of the segmentation
+        self.currentResultsNode = None
+        self.currentResultsArray = None
+        self.currentLabelmapResults = None
+        self.currentLabelmapResultsArray = None
+        self.currentModelNode = None            # 3D model node
+        self.currentDistanceMean = 0           # Current base threshold that will be used to increase/decrease the scope of the segmentation
+
         self.markupsLogic = slicer.modules.markups.logic()
 
     def getCurrentStentKeys(self):
@@ -453,7 +490,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
             displayNode = fiducialsNode.GetDisplayNode()
             # displayNode.SetColor([1,0,0])
             displayNode.SetSelectedColor(stentType[2])
-            displayNode.SetGlyphScale(4)
+            displayNode.SetGlyphScale(2)
             # displayNode.SetGlyphType(8)     # Diamond shape (I'm so cool...)
 
             # Add observer when a new fiducial is added
@@ -480,156 +517,205 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
                 visibleFiducialsIndexes.append(i)
         return visibleFiducialsIndexes
 
-    def runSegmentation(self, stentType):
+    def runSegmentation(self, stentTypeKey):
         """ Run the segmentation algorithm for the selected stent type
-        :param stentType:
+        :param stentTypeKey:
         :return:
         """
         # Check that we have all the required fiducials for the selected stent type
-        visibleFiducialsIndexes = self.getVisibleFiducialsIndexes(stentType)
+        visibleFiducialsIndexes = self.getVisibleFiducialsIndexes(stentTypeKey)
 
-        if len(visibleFiducialsIndexes) < len(self.fiducialList[stentType]):
+        if len(visibleFiducialsIndexes) < len(self.fiducialList[stentTypeKey]):
             qt.QMessageBox.warning(slicer.util.mainWindow(), "Missing fiducials",
                     "Please make sure that you have added all the required points for the selected stent type")
             return
 
-        if stentType == "YStent":
-            self.__runYStentSegmentationAlgorithm__()
+        if stentTypeKey == "YStent":
+            self.__runYStentSegmentationAlgorithm__(slicer.util.getNode(self.getCurrentFiducialsListNodeName(stentTypeKey)),
+                                                    visibleFiducialsIndexes)
         else:
             raise NotImplementedError()
+        
+        # Set opacity
+        nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLSliceCompositeNode")
+        # Call necessary to allow the iteration.
+        nodes.InitTraversal()
+        # Get the first CompositeNode (typically Red)
+        compositeNode = nodes.GetNextItemAsObject()
+        compositeNode.SetLinkedControl(True)
+        while compositeNode:
+            compositeNode.SetForegroundOpacity(0.5)
+            compositeNode = nodes.GetNextItemAsObject()
+        
 
-    def __runYStentSegmentationAlgorithm__(self):
+    def __runYStentSegmentationAlgorithm__(self, fiducialsNode, fiducialsIndexes):
         """
         :return:
         """
-        raise NotImplementedError()
-        # markupsLogic = slicer.modules.markups.logic()
-        # originalActiveListID = markupsLogic.GetActiveListID()
-        # fiducialsNode = slicer.util.getNode(originalActiveListID)
-        # activeNode = slicer.util.getNode("vtkMRMLScalarVolumeNode1")
-        # spacing = activeNode.GetSpacing()
-        # # pos0=np.array([0,0,0], np.float)
-        # # pos1=np.array([0,0,0], np.float)
-        # # pos2=np.array([0,0,0], np.float)
-        # f0 = [0, 0, 0]
-        # f1 = [0, 0, 0]
-        # f2 = [0, 0, 0]
-        # fiducialsNode.GetNthFiducialPosition(0, f0)
-        # fiducialsNode.GetNthFiducialPosition(1, f1)
-        # fiducialsNode.GetNthFiducialPosition(2, f2)
-        # # pos0 = np.array(Util.ras_to_ijk(activeNode, f0), int)
-        # # pos1 = np.array(Util.ras_to_ijk(activeNode, f1), int)
-        # # pos2 = np.array(Util.ras_to_ijk(activeNode, f2), int)
-        # pos0 = Util.ras_to_ijk(activeNode, f0)
-        # pos0 = [int(pos0[0]), int(pos0[1]), int(pos0[2])]
-        # pos1 = Util.ras_to_ijk(activeNode, f1)
-        # pos1 = [int(pos1[0]), int(pos1[1]), int(pos1[2])]
-        # pos2 = Util.ras_to_ijk(activeNode, f2)
-        # pos2 = [int(pos2[0]), int(pos2[1]), int(pos2[2])]
-        # # Get distance (use RAS coordinates to have in mind spacing)
-        # dd01 = (
-        #         (f0[0]-f1[0]) ** 2
-        #         + (f0[1]-f1[1]) ** 2
-        #         + (f0[2]-f1[2]) ** 2
-        #         ) ** (1.0/2)
-        #
-        # dd02 = (
-        #         (f0[0]-f2[0]) ** 2
-        #         + (f0[1]-f2[1]) ** 2
-        #         + (f0[2]-f2[2]) ** 2
-        #         ) ** (1.0/2)
-        #
-        # dd12 = (
-        #         (f2[0]-f1[0]) ** 2
-        #         + (f2[1]-f1[1]) ** 2
-        #         + (f2[2]-f1[2]) ** 2
-        #         ) ** (1.0/2)
-        #
-        # mean = (dd01 + dd02 + dd12) / 3
-        # # d01 = np.linalg.norm(pos0 - pos1)
-        # # d02 = np.linalg.norm(pos0 - pos2)
-        # # d12 = np.linalg.norm(pos1 - pos2)
-        # # itkpos0 = Util.numpy_itk_coordinate(pos0)
-        # # itkpos1 = Util.numpy_itk_coordinate(pos1)
-        # # itkpos2 = Util.numpy_itk_coordinate(pos2)
-        # # d = (d01 + d02 + d02) / 3
-        # npVolume = slicer.util.array(activeNode.GetID())
-        # speedTest = (npVolume < -800).astype(np.int32)
-        #
-        #
-        # # Create labelmap
-        # lm = slicer.util.getNode("vtkMRMLLabelMapVolumeNode1")
-        #
-        # lm01 = SlicerUtil.cloneVolume(activeNode, "lm01")
-        # a01 = slicer.util.array("lm01")
-        # lm02 = SlicerUtil.cloneVolume(activeNode, "lm02")
-        # a02 = slicer.util.array("lm02")
-        # lm12 = SlicerUtil.cloneVolume(activeNode, "lm12")
-        # a12 = slicer.util.array("lm12")
-        # result = SlicerUtil.cloneVolume(activeNode, "result")
-        # resultArray = slicer.util.array("result")
-        # lmresult = SlicerUtil.cloneVolume(lm, "lmresult")
-        # lmresultArray = slicer.util.array("lmresult")
-        #
-        #
-        # sitkImage = sitk.GetImageFromArray(speedTest)
-        # fastMarchingFilter = sitk.FastMarchingImageFilter()
-        # sitkImage.SetSpacing(spacing)
-        #
-        # # Filter 01
-        # d = dd01
-        # # d=150
-        # fastMarchingFilter.SetStoppingValue(d)
-        # seeds = [pos0]
-        # fastMarchingFilter.SetTrialPoints(seeds)
-        # output = fastMarchingFilter.Execute(sitkImage)
-        # outputArray = sitk.GetArrayFromImage(output)
-        # a01[:] = 0
-        # temp = outputArray <= d
-        # a01[temp] = d - outputArray[temp]
-        # lm01.GetImageData().Modified()
-        #
-        # # Filter 02
-        # d = dd02
-        # # d=150
-        # fastMarchingFilter.SetStoppingValue(d)
-        # seeds = [pos2]
-        # fastMarchingFilter.SetTrialPoints(seeds)
-        # output = fastMarchingFilter.Execute(sitkImage)
-        # outputArray = sitk.GetArrayFromImage(output)
-        # a02[:] = 0
-        # temp = outputArray <= d
-        # a02[temp] = d - outputArray[temp]
-        # lm02.GetImageData().Modified()
-        #
-        # # Filter 12
-        # d = dd12
-        # fastMarchingFilter.SetStoppingValue(d)
-        # seeds = [pos1]
-        # fastMarchingFilter.SetTrialPoints(seeds)
-        # output = fastMarchingFilter.Execute(sitkImage)
-        # outputArray = sitk.GetArrayFromImage(output)
-        # a12[:] = 0
-        # temp = outputArray <= d
-        # a12[temp] = d - outputArray[temp]
-        # lm12.GetImageData().Modified()
-        #
-        # # The solution is the intersection of the 3 labelmaps
-        # scaleFactor = 4
-        # inters = a01 + a02 + a12
-        # resultArray[:] = inters * scaleFactor
-        # result.GetImageData().Modified()
-        #
-        # fix(mean*scaleFactor)
-        #
-        # def fix(th):
-        #     lmresultArray[:] = resultArray > th
-        #     lmresult.GetImageData().Modified()
+        import time
+        start = time.time()
+        activeNode = slicer.util.getNode(self.currentVolumeId)
+        spacing = activeNode.GetSpacing()
+        f0 = [0, 0, 0]
+        f1 = [0, 0, 0]
+        f2 = [0, 0, 0]
+        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[0], f0)
+        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[1], f1)
+        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[2], f2)
 
+        pos0 = Util.ras_to_ijk(activeNode, f0, convert_to_int=True)
+        pos1 = Util.ras_to_ijk(activeNode, f1, convert_to_int=True)
+        pos2 = Util.ras_to_ijk(activeNode, f2, convert_to_int=True)
+        # Get distance (use RAS coordinates to have in mind spacing)
+        dd01 = (
+                (f0[0]-f1[0]) ** 2
+                + (f0[1]-f1[1]) ** 2
+                + (f0[2]-f1[2]) ** 2
+                ) ** (1.0/2)
+        dd02 = (
+                (f0[0]-f2[0]) ** 2
+                + (f0[1]-f2[1]) ** 2
+                + (f0[2]-f2[2]) ** 2
+                ) ** (1.0/2)
+        dd12 = (
+                (f2[0]-f1[0]) ** 2
+                + (f2[1]-f1[1]) ** 2
+                + (f2[2]-f1[2]) ** 2
+                ) ** (1.0/2)
 
+        self.currentDistanceMean = (dd01 + dd02 + dd12) / 3
+        print("DEBUG: preprocessing:", time.time() - start)
+        # Build the speed map for Fast Marching thresholding the original volume
+        activeVolumeArray = slicer.util.array(activeNode.GetID())
+        speedTest = (activeVolumeArray < -800).astype(np.int32)
 
+        # Create all the auxiliary nodes for results
+        lm01 = SlicerUtil.cloneVolume(activeNode, activeNode.GetName() + "_lm01")
+        a01 = slicer.util.array(lm01.GetID())
+        lm02 = SlicerUtil.cloneVolume(activeNode, activeNode.GetName() + "_lm02")
+        a02 = slicer.util.array(lm02.GetID())
+        lm12 = SlicerUtil.cloneVolume(activeNode, activeNode.GetName() + "_lm12")
+        a12 = slicer.util.array(lm12.GetID())
+        # Results of the algorithm
+        self.currentResultsNode = SlicerUtil.cloneVolume(activeNode, activeNode.GetName() + "_result")
+        self.currentResultsArray = slicer.util.array(self.currentResultsNode.GetID())
+        self.currentLabelmapResults = SlicerUtil.getLabelmapFromScalar(self.currentResultsNode,
+                                                                        activeNode.GetName() + "_results_lm")
 
+        t1 = time.time()
+        print("DEBUG: create aux nodes:", time.time() - t1)
+        # Create SimpleITK FastMarching filter with the thresholded original image as a speed map
+        sitkImage = sitk.GetImageFromArray(speedTest)
+        fastMarchingFilter = sitk.FastMarchingImageFilter()
+        sitkImage.SetSpacing(spacing)
 
+        # Run the fast marching filters from the 3 points.
+        # Every result array will contain the "distance inverted" value (distance - value) because we will add all the arrays
+        # Filter 01
+        t1 = time.time()       
+        d = dd01
+        fastMarchingFilter.SetStoppingValue(d)
+        seeds = [pos0]
+        fastMarchingFilter.SetTrialPoints(seeds)
+        output = fastMarchingFilter.Execute(sitkImage)
+        outputArray = sitk.GetArrayFromImage(output)
+        a01[:] = 0
+        temp = outputArray <= d
+        a01[temp] = d - outputArray[temp]
+        lm01.GetImageData().Modified()
+        print("DEBUG: filter 01:", time.time() - t1)
+
+        # Filter 02
+        t1 = time.time()
+        d = dd02
+        fastMarchingFilter.SetStoppingValue(d)
+        seeds = [pos2]
+        fastMarchingFilter.SetTrialPoints(seeds)
+        output = fastMarchingFilter.Execute(sitkImage)
+        outputArray = sitk.GetArrayFromImage(output)
+        a02[:] = 0
+        temp = outputArray <= d
+        a02[temp] = d - outputArray[temp]
+        lm02.GetImageData().Modified()
+        print("DEBUG: filter 02:", time.time() - t1)
+
+        # Filter 12
+        t1 = time.time()
+        d = dd12
+        fastMarchingFilter.SetStoppingValue(d)
+        seeds = [pos1]
+        fastMarchingFilter.SetTrialPoints(seeds)
+        output = fastMarchingFilter.Execute(sitkImage)
+        outputArray = sitk.GetArrayFromImage(output)
+        a12[:] = 0
+        temp = outputArray <= d
+        a12[temp] = d - outputArray[temp]
+        lm12.GetImageData().Modified()
+        print("DEBUG: filter 12:", time.time() - t1)
+
+        t1 = time.time()
+
+        # Sum the results of the 3 filters
+        self.currentResultsArray [:] = a01 + a02 + a12
+        self.currentResultsNode.GetImageData().Modified()
+        print("DEBUG: processing results:", time.time() - t1)
+
+        # Threshold to get the final labelmap
+        self.thresholdFilter = vtk.vtkImageThreshold()
+        self.thresholdFilter.SetInputData(self.currentResultsNode.GetImageData())
+        self.thresholdFilter.SetReplaceOut(True)
+        self.thresholdFilter.SetOutValue(0)  # Value of the background
+        self.thresholdFilter.SetInValue(1)  # Value of the segmented nodule
+        self.thresholdFilter.ThresholdByUpper(self.currentDistanceMean)
+        self.thresholdFilter.SetOutput(self.currentLabelmapResults.GetImageData())
+        self.thresholdFilter.Update()
+
+        # Show the result in slicer
+        appLogic = slicer.app.applicationLogic()
+        selectionNode = appLogic.GetSelectionNode()
+        selectionNode.SetActiveLabelVolumeID(self.currentLabelmapResults.GetID())
+        appLogic.PropagateLabelVolumeSelection()
+
+        print("DEBUG: total time: ", time.time() - start)
+
+    def labelmapThreshold(self, thresholdFactor):
+        """ Update the threshold used to generate the segmentation (when the thresholdFactor is bigger, "more trachea"
+        will be displayed
+        :param thresholdFactor: value between 0.01 and 2
+        """
+        threshold = self.currentDistanceMean / thresholdFactor
+        self.thresholdFilter.ThresholdByUpper(threshold)
+        self.thresholdFilter.Update()
+        SlicerUtil.refreshActiveWindows()
+        
+    # def update3DModel(self):
+    #     """ Generate or update a 3D model for the current labelmap."""
+    #     # Check if the node already exists
+    #     if self.currentModelNode is None:
+    #         # Create the result model node and connect it to the pipeline
+    #         modelsLogic = slicer.modules.models.logic()
+    #
+    #         self.marchingCubesFilter = vtk.vtkMarchingCubes()
+    #         self.marchingCubesFilter.SetInputData(self.currentLabelmapResults.GetImageData())
+    #         self.marchingCubesFilter.SetValue(0, 0)
+    #
+    #         self.currentModelNode = modelsLogic.AddModel(self.marchingCubesFilter.GetOutputPort())
+    #         # Create a DisplayNode and associate it to the model, in order that transformations can work properly
+    #         displayNode = slicer.vtkMRMLModelDisplayNode()
+    #         slicer.mrmlScene.AddNode(displayNode)
+    #         self.currentModelNode.AddAndObserveDisplayNodeID(displayNode.GetID())
+    #
+    #         # Align the model with the segmented labelmap applying a transformation
+    #         transformMatrix = vtk.vtkMatrix4x4()
+    #         self.currentLabelmapResults.GetIJKToRASMatrix(transformMatrix)
+    #         self.currentModelNode.ApplyTransformMatrix(transformMatrix)
+    #
+    #         # Center the 3D view
+    #         layoutManager = slicer.app.layoutManager()
+    #         threeDWidget = layoutManager.threeDWidget(0)
+    #         threeDView = threeDWidget.threeDView()
+    #         threeDView.resetFocalPoint()
+    #     self.marchingCubesFilter.Update()
 
     def printMessage(self, message):
         print("This is your message: ", message)
