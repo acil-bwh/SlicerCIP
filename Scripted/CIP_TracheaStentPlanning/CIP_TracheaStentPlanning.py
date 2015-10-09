@@ -242,9 +242,9 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         #
         # Apply Button
         #
-        self.applyButton = qt.QPushButton("Apply")
+        self.applyButton = qt.QPushButton("Trachea segmentation")
         self.applyButton.toolTip = "Run the algorithm."
-        self.applyButton.setFixedSize(150, 45)
+        self.applyButton.setFixedSize(200, 45)
         self.mainAreaLayout.addWidget(self.applyButton, 3, 0, 1, 2)
         #self.layout.setAlignment(2)
 
@@ -689,10 +689,14 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         :param
         :return:
         """
+        modelsLogic = slicer.modules.models.logic()
         # Create the output labelmap
         #self.labelmap = SlicerUtil.getLabelmapFromScalar(self.currentResultsNode, self.currentVolumeId + "_stent_y_lm")
         fiducialsNode = slicer.util.getNode(self.getCurrentFiducialsListNodeName("YStent"))
         fiducialsIndexes = self.getVisibleFiducialsIndexes("YStent")
+
+
+
 
         # Get the position of the points (RAS)
         top = [0, 0, 0]
@@ -714,16 +718,16 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         cilinder_top_middle.CappingOff()
         cilinder_top_middle.SidesShareVerticesOff()
         cilinder_top_middle.SetInputConnection(line_top_middle.GetOutputPort())
-        modelsLogic = slicer.modules.models.logic()
         model = modelsLogic.AddModel(cilinder_top_middle.GetOutputPort())
         # Create a DisplayNode and associate it to the model, in order that transformations can work properly
         displayNode = slicer.vtkMRMLModelDisplayNode()
         slicer.mrmlScene.AddNode(displayNode)
         model.AddAndObserveDisplayNodeID(displayNode.GetID())
-        # Align the model with the segmented labelmap applying a transformation
+        displayNode.SetColor((0,1,0))
+        displayNode.SetOpacity(0.5)
         cilinder_top_middle.Update()
 
-        # Cilinder 0 (vertical)
+        # Cilinder 1 (left)
         line_middle_left = vtk.vtkLineSource()
         line_middle_left.SetPoint1(middle)
         line_middle_left.SetPoint2(left)
@@ -734,12 +738,14 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         cilinder_middle_left.SidesShareVerticesOff()
         cilinder_middle_left.SetInputConnection(line_middle_left.GetOutputPort())
         model = modelsLogic.AddModel(cilinder_middle_left.GetOutputPort())
-        # Create a DisplayNode and associate it to the model, in order that transformations can work properly
         displayNode = slicer.vtkMRMLModelDisplayNode()
         slicer.mrmlScene.AddNode(displayNode)
         model.AddAndObserveDisplayNodeID(displayNode.GetID())
+        displayNode.SetColor((0,1,0))
+        displayNode.SetOpacity(0.5)
         cilinder_middle_left.Update()
-        
+
+        # Cilinder 2 (right)
         line_middle_right = vtk.vtkLineSource()
         line_middle_right.SetPoint1(middle)
         line_middle_right.SetPoint2(right)
@@ -750,13 +756,37 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         cilinder_middle_right.SidesShareVerticesOff()
         cilinder_middle_right.SetInputConnection(line_middle_right.GetOutputPort())
         model = modelsLogic.AddModel(cilinder_middle_right.GetOutputPort())
-        # Create a DisplayNode and associate it to the model, in order that transformations can work properly
         displayNode = slicer.vtkMRMLModelDisplayNode()
         slicer.mrmlScene.AddNode(displayNode)
         model.AddAndObserveDisplayNodeID(displayNode.GetID())
+        displayNode.SetColor((0,1,0))
+        displayNode.SetOpacity(0.5)
         cilinder_middle_right.Update()
 
+        # Trachea segmentation
+        marchingCubesFilter = vtk.vtkMarchingCubes()
+        marchingCubesFilter.SetInputData(self.currentLabelmapResults.GetImageData())
+        marchingCubesFilter.SetValue(0, 1)
+        modellm = modelsLogic.AddModel(marchingCubesFilter.GetOutputPort())
+        displayNode = slicer.vtkMRMLModelDisplayNode()
+        slicer.mrmlScene.AddNode(displayNode)
+        modellm.AddAndObserveDisplayNodeID(displayNode.GetID())
+        displayNode.SetColor((1, 0, 0))
+        displayNode.SetOpacity(0.8)
+        marchingCubesFilter.Update()
 
+        # Align the model with the segmented labelmap applying a transformation
+        transformMatrix = vtk.vtkMatrix4x4()
+        self.currentLabelmapResults.GetIJKToRASMatrix(transformMatrix)
+        modellm.ApplyTransformMatrix(transformMatrix)
+
+        # Center the 3D view
+        layoutManager = slicer.app.layoutManager()
+        threeDWidget = layoutManager.threeDWidget(0)
+        threeDView = threeDWidget.threeDView()
+        threeDView.resetFocalPoint()
+
+        SlicerUtil.setFiducialsMode(False)
 
     # def update3DModel(self):
     #     """ Generate or update a 3D model for the current labelmap."""
