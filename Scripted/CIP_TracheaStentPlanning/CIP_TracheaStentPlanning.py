@@ -259,14 +259,14 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.thresholdLevelSlider.minimum = 1
         self.thresholdLevelSlider.maximum = 20
         self.thresholdLevelSlider.setValue(10)
-        self.thresholdLevelSlider.setSingleStep(5)
+        self.thresholdLevelSlider.setSingleStep(1)
         self.thresholdLevelSlider.enabled = True
         self.mainAreaLayout.addWidget(self.thresholdLevelSlider, 4, 1, 1, 2)
 
-        # self.generate3DModelButton = qt.QPushButton("Generate 3D model")
-        # self.generate3DModelButton.toolTip = "Run the algorithm."
-        # self.generate3DModelButton.setFixedSize(150, 45)
-        # self.mainAreaLayout.addWidget(self.generate3DModelButton, 5, 0, 1, 2)
+        self.generate3DModelButton = qt.QPushButton("Generate 3D model")
+        self.generate3DModelButton.toolTip = "Run the algorithm."
+        self.generate3DModelButton.setFixedSize(150, 45)
+        self.mainAreaLayout.addWidget(self.generate3DModelButton, 5, 0, 1, 2)
 
         self.layout.addStretch(1)
 
@@ -282,7 +282,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.applyButton.connect('clicked(bool)', self.__onApplyButton__)
         self.thresholdLevelSlider.connect('sliderReleased()', self.__applyThreshold__)
         self.thresholdLevelSlider.connect('sliderStepChanged()', self.__applyThreshold__)
-        # self.generate3DModelButton.connect('clicked(bool)', self.__onGenerate3DModelButton__)
+        self.generate3DModelButton.connect('clicked(bool)', self.__onGenerate3DModelButton__)
 
         if self.inputVolumeSelector.currentNodeID != "":
             self.logic.setActiveVolume(self.inputVolumeSelector.currentNodeID)
@@ -344,7 +344,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         val = self.thresholdLevelSlider.value
         if val != self.lastThreshold:
             self.lastThreshold = val
-            self.logic.labelmapThreshold(val / 10.0)
+            self.logic.tracheaLabelmapThreshold(val / 10.0)
 
     ############
     ##  Events
@@ -407,7 +407,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.__runSegmentation__()
 
     def __onGenerate3DModelButton__(self):
-        self.logic.update3DModel()
+        self.logic.drawYStent()
 
 #
 # CIP_TracheaStentPlanningLogic
@@ -440,7 +440,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
             ("TStent", "T Stent", (0, 1, 0))
         ]
         self.fiducialList = {
-            'YStent': ["Upper", "Left", "Right"],
+            'YStent': ["Upper", "Middle", "Bottom_Left", "Bottom_Right"],
             'TStent': ["Bottom ", "Lower", "Middle", "Outside"]
         }
 
@@ -523,32 +523,27 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         :return:
         """
         # Check that we have all the required fiducials for the selected stent type
-        visibleFiducialsIndexes = self.getVisibleFiducialsIndexes(stentTypeKey)
+        visibleFiducialsIndexes = self.getVisibleFiducialsIndexes("YStent")
 
-        if len(visibleFiducialsIndexes) < len(self.fiducialList[stentTypeKey]):
+        if len(visibleFiducialsIndexes) < len(self.fiducialList["YStent"]):
             qt.QMessageBox.warning(slicer.util.mainWindow(), "Missing fiducials",
                     "Please make sure that you have added all the required points for the selected stent type")
             return
-
-        if stentTypeKey == "YStent":
-            self.__runYStentSegmentationAlgorithm__(slicer.util.getNode(self.getCurrentFiducialsListNodeName(stentTypeKey)),
+        self.__segmentTrachea__(slicer.util.getNode(self.getCurrentFiducialsListNodeName(stentTypeKey)),
                                                     visibleFiducialsIndexes)
-        else:
-            raise NotImplementedError()
-        
-        # Set opacity
-        nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLSliceCompositeNode")
-        # Call necessary to allow the iteration.
-        nodes.InitTraversal()
-        # Get the first CompositeNode (typically Red)
-        compositeNode = nodes.GetNextItemAsObject()
-        compositeNode.SetLinkedControl(True)
-        while compositeNode:
-            compositeNode.SetForegroundOpacity(0.5)
-            compositeNode = nodes.GetNextItemAsObject()
+        # # Set opacity
+        # nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLSliceCompositeNode")
+        # # Call necessary to allow the iteration.
+        # nodes.InitTraversal()
+        # # Get the first CompositeNode (typically Red)
+        # compositeNode = nodes.GetNextItemAsObject()
+        # compositeNode.SetLinkedControl(True)
+        # while compositeNode:
+        #     compositeNode.SetForegroundOpacity(0.5)
+        #     compositeNode = nodes.GetNextItemAsObject()
         
 
-    def __runYStentSegmentationAlgorithm__(self, fiducialsNode, fiducialsIndexes):
+    def __segmentTrachea__(self, fiducialsNode, fiducialsIndexes):
         """
         :return:
         """
@@ -559,9 +554,10 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         f0 = [0, 0, 0]
         f1 = [0, 0, 0]
         f2 = [0, 0, 0]
+        # Get top and two bottom fiducials
         fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[0], f0)
-        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[1], f1)
-        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[2], f2)
+        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[2], f1)
+        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[3], f2)
 
         pos0 = Util.ras_to_ijk(activeNode, f0, convert_to_int=True)
         pos1 = Util.ras_to_ijk(activeNode, f1, convert_to_int=True)
@@ -678,7 +674,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
 
         print("DEBUG: total time: ", time.time() - start)
 
-    def labelmapThreshold(self, thresholdFactor):
+    def tracheaLabelmapThreshold(self, thresholdFactor):
         """ Update the threshold used to generate the segmentation (when the thresholdFactor is bigger, "more trachea"
         will be displayed
         :param thresholdFactor: value between 0.01 and 2
@@ -687,7 +683,81 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         self.thresholdFilter.ThresholdByUpper(threshold)
         self.thresholdFilter.Update()
         SlicerUtil.refreshActiveWindows()
+
+    def drawYStent(self):
+        """ Create a labelmap with the Y stent based on the user points
+        :param
+        :return:
+        """
+        # Create the output labelmap
+        #self.labelmap = SlicerUtil.getLabelmapFromScalar(self.currentResultsNode, self.currentVolumeId + "_stent_y_lm")
+        fiducialsNode = slicer.util.getNode(self.getCurrentFiducialsListNodeName("YStent"))
+        fiducialsIndexes = self.getVisibleFiducialsIndexes("YStent")
+
+        # Get the position of the points (RAS)
+        top = [0, 0, 0]
+        middle = [0, 0, 0]
+        left = [0, 0, 0]
+        right = [0, 0, 0]
+        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[0], top)
+        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[1], middle)
+        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[2], left)
+        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[3], right)
+
+        # Cilinder 0 (vertical)
+        line_top_middle = vtk.vtkLineSource()
+        line_top_middle.SetPoint1(top)
+        line_top_middle.SetPoint2(middle)
+        cilinder_top_middle = vtk.vtkTubeFilter()
+        cilinder_top_middle.SetNumberOfSides(15)
+        cilinder_top_middle.SetRadius(10)
+        cilinder_top_middle.CappingOff()
+        cilinder_top_middle.SidesShareVerticesOff()
+        cilinder_top_middle.SetInputConnection(line_top_middle.GetOutputPort())
+        modelsLogic = slicer.modules.models.logic()
+        model = modelsLogic.AddModel(cilinder_top_middle.GetOutputPort())
+        # Create a DisplayNode and associate it to the model, in order that transformations can work properly
+        displayNode = slicer.vtkMRMLModelDisplayNode()
+        slicer.mrmlScene.AddNode(displayNode)
+        model.AddAndObserveDisplayNodeID(displayNode.GetID())
+        # Align the model with the segmented labelmap applying a transformation
+        cilinder_top_middle.Update()
+
+        # Cilinder 0 (vertical)
+        line_middle_left = vtk.vtkLineSource()
+        line_middle_left.SetPoint1(middle)
+        line_middle_left.SetPoint2(left)
+        cilinder_middle_left = vtk.vtkTubeFilter()
+        cilinder_middle_left.SetNumberOfSides(15)
+        cilinder_middle_left.SetRadius(10)
+        cilinder_middle_left.CappingOff()
+        cilinder_middle_left.SidesShareVerticesOff()
+        cilinder_middle_left.SetInputConnection(line_middle_left.GetOutputPort())
+        model = modelsLogic.AddModel(cilinder_middle_left.GetOutputPort())
+        # Create a DisplayNode and associate it to the model, in order that transformations can work properly
+        displayNode = slicer.vtkMRMLModelDisplayNode()
+        slicer.mrmlScene.AddNode(displayNode)
+        model.AddAndObserveDisplayNodeID(displayNode.GetID())
+        cilinder_middle_left.Update()
         
+        line_middle_right = vtk.vtkLineSource()
+        line_middle_right.SetPoint1(middle)
+        line_middle_right.SetPoint2(right)
+        cilinder_middle_right = vtk.vtkTubeFilter()
+        cilinder_middle_right.SetNumberOfSides(15)
+        cilinder_middle_right.SetRadius(10)
+        cilinder_middle_right.CappingOff()
+        cilinder_middle_right.SidesShareVerticesOff()
+        cilinder_middle_right.SetInputConnection(line_middle_right.GetOutputPort())
+        model = modelsLogic.AddModel(cilinder_middle_right.GetOutputPort())
+        # Create a DisplayNode and associate it to the model, in order that transformations can work properly
+        displayNode = slicer.vtkMRMLModelDisplayNode()
+        slicer.mrmlScene.AddNode(displayNode)
+        model.AddAndObserveDisplayNodeID(displayNode.GetID())
+        cilinder_middle_right.Update()
+
+
+
     # def update3DModel(self):
     #     """ Generate or update a 3D model for the current labelmap."""
     #     # Check if the node already exists

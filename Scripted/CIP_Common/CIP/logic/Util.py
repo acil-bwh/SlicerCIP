@@ -3,7 +3,6 @@ Created on Oct 29, 2014
 Common functions that can be useful in any Python module development
 """
 
-#from __main__ import vtk
 import vtk
 import os, sys
 import traceback
@@ -151,24 +150,6 @@ class Util:
         arr = sitk.GetArrayFromImage(itk_image)
         itk_image = sitk.Image()
         return arr, itk_image.GetSpacing(), itk_image.GetOrigin()
-
-    @staticmethod
-    def vtk_numpy_array(vtk_node):
-        """ From a VTK node, return:
-        - Numpy array (it will be in ZYX coordinates!)
-        - Spacing in the new system (ZYX)
-        - Origin in the new system (ZYX)
-        :param vtk_node: if can be a regular vtk scalar node or a labelmap node
-        :return: tuple of values (array, spacing, origin)
-        """
-        shape = list(vtk_node.GetImageData().GetDimensions())
-        shape.reverse()
-        arr = vtk.util.numpy_support.vtk_to_numpy(vtk_node.GetPointData().GetScalars()).reshape(shape)
-        spacing = list(vtk_node.GetSpacing())
-        spacing.reverse()
-        origin = list(vtk_node.GetOrigin())
-        origin.reverse()
-        return arr, spacing, origin
 
     @staticmethod
     def itk_numpy_coordinate(itk_coordinate):
