@@ -40,8 +40,8 @@
 #include "vtkPNGWriter.h"
 #include "vtkImageFlip.h"
 
-#include "QPainter.h"
-#include "QMainWindow.h"
+#include "qpainter.h"
+#include "qmainWindow.h"
 #include "QVTKWidget.h"
 
 #include "vtkMRMLScene.h"
