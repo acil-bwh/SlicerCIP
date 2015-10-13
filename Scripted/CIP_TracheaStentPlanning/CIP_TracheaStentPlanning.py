@@ -64,7 +64,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.timer = qt.QTimer()
         self.timer.setInterval(200)
         self.lastThreshold = -1
-        self.model3DGenerated = False
+        self.isSegmentationExecuted = False
 
         # Init the positions of the different fiducials for each stent type
         # At the beggining, all the positions will be init to -1
@@ -213,13 +213,13 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.mainAreaLayout.addWidget(typesLabel, 2, 0)
         self.mainAreaLayout.addWidget(self.fiducialTypesFrame, 2, 1)
 
-        self.fiducialTypesRadioButtonGroup = qt.QButtonGroup()
+        self.segmentTypesRadioButtonGroup = qt.QButtonGroup()
         st = self.logic.stentTypes[self.stentTypesRadioButtonGroup.checkedId()][0]
         for id, key in enumerate(self.logic.fiducialList[st]):
             rbitem = qt.QRadioButton(key)
-            self.fiducialTypesRadioButtonGroup.addButton(rbitem, id)
+            self.segmentTypesRadioButtonGroup.addButton(rbitem, id)
             self.fiducialTypesLayout.addWidget(rbitem)
-        self.fiducialTypesRadioButtonGroup.buttons()[0].setChecked(True)
+        self.segmentTypesRadioButtonGroup.buttons()[0].setChecked(True)
 
         # self.addFiducialButton = ctk.ctkPushButton()
         # self.addFiducialButton.text = "Add new seed"
@@ -256,30 +256,55 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         # self.thresholdLevelSlider.setTickInterval(1)
         self.thresholdLevelSlider.setTickPosition(2)
         self.thresholdLevelSlider.minimum = 1
-        self.thresholdLevelSlider.maximum = 20
-        self.thresholdLevelSlider.setValue(10)
+        self.thresholdLevelSlider.maximum = 200
+        self.thresholdLevelSlider.setValue(100)
         self.thresholdLevelSlider.setSingleStep(1)
         self.thresholdLevelSlider.enabled = True
+        self.thresholdLevelSlider.setTracking(False)
         self.mainAreaLayout.addWidget(self.thresholdLevelSlider, 4, 1, 1, 2)
 
         # Generate 3D model button
-        self.generate3DModelButton = qt.QPushButton("Generate 3D model")
-        self.generate3DModelButton.toolTip = "Run the algorithm."
-        self.generate3DModelButton.setFixedSize(150, 45)
-        self.mainAreaLayout.addWidget(self.generate3DModelButton, 5, 0, 1, 2)
+        # self.generate3DModelButton = qt.QPushButton("Generate 3D model")
+        # self.generate3DModelButton.toolTip = "Run the algorithm."
+        # self.generate3DModelButton.setFixedSize(150, 45)
+        # self.mainAreaLayout.addWidget(self.generate3DModelButton, 5, 0, 1, 2)
 
         # Stent Radius
-        label = qt.QLabel("Radius")
+        label = qt.QLabel("Radius 1")
         self.mainAreaLayout.addWidget(label, 6, 0)
-        self.radiusLevelSlider = qt.QSlider()
-        self.radiusLevelSlider.orientation = 1  # Horizontal
-        self.radiusLevelSlider.setTickPosition(2)
-        self.radiusLevelSlider.minimum = 1
-        self.radiusLevelSlider.maximum = 20
-        self.radiusLevelSlider.setValue(10)
-        self.radiusLevelSlider.setSingleStep(1)
-        self.radiusLevelSlider.enabled = True
-        self.mainAreaLayout.addWidget(self.radiusLevelSlider, 6, 1, 1, 2)
+        self.radiusLevelSlider1 = qt.QSlider()
+        self.radiusLevelSlider1.orientation = 1  # Horizontal
+        self.radiusLevelSlider1.setTickPosition(2)
+        self.radiusLevelSlider1.minimum = 1
+        self.radiusLevelSlider1.maximum = 200
+        self.radiusLevelSlider1.setValue(100)
+        self.radiusLevelSlider1.setSingleStep(1)
+        self.radiusLevelSlider1.enabled = True
+        self.mainAreaLayout.addWidget(self.radiusLevelSlider1, 6, 1, 1, 2)
+
+        label = qt.QLabel("Radius 2")
+        self.mainAreaLayout.addWidget(label, 7, 0)
+        self.radiusLevelSlider2 = qt.QSlider()
+        self.radiusLevelSlider2.orientation = 1  # Horizontal
+        self.radiusLevelSlider2.setTickPosition(2)
+        self.radiusLevelSlider2.minimum = 1
+        self.radiusLevelSlider2.maximum = 200
+        self.radiusLevelSlider2.setValue(100)
+        self.radiusLevelSlider2.setSingleStep(1)
+        self.radiusLevelSlider2.enabled = True
+        self.mainAreaLayout.addWidget(self.radiusLevelSlider2, 7, 1, 1, 2)
+
+        label = qt.QLabel("Radius 3")
+        self.mainAreaLayout.addWidget(label, 8, 0)
+        self.radiusLevelSlider3 = qt.QSlider()
+        self.radiusLevelSlider3.orientation = 1  # Horizontal
+        self.radiusLevelSlider3.setTickPosition(2)
+        self.radiusLevelSlider3.minimum = 1
+        self.radiusLevelSlider3.maximum = 200
+        self.radiusLevelSlider3.setValue(100)
+        self.radiusLevelSlider3.setSingleStep(1)
+        self.radiusLevelSlider3.enabled = True
+        self.mainAreaLayout.addWidget(self.radiusLevelSlider3, 8, 1, 1, 2)
 
         self.layout.addStretch(1)
 
@@ -292,12 +317,15 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
 
         self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onCurrentNodeChanged__)
         self.stentTypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onStentTypesRadioButtonClicked__)
-        self.applyButton.connect('clicked(bool)', self.__onApplyButton__)
-        self.thresholdLevelSlider.connect('sliderReleased()', self.__onApplyThreshold__)
-        self.thresholdLevelSlider.connect('sliderStepChanged()', self.__onApplyThreshold__)
-        self.generate3DModelButton.connect('clicked(bool)', self.__onGenerate3DModelButton__)
-        self.radiusLevelSlider.connect('sliderReleased()', self.__onStentRadiusChange__)
-        self.radiusLevelSlider.connect('sliderStepChanged()', self.__onStentRadiusChange__)
+        self.segmentTypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSegmentRadioButtonClicked__)
+
+        self.applyButton.connect('clicked(bool)', self.__onRunSegmentationButton__)
+        self.thresholdLevelSlider.connect('valueChanged(int)', self.__onApplyThreshold__)
+        # self.thresholdLevelSlider.connect('sliderStepChanged()', self.__onApplyThreshold__)
+        # self.generate3DModelButton.connect('clicked(bool)', self.__onGenerate3DModelButton__)
+        self.radiusLevelSlider1.connect('valueChanged(int)', self.__onStentRadiusChange__)
+        self.radiusLevelSlider2.connect('valueChanged(int)', self.__onStentRadiusChange__)
+        self.radiusLevelSlider3.connect('valueChanged(int)', self.__onStentRadiusChange__)
 
         if self.inputVolumeSelector.currentNodeID != "":
             self.logic.setActiveVolume(self.inputVolumeSelector.currentNodeID)
@@ -328,7 +356,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         # Get the current stent type
         stentId = self.stentTypesRadioButtonGroup.checkedId()
         # Get the current fiducial checked id
-        fidId = self.fiducialTypesRadioButtonGroup.checkedId()
+        fidId = self.segmentTypesRadioButtonGroup.checkedId()
         # If the markup had been already added, remove it
         if self.currentStentTypePositions[stentId][fidId] != -1:
             fiducialsNode.SetNthFiducialVisibility(self.currentStentTypePositions[stentId][fidId], False)
@@ -341,17 +369,10 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         """ Move the fiducial type one step forward
         :return:
         """
-        i = self.fiducialTypesRadioButtonGroup.checkedId()
-        if i < len(self.fiducialTypesRadioButtonGroup.buttons()) - 1:
-            self.fiducialTypesRadioButtonGroup.buttons()[i+1].setChecked(True)
+        i = self.segmentTypesRadioButtonGroup.checkedId()
+        if i < len(self.segmentTypesRadioButtonGroup.buttons()) - 1:
+            self.segmentTypesRadioButtonGroup.buttons()[i+1].setChecked(True)
 
-    def __runSegmentation__(self):
-        """ Run segmentation algorithm (if we have all the required fiducials)
-        """
-        stentType = self.logic.stentTypes[self.stentTypesRadioButtonGroup.checkedId()][0]
-        self.logic.runSegmentation(stentType)
-        self.timer.timeout.connect(self.__onApplyThreshold__)
-        
 
 
     ############
@@ -366,12 +387,11 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         """
         self.__updateFiducialsState__(fiducialsNode)
         self.__moveForwardStentType__()
-        fiducialsNode.connect()
 
     def __onFiducialModified__(self, fiducialsNode, event):
-        if self.model3DGenerated:
+        if self.isSegmentationExecuted:
             # Refresh just cilinders
-            self.logic.drawYStent(drawTrachea=False)
+            self.logic.updateCilindersPosition()
 
     def __onFourUpButton__(self):
         SlicerUtil.changeLayout(3)
@@ -393,7 +413,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
 
     def __onStentTypesRadioButtonClicked__(self, button):
         # Remove all the existing buttons in TypesGroup
-        for b in self.fiducialTypesRadioButtonGroup.buttons():
+        for b in self.segmentTypesRadioButtonGroup.buttons():
             b.hide()
             b.delete()
 
@@ -402,39 +422,39 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         # Add all the subtypes with the full description
         for id, item in enumerate(self.logic.fiducialList[key]):
             rbitem = qt.QRadioButton(item)
-            self.fiducialTypesRadioButtonGroup.addButton(rbitem, id)
+            self.segmentTypesRadioButtonGroup.addButton(rbitem, id)
             self.fiducialTypesLayout.addWidget(rbitem)
-        self.fiducialTypesRadioButtonGroup.buttons()[0].setChecked(True)
+        self.segmentTypesRadioButtonGroup.buttons()[0].setChecked(True)
 
         self.logic.setActiveFiducialsListNode(key)
     
-    # def __onTypesRadioButtonClicked__(self, button):
-    #     """ One of the radio buttons has been pressed
-    #     :param button:
-    #     :return:
-    #     """
-    #     #self.__updateFiducialsState__()
-    #     pass
+    def __onSegmentRadioButtonClicked__(self, button):
+        """ One of the radio buttons has been pressed
+        :param button:
+        :return:
+        """
+        SlicerUtil.setFiducialsMode(True, keepFiducialsModeOn=True)
 
-    def __onApplyButton__(self):
-        self.thresholdLevelSlider.setValue(10)
-        self.__runSegmentation__()
 
-    def __onApplyThreshold__(self):
+    def __onRunSegmentationButton__(self):
+        self.thresholdLevelSlider.setValue(100)
+        stentType = self.logic.stentTypes[self.stentTypesRadioButtonGroup.checkedId()][0]
+        self.logic.runSegmentationPipeline(stentType)
+        self.isSegmentationExecuted = True
+
+    def __onApplyThreshold__(self, val):
         """ Fine tuning of the segmentation
         :return:
         """
-        val = self.thresholdLevelSlider.value
         if val != self.lastThreshold:
             self.lastThreshold = val
-            self.logic.tracheaLabelmapThreshold(val / 10.0)
+            self.logic.tracheaLabelmapThreshold(val / 100.0)
 
-    def __onGenerate3DModelButton__(self):
-        self.logic.drawYStent()
-        self.model3DGenerated = True
 
     def __onStentRadiusChange__(self):
-        self.logic.updateCilindersRadius(self.radiusLevelSlider.value)
+        self.logic.updateCilindersRadius(self.radiusLevelSlider1.value / 10.0,
+                                            self.radiusLevelSlider2.value / 10.0,
+                                            self.radiusLevelSlider3.value / 10.0)
 
 #
 # CIP_TracheaStentPlanningLogic
@@ -481,6 +501,10 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         self.currentDistanceMean = 0           # Current base threshold that will be used to increase/decrease the scope of the segmentation
 
         self.currentCilinders = None
+        self.currentTracheaModel = None
+        self.currentCilindersModel = None
+        self.cilindersVtkAppendPolyDataFilter = None
+
         self.markupsLogic = slicer.modules.markups.logic()
 
     def getCurrentStentKeys(self):
@@ -546,7 +570,8 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
                 visibleFiducialsIndexes.append(i)
         return visibleFiducialsIndexes
 
-    def runSegmentation(self, stentTypeKey):
+
+    def runSegmentationPipeline(self, stentTypeKey):
         """ Run the segmentation algorithm for the selected stent type
         :param stentTypeKey:
         :return:
@@ -558,19 +583,23 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
             qt.QMessageBox.warning(slicer.util.mainWindow(), "Missing fiducials",
                     "Please make sure that you have added all the required points for the selected stent type")
             return
-        self.__segmentTrachea__(slicer.util.getNode(self.getCurrentFiducialsListNodeName(stentTypeKey)),
+        self.__segmentTrachea__(slicer.util.getNode(self.getCurrentFiducialsListNodeName("YStent")),
                                                     visibleFiducialsIndexes)
-        # # Set opacity
-        # nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLSliceCompositeNode")
-        # # Call necessary to allow the iteration.
-        # nodes.InitTraversal()
-        # # Get the first CompositeNode (typically Red)
-        # compositeNode = nodes.GetNextItemAsObject()
-        # compositeNode.SetLinkedControl(True)
-        # while compositeNode:
-        #     compositeNode.SetForegroundOpacity(0.5)
-        #     compositeNode = nodes.GetNextItemAsObject()
-        
+        self.drawTrachea()
+        self.drawYStent()
+
+        SlicerUtil.setFiducialsMode(False)
+
+        # Align the model with the segmented labelmap applying a transformation
+        transformMatrix = vtk.vtkMatrix4x4()
+        self.currentLabelmapResults.GetIJKToRASMatrix(transformMatrix)
+        self.currentTracheaModel.ApplyTransformMatrix(transformMatrix)
+
+        # Center the 3D view
+        layoutManager = slicer.app.layoutManager()
+        threeDWidget = layoutManager.threeDWidget(0)
+        threeDView = threeDWidget.threeDView()
+        threeDView.resetFocalPoint()
 
     def __segmentTrachea__(self, fiducialsNode, fiducialsIndexes):
         """
@@ -615,19 +644,23 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         speedTest = (activeVolumeArray < -800).astype(np.int32)
 
         # Create all the auxiliary nodes for results
-        lm01 = SlicerUtil.cloneVolume(activeNode, activeNode.GetName() + "_lm01")
-        a01 = slicer.util.array(lm01.GetID())
-        lm02 = SlicerUtil.cloneVolume(activeNode, activeNode.GetName() + "_lm02")
-        a02 = slicer.util.array(lm02.GetID())
-        lm12 = SlicerUtil.cloneVolume(activeNode, activeNode.GetName() + "_lm12")
-        a12 = slicer.util.array(lm12.GetID())
+        t1 = time.time()
+        # lm01 = SlicerUtil.cloneVolume(activeNode, activeNode.GetName() + "_lm01")
+        # a01 = slicer.util.array(lm01.GetID())
+        # lm02 = SlicerUtil.cloneVolume(activeNode, activeNode.GetName() + "_lm02")
+        # a02 = slicer.util.array(lm02.GetID())
+        # lm12 = SlicerUtil.cloneVolume(activeNode, activeNode.GetName() + "_lm12")
+        # a12 = slicer.util.array(lm12.GetID())
+        dim = activeNode.GetImageData().GetDimensions()
+        shape = [dim[2], dim[1], dim[0]]
+        a01 = np.zeros(shape, np.int32)
+        a02 = np.zeros(shape, np.int32)
+        a12 = np.zeros(shape, np.int32)
         # Results of the algorithm
         self.currentResultsNode = SlicerUtil.cloneVolume(activeNode, activeNode.GetName() + "_result")
         self.currentResultsArray = slicer.util.array(self.currentResultsNode.GetID())
         self.currentLabelmapResults = SlicerUtil.getLabelmapFromScalar(self.currentResultsNode,
                                                                         activeNode.GetName() + "_results_lm")
-
-        t1 = time.time()
         print("DEBUG: create aux nodes:", time.time() - t1)
         # Create SimpleITK FastMarching filter with the thresholded original image as a speed map
         sitkImage = sitk.GetImageFromArray(speedTest)
@@ -647,7 +680,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         a01[:] = 0
         temp = outputArray <= d
         a01[temp] = d - outputArray[temp]
-        lm01.GetImageData().Modified()
+        # lm01.GetImageData().Modified()
         print("DEBUG: filter 01:", time.time() - t1)
 
         # Filter 02
@@ -661,7 +694,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         a02[:] = 0
         temp = outputArray <= d
         a02[temp] = d - outputArray[temp]
-        lm02.GetImageData().Modified()
+        # lm02.GetImageData().Modified()
         print("DEBUG: filter 02:", time.time() - t1)
 
         # Filter 12
@@ -675,17 +708,17 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         a12[:] = 0
         temp = outputArray <= d
         a12[temp] = d - outputArray[temp]
-        lm12.GetImageData().Modified()
+        # lm12.GetImageData().Modified()
         print("DEBUG: filter 12:", time.time() - t1)
 
         t1 = time.time()
-
         # Sum the results of the 3 filters
         self.currentResultsArray [:] = a01 + a02 + a12
         self.currentResultsNode.GetImageData().Modified()
         print("DEBUG: processing results:", time.time() - t1)
 
         # Threshold to get the final labelmap
+        t1 = time.time()
         self.thresholdFilter = vtk.vtkImageThreshold()
         self.thresholdFilter.SetInputData(self.currentResultsNode.GetImageData())
         self.thresholdFilter.SetReplaceOut(True)
@@ -694,6 +727,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         self.thresholdFilter.ThresholdByUpper(self.currentDistanceMean)
         self.thresholdFilter.SetOutput(self.currentLabelmapResults.GetImageData())
         self.thresholdFilter.Update()
+        print("DEBUG: thresholding:", time.time() - t1)
 
         # Show the result in slicer
         appLogic = slicer.app.applicationLogic()
@@ -718,30 +752,18 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         :return:
         """
         modelsLogic = slicer.modules.models.logic()
-        
         marchingCubesFilter = vtk.vtkMarchingCubes()
         marchingCubesFilter.SetInputData(self.currentLabelmapResults.GetImageData())
         marchingCubesFilter.SetValue(0, 1)
-        modellm = modelsLogic.AddModel(marchingCubesFilter.GetOutputPort())
-        displayNode = slicer.vtkMRMLModelDisplayNode()
-        slicer.mrmlScene.AddNode(displayNode)
-        modellm.AddAndObserveDisplayNodeID(displayNode.GetID())
+        self.currentTracheaModel = modelsLogic.AddModel(marchingCubesFilter.GetOutputPort())
+        self.currentTracheaModel.SetName("Trachea Model")
+        displayNode = self.currentTracheaModel.GetDisplayNode()
+        displayNode.SetOpacity(0.5)
         displayNode.SetColor((1, 0, 0))
-        displayNode.SetOpacity(0.05)
         marchingCubesFilter.Update()
 
-        # Align the model with the segmented labelmap applying a transformation
-        transformMatrix = vtk.vtkMatrix4x4()
-        self.currentLabelmapResults.GetIJKToRASMatrix(transformMatrix)
-        modellm.ApplyTransformMatrix(transformMatrix)
-        
-        # Center the 3D view
-        layoutManager = slicer.app.layoutManager()
-        threeDWidget = layoutManager.threeDWidget(0)
-        threeDView = threeDWidget.threeDView()
-        threeDView.resetFocalPoint()
 
-    def drawYStent(self, drawTrachea=True):
+    def drawYStent(self):
         """ Create a labelmap with the Y stent based on the user points
         :param
         :return:
@@ -750,6 +772,8 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         
         fiducialsNode = slicer.util.getNode(self.getCurrentFiducialsListNodeName("YStent"))
         fiducialsIndexes = self.getVisibleFiducialsIndexes("YStent")
+
+        self.cilindersVtkAppendPolyDataFilter = vtk.vtkAppendPolyData()
 
         # Get the position of the points (RAS)
         top = [0, 0, 0]
@@ -766,67 +790,95 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         line_top_middle.SetPoint1(top)
         line_top_middle.SetPoint2(middle)
         cilinder_top_middle = vtk.vtkTubeFilter()
-        cilinder_top_middle.SetNumberOfSides(15)
+        cilinder_top_middle.SetNumberOfSides(30)
         cilinder_top_middle.SetRadius(10)
         cilinder_top_middle.CappingOff()
         cilinder_top_middle.SidesShareVerticesOff()
         cilinder_top_middle.SetInputConnection(line_top_middle.GetOutputPort())
-        model = modelsLogic.AddModel(cilinder_top_middle.GetOutputPort())
-        # Create a DisplayNode and associate it to the model, in order that transformations can work properly
-        displayNode = slicer.vtkMRMLModelDisplayNode()
-        slicer.mrmlScene.AddNode(displayNode)
-        model.AddAndObserveDisplayNodeID(displayNode.GetID())
-        displayNode.SetColor((0,1,0))
-        displayNode.SetOpacity(0.5)
-        cilinder_top_middle.Update()
+        self.cilindersVtkAppendPolyDataFilter.AddInputConnection(cilinder_top_middle.GetOutputPort())
 
         # Cilinder 1 (left)
         line_middle_left = vtk.vtkLineSource()
         line_middle_left.SetPoint1(middle)
         line_middle_left.SetPoint2(left)
         cilinder_middle_left = vtk.vtkTubeFilter()
-        cilinder_middle_left.SetNumberOfSides(15)
+        cilinder_middle_left.SetNumberOfSides(30)
         cilinder_middle_left.SetRadius(10)
         cilinder_middle_left.CappingOff()
         cilinder_middle_left.SidesShareVerticesOff()
         cilinder_middle_left.SetInputConnection(line_middle_left.GetOutputPort())
-        model = modelsLogic.AddModel(cilinder_middle_left.GetOutputPort())
-        displayNode = slicer.vtkMRMLModelDisplayNode()
-        slicer.mrmlScene.AddNode(displayNode)
-        model.AddAndObserveDisplayNodeID(displayNode.GetID())
-        displayNode.SetColor((0,1,0))
-        displayNode.SetOpacity(0.5)
-        cilinder_middle_left.Update()
+        self.cilindersVtkAppendPolyDataFilter.AddInputConnection(cilinder_middle_left.GetOutputPort())
 
         # Cilinder 2 (right)
         line_middle_right = vtk.vtkLineSource()
         line_middle_right.SetPoint1(middle)
         line_middle_right.SetPoint2(right)
         cilinder_middle_right = vtk.vtkTubeFilter()
-        cilinder_middle_right.SetNumberOfSides(15)
+        cilinder_middle_right.SetNumberOfSides(30)
         cilinder_middle_right.SetRadius(10)
         cilinder_middle_right.CappingOff()
         cilinder_middle_right.SidesShareVerticesOff()
         cilinder_middle_right.SetInputConnection(line_middle_right.GetOutputPort())
-        model = modelsLogic.AddModel(cilinder_middle_right.GetOutputPort())
-        displayNode = slicer.vtkMRMLModelDisplayNode()
-        slicer.mrmlScene.AddNode(displayNode)
-        model.AddAndObserveDisplayNodeID(displayNode.GetID())
+        self.cilindersVtkAppendPolyDataFilter.AddInputConnection(cilinder_middle_right.GetOutputPort())
+
+        self.currentCilindersModel = modelsLogic.AddModel(self.cilindersVtkAppendPolyDataFilter.GetOutputPort())
+        self.currentCilindersModel.SetName("Y stent Model")
+        # Create a DisplayNode and associate it to the model, in order that transformations can work properly
+        displayNode = self.currentCilindersModel.GetDisplayNode()
         displayNode.SetColor((0,1,0))
-        displayNode.SetOpacity(0.5)
-        cilinder_middle_right.Update()
+        displayNode.SetOpacity(0.8)
+        # Display borders in 2D views
+        displayNode.SetSliceIntersectionVisibility(True)
+        self.cilindersVtkAppendPolyDataFilter.Update()
 
-        SlicerUtil.setFiducialsMode(False)
-
+        self.currentLines = [line_top_middle, line_middle_left, line_middle_right]
         self.currentCilinders = [cilinder_top_middle, cilinder_middle_left, cilinder_middle_right]
-
-        if drawTrachea:
-            self.drawTrachea()
         
-    def updateCilindersRadius(self, newRadius):
-        for cilinder in self.currentCilinders:
-            cilinder.SetRadius(newRadius)
-            cilinder.Update()
+    def updateCilindersRadius(self, newRadius1, newRadius2, newRadius3):
+        self.currentCilinders[0].SetRadius(newRadius1)
+        # self.currentCilinders[0].Update()
+        self.currentCilinders[1].SetRadius(newRadius2)
+        # self.currentCilinders[1].Update()
+        self.currentCilinders[2].SetRadius(newRadius3)
+        # self.currentCilinders[2].Update()
+        self.cilindersVtkAppendPolyDataFilter.Update()
+
+        self.currentCilindersModel.GetDisplayNode().Modified()
+
+    def updateCilindersPosition(self):
+        fiducialsNode = slicer.util.getNode(self.getCurrentFiducialsListNodeName("YStent"))
+        fiducialsIndexes = self.getVisibleFiducialsIndexes("YStent")
+
+        # Get the position of the points (RAS)
+        top = [0, 0, 0]
+        middle = [0, 0, 0]
+        left = [0, 0, 0]
+        right = [0, 0, 0]
+        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[0], top)
+        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[1], middle)
+        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[2], left)
+        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[3], right)
+
+        # Cilinder 0 (vertical)
+        line_top_middle = self.currentLines[0]
+        line_top_middle.SetPoint1(top)
+        line_top_middle.SetPoint2(middle)
+        # line_top_middle.Update()
+
+        # Cilinder 1 (left)
+        line_middle_left = self.currentLines[1]
+        line_middle_left.SetPoint1(middle)
+        line_middle_left.SetPoint2(left)
+        # line_middle_left.Update()
+
+        # Cilinder 2 (right)
+        line_middle_right = self.currentLines[2]
+        line_middle_right.SetPoint1(middle)
+        line_middle_right.SetPoint2(right)
+        # line_middle_right.Update()
+
+        self.cilindersVtkAppendPolyDataFilter.Update()
+
 
     # def update3DModel(self):
     #     """ Generate or update a 3D model for the current labelmap."""
