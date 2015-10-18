@@ -4,7 +4,7 @@ from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
 from collections import OrderedDict
-
+import time
 import numpy as np
 import SimpleITK as sitk
 
@@ -53,6 +53,13 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
+    @property
+    def currentStentType(self):
+        """ Key of the currently selected stent type (YStent, TStent)
+        :return: Key of the currently selected stent type
+        """
+        return self.stentTypesRadioButtonGroup.checkedButton().text
+
     def setup(self):
         """This is called one time when the module GUI is initialized
         """
@@ -61,20 +68,20 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         # Create objects that can be used anywhere in the module. Example: in most cases there should be just one
         # object of the logic class
         self.logic = CIP_TracheaStentPlanningLogic()
-        self.timer = qt.QTimer()
-        self.timer.setInterval(200)
         self.lastThreshold = -1
         self.isSegmentationExecuted = False
+
+        self.removeInvisibleFiducialsTimer = qt.QTimer()
+        self.removeInvisibleFiducialsTimer.setInterval(200)
+        self.removingInvisibleMarkpus = False
+        self.removeInvisibleFiducialsTimer.timeout.connect(self.__removeInvisibleMarkups__)
 
         # Init the positions of the different fiducials for each stent type
         # At the beggining, all the positions will be init to -1
         # Later, when the user adds a fiducial, the position of the matching fiducial will be updated
-        self.currentStentTypePositions = []
-        for stentType in self.logic.getCurrentStentKeys():
-            fiducials = []
-            for fiducial in self.logic.fiducialList[stentType]:
-                fiducials.append(-1)
-            self.currentStentTypePositions.append(fiducials)
+        self.currentStentTypePositions = {}
+        for stentType in self.logic.getStentKeys():
+            self.currentStentTypePositions[stentType] = [-1]*len(self.logic.getFiducialList(stentType))
 
         #### Layout selection
         self.layoutCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -160,7 +167,6 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         
         greenLabel = qt.QLabel("Coronal")
         self.layoutFormLayout.addWidget(greenLabel, 1, 3)
-        
 
         ######
         # Main parameters
@@ -197,9 +203,9 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.mainAreaLayout.addWidget(self.stentTypesFrame, 1, 1)
         #
         self.stentTypesRadioButtonGroup = qt.QButtonGroup()
-        for id, item in enumerate(self.logic.stentTypes):
-            rbitem = qt.QRadioButton(item[1])
-            self.stentTypesRadioButtonGroup.addButton(rbitem, id)
+        for stent in self.logic.stentTypes.keys():
+            rbitem = qt.QRadioButton(stent)
+            self.stentTypesRadioButtonGroup.addButton(rbitem)
             self.stentTypesLayout.addWidget(rbitem)
         self.stentTypesRadioButtonGroup.buttons()[0].setChecked(True)
 
@@ -212,10 +218,9 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.fiducialTypesLayout = qt.QHBoxLayout(self.fiducialTypesFrame)
         self.mainAreaLayout.addWidget(typesLabel, 2, 0)
         self.mainAreaLayout.addWidget(self.fiducialTypesFrame, 2, 1)
-
         self.segmentTypesRadioButtonGroup = qt.QButtonGroup()
-        st = self.logic.stentTypes[self.stentTypesRadioButtonGroup.checkedId()][0]
-        for id, key in enumerate(self.logic.fiducialList[st]):
+        st = self.stentTypesRadioButtonGroup.checkedButton().text
+        for id, key in enumerate(self.logic.getFiducialList(st)):
             rbitem = qt.QRadioButton(key)
             self.segmentTypesRadioButtonGroup.addButton(rbitem, id)
             self.fiducialTypesLayout.addWidget(rbitem)
@@ -306,6 +311,9 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.radiusLevelSlider3.enabled = True
         self.mainAreaLayout.addWidget(self.radiusLevelSlider3, 8, 1, 1, 2)
 
+        # Measurements frame
+        # self.measuresFrame = qt.QFrame(self.mainAreaLayout)
+
         self.layout.addStretch(1)
 
         # connections
@@ -315,7 +323,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.yellowViewButton.connect('clicked()', self.__onYellowViewButton__)
         self.greenViewButton.connect('clicked()', self.__onGreenViewButton__)
 
-        self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onCurrentNodeChanged__)
+        self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onCurrentVolumeNodeChanged__)
         self.stentTypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onStentTypesRadioButtonClicked__)
         self.segmentTypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSegmentRadioButtonClicked__)
 
@@ -328,42 +336,22 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.radiusLevelSlider3.connect('valueChanged(int)', self.__onStentRadiusChange__)
 
         if self.inputVolumeSelector.currentNodeID != "":
-            self.logic.setActiveVolume(self.inputVolumeSelector.currentNodeID)
-            self.logic.createFiducialsListNodes__(self.__onFiducialAdded__, self.__onFiducialModified__)
+            self.logic.setActiveVolume(self.inputVolumeSelector.currentNodeID, self.__onFiducialModified__, self.__onFiducialAdded__)
+            self.logic.setActiveFiducialListNode(self.currentStentType, self.segmentTypesRadioButtonGroup.checkedId())
             SlicerUtil.setFiducialsMode(True, keepFiducialsModeOn=True)
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
-        #Add stent model to the scene (assuming that there are fiducials)
         pass
 
     def exit(self):
         """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
         #Remove stent model if persistent-mode is not check (
-        pass
+        self.removeInvisibleFiducialsTimer.stop()
 
     def cleanup(self):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         pass
-
-
-    def __updateFiducialsState__(self, fiducialsNode):
-        """ Check the current state of stent type and position and create the required fi
-        :return:
-        """
-        # Get the last added markup
-        position = fiducialsNode.GetNumberOfMarkups() - 1
-        # Get the current stent type
-        stentId = self.stentTypesRadioButtonGroup.checkedId()
-        # Get the current fiducial checked id
-        fidId = self.segmentTypesRadioButtonGroup.checkedId()
-        # If the markup had been already added, remove it
-        if self.currentStentTypePositions[stentId][fidId] != -1:
-            fiducialsNode.SetNthFiducialVisibility(self.currentStentTypePositions[stentId][fidId], False)
-
-        # Update the current position for this stent type and fiducial
-        self.currentStentTypePositions[stentId][fidId] = position
-
 
     def __moveForwardStentType__(self):
         """ Move the fiducial type one step forward
@@ -372,8 +360,25 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         i = self.segmentTypesRadioButtonGroup.checkedId()
         if i < len(self.segmentTypesRadioButtonGroup.buttons()) - 1:
             self.segmentTypesRadioButtonGroup.buttons()[i+1].setChecked(True)
+        self.logic.setActiveFiducialListNode(self.currentStentType, self.segmentTypesRadioButtonGroup.checkedId())
 
-
+    def __removeInvisibleMarkups__(self):
+        """ Remove all the extra markups that are not visible right now
+        :return:
+        """
+        modified = False
+        for markupNodeList in self.logic.currentFiducialsListNodes.itervalues():
+            for markupNode in markupNodeList:
+                if markupNode.GetNumberOfMarkups() > 1:
+                    self.removingInvisibleMarkpus = True
+                    while markupNode.GetNumberOfMarkups() > 1:
+                        markupNode.RemoveMarkup(0)
+                        modified = True
+        self.removingInvisibleMarkpus = False
+        if self.isSegmentationExecuted and modified:
+            # We changed the position of one of the previously placed fiducials.
+            # Therefore, we need to redraw the stent cilinders
+            self.logic.updateCilindersPosition(self.currentStentType)
 
     ############
     ##  Events
@@ -385,13 +390,21 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         :param event:
         :return:
         """
-        self.__updateFiducialsState__(fiducialsNode)
+        # self.__updateFiducialsState__(fiducialsNode)
         self.__moveForwardStentType__()
+        self.removeInvisibleFiducialsTimer.start()
+
 
     def __onFiducialModified__(self, fiducialsNode, event):
-        if self.isSegmentationExecuted:
-            # Refresh just cilinders
-            self.logic.updateCilindersPosition()
+        if not self.removingInvisibleMarkpus:
+        # while fiducialsNode.GetNumberOfMarkups() > 1:
+        # for i in range(fiducialsNode.GetNumberOfMarkups() - 1):
+            # Remove previously existing markup
+            # fiducialsNode.RemoveMarkup(0)
+            # fiducialsNode.SetNthMarkupVisibility(i, False)
+            if self.isSegmentationExecuted:
+                # Refresh just cilinders
+                self.logic.updateCilindersPosition(self.currentStentType)
 
     def __onFourUpButton__(self):
         SlicerUtil.changeLayout(3)
@@ -405,11 +418,17 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
     def __onGreenViewButton__(self):
         SlicerUtil.changeLayout(8)
 
-    def __onCurrentNodeChanged__(self, node):
+    def __onCurrentVolumeNodeChanged__(self, node):
+        """ Active volume node changes
+        :param node:
+        :return:
+        """
         if node is not None:
-            self.logic.setActiveVolume(node.GetID())
-            self.logic.createFiducialsListNodes__(self.__onFiducialAdded__, self.__onFiducialModified__)
+            # TODO: ask the user (all the structures will be reset)
+            self.logic.setActiveVolume(node.GetID(), self.__onFiducialModified__, self.__onFiducialAdded__)
+            SlicerUtil.setActiveVolumeId(node.GetID())
             SlicerUtil.setFiducialsMode(True, keepFiducialsModeOn=True)
+            self.logic.setActiveFiducialListNode(self.currentStentType, self.segmentTypesRadioButtonGroup.checkedId())
 
     def __onStentTypesRadioButtonClicked__(self, button):
         # Remove all the existing buttons in TypesGroup
@@ -420,13 +439,13 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         # Get the selected button key
         key = self.logic.stentTypes[self.stentTypesRadioButtonGroup.checkedId()][0]
         # Add all the subtypes with the full description
-        for id, item in enumerate(self.logic.fiducialList[key]):
+        for item in self.logic.getFiducialList(key):
             rbitem = qt.QRadioButton(item)
-            self.segmentTypesRadioButtonGroup.addButton(rbitem, id)
+            self.segmentTypesRadioButtonGroup.addButton(rbitem)
             self.fiducialTypesLayout.addWidget(rbitem)
         self.segmentTypesRadioButtonGroup.buttons()[0].setChecked(True)
 
-        self.logic.setActiveFiducialsListNode(key)
+        self.logic.setActiveFiducialListNode(key, 0)
     
     def __onSegmentRadioButtonClicked__(self, button):
         """ One of the radio buttons has been pressed
@@ -434,12 +453,11 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         :return:
         """
         SlicerUtil.setFiducialsMode(True, keepFiducialsModeOn=True)
-
+        self.logic.setActiveFiducialListNode(self.currentStentType, self.segmentTypesRadioButtonGroup.checkedId())
 
     def __onRunSegmentationButton__(self):
         self.thresholdLevelSlider.setValue(100)
-        stentType = self.logic.stentTypes[self.stentTypesRadioButtonGroup.checkedId()][0]
-        self.logic.runSegmentationPipeline(stentType)
+        self.logic.runSegmentationPipeline(self.currentStentType)
         self.isSegmentationExecuted = True
 
     def __onApplyThreshold__(self, val):
@@ -450,26 +468,18 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             self.lastThreshold = val
             self.logic.tracheaLabelmapThreshold(val / 100.0)
 
-
     def __onStentRadiusChange__(self):
-        self.logic.updateCilindersRadius(self.radiusLevelSlider1.value / 10.0,
-                                            self.radiusLevelSlider2.value / 10.0,
-                                            self.radiusLevelSlider3.value / 10.0)
+        self.logic.updateCilindersRadius(self.currentStentType,
+            self.radiusLevelSlider1.value / 10.0,
+            self.radiusLevelSlider2.value / 10.0,
+            self.radiusLevelSlider3.value / 10.0)
 
 #
 # CIP_TracheaStentPlanningLogic
 #
 class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
-    """This class should implement all the actual
-    computation done by your module.    The interface
-    should be such that other python code can import
-    this class and make use of the functionality without
-    requiring an instance of the Widget.
-    Uses ScriptedLoadableModuleLogic base class, available at:
-    https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
-    
-    """
-    
+    STENT_Y = "Y Stent"
+    STENT_T = "T Stent"
     
     def __init__(self):
         self.line=dict()
@@ -481,94 +491,185 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
             self.tube[tag].CappingOff()
             self.tube[tag].SidesShareVerticesOff()
             self.tube[tag].SetInputData(self.line[tag].GetOutput())
-      
-        self.stentTypes = [
-            ("YStent", "Y Stent", (1, 0, 0)),
-            ("TStent", "T Stent", (0, 1, 0))
-        ]
-        self.fiducialList = {
-            'YStent': ["Upper", "Middle", "Bottom_Left", "Bottom_Right"],
-            'TStent': ["Bottom ", "Lower", "Middle", "Outside"]
+
+        # Stent types and associated structures:
+        # [Fiducials list, Fiducials Color, 3D Model Color, 3D Model Opacity]
+        self.stentTypes = OrderedDict()
+        self.stentTypes = {
+            self.STENT_Y: (("Upper", "Middle", "Bottom_Left", "Bottom_Right"), (0, 0, 1), (0, 1, 0), 0.8),
+            self.STENT_T: (("Bottom ", "Lower", "Middle", "Outside"), (0, 1, 0),  (0, 0, 1), 0.8)
         }
+        # self.fiducialList = {
+        #     "YStent": ["Upper", "Middle", "Bottom_Left", "Bottom_Right"],
+        #     "TStent": ["Bottom ", "Lower", "Middle", "Outside"]
+        # }
 
         self.currentVolumeId = None         # Active volume
+
+        # Fiducial nodes
+        self.currentFiducialsListNodes = {self.STENT_Y: None, self.STENT_T: None}    # Dictionary of fiducial nodes
+
         # Results of the segmentation
         self.currentResultsNode = None
         self.currentResultsArray = None
         self.currentLabelmapResults = None
         self.currentLabelmapResultsArray = None
-        self.currentModelNode = None            # 3D model node
         self.currentDistanceMean = 0           # Current base threshold that will be used to increase/decrease the scope of the segmentation
 
-        self.currentCilinders = None
-        self.currentTracheaModel = None
-        self.currentCilindersModel = None
-        self.cilindersVtkAppendPolyDataFilter = None
+        # 3D structures (replicated for every structure)
+        self.currentCilinders = dict()
+        self.currentLines = dict()
+        self.currentTracheaModel = dict()
+        self.currentCilindersModel = dict()
+        self.cilindersVtkAppendPolyDataFilter = dict()
+
+        # Length and radius measurements
+        self.currentMeasurementsRadius = dict()
+        self.currentMeasurementsLength = dict()
 
         self.markupsLogic = slicer.modules.markups.logic()
+        self.modelsLogic = slicer.modules.models.logic()
 
-    def getCurrentStentKeys(self):
-        return [st[0] for st in self.stentTypes]
 
-    def setActiveVolume(self, volumeId):
+
+    def getStentKeys(self):
+        return self.stentTypes.keys()
+
+    def getFiducialList(self, stentType):
+        return self.stentTypes[stentType][0]
+
+    def getFiducialListColor(self, stentType):
+        return self.stentTypes[stentType][1]
+
+    def get3DModelColor(self, stentType):
+        return self.stentTypes[stentType][2]
+
+    def get3DModelOpacity(self, stentType):
+        return self.stentTypes[stentType][3]
+
+
+    def getMRML3DModel(self, stentType, polyData=None):
+        """ Get a MRMML model associated to this stent type. The model will be created if it doesn't exist yet
+        :param stentType: stent type key
+        :return: MRML model added to the scene
+        """
+        name = stentType + " Model"
+        model = slicer.util.getNode(name)
+        if model is None:
+            # The model has to be created
+            if polyData is None:
+                raise Exception("The 3D model for {0} does not exist. A vtkPolyData object is required to create the model".format(stentType))
+            model = self.modelsLogic.AddModel(polyData)
+            model.SetName(name)
+
+            # Create a DisplayNode and associate it to the model, in order that transformations can work properly
+            displayNode = model.GetDisplayNode()
+            displayNode.SetColor(self.get3DModelColor(stentType))
+            displayNode.SetOpacity(self.get3DModelOpacity(stentType))
+            displayNode.SetSliceIntersectionVisibility(True)
+
+        elif polyData is not None:
+            # Connect the model with a different polydata
+            model.SetAndObservePolyData(polyData)
+
+        return model
+
+    def setActiveVolume(self, volumeId, onNodeModifiedCallback, onMarkupAddedCallback):
         self.currentVolumeId = volumeId
+        self.initFiducialsList(onNodeModifiedCallback, onMarkupAddedCallback)
 
     def getCurrentFiducialsListNodeName(self, stentTypeKey):
         return "{0}_{1}_fiducialsNode".format(slicer.util.getNode(self.currentVolumeId).GetName(), stentTypeKey)
 
-    def createFiducialsListNodes__(self, onFiducialAddedCallback, onFiducialModifiedCallback):
-        """ Create all the fiducials list nodes for the current volume.
-        :param volumeId: fiducials list will be connected to this volume
+    def initFiducialsList(self, onNodeModifiedCallback, onMarkupAddedCallback):
+        if self.currentVolumeId is None:
+            raise Exception("There is no volume loaded")
+
+        for stentType in self.stentTypes.keys():
+            basename = "TracheaSegmentation_fiducialList_{0}".format(stentType)
+            nodes = []
+            for fiducialType in self.getFiducialList(stentType):
+                name = "{0}_{1}".format(basename, fiducialType)
+                fiducialsNode = slicer.util.getNode(name)
+                if fiducialsNode is None:
+                    fiducialListNodeID = self.markupsLogic.AddNewFiducialNode(name, slicer.mrmlScene)
+                    fiducialsNode = slicer.util.getNode(fiducialListNodeID)
+                    # Hide any text from all the fiducials
+                    fiducialsNode.SetMarkupLabelFormat('')
+                    # Set color and shape
+                    displayNode = fiducialsNode.GetDisplayNode()
+                    displayNode.SetSelectedColor(self.getFiducialListColor(stentType))
+                    displayNode.SetGlyphScale(2)
+                    fiducialsNode.AddObserver("ModifiedEvent", onNodeModifiedCallback)
+                    fiducialsNode.AddObserver(fiducialsNode.MarkupAddedEvent, onMarkupAddedCallback)
+                # else:
+                #     fiducialsNode.RemoveAllMarkups()
+                nodes.append(fiducialsNode)
+            self.currentFiducialsListNodes[stentType] = nodes
+
+    def setActiveFiducialListNode(self, stentType, fiducialIndex):
+        """ Set the active fiducials list node based on the stent type and the index of the segment.
+        It reset all the previous structures!
+        :param stentType:
+        :param fiducialIndex: int index
         """
-        # Check if the nodes for this volume already exist
-        # fiducialsNodeName = "{0}_{1}_fiducialsNode".format(slicer.util.getNode(self.currentVolumeId).GetName(), self.stentTypes[0][0])
-
-        # fiducialsNode = slicer.util.getNode(fiducialsNodeName)
-        # if fiducialsNode is not None:
-        #     return     # Nodes already created
-
-        # Create new fiducials nodes
-        for stentType in self.stentTypes:
-            fiducialsNodeName = self.getCurrentFiducialsListNodeName(stentType[0])
-            fiducialsNode = slicer.util.getNode(fiducialsNodeName)
-            if fiducialsNode is not None:
-                slicer.mrmlScene.RemoveNode(fiducialsNode)     # Nodes already created
-            fiducialListNodeID = self.markupsLogic.AddNewFiducialNode(fiducialsNodeName, slicer.mrmlScene)
-            fiducialsNode = slicer.util.getNode(fiducialListNodeID)
+        nodes = self.currentFiducialsListNodes[stentType]
+        self.markupsLogic.SetActiveListID(nodes[fiducialIndex])
 
 
-            # Hide any text from all the fiducials
-            fiducialsNode.SetMarkupLabelFormat('')
-            displayNode = fiducialsNode.GetDisplayNode()
-            # displayNode.SetColor([1,0,0])
-            displayNode.SetSelectedColor(stentType[2])
-            displayNode.SetGlyphScale(2)
-            # displayNode.SetGlyphType(8)     # Diamond shape (I'm so cool...)
+    # def __createFiducialsListNodes__(self, onFiducialAddedCallback, onFiducialModifiedCallback):
+    #     """ Create all the fiducials list nodes for the current volume.
+    #     :param volumeId: fiducials list will be connected to this volume
+    #     """
+    #     # Check if the nodes for this volume already exist
+    #     # fiducialsNodeName = "{0}_{1}_fiducialsNode".format(slicer.util.getNode(self.currentVolumeId).GetName(), self.stentTypes[0][0])
+    #
+    #     # fiducialsNode = slicer.util.getNode(fiducialsNodeName)
+    #     # if fiducialsNode is not None:
+    #     #     return     # Nodes already created
+    #
+    #     # Create new fiducials nodes
+    #     for stentType in self.stentTypes.keys():
+    #         fiducialsNodeName = self.getCurrentFiducialsListNodeName(stentType)
+    #         fiducialsNode = slicer.util.getNode(fiducialsNodeName)
+    #         if fiducialsNode is not None:
+    #             slicer.mrmlScene.RemoveNode(fiducialsNode)     # Nodes already created
+    #         fiducialListNodeID = self.markupsLogic.AddNewFiducialNode(fiducialsNodeName, slicer.mrmlScene)
+    #         fiducialsNode = slicer.util.getNode(fiducialListNodeID)
+    #
+    #
+    #         # Hide any text from all the fiducials
+    #         fiducialsNode.SetMarkupLabelFormat('')
+    #         displayNode = fiducialsNode.GetDisplayNode()
+    #         # displayNode.SetColor([1,0,0])
+    #         displayNode.SetSelectedColor(self.getFiducialListColor(stentType))
+    #         displayNode.SetGlyphScale(2)
+    #         # displayNode.SetGlyphType(8)     # Diamond shape (I'm so cool...)
+    #
+    #         # Add observer when a new fiducial is added
+    #         fiducialsNode.AddObserver(fiducialsNode.MarkupAddedEvent, onFiducialAddedCallback)
+    #         fiducialsNode.AddObserver("ModifiedEvent", onFiducialModifiedCallback)
+    #
+    #     # Make the first fiducials node the active one
+    #     self.setActiveFiducialsListNode(self.getStentKeys()[0])
+    #
+    # def setActiveFiducialsListNode(self, stentTypeKey):
+    #     fiducialsNodeName = self.getCurrentFiducialsListNodeName(stentTypeKey)
+    #     fiducialsNode = slicer.util.getNode(fiducialsNodeName)
+    #     self.markupsLogic.SetActiveListID(fiducialsNode)
 
-            # Add observer when a new fiducial is added
-            fiducialsNode.AddObserver(fiducialsNode.MarkupAddedEvent, onFiducialAddedCallback)
-            fiducialsNode.AddObserver("ModifiedEvent", onFiducialModifiedCallback)
-
-        # Make the first fiducials node the active one
-        self.setActiveFiducialsListNode(self.getCurrentStentKeys()[0])
-
-    def setActiveFiducialsListNode(self, stentTypeKey):
-        fiducialsNodeName = self.getCurrentFiducialsListNodeName(stentTypeKey)
-        fiducialsNode = slicer.util.getNode(fiducialsNodeName)
-        self.markupsLogic.SetActiveListID(fiducialsNode)
-
-    def getVisibleFiducialsIndexes(self, stentTypeKey):
-        """ Return all the visible fiducials for a stent type
-        :param stentType: stent type (key)
-        :return: Indexes of the fiducials that are visible
-        """
-        fiducialsNodeName = self.getCurrentFiducialsListNodeName(stentTypeKey)
-        fiducialsNode = slicer.util.getNode(fiducialsNodeName)
-        visibleFiducialsIndexes = []
-        for i in range(fiducialsNode.GetNumberOfMarkups()):
-            if fiducialsNode.GetNthMarkupVisibility(i):
-                visibleFiducialsIndexes.append(i)
-        return visibleFiducialsIndexes
+    # def getVisibleFiducialsIndexes(self, stentTypeKey):
+    #     """ Return all the visible fiducials for a stent type
+    #     :param stentType: stent type (key)
+    #     :return: Indexes of the fiducials that are visible
+    #     """
+    #     fiducialsNodeName = self.getCurrentFiducialsListNodeName(stentTypeKey)
+    #     fiducialsNode = slicer.util.getNode(fiducialsNodeName)
+    #     visibleFiducialsIndexes = []
+    #     for i in range(fiducialsNode.GetNumberOfMarkups()):
+    #         if fiducialsNode.GetNthMarkupVisibility(i):
+    #             visibleFiducialsIndexes.append(i)
+    #     return visibleFiducialsIndexes
 
 
     def runSegmentationPipeline(self, stentTypeKey):
@@ -577,45 +678,52 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         :return:
         """
         # Check that we have all the required fiducials for the selected stent type
-        visibleFiducialsIndexes = self.getVisibleFiducialsIndexes("YStent")
+        # visibleFiducialsIndexes = self.getVisibleFiducialsIndexes(stentTypeKey)
+        #
+        # if len(visibleFiducialsIndexes) < len(self.getFiducialList(stentTypeKey)):
+        #     qt.QMessageBox.warning(slicer.util.mainWindow(), "Missing fiducials",
+        #             "Please make sure that you have added all the required points for the selected stent type")
+        #     return
+        # TODO: allow segmentation with T stent?
+        if self.__segmentTracheaFromYStentPoints__():
+            self.drawTrachea()
+            self.drawYStent()
 
-        if len(visibleFiducialsIndexes) < len(self.fiducialList["YStent"]):
-            qt.QMessageBox.warning(slicer.util.mainWindow(), "Missing fiducials",
-                    "Please make sure that you have added all the required points for the selected stent type")
-            return
-        self.__segmentTrachea__(slicer.util.getNode(self.getCurrentFiducialsListNodeName("YStent")),
-                                                    visibleFiducialsIndexes)
-        self.drawTrachea()
-        self.drawYStent()
+            SlicerUtil.setFiducialsMode(False)
 
-        SlicerUtil.setFiducialsMode(False)
+            # Align the model with the segmented labelmap applying a transformation
+            transformMatrix = vtk.vtkMatrix4x4()
+            self.currentLabelmapResults.GetIJKToRASMatrix(transformMatrix)
+            self.currentTracheaModel.ApplyTransformMatrix(transformMatrix)
 
-        # Align the model with the segmented labelmap applying a transformation
-        transformMatrix = vtk.vtkMatrix4x4()
-        self.currentLabelmapResults.GetIJKToRASMatrix(transformMatrix)
-        self.currentTracheaModel.ApplyTransformMatrix(transformMatrix)
+            # Center the 3D view
+            layoutManager = slicer.app.layoutManager()
+            threeDWidget = layoutManager.threeDWidget(0)
+            threeDView = threeDWidget.threeDView()
+            threeDView.resetFocalPoint()
 
-        # Center the 3D view
-        layoutManager = slicer.app.layoutManager()
-        threeDWidget = layoutManager.threeDWidget(0)
-        threeDView = threeDWidget.threeDView()
-        threeDView.resetFocalPoint()
-
-    def __segmentTrachea__(self, fiducialsNode, fiducialsIndexes):
+    def __segmentTracheaFromYStentPoints__(self):
         """
         :return:
         """
-        import time
         start = time.time()
+        # Get the three fiducials for the Y Stent points that are needed to segment the trachea (top, bottom left and bottom right)
+        nodes = self.currentFiducialsListNodes[self.STENT_Y]
+        coords = []
+        for i in [0, 1, 3]:
+            if nodes[i].GetNumberOfFiducials() == 0:
+                qt.QMessageBox.warning(slicer.util.mainWindow(), "Missing fiducials",
+                    "Please make sure that you have added all the required points for the selected stent type")
+                return False
+            f = [0,0,0]
+            nodes[i].GetNthFiducialPosition(0, f)
+            coords.append(f)
+        f0 = coords[0]
+        f1 = coords[1]
+        f2 = coords[2]
+
         activeNode = slicer.util.getNode(self.currentVolumeId)
         spacing = activeNode.GetSpacing()
-        f0 = [0, 0, 0]
-        f1 = [0, 0, 0]
-        f2 = [0, 0, 0]
-        # Get top and two bottom fiducials
-        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[0], f0)
-        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[2], f1)
-        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[3], f2)
 
         pos0 = Util.ras_to_ijk(activeNode, f0, convert_to_int=True)
         pos1 = Util.ras_to_ijk(activeNode, f1, convert_to_int=True)
@@ -677,7 +785,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         fastMarchingFilter.SetTrialPoints(seeds)
         output = fastMarchingFilter.Execute(sitkImage)
         outputArray = sitk.GetArrayFromImage(output)
-        a01[:] = 0
+        # a01[:] = 0
         temp = outputArray <= d
         a01[temp] = d - outputArray[temp]
         # lm01.GetImageData().Modified()
@@ -691,7 +799,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         fastMarchingFilter.SetTrialPoints(seeds)
         output = fastMarchingFilter.Execute(sitkImage)
         outputArray = sitk.GetArrayFromImage(output)
-        a02[:] = 0
+        # a02[:] = 0
         temp = outputArray <= d
         a02[temp] = d - outputArray[temp]
         # lm02.GetImageData().Modified()
@@ -705,7 +813,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         fastMarchingFilter.SetTrialPoints(seeds)
         output = fastMarchingFilter.Execute(sitkImage)
         outputArray = sitk.GetArrayFromImage(output)
-        a12[:] = 0
+        # a12[:] = 0
         temp = outputArray <= d
         a12[temp] = d - outputArray[temp]
         # lm12.GetImageData().Modified()
@@ -736,6 +844,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         appLogic.PropagateLabelVolumeSelection()
 
         print("DEBUG: total time: ", time.time() - start)
+        return True
 
     def tracheaLabelmapThreshold(self, thresholdFactor):
         """ Update the threshold used to generate the segmentation (when the thresholdFactor is bigger, "more trachea"
@@ -745,6 +854,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         threshold = self.currentDistanceMean / thresholdFactor
         self.thresholdFilter.ThresholdByUpper(threshold)
         self.thresholdFilter.Update()
+        self.currentTracheaModel.GetDisplayNode().Modified()
         SlicerUtil.refreshActiveWindows()
 
     def drawTrachea(self):
@@ -768,22 +878,18 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         :param
         :return:
         """
-        modelsLogic = slicer.modules.models.logic()
-        
-        fiducialsNode = slicer.util.getNode(self.getCurrentFiducialsListNodeName("YStent"))
-        fiducialsIndexes = self.getVisibleFiducialsIndexes("YStent")
-
-        self.cilindersVtkAppendPolyDataFilter = vtk.vtkAppendPolyData()
+        self.cilindersVtkAppendPolyDataFilter[self.STENT_Y] = vtk.vtkAppendPolyData()
 
         # Get the position of the points (RAS)
         top = [0, 0, 0]
         middle = [0, 0, 0]
         left = [0, 0, 0]
         right = [0, 0, 0]
-        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[0], top)
-        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[1], middle)
-        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[2], left)
-        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[3], right)
+        fiducialNodes = self.currentFiducialsListNodes[self.STENT_Y]
+        fiducialNodes[0].GetNthFiducialPosition(0, top)
+        fiducialNodes[1].GetNthFiducialPosition(0, middle)
+        fiducialNodes[2].GetNthFiducialPosition(0, left)
+        fiducialNodes[3].GetNthFiducialPosition(0, right)
 
         # Cilinder 0 (vertical)
         line_top_middle = vtk.vtkLineSource()
@@ -795,7 +901,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         cilinder_top_middle.CappingOff()
         cilinder_top_middle.SidesShareVerticesOff()
         cilinder_top_middle.SetInputConnection(line_top_middle.GetOutputPort())
-        self.cilindersVtkAppendPolyDataFilter.AddInputConnection(cilinder_top_middle.GetOutputPort())
+        self.cilindersVtkAppendPolyDataFilter[self.STENT_Y].AddInputConnection(cilinder_top_middle.GetOutputPort())
 
         # Cilinder 1 (left)
         line_middle_left = vtk.vtkLineSource()
@@ -807,7 +913,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         cilinder_middle_left.CappingOff()
         cilinder_middle_left.SidesShareVerticesOff()
         cilinder_middle_left.SetInputConnection(line_middle_left.GetOutputPort())
-        self.cilindersVtkAppendPolyDataFilter.AddInputConnection(cilinder_middle_left.GetOutputPort())
+        self.cilindersVtkAppendPolyDataFilter[self.STENT_Y].AddInputConnection(cilinder_middle_left.GetOutputPort())
 
         # Cilinder 2 (right)
         line_middle_right = vtk.vtkLineSource()
@@ -819,99 +925,74 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         cilinder_middle_right.CappingOff()
         cilinder_middle_right.SidesShareVerticesOff()
         cilinder_middle_right.SetInputConnection(line_middle_right.GetOutputPort())
-        self.cilindersVtkAppendPolyDataFilter.AddInputConnection(cilinder_middle_right.GetOutputPort())
+        self.cilindersVtkAppendPolyDataFilter[self.STENT_Y].AddInputConnection(cilinder_middle_right.GetOutputPort())
 
-        self.currentCilindersModel = modelsLogic.AddModel(self.cilindersVtkAppendPolyDataFilter.GetOutputPort())
-        self.currentCilindersModel.SetName("Y stent Model")
-        # Create a DisplayNode and associate it to the model, in order that transformations can work properly
-        displayNode = self.currentCilindersModel.GetDisplayNode()
-        displayNode.SetColor((0,1,0))
-        displayNode.SetOpacity(0.8)
-        # Display borders in 2D views
-        displayNode.SetSliceIntersectionVisibility(True)
-        self.cilindersVtkAppendPolyDataFilter.Update()
+        # model = slicer.util.getNode("Y stent Model")
+        # self.currentCilindersModel[self.STENT_Y] = self.modelsLogic.AddModel(self.cilindersVtkAppendPolyDataFilter.GetOutputPort())
+        self.currentCilindersModel[self.STENT_Y] = self.getMRML3DModel(self.STENT_Y, self.cilindersVtkAppendPolyDataFilter[self.STENT_Y].GetOutputPort())
+        self.cilindersVtkAppendPolyDataFilter[self.STENT_Y].Update()
 
-        self.currentLines = [line_top_middle, line_middle_left, line_middle_right]
-        self.currentCilinders = [cilinder_top_middle, cilinder_middle_left, cilinder_middle_right]
+        self.currentLines[self.STENT_Y] = [line_top_middle, line_middle_left, line_middle_right]
+        self.currentCilinders[self.STENT_Y] = [cilinder_top_middle, cilinder_middle_left, cilinder_middle_right]
         
-    def updateCilindersRadius(self, newRadius1, newRadius2, newRadius3):
-        self.currentCilinders[0].SetRadius(newRadius1)
-        # self.currentCilinders[0].Update()
-        self.currentCilinders[1].SetRadius(newRadius2)
-        # self.currentCilinders[1].Update()
-        self.currentCilinders[2].SetRadius(newRadius3)
-        # self.currentCilinders[2].Update()
-        self.cilindersVtkAppendPolyDataFilter.Update()
+    def updateCilindersRadius(self, stentKey, newRadius1, newRadius2, newRadius3):
+        """ Update the radius of the cilinders of stent "stentType"
+        :param stentKey: type of stent (Y or T)
+        :param newRadius1: radius of the first cilinder
+        :param newRadius2: radius of the second cilinder
+        :param newRadius3: radius of the third cilinder
+        """
+        self.currentCilinders[stentKey][0].SetRadius(newRadius1)
+        self.currentCilinders[stentKey][1].SetRadius(newRadius2)
+        self.currentCilinders[stentKey][2].SetRadius(newRadius3)
+        self.cilindersVtkAppendPolyDataFilter[stentKey].Update()
 
-        self.currentCilindersModel.GetDisplayNode().Modified()
+        #self.currentCilindersModel[stentKey].GetDisplayNode().Modified()
+        self.getMRML3DModel(stentKey).GetDisplayNode().Modified()
 
-    def updateCilindersPosition(self):
-        fiducialsNode = slicer.util.getNode(self.getCurrentFiducialsListNodeName("YStent"))
-        fiducialsIndexes = self.getVisibleFiducialsIndexes("YStent")
+    def updateCilindersPosition(self, stentType):
+        """ Refresh the 3D cylinders model
+        :param stentType:
+        """
+        # Get the position of the fiducials (RAS)
+        p0 = [0, 0, 0]
+        p1 = [0, 0, 0]
+        p2 = [0, 0, 0]
+        p3 = [0, 0, 0]
 
-        # Get the position of the points (RAS)
-        top = [0, 0, 0]
-        middle = [0, 0, 0]
-        left = [0, 0, 0]
-        right = [0, 0, 0]
-        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[0], top)
-        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[1], middle)
-        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[2], left)
-        fiducialsNode.GetNthFiducialPosition(fiducialsIndexes[3], right)
+        fiducialNodes = self.currentFiducialsListNodes[stentType]
+        fiducialNodes[0].GetNthFiducialPosition(0, p0)
+        fiducialNodes[1].GetNthFiducialPosition(0, p1)
+        fiducialNodes[2].GetNthFiducialPosition(0, p2)
+        fiducialNodes[3].GetNthFiducialPosition(0, p3)
 
-        # Cilinder 0 (vertical)
-        line_top_middle = self.currentLines[0]
-        line_top_middle.SetPoint1(top)
-        line_top_middle.SetPoint2(middle)
-        # line_top_middle.Update()
+        # Cilinder 0 (vertical, top)
+        line_top_middle = self.currentLines[stentType][0]
+        line_top_middle.SetPoint1(p0)
+        line_top_middle.SetPoint2(p1)
 
-        # Cilinder 1 (left)
-        line_middle_left = self.currentLines[1]
-        line_middle_left.SetPoint1(middle)
-        line_middle_left.SetPoint2(left)
+        # Cilinder 1 (left, exterior)
+        line_middle_left = self.currentLines[stentType][1]
+        line_middle_left.SetPoint1(p1)
+        line_middle_left.SetPoint2(p2)
         # line_middle_left.Update()
 
-        # Cilinder 2 (right)
-        line_middle_right = self.currentLines[2]
-        line_middle_right.SetPoint1(middle)
-        line_middle_right.SetPoint2(right)
+        # Cilinder 2 (right, bottom)
+        line_middle_right = self.currentLines[stentType][2]
+        line_middle_right.SetPoint1(p1)
+        line_middle_right.SetPoint2(p3)
         # line_middle_right.Update()
 
-        self.cilindersVtkAppendPolyDataFilter.Update()
+        self.cilindersVtkAppendPolyDataFilter[stentType].Update()
 
 
-    # def update3DModel(self):
-    #     """ Generate or update a 3D model for the current labelmap."""
-    #     # Check if the node already exists
-    #     if self.currentModelNode is None:
-    #         # Create the result model node and connect it to the pipeline
-    #         modelsLogic = slicer.modules.models.logic()
-    #
-    #         self.marchingCubesFilter = vtk.vtkMarchingCubes()
-    #         self.marchingCubesFilter.SetInputData(self.currentLabelmapResults.GetImageData())
-    #         self.marchingCubesFilter.SetValue(0, 0)
-    #
-    #         self.currentModelNode = modelsLogic.AddModel(self.marchingCubesFilter.GetOutputPort())
-    #         # Create a DisplayNode and associate it to the model, in order that transformations can work properly
-    #         displayNode = slicer.vtkMRMLModelDisplayNode()
-    #         slicer.mrmlScene.AddNode(displayNode)
-    #         self.currentModelNode.AddAndObserveDisplayNodeID(displayNode.GetID())
-    #
-    #         # Align the model with the segmented labelmap applying a transformation
-    #         transformMatrix = vtk.vtkMatrix4x4()
-    #         self.currentLabelmapResults.GetIJKToRASMatrix(transformMatrix)
-    #         self.currentModelNode.ApplyTransformMatrix(transformMatrix)
-    #
-    #         # Center the 3D view
-    #         layoutManager = slicer.app.layoutManager()
-    #         threeDWidget = layoutManager.threeDWidget(0)
-    #         threeDView = threeDWidget.threeDView()
-    #         threeDView.resetFocalPoint()
-    #     self.marchingCubesFilter.Update()
+    def refreshMeasurements(self):
+        """ Save the current measures of radius and lenght of the stent """
+        pass
 
-    def printMessage(self, message):
-        print("This is your message: ", message)
-        return "I have printed this message: " + message
+    # def printMessage(self, message):
+    #     print("This is your message: ", message)
+    #     return "I have printed this message: " + message
 
 
 class CIP_TracheaStentPlanningTest(ScriptedLoadableModuleTest):
@@ -936,11 +1017,11 @@ class CIP_TracheaStentPlanningTest(ScriptedLoadableModuleTest):
         self.delayDisplay("Starting the test")
         logic = CIP_TracheaStentPlanningLogic()
 
-        myMessage = "Print this test message in console"
-        logging.info("Starting the test with this message: " + myMessage)
-        expectedMessage = "I have printed this message: " + myMessage
-        logging.info("The expected message would be: " + expectedMessage)
-        responseMessage = logic.printMessage(myMessage)
-        logging.info("The response message was: " + responseMessage)
-        self.assertTrue(responseMessage == expectedMessage)
+        # myMessage = "Print this test message in console"
+        # logging.info("Starting the test with this message: " + myMessage)
+        # expectedMessage = "I have printed this message: " + myMessage
+        # logging.info("The expected message would be: " + expectedMessage)
+        # responseMessage = logic.printMessage(myMessage)
+        # logging.info("The response message was: " + responseMessage)
+        # self.assertTrue(responseMessage == expectedMessage)
         self.delayDisplay('Test passed!')
