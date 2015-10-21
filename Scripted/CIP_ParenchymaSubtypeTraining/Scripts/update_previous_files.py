@@ -8,7 +8,7 @@ from CIP.logic import geometry_topology_data as gtd
 from CIP.logic import Util
 
 #files_dir = sys.argv[1]
-files_dir = "/Data/jonieva/tempdata/George_Subtype_Training/"
+files_dir = "/Data/jonieva/tempdata/George_Subtype_Training/subset"
 results_dir = path.join(files_dir, "Modified")
 if not path.isdir(results_dir):
     # Create the results folder if it doesn't exist
@@ -54,3 +54,65 @@ for file_name in files:
     p = path.join(results_dir, file_name)
     with open(p, "w") as f:
         f.write(xml)
+
+
+import os
+from CIP.logic import Util
+from os import path
+import pprint
+import CIP.logic.geometry_topology_data as gtd
+#
+#
+#
+# def detectOutOfExtentFiducials(xmls_dir, vols_dir):
+xmls_dir = "/Data/jonieva/tempdata/parenchyma training/George/results/temp"
+vols_dir = "/Data/jonieva/tempdata"
+xmls = os.listdir(xmls_dir)
+wrong_points = []
+wrong_cases = set()
+for file_name in xmls:
+    if Util.get_file_extension(file_name) != ".xml":
+        continue
+    # Open volume
+    volFile = "{0}/{1}.nhdr".format(vols_dir, file_name.replace("_parenchymaTraining.xml", ""))
+    v = slicer.util.loadVolume(volFile, returnNode=True)[1]
+    # print(volFile)
+    dims = v.GetImageData().GetDimensions()
+    p = path.join(xmls_dir, file_name)
+    with open(p, "r+b") as f:
+        xml = f.read()
+        geom = gtd.GeometryTopologyData.from_xml(xml)
+        for point in geom.points:
+            ras = Util.lps_to_ras(point.coordinate)
+            ijk = Util.ras_to_ijk(v, ras)
+            for i in range(3):
+                if ijk[i] < 0 or ijk[i] >= dims[i]:
+                    # Flip just the second coord
+                    # point.coordinate[1] = -point.coordinate[1]
+                    wrong_points.append((file_name, point.coordinate, ijk))
+                    wrong_cases.add(file_name)
+        # if file_name in wrong_cases:
+        #     print("Added " + file_name)
+                # ras = point.coordinate
+                # point.coordinate = Util.ras_to_lps(ras)
+
+## Change sign
+# for case in wrong_cases:
+#     p = path.join(xmls_dir, case)
+#     print ("Processing {0}...".format(p))
+#     with open(p, "r+b") as f:
+#         xml = f.read()
+#         geom = gtd.GeometryTopologyData.from_xml(xml)
+#         geom.num_dimensions = 3
+#         points = []
+#         for point in geom.points:
+#             point.coordinate[1] = -point.coordinate[1]
+#             points.append(point)
+#         # Replace the points
+#         geom.points = points
+#         # Save file
+#         resultspath = path.join(xmls_dir, "Modified", case)
+#         xml = geom.to_xml()
+#         with open(resultspath, "w") as f:
+#             f.write(xml)
+# return wrong_cases, wrong_points
