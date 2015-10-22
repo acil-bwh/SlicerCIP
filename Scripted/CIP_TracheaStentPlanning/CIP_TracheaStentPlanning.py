@@ -10,18 +10,19 @@ import SimpleITK as sitk
 import math
 
 # Add the CIP common library to the path if it has not been loaded yet
+# Add the CIP common library to the path if it has not been loaded yet
 try:
-        from CIP.logic.SlicerUtil import SlicerUtil
+    from CIP.logic.SlicerUtil import SlicerUtil
 except Exception as ex:
-        import inspect
-        path = os.path.dirname(inspect.getfile(inspect.currentframe()))
-        if os.path.exists(os.path.normpath(path + '/../CIP_Common')):
-                path = os.path.normpath(path + '/../CIP_Common')        # We assume that CIP_Common is a sibling folder of the one that contains this module
-        elif os.path.exists(os.path.normpath(path + '/CIP')):
-                path = os.path.normpath(path + '/CIP')        # We assume that CIP is a subfolder (Slicer behaviour)
-        sys.path.append(path)
-        from CIP.logic.SlicerUtil import SlicerUtil
-        print("CIP was added to the python path manually in CIP_TracheaStentPlanning")
+    currentpath = os.path.dirname(os.path.realpath(__file__))
+    # We assume that CIP_Common is in the development structure
+    path = os.path.normpath(currentpath + '/../CIP_Common')
+    if not os.path.exists(path):
+        # We assume that CIP is a subfolder (Slicer behaviour)
+        path = os.path.normpath(currentpath + '/CIP')
+    sys.path.append(path)
+    print("The following path was manually added to the PythonPath in CIP_TracheaStentPlanning: " + path)
+    from CIP.logic.SlicerUtil import SlicerUtil
 
 from CIP.logic import Util
 
@@ -53,6 +54,8 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
+    def __init__(self, parent):
+        ScriptedLoadableModuleWidget.__init__(self, parent)
 
     @property
     def currentStentType(self):
@@ -68,21 +71,11 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         
         # Create objects that can be used anywhere in the module. Example: in most cases there should be just one
         # object of the logic class
-        self.logic = CIP_TracheaStentPlanningLogic()
-        self.lastThreshold = -1
-        self.isSegmentationExecuted = False
-
         self.removeInvisibleFiducialsTimer = qt.QTimer()
         self.removeInvisibleFiducialsTimer.setInterval(200)
-        self.removingInvisibleMarkpus = False
         self.removeInvisibleFiducialsTimer.timeout.connect(self.__removeInvisibleMarkups__)
 
-        # Init the positions of the different fiducials for each stent type
-        # At the beggining, all the positions will be init to -1
-        # Later, when the user adds a fiducial, the position of the matching fiducial will be updated
-        self.currentStentTypePositions = {}
-        for stentType in self.logic.getStentKeys():
-            self.currentStentTypePositions[stentType] = [-1]*len(self.logic.getFiducialList(stentType))
+        self.__initState__()
 
         #### Layout selection
         self.layoutCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -92,17 +85,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.layout.addWidget(self.layoutCollapsibleButton)
         self.layoutFormLayout = qt.QGridLayout(self.layoutCollapsibleButton)
         #self.fiducialsFormLayout.setFormAlignment(4)
-        
-        #self.layoutGroupBox = qt.QFrame()
-        #self.layoutGroupBox.setLayout(qt.QVBoxLayout())
-        #self.layoutGroupBox.setFixedHeight(86)
-        #self.layoutFormLayout.addRow(self.layoutGroupBox)
 
-        #self.buttonGroupBox = qt.QFrame()
-        #self.buttonGroupBox.setLayout(qt.QHBoxLayout())
-        #self.layoutGroupBox.layout().addWidget(self.buttonGroupBox)
-        #self.layoutFormLayout.addRow(self.buttonGroupBox)
-        
         #
         # Four-Up Button
         #
@@ -155,17 +138,13 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         #self.labelsGroupBox.setLayout(hBox)
         #self.labelsGroupBox.setFixedSize(450,26)
         #self.layoutGroupBox.layout().addWidget(self.labelsGroupBox,0,4)
-        
         fourUpLabel = qt.QLabel("Four-up")
         #fourUpLabel.setFixedHeight(10)
         self.layoutFormLayout.addWidget(fourUpLabel, 1, 0)
-        
         redLabel = qt.QLabel("  Axial")
         self.layoutFormLayout.addWidget(redLabel, 1, 1)
-        
         yellowLabel = qt.QLabel("Saggital")
         self.layoutFormLayout.addWidget(yellowLabel, 1, 2)
-        
         greenLabel = qt.QLabel("Coronal")
         self.layoutFormLayout.addWidget(greenLabel, 1, 3)
 
@@ -226,36 +205,24 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             self.fiducialTypesLayout.addWidget(rbitem)
         self.segmentTypesRadioButtonGroup.buttons()[0].setChecked(True)
 
-        # self.addFiducialButton = ctk.ctkPushButton()
-        # self.addFiducialButton.text = "Add new seed"
-        # self.addFiducialButton.setFixedWidth(100)
-        # self.addFiducialButton.checkable = True
-        # self.addFiducialButton.enabled = True
-        # self.mainAreaLayout.addRow("Stent: ", self.addFiducialButton)
-
-        # Container for the fiducials
-        # self.fiducialsContainerFrame = qt.QFrame()
-        # self.fiducialsContainerFrame.setLayout(qt.QVBoxLayout())
-        # self.mainAreaLayout.addWidget(self.fiducialsContainerFrame)
-        #
-        # # persistent option
-        # self.persistentCheckBox = qt.QCheckBox()
-        # self.persistentCheckBox.checkable = True
-        # self.persistentCheckBox.enabled = True
-        # self.mainAreaLayout.addRow("Stent model active on exit ",self.persistentCheckBox)
-        
         #
         # Apply Button
         #
-        self.applyButton = qt.QPushButton("Trachea segmentation")
-        self.applyButton.toolTip = "Run the algorithm."
-        self.applyButton.setFixedSize(200, 45)
-        self.mainAreaLayout.addWidget(self.applyButton, 3, 0, 1, 2)
+        self.segmentTracheaButton = ctk.ctkPushButton()
+        self.segmentTracheaButton.text = "Segment trachea"
+        self.segmentTracheaButton.toolTip = "Run the trachea segmentation algorithm."
+        self.segmentTracheaButton.setIcon(qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, "previous.png")))
+        self.segmentTracheaButton.setIconSize(qt.QSize(24,24))
+        self.segmentTracheaButton.iconAlignment = 0x0001    # Align the icon to the right. See http://qt-project.org/doc/qt-4.8/qt.html#AlignmentFlag-enum for a complete list
+        self.segmentTracheaButton.buttonTextAlignment = (0x0081) # Aling the text to the left and vertical center
+        self.segmentTracheaButton.setFixedSize(140, 40)
+        self.mainAreaLayout.addWidget(self.segmentTracheaButton, 3, 0, 1, 3, 0x0004)
+        self.mainAreaLayout.setRowMinimumHeight(3, 70)
         #self.layout.setAlignment(2)
 
         # Threshold
         label = qt.QLabel("Fine tuning")
-        self.mainAreaLayout.addWidget(label, 4, 0)
+        self.mainAreaLayout.addWidget(label, 5, 0)
         self.thresholdLevelSlider = qt.QSlider()
         self.thresholdLevelSlider.orientation = 1  # Horizontal
         # self.thresholdLevelSlider.setTickInterval(1)
@@ -266,7 +233,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.thresholdLevelSlider.setSingleStep(1)
         self.thresholdLevelSlider.enabled = True
         self.thresholdLevelSlider.setTracking(False)
-        self.mainAreaLayout.addWidget(self.thresholdLevelSlider, 4, 1, 1, 2)
+        self.mainAreaLayout.addWidget(self.thresholdLevelSlider, 5, 1, 1, 2)
 
         # Generate 3D model button
         # self.generate3DModelButton = qt.QPushButton("Generate 3D model")
@@ -311,33 +278,26 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.radiusLevelSlider3.enabled = True
         self.mainAreaLayout.addWidget(self.radiusLevelSlider3, 8, 1, 1, 2)
 
-        # Measurements
-        # measurementsAreaCollapsibleButton = ctk.ctkCollapsibleButton()
-        # measurementsAreaCollapsibleButton.text = "Measurements"
-        # self.layout.addWidget(measurementsAreaCollapsibleButton)
-        # # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
-        # measurementsAreaLayout = qt.QGridLayout(measurementsAreaCollapsibleButton)
-        # self.cilinder1Label = qt.QLabel("Top")
+        ## Measurements
+        self.measurementsFrame = qt.QFrame()
+        frameLayout = qt.QVBoxLayout(self.measurementsFrame)
+        self.measurementsTableViews = dict()
+        for key in self.logic.getStentKeys():
+            label = qt.QLabel("{0} measurements".format(key))
+            label.setStyleSheet("margin-top:15px")
+            frameLayout.addWidget(label)
+            self.measurementsTableViews[key] = qt.QTableView()
+            self.measurementsTableViews[key].sortingEnabled = True
+            self.measurementsTableViews[key].setFixedSize(285,120)
+            frameLayout.addWidget(label)
+            frameLayout.addWidget(self.measurementsTableViews[key])
 
-        self.measurementsTableView = qt.QTableView()
-        self.measurementsTableView.sortingEnabled = True
-        # self.tableView.minimumHeight = 550
-        # Unsuccesful attempts to autoscale the table
-        # self.tableView.maximumHeight = 800
-        # policy = self.tableView.sizePolicy
-        # policy.setVerticalPolicy(qt.QSizePolicy.Expanding)
-        # policy.setHorizontalPolicy(qt.QSizePolicy.Expanding)
-        # policy.setVerticalStretch(0)
-        # self.tableView.setSizePolicy(policy)
-        # Hide the table until we have some volume loaded
-        self.mainAreaLayout.addWidget(self.measurementsTableView, 9, 0, 1, 3)
-        self.__initMeasurementsTable__()
-
+        self.mainAreaLayout.addWidget(self.measurementsFrame, 9, 0, 1, 3)
+        self.__initMeasurementsTables__()
 
         self.layout.addStretch(1)
 
-        # connections
-        # Layout connections
+        ##### Connections
         self.fourUpButton.connect('clicked()', self.__onFourUpButton__)
         self.redViewButton.connect('clicked()', self.__onRedViewButton__)
         self.yellowViewButton.connect('clicked()', self.__onYellowViewButton__)
@@ -347,7 +307,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.stentTypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onStentTypesRadioButtonClicked__)
         self.segmentTypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSegmentRadioButtonClicked__)
 
-        self.applyButton.connect('clicked(bool)', self.__onRunSegmentationButton__)
+        self.segmentTracheaButton.connect('clicked(bool)', self.__onRunSegmentationButton__)
         self.thresholdLevelSlider.connect('valueChanged(int)', self.__onApplyThreshold__)
         # self.thresholdLevelSlider.connect('sliderStepChanged()', self.__onApplyThreshold__)
         # self.generate3DModelButton.connect('clicked(bool)', self.__onGenerate3DModelButton__)
@@ -355,10 +315,14 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.radiusLevelSlider2.connect('valueChanged(int)', self.__onStentRadiusChange__)
         self.radiusLevelSlider3.connect('valueChanged(int)', self.__onStentRadiusChange__)
 
+        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__)
+
         if self.inputVolumeSelector.currentNodeID != "":
             self.logic.setActiveVolume(self.inputVolumeSelector.currentNodeID, self.__onFiducialModified__, self.__onFiducialAdded__)
             self.logic.setActiveFiducialListNode(self.currentStentType, self.segmentTypesRadioButtonGroup.checkedId())
             SlicerUtil.setFiducialsMode(True, keepFiducialsModeOn=True)
+
+        self.__refreshUI__()
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
@@ -371,7 +335,28 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
 
     def cleanup(self):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
-        pass
+        self.removeInvisibleFiducialsTimer.stop()
+
+    def __initState__(self):
+        """ Initializes the state of the module
+        """
+        self.logic = CIP_TracheaStentPlanningLogic()
+        self.lastThreshold = -1
+        self.isSegmentationExecuted = False
+        self.removingInvisibleMarkpus = False
+        self.removeInvisibleFiducialsTimer.stop()
+
+    def __refreshUI__(self):
+        """ Refresh the state of some controls in the UI
+        """
+        self.segmentTracheaButton.enabled = self.inputVolumeSelector.currentNodeID != ""
+
+        self.thresholdLevelSlider.enabled = self.radiusLevelSlider1.enabled = \
+            self.radiusLevelSlider2.enabled = self.radiusLevelSlider3.enabled = \
+            self.measurementsFrame.visible = \
+            self.isSegmentationExecuted
+
+
 
     def __moveForwardStentType__(self):
         """ Move the fiducial type one step forward
@@ -400,45 +385,44 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             # Therefore, we need to redraw the stent cilinders
             self.logic.updateCilindersPosition(self.currentStentType)
 
-    def __initMeasurementsTable__(self):
-        self.measurementsTableModel = qt.QStandardItemModel()
-        self.measurementsTableView.setModel(self.measurementsTableModel)
+    def __initMeasurementsTables__(self):
+        """ Init the required structures for the tables of stent measurements (ratio and length)
+        """
+        self.measurementsTableModels = dict()
+        for key in self.logic.getStentKeys():
+            self.measurementsTableModels[key] = qt.QStandardItemModel()
+            self.measurementsTableViews[key].setModel(self.measurementsTableModels[key])
 
-        # Horizontal header
-        # self.measurementsTableModel.setHorizontalHeaderItem(0, qt.QStandardItem("Position"))
-        self.measurementsTableModel.setHorizontalHeaderItem(0, qt.QStandardItem("Length (mm)"))
-        self.measurementsTableModel.setHorizontalHeaderItem(1, qt.QStandardItem("Radius (mm)"))
+            # Horizontal header
+            # tableModel.setHorizontalHeaderItem(0, qt.QStandardItem("Position"))
+            self.measurementsTableModels[key].setHorizontalHeaderItem(0, qt.QStandardItem("Length (mm)"))
+            self.measurementsTableModels[key].setHorizontalHeaderItem(1, qt.QStandardItem("Radius (mm)"))
 
-        # Vertical header
-        self.measurementsTableModel.setVerticalHeaderItem(0, qt.QStandardItem("Top"))
-        label = "Bottom left" if self.currentStentType == self.logic.STENT_Y else "Bottom"
-        self.measurementsTableModel.setVerticalHeaderItem(1, qt.QStandardItem(label))
-        label = "Bottom right" if self.currentStentType == self.logic.STENT_Y else "Outside"
-        self.measurementsTableModel.setVerticalHeaderItem(2, qt.QStandardItem(label))
+            # Vertical header
+            self.measurementsTableModels[key].setVerticalHeaderItem(0, qt.QStandardItem("Top"))
+            label = "Bottom left" if key == self.logic.STENT_Y else "Bottom"
+            self.measurementsTableModels[key].setVerticalHeaderItem(1, qt.QStandardItem(label))
+            label = "Bottom right" if key == self.logic.STENT_Y else "Outside"
+            self.measurementsTableModels[key].setVerticalHeaderItem(2, qt.QStandardItem(label))
 
-        # Reset all items
-        for row in range(3):
-            for col in range(2):
-                item = qt.QStandardItem()
-                item.setData(0, qt.Qt.DisplayRole)
-                item.setEditable(False)
-                self.measurementsTableModel.setItem(row, col, item)
+            # Reset all items
+            for row in range(3):
+                for col in range(2):
+                    item = qt.QStandardItem()
+                    item.setData(0, qt.Qt.DisplayRole)
+                    item.setEditable(False)
+                    self.measurementsTableModels[key].setItem(row, col, item)
 
-    def __refreshMeasurementsTable__(self):
-        # Vertical header
-        self.measurementsTableModel.setVerticalHeaderItem(0, qt.QStandardItem("Top"))
-        label = "Bottom left" if self.currentStentType == self.logic.STENT_Y else "Bottom"
-        self.measurementsTableModel.setVerticalHeaderItem(1, qt.QStandardItem(label))
-        label = "Bottom right" if self.currentStentType == self.logic.STENT_Y else "Outside"
-        self.measurementsTableModel.setVerticalHeaderItem(2, qt.QStandardItem(label))
-
-        measures = self.logic.currentMeasurements[self.currentStentType]
-        for row in range(len(measures)):
-            for col in range(2):
-                item = qt.QStandardItem()
-                item.setData(measures[row][col], qt.Qt.DisplayRole)
-                item.setEditable(False)
-                self.measurementsTableModel.setItem(row, col, item)
+    def __refreshMeasurementsTables__(self):
+        for key in self.logic.getStentKeys():
+            measures = self.logic.currentMeasurements[key]
+            model = self.measurementsTableModels[key]
+            for row in range(len(measures)):
+                for col in range(2):
+                    item = qt.QStandardItem()
+                    item.setData(measures[row][col], qt.Qt.DisplayRole)
+                    item.setEditable(False)
+                    model.setItem(row, col, item)
 
     ############
     ##  Events
@@ -454,7 +438,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.__moveForwardStentType__()
         self.removeInvisibleFiducialsTimer.start()
         if self.isSegmentationExecuted:
-            self.__refreshMeasurementsTable__()
+            self.__refreshMeasurementsTables__()
 
 
     def __onFiducialModified__(self, fiducialsNode, event):
@@ -467,7 +451,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             if self.isSegmentationExecuted:
                 # Refresh just cilinders
                 self.logic.updateCilindersPosition(self.currentStentType)
-                self.__refreshMeasurementsTable__()
+                self.__refreshMeasurementsTables__()
 
     def __onFourUpButton__(self):
         SlicerUtil.changeLayout(3)
@@ -492,6 +476,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             SlicerUtil.setActiveVolumeId(node.GetID())
             SlicerUtil.setFiducialsMode(True, keepFiducialsModeOn=True)
             self.logic.setActiveFiducialListNode(self.currentStentType, self.segmentTypesRadioButtonGroup.checkedId())
+        self.__refreshUI__()
 
     def __onStentTypesRadioButtonClicked__(self, button):
         # Remove all the existing buttons in TypesGroup
@@ -508,7 +493,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             self.fiducialTypesLayout.addWidget(rbitem)
         self.segmentTypesRadioButtonGroup.buttons()[0].setChecked(True)
 
-        self.__initMeasurementsTable__()
+        self.__initMeasurementsTables__()
         self.logic.setActiveFiducialListNode(self.currentStentType, 0)
         self.logic.currentStentType = self.currentStentType
     
@@ -524,7 +509,8 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.thresholdLevelSlider.setValue(100)
         self.logic.runSegmentationPipeline(self.currentStentType)
         self.isSegmentationExecuted = True
-        self.__refreshMeasurementsTable__()
+        self.__refreshMeasurementsTables__()
+        self.__refreshUI__()
 
     def __onApplyThreshold__(self, val):
         """ Fine tuning of the segmentation
@@ -539,7 +525,13 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             self.radiusLevelSlider1.value / 10.0,
             self.radiusLevelSlider2.value / 10.0,
             self.radiusLevelSlider3.value / 10.0)
-        self.__refreshMeasurementsTable__()
+        self.__refreshMeasurementsTables__()
+
+    def __onSceneClosed__(self, arg1, arg2):
+        self.__initState__()
+        self.__initMeasurementsTables__()
+        self.__refreshUI__()
+
 
 #
 # CIP_TracheaStentPlanningLogic
@@ -549,6 +541,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
     STENT_T = "T Stent"
     
     def __init__(self):
+        ScriptedLoadableModuleLogic.__init__(self)
         self.line=dict()
         self.tube=dict()
         for tag in ['cl1','cl2','cl3']:
@@ -594,6 +587,8 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         # Length and radius measurements. Every entry matches with a stent type.
         # Every stent type will have a 3x2 list with the length and radius measurements
         self.currentMeasurements = dict()
+        for key in self.getStentKeys():
+            self.currentMeasurements[key] = [(0,0)] * 3
 
         self.markupsLogic = slicer.modules.markups.logic()
         self.modelsLogic = slicer.modules.models.logic()
@@ -721,6 +716,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
             threeDWidget = layoutManager.threeDWidget(0)
             threeDView = threeDWidget.threeDView()
             threeDView.resetFocalPoint()
+        self.__refreshMeasurements__()
 
     def __segmentTracheaFromYStentPoints__(self):
         """
