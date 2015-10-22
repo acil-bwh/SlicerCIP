@@ -13,8 +13,20 @@ self.exampleButton.text = "Push me!"
 self.exampleButton.toolTip = "This is the button tooltip"
 self.exampleButton.setIcon(qt.QIcon("{0}/Reload.png".format(SlicerUtil.ICON_DIR)))
 self.exampleButton.setIconSize(qt.QSize(20,20))
-self.exampleButton.setStyleSheet("font-weight:bold; font-size:12px" )
+self.exampleButton.setStyleSheet("font-weight:bold; font-size:12px; background-color: green;" )
 self.exampleButton.setFixedWidth(200)
+
+
+self.btnGoToPreviousStructure = ctk.ctkPushButton()
+self.btnGoToPreviousStructure.text = " Previous slice"
+self.btnGoToPreviousStructure.toolTip = "Go to the previous slice that contains the selected label" 
+self.btnGoToPreviousStructure.setIcon(qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, "previous.png")))
+self.btnGoToPreviousStructure.setIconSize(qt.QSize(24,24))
+self.btnGoToPreviousStructure.setFixedWidth(150)        
+self.btnGoToPreviousStructure.iconAlignment = 0x0001    # Align the icon to the right. See http://qt-project.org/doc/qt-4.8/qt.html#AlignmentFlag-enum for a complete list
+self.btnGoToPreviousStructure.buttonTextAlignment = (0x0081) # Aling the text to the left and vertical center
+self.btnGoToPreviousStructure.enabled = False
+
 
 #####################################################
 # Show dialog message
