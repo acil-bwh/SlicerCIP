@@ -157,6 +157,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
 
         # Main volume selector
         inputVolumeLabel = qt.QLabel("Volume")
+        inputVolumeLabel.setStyleSheet("font-weight: bold; margin-left:5px")
         self.mainAreaLayout.addWidget(inputVolumeLabel, 0, 0)
         self.inputVolumeSelector = slicer.qMRMLNodeComboBox()
         self.inputVolumeSelector.nodeTypes = ("vtkMRMLScalarVolumeNode", "")
@@ -187,6 +188,8 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             self.stentTypesRadioButtonGroup.addButton(rbitem)
             self.stentTypesLayout.addWidget(rbitem)
         self.stentTypesRadioButtonGroup.buttons()[0].setChecked(True)
+        # FIXME: disable temporarily the T stent  because there is no implementation yet
+        self.stentTypesRadioButtonGroup.buttons()[1].setEnabled(False)
 
         # Radio Buttons fiducial types
         typesLabel = qt.QLabel("Select fiducial type")
@@ -211,18 +214,21 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.segmentTracheaButton = ctk.ctkPushButton()
         self.segmentTracheaButton.text = "Segment trachea"
         self.segmentTracheaButton.toolTip = "Run the trachea segmentation algorithm."
-        self.segmentTracheaButton.setIcon(qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, "previous.png")))
+        currentpath = os.path.dirname(os.path.realpath(__file__))
+        self.iconsPath = os.path.join(currentpath, "Resources", "Icons")
+        iconPath = os.path.join(self.iconsPath, "TracheaModel.png")
+        self.segmentTracheaButton.setIcon(qt.QIcon(iconPath))
         self.segmentTracheaButton.setIconSize(qt.QSize(24,24))
         self.segmentTracheaButton.iconAlignment = 0x0001    # Align the icon to the right. See http://qt-project.org/doc/qt-4.8/qt.html#AlignmentFlag-enum for a complete list
         self.segmentTracheaButton.buttonTextAlignment = (0x0081) # Aling the text to the left and vertical center
         self.segmentTracheaButton.setFixedSize(140, 40)
+        self.segmentTracheaButton.setStyleSheet("background-color: #3067FF; color:white; font-weight:bold;")
         self.mainAreaLayout.addWidget(self.segmentTracheaButton, 3, 0, 1, 3, 0x0004)
         self.mainAreaLayout.setRowMinimumHeight(3, 70)
-        #self.layout.setAlignment(2)
 
         # Threshold
-        label = qt.QLabel("Fine tuning")
-        self.mainAreaLayout.addWidget(label, 5, 0)
+        self.thresholdLevelLabel = qt.QLabel("Fine tuning")
+        self.mainAreaLayout.addWidget(self.thresholdLevelLabel, 5, 0)
         self.thresholdLevelSlider = qt.QSlider()
         self.thresholdLevelSlider.orientation = 1  # Horizontal
         # self.thresholdLevelSlider.setTickInterval(1)
@@ -235,15 +241,9 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.thresholdLevelSlider.setTracking(False)
         self.mainAreaLayout.addWidget(self.thresholdLevelSlider, 5, 1, 1, 2)
 
-        # Generate 3D model button
-        # self.generate3DModelButton = qt.QPushButton("Generate 3D model")
-        # self.generate3DModelButton.toolTip = "Run the algorithm."
-        # self.generate3DModelButton.setFixedSize(150, 45)
-        # self.mainAreaLayout.addWidget(self.generate3DModelButton, 5, 0, 1, 2)
-
         # Stent Radius
-        label = qt.QLabel("Radius 1")
-        self.mainAreaLayout.addWidget(label, 6, 0)
+        self.radiusLabel1 = qt.QLabel("Radius 1")
+        self.mainAreaLayout.addWidget(self.radiusLabel1, 6, 0)
         self.radiusLevelSlider1 = qt.QSlider()
         self.radiusLevelSlider1.orientation = 1  # Horizontal
         self.radiusLevelSlider1.setTickPosition(2)
@@ -254,8 +254,8 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.radiusLevelSlider1.enabled = True
         self.mainAreaLayout.addWidget(self.radiusLevelSlider1, 6, 1, 1, 2)
 
-        label = qt.QLabel("Radius 2")
-        self.mainAreaLayout.addWidget(label, 7, 0)
+        self.radiusLabel2 = qt.QLabel("Radius 2")
+        self.mainAreaLayout.addWidget(self.radiusLabel2, 7, 0)
         self.radiusLevelSlider2 = qt.QSlider()
         self.radiusLevelSlider2.orientation = 1  # Horizontal
         self.radiusLevelSlider2.setTickPosition(2)
@@ -266,8 +266,8 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.radiusLevelSlider2.enabled = True
         self.mainAreaLayout.addWidget(self.radiusLevelSlider2, 7, 1, 1, 2)
 
-        label = qt.QLabel("Radius 3")
-        self.mainAreaLayout.addWidget(label, 8, 0)
+        self.radiusLabel3 = qt.QLabel("Radius 3")
+        self.mainAreaLayout.addWidget(self.radiusLabel3, 8, 0)
         self.radiusLevelSlider3 = qt.QSlider()
         self.radiusLevelSlider3.orientation = 1  # Horizontal
         self.radiusLevelSlider3.setTickPosition(2)
@@ -284,13 +284,16 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.measurementsTableViews = dict()
         for key in self.logic.getStentKeys():
             label = qt.QLabel("{0} measurements".format(key))
-            label.setStyleSheet("margin-top:15px")
-            frameLayout.addWidget(label)
+            label.setStyleSheet("margin-top:15px; font-weight:bold")
             self.measurementsTableViews[key] = qt.QTableView()
             self.measurementsTableViews[key].sortingEnabled = True
             self.measurementsTableViews[key].setFixedSize(285,120)
-            frameLayout.addWidget(label)
-            frameLayout.addWidget(self.measurementsTableViews[key])
+            # FIXME: hide temporarily the T stent table because there is no implementation yet
+            if key == self.logic.STENT_Y:
+                frameLayout.addWidget(label)
+                frameLayout.addWidget(label)
+                frameLayout.addWidget(self.measurementsTableViews[key])
+
 
         self.mainAreaLayout.addWidget(self.measurementsFrame, 9, 0, 1, 3)
         self.__initMeasurementsTables__()
@@ -351,8 +354,10 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         """
         self.segmentTracheaButton.enabled = self.inputVolumeSelector.currentNodeID != ""
 
-        self.thresholdLevelSlider.enabled = self.radiusLevelSlider1.enabled = \
-            self.radiusLevelSlider2.enabled = self.radiusLevelSlider3.enabled = \
+        self.thresholdLevelSlider.visible = self.thresholdLevelLabel.visible = \
+            self.radiusLabel1.visible = self.radiusLevelSlider1.visible = \
+            self.radiusLabel2.visible = self.radiusLevelSlider2.visible = \
+            self.radiusLabel3.visible = self.radiusLevelSlider3.visible = \
             self.measurementsFrame.visible = \
             self.isSegmentationExecuted
 
@@ -476,6 +481,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             SlicerUtil.setActiveVolumeId(node.GetID())
             SlicerUtil.setFiducialsMode(True, keepFiducialsModeOn=True)
             self.logic.setActiveFiducialListNode(self.currentStentType, self.segmentTypesRadioButtonGroup.checkedId())
+            self.stentTypesRadioButtonGroup.buttons()[0].setChecked(True)
         self.__refreshUI__()
 
     def __onStentTypesRadioButtonClicked__(self, button):
@@ -726,7 +732,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         # Get the three fiducials for the Y Stent points that are needed to segment the trachea (top, bottom left and bottom right)
         nodes = self.currentFiducialsListNodes[self.STENT_Y]
         coords = []
-        for i in [0, 1, 3]:
+        for i in [0, 2, 3]:
             if nodes[i].GetNumberOfFiducials() == 0:
                 qt.QMessageBox.warning(slicer.util.mainWindow(), "Missing fiducials",
                     "Please make sure that you have added all the required points for the selected stent type")
