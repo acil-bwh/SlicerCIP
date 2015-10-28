@@ -8,7 +8,7 @@ class SubtypingParameters(object):
     __types__ = OrderedDict()
     __types__[84] = ["ILD", "ILD", (1, 0.525, 0)]
     __types__[4] = ["Emphysema", "Emphysema", (0.24, 0.74, 1)]
-    __types__[2] = ["Airway", "Airway", (0.44, 0.42, 0.2)]
+    __types__[2] = ["Airway", "Airway", (0.097, 0.173, 1)]
     __types__[86] = ["Nodule", "Nodule", (0.49, 0, 0.88)]
     __types__[1] = ["Normal parenchyma", "Normal", (0.28, 0.77, 0.22)]
 

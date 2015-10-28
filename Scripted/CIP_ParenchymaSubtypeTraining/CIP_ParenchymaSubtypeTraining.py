@@ -9,7 +9,7 @@ try:
 except Exception as ex:
     currentpath = os.path.dirname(os.path.realpath(__file__))
     # We assume that CIP_Common is in the development structure
-    path = os.path.normpath(currentpath + '/../../Scripted/CIP_Common')
+    path = os.path.normpath(currentpath + '/../CIP_Common')
     if not os.path.exists(path):
         # We assume that CIP is a subfolder (Slicer behaviour)
         path = os.path.normpath(currentpath + '/CIP')
@@ -40,7 +40,6 @@ class CIP_ParenchymaSubtypeTraining(ScriptedLoadableModule):
 #
 # CIP_ParenchymaSubtypeTrainingWidget
 #
-
 class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
@@ -58,7 +57,6 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
         self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
 
-
         self.moduleName = "CIP_ParenchymaSubtypeTraining"
 
 
@@ -71,6 +69,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         # object of the logic class
         self.logic = CIP_ParenchymaSubtypeTrainingLogic()
         self.currentVolumeLoaded = None
+        self.blockNodeEvents = False
 
         ##########
         # Main area
@@ -179,7 +178,6 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.saveResultsDirectoryButton.setMaximumWidth(375)
         self.mainLayout.addWidget(self.saveResultsDirectoryButton, 4, 1, 1, 2)
 
-
         #####
         # Case navigator
         if SlicerUtil.isSlicerACILLoaded():
@@ -204,7 +202,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.subtypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSubtypesRadioButtonClicked__)
         self.artifactsRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSubtypesRadioButtonClicked__)
 
-        #self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelected)
+        self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onCurrentNodeChanged__)
         self.loadButton.connect('clicked()', self.openFiducialsFile)
         self.removeLastFiducialButton.connect('clicked()', self.__onRemoveLastFiducialButtonClicked__)
         # self.saveResultsOpenDirectoryDialogButton.connect('clicked()', self.onOpenDirectoryDialogButtonClicked)
@@ -221,10 +219,6 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         current selected type) and creates it when necessary
         :return:
         """
-        # if self.currentVolumeLoaded is None:
-        #     print("DEBUG: updating status for volume (NONE)")
-        # else:
-        #     print("DEBUG: updating status for volume ", self.currentVolumeLoaded.GetName())
         # Load the subtypes for this type
         subtypesDict = self.logic.getSubtypes(self.typesRadioButtonGroup.checkedId())
         # Remove all the existing buttons
@@ -240,10 +234,8 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.subtypesRadioButtonGroup.buttons()[0].setChecked(True)
 
         # Set the correct state for fiducials
-        #selectedVolume = self.volumeSelector.currentNode()
-        selectedVolume = self.currentVolumeLoaded
-        if selectedVolume is not None:
-            self.logic.setActiveFiducialsListNode(selectedVolume,
+        if self.currentVolumeLoaded is not None:
+            self.logic.setActiveFiducialsListNode(self.currentVolumeLoaded,
                 self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId(), self.artifactsRadioButtonGroup.checkedId())
 
     def saveResultsCurrentNode(self):
@@ -257,14 +249,14 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
                     os.makedirs(d)
                     # Make sure that everybody has write permissions (sometimes there are problems because of umask)
                     os.chmod(d, 0777)
-                    self.logic.saveFiducials(self.volumeSelector.currentNode(), d)
+                    self.logic.saveCurrentFiducials(d)
                     qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved',
                         "The results have been saved succesfully")
                 except:
                      qt.QMessageBox.warning(slicer.util.mainWindow(), 'Directory incorrect',
                         'The folder "{0}" could not be created. Please select a valid directory'.format(d))
         else:
-            self.logic.saveFiducials(self.volumeSelector.currentNode(), d)
+            self.logic.saveCurrentFiducials(d)
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved',
                 "The results have been saved succesfully")
 
@@ -283,19 +275,25 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
-        if len(self.observers) == 0:
-            self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__))
-            self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__))
+        self.blockNodeEvents = False
+        # if len(self.observers) == 0:
+        #     self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__))
+        #     self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__))
         SlicerUtil.setFiducialsMode(True, True)
 
+        if self.volumeSelector.currentNodeId != "":
+            SlicerUtil.setActiveVolumeId(self.volumeSelector.currentNodeId)
+            self.currentVolumeLoaded = slicer.util.getNode(self.volumeSelector.currentNodeId)
+            self.updateState()
 
     def exit(self):
         """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
         try:
+            self.blockNodeEvents = True
             SlicerUtil.setFiducialsMode(False)
-            for observer in self.observers:
-                slicer.mrmlScene.RemoveObserver(observer)
-                self.observers.remove(observer)
+            # for observer in self.observers:
+            #     slicer.mrmlScene.RemoveObserver(observer)
+            #     self.observers.remove(observer)
         except:
             pass
 
@@ -309,11 +307,28 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             pass
 
     def __onNewVolumeLoaded__(self, newVolumeNode):
-        # print("DEBUG: Current selected volume: ", self.volumeSelector.currentNodeID)
-        # print("DEBUG: Volume loaded: ", newVolumeNode.GetName())
-        # volume = self.volumeSelector.currentNode()
+        """ Added a new node in the scene
+        :param newVolumeNode:
+        :return:
+        """
+        self.__checkNewVolume__(newVolumeNode)
+        self.blockNodeEvents = True
+        self.volumeSelector.setCurrentNode(newVolumeNode)
+        self.blockNodeEvents = False
+
+    def __onCurrentNodeChanged__(self, volumeNode):
+        self.__checkNewVolume__(volumeNode)
+        # if volumeNode:
+        #     #self.logic.reset(volumeNode)
+        #     SlicerUtil.setActiveVolumeId(volumeNode.GetID())
+        #     self.updateState()
+
+    def __checkNewVolume__(self, newVolumeNode):
+        if self.blockNodeEvents:
+            return
+        self.blockNodeEvents = True
         volume = self.currentVolumeLoaded
-        if volume is not None \
+        if volume is not None and newVolumeNode is not None \
                 and newVolumeNode.GetID() != volume.GetID()  \
                 and not self.logic.isVolumeSaved(volume.GetID()):
             # Ask the user if he wants to save the previously loaded volume
@@ -324,19 +339,15 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
                 self.saveResultsCurrentNode()
         # Remove all the previously existing nodes
         if self.currentVolumeLoaded is not None and newVolumeNode != self.currentVolumeLoaded:
-            self.logic.removeMarkups(self.currentVolumeLoaded)
-        SlicerUtil.setActiveVolumeId(newVolumeNode.GetID())
-        SlicerUtil.setFiducialsMode(True, True)
+            # Remove previously existing node
+            self.logic.removeMarkupsAndNode(self.currentVolumeLoaded)
+        if newVolumeNode is not None:
+            SlicerUtil.setActiveVolumeId(newVolumeNode.GetID())
+            SlicerUtil.setFiducialsMode(True, True)
+
         self.currentVolumeLoaded = newVolumeNode
         self.updateState()
-
-    def __onVolumeSelected__(self, volumeNode):
-        if volumeNode:
-            print ("VolumeSelector currentNodeChanged: " + volumeNode.GetID())
-            #self.logic.reset(volumeNode)
-            SlicerUtil.setActiveVolumeId(volumeNode.GetID())
-            self.updateState()
-
+        self.blockNodeEvents = False
 
     def __onTypesRadioButtonClicked__(self, button):
         """ One of the radio buttons has been pressed
@@ -442,6 +453,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
             else:
                 # Artifact. Add the type of artifact to the node name
                 nodeName = "{0}_fiducials_{1}_{2}".format(volumeNode.GetID(), typeId, artifactId)
+            print("DEBUG: node: {0} ({1})".format(nodeName, volumeNode.GetName()))
             fid = slicer.util.getNode(nodeName)
             if fid is None and createIfNotExists:
                 # print("DEBUG: creating a new fiducials node: " + nodeName)
@@ -499,13 +511,15 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         self.savedVolumes[self.currentVolumeId] = False
 
 
-    def saveFiducials(self, volume, directory):
+    def saveCurrentFiducials(self, directory):
         """ Save all the fiducials for the current volume.
         The name of the file will be VolumeName_parenchymaTraining.xml"
         :param volume: scalar node
         :param directory: destiny directory
         :return:
         """
+        volume = slicer.util.getNode(self.currentVolumeId)
+        print("DEBUG: saving the fidcuals for volume " + volume.GetName())
         # Iterate over all the fiducials list nodes
         pos = [0,0,0]
         topology = GTD.GeometryTopologyData()
@@ -557,7 +571,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         :return:
         """
         if not self.savedVolumes.has_key(volumeId):
-            raise Exception("Volume {0} is not in the list of managed volumes".format(volumeId.GetID()))
+            raise Exception("Volume {0} is not in the list of managed volumes".format(volumeId))
         return self.savedVolumes[volumeId]
 
 
@@ -615,7 +629,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
                 slicer.mrmlScene.RemoveNode(node)
                 node = nodes.GetNextItemAsObject()
 
-    def removeMarkups(self, volume):
+    def removeMarkupsAndNode(self, volume):
         nodes = slicer.util.getNodes(volume.GetID() + "_*")
         for node in nodes.itervalues():
             slicer.mrmlScene.RemoveNode(node)
