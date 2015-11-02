@@ -248,8 +248,8 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.radiusLevelSlider1.orientation = 1  # Horizontal
         self.radiusLevelSlider1.setTickPosition(2)
         self.radiusLevelSlider1.minimum = 1
-        self.radiusLevelSlider1.maximum = 200
-        self.radiusLevelSlider1.setValue(100)
+        self.radiusLevelSlider1.maximum = 100
+        self.radiusLevelSlider1.setValue(50)
         self.radiusLevelSlider1.setSingleStep(1)
         self.radiusLevelSlider1.enabled = True
         self.mainAreaLayout.addWidget(self.radiusLevelSlider1, 6, 1, 1, 2)
@@ -260,8 +260,8 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.radiusLevelSlider2.orientation = 1  # Horizontal
         self.radiusLevelSlider2.setTickPosition(2)
         self.radiusLevelSlider2.minimum = 1
-        self.radiusLevelSlider2.maximum = 200
-        self.radiusLevelSlider2.setValue(100)
+        self.radiusLevelSlider2.maximum = 100
+        self.radiusLevelSlider2.setValue(50)
         self.radiusLevelSlider2.setSingleStep(1)
         self.radiusLevelSlider2.enabled = True
         self.mainAreaLayout.addWidget(self.radiusLevelSlider2, 7, 1, 1, 2)
@@ -273,7 +273,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.radiusLevelSlider3.setTickPosition(2)
         self.radiusLevelSlider3.minimum = 1
         self.radiusLevelSlider3.maximum = 200
-        self.radiusLevelSlider3.setValue(100)
+        self.radiusLevelSlider3.setValue(50)
         self.radiusLevelSlider3.setSingleStep(1)
         self.radiusLevelSlider3.enabled = True
         self.mainAreaLayout.addWidget(self.radiusLevelSlider3, 8, 1, 1, 2)
@@ -901,6 +901,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         :return:
         """
         self.cilindersVtkAppendPolyDataFilter[self.STENT_Y] = vtk.vtkAppendPolyData()
+        defaultRadius = 5
 
         # Get the position of the points (RAS)
         top = [0, 0, 0]
@@ -919,7 +920,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         line_top_middle.SetPoint2(middle)
         cilinder_top_middle = vtk.vtkTubeFilter()
         cilinder_top_middle.SetNumberOfSides(30)
-        cilinder_top_middle.SetRadius(10)
+        cilinder_top_middle.SetRadius(defaultRadius)
         cilinder_top_middle.CappingOff()
         cilinder_top_middle.SidesShareVerticesOff()
         cilinder_top_middle.SetInputConnection(line_top_middle.GetOutputPort())
@@ -931,7 +932,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         line_middle_left.SetPoint2(left)
         cilinder_middle_left = vtk.vtkTubeFilter()
         cilinder_middle_left.SetNumberOfSides(30)
-        cilinder_middle_left.SetRadius(10)
+        cilinder_middle_left.SetRadius(defaultRadius)
         cilinder_middle_left.CappingOff()
         cilinder_middle_left.SidesShareVerticesOff()
         cilinder_middle_left.SetInputConnection(line_middle_left.GetOutputPort())
@@ -943,7 +944,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         line_middle_right.SetPoint2(right)
         cilinder_middle_right = vtk.vtkTubeFilter()
         cilinder_middle_right.SetNumberOfSides(30)
-        cilinder_middle_right.SetRadius(10)
+        cilinder_middle_right.SetRadius(defaultRadius)
         cilinder_middle_right.CappingOff()
         cilinder_middle_right.SidesShareVerticesOff()
         cilinder_middle_right.SetInputConnection(line_middle_right.GetOutputPort())
