@@ -317,7 +317,7 @@
   <customwidget>
    <class>ctkSliderWidget</class>
    <extends>QWidget</extends>
-   <header>ctksliderwidget.h</header>
+   <header>ctkSliderWidget.h</header>
   </customwidget>
   <customwidget>
    <class>ctkDirectoryButton</class>
