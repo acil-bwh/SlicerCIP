@@ -4,7 +4,7 @@ set(MODULE_NAME CIP_BodyComposition)
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
-  BodyCompositionParameters.py
+  logic/BodyCompositionParameters.py
   )
 
 set(MODULE_PYTHON_RESOURCES

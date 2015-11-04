@@ -41,7 +41,7 @@
 #include "vtkImageFlip.h"
 
 #include "qpainter.h"
-#include "qmainWindow.h"
+#include "qmainwindow.h"
 #include "QVTKWidget.h"
 
 #include "vtkMRMLScene.h"

@@ -21,8 +21,9 @@ class CIP_EditorWidget(EditorWidget):
 
     @masterVolume.setter
     def masterVolume(self, value):
-        self.helper.master = value
-        self.helper.masterSelector.setCurrentNode(value)
+        # self.helper.master = value
+        # self.helper.masterSelector.setCurrentNode(value)
+        self.helper.setMasterVolume(value)
 
     @property
     def labelmapVolume(self):
@@ -30,8 +31,9 @@ class CIP_EditorWidget(EditorWidget):
 
     @labelmapVolume.setter
     def labelmapVolume(self, value):
-        self.helper.merge = value
-        self.helper.mergeSelector.setCurrentNode(value)
+        #self.helper.merge = value
+        #self.helper.mergeSelector.setCurrentNode(value)
+        self.helper.setMergeVolume(value)
 
     def createEditBox(self):
         """Override the parent's method. Builds the editor with a limited set of tools"""

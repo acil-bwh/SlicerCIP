@@ -17,7 +17,7 @@ try:
 except Exception as ex:
     currentpath = os.path.dirname(os.path.realpath(__file__))
     # We assume that CIP_Common is in the development structure
-    path = os.path.normpath(currentpath + '/../../Scripted/CIP_Common')
+    path = os.path.normpath(currentpath + '/../CIP_Common')
     if not os.path.exists(path):
         # We assume that CIP is a subfolder (Slicer behaviour)
         path = os.path.normpath(currentpath + '/CIP')
@@ -199,14 +199,14 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Example button with some common properties
         self.applySegmentationButton = ctk.ctkPushButton()
-        self.applySegmentationButton.text = "Segment!"
+        self.applySegmentationButton.text = "Segment nodule"
         self.applySegmentationButton.toolTip = "This is the button toolTip"
         self.applySegmentationButton.setIcon(qt.QIcon("{0}/Reload.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.applySegmentationButton.setIconSize(qt.QSize(20, 20))
         self.applySegmentationButton.setStyleSheet(
             "font-weight:bold; font-size:12px; color: white; background-color:#274EE2")
         self.applySegmentationButton.setFixedWidth(200)
-        self.mainAreaLayout.addRow("Segment the node: ", self.applySegmentationButton)
+        self.mainAreaLayout.addRow("Segment the nodule: ", self.applySegmentationButton)
 
         # CLI progress bar
         self.progressBar = slicer.qSlicerCLIProgressBar()
@@ -801,7 +801,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 #############################
 class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     MAX_TUMOR_RADIUS = 30
-    PRINT_TIMING = True
+    PRINT_TIMING = SlicerUtil.IsDevelopment
 
     def __init__(self):
         self.currentVolume = None  # Current active volume

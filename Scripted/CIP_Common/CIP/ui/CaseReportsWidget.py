@@ -221,8 +221,8 @@ class CaseReportsLogic(object):
         with open(self.csvFilePath, 'a+b') as csvfile:
             writer = csv.writer(csvfile)
             # If file is empty, save also the column names
-            if not fileExists:
-                writer.writerow(self.columnNames)
+            # if not fileExists:
+            #     writer.writerow(self.columnNames)
             writer.writerow(orderedColumns)
 
 

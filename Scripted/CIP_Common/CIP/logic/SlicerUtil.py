@@ -327,6 +327,24 @@ class SlicerUtil:
         layoutManager = slicer.app.layoutManager()
         layoutManager.setLayout(layoutNumber)
 
+    @staticmethod
+    def vtkImageData_numpy_array(vtkImageData_node):
+        """ Return a numpy array from a vtkImageData node
+        :param vtkImageData_node:
+        :return:
+        """
+        shape = list(vtkImageData_node.GetDimensions())
+        shape.reverse()
+        return vtk.util.numpy_support.vtk_to_numpy(vtkImageData_node.GetPointData().GetScalars()).reshape(shape)
+        # shape = list(vtk_node.GetImageData().GetDimensions())
+        # shape.reverse()
+        # arr = vtk.util.numpy_support.vtk_to_numpy(vtk_node.GetPointData().GetScalars()).reshape(shape)
+        # spacing = list(vtk_node.GetSpacing())
+        # spacing.reverse()
+        # origin = list(vtk_node.GetOrigin())
+        # origin.reverse()
+        # return arr, spacing, origin
+
 
         # @staticmethod
     # def gitUpdateCIP():

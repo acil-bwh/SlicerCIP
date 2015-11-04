@@ -219,43 +219,46 @@ class LoadSaveDataWidget(object):
     
     def onBtnSaveClicked(self):
         """Save the current volume and/or labelmap"""
-        # Trigger a "Pre_Save" event that could be used for example to set currentVolumeNode and currentLabelMapNode     
-        opResult = self.__triggerEvent__(self.EVENT_PRE_SAVE)
-             
-        if opResult != self.logic.OPERATION_CANCELLED and not self.__disabledSave__:        
-            currentVolumeNode = currentLabelMapNode = None
-            if self.currentVolumeDisplayed == None and self.currentLabelMapDispayed == None:             
-                # Get the displayed nodes in "Red" slice if no current volume/label map set
-                nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLSliceCompositeNode")
-                # Call necessary to allow the iteration.
-                nodes.InitTraversal()
-                # Get the first CompositeNode (typically Red)
-                compositeNode = nodes.GetNextItemAsObject()
-                
-                currentVolumeNode = slicer.mrmlScene.GetNodeByID(compositeNode.GetBackgroundVolumeID())
-                currentLabelMapNode = slicer.mrmlScene.GetNodeByID(compositeNode.GetLabelVolumeID())
-            else:
-                currentVolumeNode = self.currentVolumeDisplayed
-                currentLabelMapNode = self.currentLabelMapDispayed
-                
-            if self.__saveVolumes__ and currentVolumeNode:
-                # TODO: save volume
-                pass
-                
-            if self.__saveLabelMaps__ and currentLabelMapNode:
-                try:
-                    if self.IsDevelopment: print ("Saving the volume: " + currentLabelMapNode.GetName())                            
-                    self.logic.saveLabelMap(currentVolumeNode, currentLabelMapNode)
-                    qt.QMessageBox.information(slicer.util.mainWindow(), "ACIL_LoadSaveData", "Labelmap saved succesfully")
-                    
-                    # If there is any callback, invoke it ("trigger" the event) 
-                    self.__triggerEvent__(self.EVENT_SAVE, currentLabelMapNode.GetName())
-                except Exception as ex:
-                    print (ex)
-                    qt.QMessageBox.critical(slicer.util.mainWindow(), 'ACIL_LoadSaveData' , 'Error saving files. Please check Python console for more information')                
-            else:
-                if self.IsDevelopment: print("No files to save")
-    
+        # Trigger a "Pre_Save" event that could be used for example to set currentVolumeNode and currentLabelMapNode
+        self.__triggerEvent__(self.EVENT_PRE_SAVE)
+
+        if self.__disabledSave__:
+            print("Saving is disabled")
+            return
+
+        currentVolumeNode = currentLabelMapNode = None
+        if self.currentVolumeDisplayed == None and self.currentLabelMapDispayed == None:
+            # Get the displayed nodes in "Red" slice if no current volume/label map set
+            nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLSliceCompositeNode")
+            # Call necessary to allow the iteration.
+            nodes.InitTraversal()
+            # Get the first CompositeNode (typically Red)
+            compositeNode = nodes.GetNextItemAsObject()
+
+            currentVolumeNode = slicer.mrmlScene.GetNodeByID(compositeNode.GetBackgroundVolumeID())
+            currentLabelMapNode = slicer.mrmlScene.GetNodeByID(compositeNode.GetLabelVolumeID())
+        else:
+            currentVolumeNode = self.currentVolumeDisplayed
+            currentLabelMapNode = self.currentLabelMapDispayed
+
+        if self.__saveVolumes__ and currentVolumeNode:
+            # TODO: save volume
+            pass
+
+        if self.__saveLabelMaps__ and currentLabelMapNode:
+            try:
+                if self.IsDevelopment: print ("Saving the volume: " + currentLabelMapNode.GetName())
+                self.logic.saveLabelMap(currentVolumeNode, currentLabelMapNode)
+                qt.QMessageBox.information(slicer.util.mainWindow(), "ACIL_LoadSaveData", "Labelmap saved succesfully")
+
+                # If there is any callback, invoke it ("trigger" the event)
+                self.__triggerEvent__(self.EVENT_SAVE, currentLabelMapNode.GetName())
+            except Exception as ex:
+                print (ex)
+                qt.QMessageBox.critical(slicer.util.mainWindow(), 'ACIL_LoadSaveData' , 'Error saving files. Please check Python console for more information')
+        else:
+            if self.IsDevelopment: print("No files to save")
+
     def onBtnSaveAllClicked(self):    
         """Save all the files (at the moment just label maps)"""
         output = self.logic.saveAllLabelMaps()
