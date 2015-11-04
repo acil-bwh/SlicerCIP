@@ -51,6 +51,19 @@ class Util:
         return os.sys.platform == "win32"
 
     @staticmethod
+    def create_directory(path):
+        """ Create a directory if it does not exist yet and give the maximum permissions
+        :param path: Full path of the directory
+        :return: True if the directory was created or False if it already existed
+        """
+        if os.path.exists(path):
+            return False
+        os.makedirs(path)
+        # Make sure that everybody has write permissions (sometimes there are problems because of umask)
+        os.chmod(path, 0777)
+        return True
+
+    @staticmethod
     def get_file_extension(file_path):
         """ Return the extension of a file (with the dot included)
         :param file_path: relative or absolute file path

@@ -453,7 +453,6 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
             else:
                 # Artifact. Add the type of artifact to the node name
                 nodeName = "{0}_fiducials_{1}_{2}".format(volumeNode.GetID(), typeId, artifactId)
-            print("DEBUG: node: {0} ({1})".format(nodeName, volumeNode.GetName()))
             fid = slicer.util.getNode(nodeName)
             if fid is None and createIfNotExists:
                 # print("DEBUG: creating a new fiducials node: " + nodeName)

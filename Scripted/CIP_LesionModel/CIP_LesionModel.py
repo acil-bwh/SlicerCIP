@@ -1,8 +1,6 @@
 import os, sys
-import unittest
 from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
-import logging
 import collections
 import itertools
 import numpy as np
@@ -26,11 +24,11 @@ except Exception as ex:
     from CIP.logic.SlicerUtil import SlicerUtil
 
 from CIP.logic import Util
+from CIP.logic import GeometryTopologyData, Point
 from CIP.ui import CaseReportsWidget
 
 import FeatureWidgetHelperLib
 import FeatureExtractionLib
-
 
 #
 # CIP_LesionModel
@@ -65,6 +63,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def __init__(self, parent=None):
         """Widget constructor (existing module)"""
         ScriptedLoadableModuleWidget.__init__(self, parent)
+        self.moduleName = "CIP_LesionModel"
         # from functools import partial
         # def onNodeAdded(self, caller, eventId, callData):
         #   """Node added to the Slicer scene"""
@@ -74,16 +73,17 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # self.onNodeAdded = partial(onNodeAdded, self)
         # self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
         # slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
-        self.__storedColumnNames__ = None
+
         self.__initVars__()
 
     def __initVars__(self):
         self.logic = CIP_LesionModelLogic()
         self.__featureClasses__ = None
-        self.selectedMainFeaturesKeys = set()
-        self.selectedFeatureKeys = set()
-        self.analysisResults = dict()
-        self.analysisResultsTiming = dict()
+        self.__storedColumnNames__ = None
+        # self.selectedMainFeaturesKeys = set()
+        # self.selectedFeatureKeys = set()
+        # self.analysisResults = dict()
+        # self.analysisResultsTiming = dict()
 
     @property
     def storedColumnNames(self):
@@ -91,12 +91,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         :return:
         """
         if self.__storedColumnNames__ is None:
-            self.__storedColumnNames__ = ["CaseId", "Date", "Threshold"]
+            self.__storedColumnNames__ = ["CaseId", "Date", "Threshold", "LesionType", "Seeds_LPS"]
             # Create a single features list with all the "child" features
             self.__storedColumnNames__.extend(itertools.chain.from_iterable(self.featureClasses.itervalues()))
-            # for featureList in self.featureClassKeys.itervalues():
-            # for feature in self.featureClassKeys[mainFeature]:
-            #     self.__storedColumnNames__.append("{0}-{1}".format(mainFeature, feature))
         return self.__storedColumnNames__
 
     @property
@@ -106,7 +103,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """
         if self.__featureClasses__ is None:
             self.__featureClasses__ = collections.OrderedDict()
-            # self.featureClassKeys["Node Information"] = ["Node"]
             self.__featureClasses__["First-Order Statistics"] = ["Voxel Count", "Gray Levels", "Energy", "Entropy",
                                                                  "Minimum Intensity", "Maximum Intensity",
                                                                  "Mean Intensity",
@@ -139,6 +135,14 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         return self.__featureClasses__
 
+    @property
+    def __evaluateSegmentationModeOn__(self):
+        return self.evaluateSegmentationCheckbox.checked
+
+    @property
+    def lesionType(self):
+        return self.lesionTypeRadioButtonGroup.checkedButton().text
+
     def setup(self):
         """This is called one time when the module GUI is initialized
         """
@@ -151,11 +155,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         #######################
         # Main area
-        mainAreaCollapsibleButton = ctk.ctkCollapsibleButton()
-        mainAreaCollapsibleButton.text = "Main parameters"
-        self.layout.addWidget(mainAreaCollapsibleButton)
+        collapsibleButton = ctk.ctkCollapsibleButton()
+        collapsibleButton.text = "Main parameters"
+        self.layout.addWidget(collapsibleButton)
         # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
-        self.mainAreaLayout = qt.QFormLayout(mainAreaCollapsibleButton)
+        self.mainAreaLayout = qt.QFormLayout(collapsibleButton)
 
         # Main volume selector
         self.inputVolumeSelector = slicer.qMRMLNodeComboBox()
@@ -197,6 +201,33 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.fiducialsContainerFrame.setLayout(qt.QVBoxLayout())
         self.mainAreaLayout.addWidget(self.fiducialsContainerFrame)
 
+        # Type of nodule
+        noduleTypeFrame = qt.QFrame()
+        noduleTypeLayout  = qt.QHBoxLayout(noduleTypeFrame)
+        self.lesionTypeRadioButtonGroup = qt.QButtonGroup()
+        button = qt.QRadioButton("Unknown")
+        button.setChecked(True)
+        self.lesionTypeRadioButtonGroup.addButton(button, 0)
+        noduleTypeLayout.addWidget(button)
+        button = qt.QRadioButton("Nodule")
+        self.lesionTypeRadioButtonGroup.addButton(button, 1)
+        noduleTypeLayout.addWidget(button)
+        button = qt.QRadioButton("Tumor")
+        self.lesionTypeRadioButtonGroup.addButton(button, 2)
+        noduleTypeLayout.addWidget(button)
+        label = qt.QLabel("Lesion type:")
+        label.setStyleSheet("margin-top:10px")
+        self.mainAreaLayout.addRow(label, noduleTypeFrame)
+
+        self.saveSeedsButton = ctk.ctkPushButton()
+        self.saveSeedsButton.text = "Save to XML"
+        self.saveSeedsButton.toolTip = "Save the current seeds and lesion type for batch analysis in a XML file"
+        self.saveSeedsButton.setIcon(qt.QIcon("{0}/Save.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.saveSeedsButton.setIconSize(qt.QSize(16,16))
+        self.saveSeedsButton.setMaximumWidth(100)
+        noduleTypeLayout.addWidget(self.saveSeedsButton)
+
+
         # Example button with some common properties
         self.applySegmentationButton = ctk.ctkPushButton()
         self.applySegmentationButton.text = "Segment nodule"
@@ -219,7 +250,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.distanceLevelSlider.minimum = -50  # Ad-hoc value
         self.distanceLevelSlider.maximum = 50
         self.distanceLevelSlider.enabled = False
-        self.mainAreaLayout.addRow("Select a threshold: ", self.distanceLevelSlider)
+        self.distanceLevelSlider.setStyleSheet("margin-top:10px;padding-top:20px")
+        label = qt.QLabel("Select a threshold:")
+        label.setStyleSheet("margin-top:10px")
+        self.mainAreaLayout.addRow(label, self.distanceLevelSlider)
 
         # Different radius selection
         self.radiusFrame = qt.QFrame()
@@ -327,7 +361,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
                                                parent=self.featureButtonFrame)
         self.reportsWidget.setup()
-        self.reportsWidget.showSaveButton(False)
         self.reportsWidget.showWarnigMessages(False)
 
         ######################
@@ -343,6 +376,21 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.caseNavigatorWidget = CaseNavigatorWidget(parentModuleName="CIP_LesionModel",
                                                            parentContainer=caseNavigatorAreaLayout)
 
+        #######################
+        # Advanced parameters area
+        collapsibleButton = ctk.ctkCollapsibleButton()
+        collapsibleButton.text = "Advanced parameters"
+        collapsibleButton.collapsed = True
+        self.layout.addWidget(collapsibleButton)
+        # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
+        self.advancedParametersLayout = qt.QFormLayout(collapsibleButton)
+        self.evaluateSegmentationCheckbox = qt.QCheckBox()
+        self.evaluateSegmentationCheckbox.setText("Enable saving seeds mode for batch processing")
+        self.advancedParametersLayout.addWidget(self.evaluateSegmentationCheckbox)
+        self.saveTimeCostCheckbox = qt.QCheckBox()
+        self.saveTimeCostCheckbox.setText("Save time cost of every operation")
+        self.advancedParametersLayout.addWidget(self.saveTimeCostCheckbox)
+
 
         ######################
         # Connections
@@ -357,23 +405,16 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # runAnalysisButton.connect("clicked()", self.__onRunAnalysisButtonClicked__)
         self.runAnalysisButton.connect('clicked()', self.onAnalyzeButtonClicked)
 
-        self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.saveReport)
+        self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.forceSaveReport)
+        self.evaluateSegmentationCheckbox.connect("clicked()", self.refreshUI)
+        self.saveSeedsButton.connect("clicked()", self.saveCurrentSeedsToXML)
+        self.saveTimeCostCheckbox.connect("stateChanged(int)", self.__onSaveTimeCostCheckboxClicked__)
+        self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_PRE_VOLUME_LOAD, self.__onPreVolumeLoad__)
 
-        self.__refreshUI__()
+        self.refreshUI()
 
-    def enter(self):
-        """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
-        if self.inputVolumeSelector.currentNodeID != '':
-            self.logic.getFiducialsListNode(self.inputVolumeSelector.currentNodeID, self.__onFiducialsNodeModified__)
-            self.logic.setActiveVolume(self.inputVolumeSelector.currentNodeID)
 
-            # if not self.timer.isActive() \
-            #         and self.logic.currentLabelmap is not None:  # Segmentation was already performed
-            #     self.timer.start(500)
-
-        self.__refreshUI__()
-
-    def __refreshUI__(self):
+    def refreshUI(self):
         if self.inputVolumeSelector.currentNodeID != "":
             self.addFiducialButton.enabled = True
             self.addFiducialButton.toolTip = "Click and add a new seed in the volume"
@@ -404,6 +445,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.runAnalysisButton.toolTip = "Please run the segmentation algorithm first (click ""Segment"" button)"
 
         self.progressBar.visible = self.distanceLevelSlider.enabled
+        self.saveSeedsButton.visible = self.__evaluateSegmentationModeOn__
+        self.reportsWidget.showSaveButton(self.__evaluateSegmentationModeOn__)
 
     def __removeFiducialsFrames__(self):
         """ Remove all the possible fiducial frames that can remain obsolete (for example after closing a scene)
@@ -412,7 +455,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.fiducialsContainerFrame.children()[1].hide()
             self.fiducialsContainerFrame.children()[1].delete()
 
-    def __setAddSeedsMode__(self, enabled):
+    def setAddSeedsMode(self, enabled):
         """ When enabled, the cursor will be enabled to add new fiducials that will be used for the segmentation
         :param enabled:
         :return:
@@ -460,6 +503,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.fiducialsContainerFrame.layout().addWidget(frame)
             self.addFiducialButton.checked = False
 
+            # Avoid duplicated events for this fiducial node
             self.semaphoreOpen = False
 
     def __validateInputVolumeSelection__(self):
@@ -554,12 +598,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
                 self.analysisResults[keyName] = collections.OrderedDict()
                 self.analysisResultsTiming[keyName] = collections.OrderedDict()
-                logic.run(self.analysisResults[keyName], self.logic.PRINT_TIMING, self.analysisResultsTiming[keyName])
+                logic.run(self.analysisResults[keyName], self.logic.printTiming, self.analysisResultsTiming[keyName])
 
                 # Print analysis results
                 print(self.analysisResults[keyName])
 
-                if self.logic.PRINT_TIMING:
+                if self.logic.printTiming:
                     print("Elapsed time for the nodule analysis (TOTAL={0} seconds:".format(t2 - t1))
                     print(self.analysisResultsTiming[keyName])
 
@@ -575,7 +619,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 # print("DEBUG: analyzing spheres...")
                 t1 = time.time()
                 self.logic.getCurrentDistanceMap()
-                if self.logic.PRINT_TIMING:
+                if self.logic.printTiming:
                     print("Time to get the current distance map: {0} seconds".format(time.time() - t1))
                 if self.r15Checkbox.checked:
                     self.runAnalysisSphere(15, labelmapWholeVolumeArray)
@@ -588,7 +632,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                     self.runAnalysisSphere(r, labelmapWholeVolumeArray)
 
             t = time.time() - start
-            if self.logic.PRINT_TIMING:
+            if self.logic.printTiming:
                 print("********* TOTAL ANALYSIS TIME: {0} SECONDS".format(t))
 
             # Save the results in the report widget
@@ -609,7 +653,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         t1 = time.time()
         labelmapArray = self.logic.getSphereLabelMap(radius)
         getSphereTime = time.time() - t1
-        if self.logic.PRINT_TIMING:
+        if self.logic.printTiming:
             print("Time elapsed to get a sphere labelmap of radius {0}: {1} seconds".format(radius, getSphereTime))
         slicer.app.processEvents()
         if labelmapArray.max() == 0:
@@ -625,54 +669,127 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             t1 = time.time()
             self.analysisResults[keyName] = collections.OrderedDict()
             self.analysisResultsTiming[keyName] = collections.OrderedDict()
-            logic.run(self.analysisResults[keyName], self.logic.PRINT_TIMING, self.analysisResultsTiming[keyName])
+            logic.run(self.analysisResults[keyName], self.logic.printTiming, self.analysisResultsTiming[keyName])
             t2 = time.time()
 
             print("********* Results for the sphere of radius {0}:".format(radius))
             print(self.analysisResults[keyName])
-            if self.logic.PRINT_TIMING:
+            if self.logic.printTiming:
                 print("*** Elapsed time for the sphere radius {0} analysis (TOTAL={1} seconds:".format(radius, t2 - t1))
                 print (self.analysisResultsTiming[keyName])
 
+    def forceSaveReport(self):
+        keyName = self.inputVolumeSelector.currentNode().GetName()
+        self.analysisResults[keyName] = collections.OrderedDict()
+        self.__saveBasicData__(keyName)
+        self.saveReport()
 
     def saveReport(self, showConfirmation=True):
         """ Save the current values in a persistent csv file
         """
-        date = time.strftime("%Y/%m/%d %H:%M:%S")
         keyName = self.inputVolumeSelector.currentNode().GetName()
-        threshold = self.distanceLevelSlider.value
-        self.__saveSubReport__(keyName, date, threshold)
+        self.__saveSubReport__(keyName)
         keyName = self.inputVolumeSelector.currentNode().GetName() + "__r15"
-        self.__saveSubReport__(keyName, date, threshold)
+        self.__saveSubReport__(keyName)
         keyName = self.inputVolumeSelector.currentNode().GetName() + "__r20"
-        self.__saveSubReport__(keyName, date, threshold)
+        self.__saveSubReport__(keyName)
         keyName = self.inputVolumeSelector.currentNode().GetName() + "__r25"
-        self.__saveSubReport__(keyName, date, threshold)
+        self.__saveSubReport__(keyName)
         keyName = "{0}__r{1}".format(self.inputVolumeSelector.currentNode().GetName(), self.otherRadiusTextbox.text)
-        self.__saveSubReport__(keyName, date, threshold)
+        self.__saveSubReport__(keyName)
         if showConfirmation:
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
 
-    def __saveSubReport__(self, keyName, date, threshold):
+    def __saveSubReport__(self, keyName):
         """ Save a report in Case Reports Widget for this case and a concrete radius
         :param keyName: CaseId[__rXX] where XX = sphere radius
         :param date: timestamp global to all records
         """
         if keyName in self.analysisResults and self.analysisResults[keyName] is not None \
                 and len(self.analysisResults[keyName]) > 0:
-            self.analysisResults[keyName]["CaseId"] = keyName
-            self.analysisResults[keyName]["Date"] = date
-            self.analysisResults[keyName]["Threshold"] = threshold
+            self.__saveBasicData__(keyName)
             self.reportsWidget.saveCurrentValues(**self.analysisResults[keyName])
 
-            if self.logic.PRINT_TIMING:
+            if self.logic.printTiming:
                 # Save also timing report
-                self.analysisResultsTiming[keyName]["CaseId"] = keyName + "_timing"
-                self.analysisResultsTiming[keyName]["Date"] = date
+                # self.analysisResultsTiming[keyName]["CaseId"] = keyName + "_timing"
+                # self.analysisResultsTiming[keyName]["Date"] = date
+                self.__saveBasicData__(keyName, isTiming=True)
                 self.reportsWidget.saveCurrentValues(**self.analysisResultsTiming[keyName])
+
+    def __saveBasicData__(self, keyName, isTiming=False):
+        date = time.strftime("%Y/%m/%d %H:%M:%S")
+        threshold = self.distanceLevelSlider.value
+        # Read seeds
+        fidNode = self.logic.getCurrentFiducialsNode()
+        coordsList = []
+        for i in range(fidNode.GetNumberOfMarkups()):
+            if fidNode.GetNthFiducialVisibility(i):
+                coords = [0,0,0]
+                fidNode.GetNthFiducialPosition(i, coords)
+                coords = Util.ras_to_lps(coords)
+                coordsList.append(coords)
+        if isTiming:
+            d = self.analysisResultsTiming
+            d[keyName]["CaseId"] = keyName + "_timing"
+        else:
+            d = self.analysisResults
+            d[keyName]["CaseId"] = keyName
+
+        d[keyName]["Date"] = date
+        d[keyName]["Threshold"] = threshold
+        d[keyName]["LesionType"] = self.lesionType
+        d[keyName]["Seeds_LPS"] = coordsList.__str__()
+
+
+
+    def saveCurrentSeedsToXML(self):
+        dirPath = os.path.join(SlicerUtil.getModuleFolder(self.moduleName), "Results")
+        Util.create_directory(dirPath)
+        filePath = os.path.join(dirPath, self.logic.currentVolume.GetName() + "_seedEvaluation.xml")
+        geom = GeometryTopologyData()
+        geom.coordinate_system = GeometryTopologyData.LPS
+        fidNode = self.logic.getCurrentFiducialsNode()
+        for i in range(fidNode.GetNumberOfMarkups()):
+            if fidNode.GetNthFiducialVisibility(i):
+                coords = [0,0,0]
+                fidNode.GetNthFiducialPosition(i, coords)
+                coords = Util.ras_to_lps(coords)
+                descr = None
+                if self.lesionTypeRadioButtonGroup.checkedId() == 1:
+                    descr = "Nodule"
+                elif self.lesionTypeRadioButtonGroup.checkedId() == 2:
+                    descr = "Tumor"
+                geom.add_point(Point(0, 86, 0, coords, descr))
+
+        geom.to_xml_file(filePath)
+        qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+
+    def reset(self):
+        # self.__initVars__()
+        # Clean fiducials area
+        self.__removeFiducialsFrames__()
+        if self.logic.currentVolume is not None:
+            fidNode = self.logic.getFiducialsListNode(self.logic.currentVolume.GetID())
+            if fidNode is not None:
+                slicer.mrmlScene.RemoveNode(fidNode)
+        self.logic = CIP_LesionModelLogic()
+        self.logic.printTiming = self.__evaluateSegmentationModeOn__
 
     ############
     # Events
+    def enter(self):
+        """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
+        if self.inputVolumeSelector.currentNodeID != '':
+            self.logic.getFiducialsListNode(self.inputVolumeSelector.currentNodeID, self.__onFiducialsNodeModified__)
+            self.logic.setActiveVolume(self.inputVolumeSelector.currentNodeID)
+
+            # if not self.timer.isActive() \
+            #         and self.logic.currentLabelmap is not None:  # Segmentation was already performed
+            #     self.timer.start(500)
+
+        self.refreshUI()
+
     def __onInputVolumeChanged__(self, node):
         """ Input volume selector changed
         :param node: selected node
@@ -687,7 +804,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         #     # Stop checking if there is no selected node
         #     self.timer.stop()
 
-        self.__refreshUI__()
+        self.refreshUI()
+
+    def __onPreVolumeLoad__(self, volume):
+        self.reset()
 
     def __onAddFiducialButtonClicked__(self, checked):
         """ Click the add fiducial button so that we set the cursor in fiducial mode
@@ -699,7 +819,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.addFiducialButton.checked = False
             return
 
-        self.__setAddSeedsMode__(checked)
+        self.setAddSeedsMode(checked)
 
     def __onApplySegmentationButtonClicked__(self):
         if self.__validateInputVolumeSelection__():
@@ -718,7 +838,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """
         # print("DEBUG: Fiducials node modified.", nodeID)
         self.addFiducialRow(nodeID)
-        self.__refreshUI__()
+        self.refreshUI()
 
     # def onFiducialButtonClicked(self, button):
     #     print("Button pressed: ", button.objectName)
@@ -757,20 +877,23 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.distanceLevelSlider.value = self.logic.defaultThreshold
 
         self.checkAndRefreshModels(forceRefresh=True)
-        self.__refreshUI__()
+        self.refreshUI()
 
         # Start the timer that will refresh all the visualization nodes
         # self.timer.start(500)
 
-    # def __onRunAnalysisButtonClicked__(self):
-    #     """ Calculate the selected statistics """
-    #     self.calculateSelectedStatistics()
+    def __onSaveSegmentationResultsClicked__(self):
+        self.saveCurrentSeedsToXML()
+
+    def __onSaveTimeCostCheckboxClicked__(self, checked):
+        self.logic.printTiming = (checked == 2)
 
     def __onSceneClosed__(self, arg1, arg2):
         # self.timer.stop()
-        self.__initVars__()
-        # Clean fiducials area
-        self.__removeFiducialsFrames__()
+        self.reset()
+
+
+
 
     def exit(self):
         """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
@@ -801,7 +924,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 #############################
 class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     MAX_TUMOR_RADIUS = 30
-    PRINT_TIMING = SlicerUtil.IsDevelopment
 
     def __init__(self):
         self.currentVolume = None  # Current active volume
@@ -818,6 +940,9 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.currentDistanceMap = None  # Current distance map from the specified origin
         self.currentCentroid = None  # Centroid of the nodule
         self.spheresLabelmaps = dict()  # Labelmap of spheres for a particular radius
+
+        self.printTiming = SlicerUtil.IsDevelopment
+
 
     @property
     def currentModelNode(self):
@@ -924,6 +1049,9 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             return slicer.util.getNode(fiducialsNodeName)  # return the created node
 
         return None  # The process failed
+
+    def getCurrentFiducialsNode(self):
+        return self.getFiducialsListNode(self.currentVolume.GetID())
 
     def getNumberOfFiducials(self, volumeId):
         """ Get the number of fiducials currently set for this volume

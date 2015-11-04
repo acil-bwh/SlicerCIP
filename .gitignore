@@ -13,3 +13,4 @@ install_manifest.txt
 *.csv
 
 Scripted/CIP_ParenchymaSubtypeTraining/Results
+Scripted/CIP_LesionModel/Results

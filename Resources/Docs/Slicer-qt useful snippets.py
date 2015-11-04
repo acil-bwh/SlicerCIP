@@ -29,6 +29,16 @@ self.btnGoToPreviousStructure.enabled = False
 
 
 #####################################################
+# Checkbox
+self.evaluateSegmentationCheckbox = qt.QCheckBox()
+self.evaluateSegmentationCheckbox.setText("Allow saving seeds for batch mode processing")
+self.evaluateSegmentationCheckbox.connect("stateChanged(int)", self.onCheckboxEvaluateSegmentationClicked)
+self.evaluateSegmentationCheckbox.connect("clicked()", self.onCheckboxEvaluateSegmentationClicked)
+def __onSaveTimeCostCheckboxClicked__(self, checked):
+    selected = (checked == 2)		#(0 for False)
+
+
+#####################################################
 # Show dialog message
 qt.QMessageBox.information(slicer.util.mainWindow(), 'OK!', 'The test was ok. Review the console for details')
 # It can be warning, critical...
@@ -92,3 +102,7 @@ self.mainLayout.addWidget(mywidget, 2, 1, 0x0020)
 # Top vertical and right edge:
 self.mainLayout.addWidget(mywidget, 2, 1, 0x0020|0x0002)    
 # You can see all the flag combinations for vertical and horizontal aligments here: http://doc.qt.io/qt-4.8/qt.html#AlignmentFlag-enum   
+
+#####################################################
+# Iterate over several subcategories ("flat")
+self.__storedColumnNames__.extend(itertools.chain.from_iterable(self.featureClasses.itervalues()))
