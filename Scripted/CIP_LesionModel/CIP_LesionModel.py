@@ -1013,7 +1013,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         displayNode = fiducialsNode.GetDisplayNode()
         # displayNode.SetColor([1,0,0])
         displayNode.SetSelectedColor([1, 0, 0])
-        displayNode.SetGlyphScale(4)
+        displayNode.SetGlyphScale(2)
         displayNode.SetGlyphType(8)  # Diamond shape (I'm so cool...)
 
         # Add observer when specified
