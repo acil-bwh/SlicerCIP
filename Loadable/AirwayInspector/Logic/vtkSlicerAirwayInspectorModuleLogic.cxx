@@ -515,11 +515,19 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeCenter(vtkMRMLAirwayNode* node)
   dim[1] = 128;
   dim[2] = 1;
   double outsp[3];
-  double volsp[3];
+  outsp[0] = 0.25;
+  outsp[1] = 0.25;
+  outsp[2] = 0.25;
+
+  double unitsp[3];
+  double insp[3];
+
   inputImage->GetOrigin(orig);
 
-  volumeNode->GetSpacing(outsp);
-  inputImage->GetSpacing(volsp);
+  volumeNode->GetSpacing(insp);
+  inputImage->GetSpacing(unitsp);
+
+  inputImage->SetSpacing(insp);
 
   double pixelshift = 0.5;
   double outcenter[3];
@@ -537,14 +545,14 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeCenter(vtkMRMLAirwayNode* node)
                           0, dim[1]-1,
                           0, dim[2]-1);
   rFind->SetOutputSpacing(outsp);
-  rFind->SetOutputOrigin(-1.0*outcenter[0]*volsp[0],
-                         -1.0*outcenter[1]*volsp[1],
-                         -1.0*outcenter[2]*volsp[2]);
+  rFind->SetOutputOrigin(-1.0*outcenter[0]*outsp[0],
+                         -1.0*outcenter[1]*outsp[1],
+                         -1.0*outcenter[2]*outsp[2]);
 
   rFind->SetResliceAxesDirectionCosines( 1, 0, 0, 0, 1, 0, 0, 0, 1);
-  rFind->SetResliceAxesOrigin(orig[0] + ijk[0]*volsp[0],
-                              orig[1] + ijk[1]*volsp[1],
-                              orig[2] + ijk[2]*volsp[2]);
+  rFind->SetResliceAxesOrigin(orig[0] + ijk[0]*insp[0],
+                              orig[1] + ijk[1]*insp[1],
+                              orig[2] + ijk[2]*insp[2]);
   rFind->SetInterpolationModeToLinear();
   rFind->Update();
 
@@ -562,7 +570,7 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeCenter(vtkMRMLAirwayNode* node)
   vtkImageThreshold *th = vtkImageThreshold::New();
   th->SetInputData(rFind->GetOutput());
   th->ThresholdBetween(node->GetAirBaselineIntensity(),
-    node->GetAirBaselineIntensity() + node->GetThreshold());
+                       node->GetThreshold());
   th->SetInValue (1);
   th->SetOutValue (0);
   th->ReplaceInOn();
@@ -586,22 +594,27 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeCenter(vtkMRMLAirwayNode* node)
   ccen->Update();
   double *centroid = ccen->GetCentroid();
 
-  double wcp[3];
+  // delta IJK
+  double wcp[4];
   for (int k=0; k<3; k++)
     {
     wcp[k] = ijk[k] + centroid[k] - outcenter[k];
-    // IJK to RAS
-    rasToIJK->Invert();
-    tmp = rasToIJK->MultiplyDoublePoint(wcp);
-    wcp[0] = tmp[0];
-    wcp[1] = tmp[1];
-    wcp[2] = tmp[2];
     }
+  wcp[3] = 1;
+
+  // IJK to RAS
+  rasToIJK->Invert();
+  tmp = rasToIJK->MultiplyDoublePoint(wcp);
+  wcp[0] = tmp[0];
+  wcp[1] = tmp[1];
+  wcp[2] = tmp[2];
 
   if (flag)
     {
     node->SetXYZ(wcp);
     }
+
+  inputImage->SetSpacing(unitsp);
 
   rFind->Delete();
   th->Delete();
