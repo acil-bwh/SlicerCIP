@@ -140,6 +140,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         return self.evaluateSegmentationCheckbox.checked
 
     @property
+    def __printTiming__(self):
+        return self.saveTimeCostCheckbox.checked == 2
+
+    @property
     def lesionType(self):
         return self.lesionTypeRadioButtonGroup.checkedButton().text
 
@@ -680,6 +684,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
     def forceSaveReport(self):
         keyName = self.inputVolumeSelector.currentNode().GetName()
+        self.analysisResults = dict()
         self.analysisResults[keyName] = collections.OrderedDict()
         self.__saveBasicData__(keyName)
         self.saveReport()
@@ -766,15 +771,21 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
 
     def reset(self):
-        # self.__initVars__()
         # Clean fiducials area
         self.__removeFiducialsFrames__()
         if self.logic.currentVolume is not None:
             fidNode = self.logic.getFiducialsListNode(self.logic.currentVolume.GetID())
             if fidNode is not None:
                 slicer.mrmlScene.RemoveNode(fidNode)
+        if self.logic.currentLabelmap is not None:
+            slicer.mrmlScene.RemoveNode(self.logic.currentLabelmap)
+        if self.logic.currentModelNode is not None:
+            slicer.mrmlScene.RemoveNode(self.logic.currentModelNode)
+        if self.logic.cliOutputScalarNode is not None:
+            slicer.mrmlScene.RemoveNode(self.logic.cliOutputScalarNode)
+        del(self.logic)
         self.logic = CIP_LesionModelLogic()
-        self.logic.printTiming = self.__evaluateSegmentationModeOn__
+        self.logic.printTiming = self.__printTiming__
 
     ############
     # Events
