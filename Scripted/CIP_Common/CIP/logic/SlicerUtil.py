@@ -345,6 +345,19 @@ class SlicerUtil:
         # origin.reverse()
         # return arr, spacing, origin
 
+    @staticmethod
+    def jumpToSlice(widgetName, slice):
+        layoutManager = slicer.app.layoutManager()
+        widget = layoutManager.sliceWidget(widgetName)
+        widgetSliceNode = widget.sliceLogic().GetLabelLayer().GetSliceNode()
+        if widgetName == "Red":
+            widgetSliceNode.JumpSlice(0, 0, slice)
+        elif widgetName == "Yellow":
+            widgetSliceNode.JumpSlice(slice, 0, 0)
+        elif widgetName == "Green":
+            widgetSliceNode.JumpSlice(0, slice, 0)
+
+
 
         # @staticmethod
     # def gitUpdateCIP():

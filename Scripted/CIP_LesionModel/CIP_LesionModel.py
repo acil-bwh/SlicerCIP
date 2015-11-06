@@ -199,11 +199,20 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.addFiducialButton.enabled = False
         self.mainAreaLayout.addRow("Add seeds: ", self.addFiducialButton)
 
-
         # Container for the fiducials
         self.fiducialsContainerFrame = qt.QFrame()
         self.fiducialsContainerFrame.setLayout(qt.QVBoxLayout())
         self.mainAreaLayout.addWidget(self.fiducialsContainerFrame)
+
+        # Load seeds
+        self.loadSeedsButton = ctk.ctkPushButton()
+        self.loadSeedsButton.text = "Load seeds from XML"
+        self.loadSeedsButton.toolTip = "Load the current seeds and lesion type for batch analysis in a XML file"
+        self.loadSeedsButton.setIcon(qt.QIcon("{0}/Load.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.loadSeedsButton.setIconSize(qt.QSize(16,16))
+        self.loadSeedsButton.setMaximumWidth(150)
+        self.loadSeedsButton.setVisible(False)
+        self.mainAreaLayout.addRow("", self.loadSeedsButton)
 
         # Type of nodule
         noduleTypeFrame = qt.QFrame()
@@ -412,6 +421,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.forceSaveReport)
         self.evaluateSegmentationCheckbox.connect("clicked()", self.refreshUI)
         self.saveSeedsButton.connect("clicked()", self.saveCurrentSeedsToXML)
+        self.loadSeedsButton.connect("clicked()", self.loadSeedsFromXML)
         self.saveTimeCostCheckbox.connect("stateChanged(int)", self.__onSaveTimeCostCheckboxClicked__)
         self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_PRE_VOLUME_LOAD, self.__onPreVolumeLoad__)
 
@@ -449,7 +459,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.runAnalysisButton.toolTip = "Please run the segmentation algorithm first (click ""Segment"" button)"
 
         self.progressBar.visible = self.distanceLevelSlider.enabled
-        self.saveSeedsButton.visible = self.__evaluateSegmentationModeOn__
+        self.saveSeedsButton.visible = self.loadSeedsButton.visible = self.__evaluateSegmentationModeOn__
         self.reportsWidget.showSaveButton(self.__evaluateSegmentationModeOn__)
 
     def __removeFiducialsFrames__(self):
@@ -769,6 +779,19 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         geom.to_xml_file(filePath)
         qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+
+    def loadSeedsFromXML(self):
+        dirPath = os.path.join(SlicerUtil.getModuleFolder(self.moduleName), "Results")
+        filePath = os.path.join(dirPath, self.logic.currentVolume.GetName() + "_seedEvaluation.xml")
+        geom = GeometryTopologyData.from_xml_file(filePath)
+        fidNode = self.logic.getCurrentFiducialsNode()
+        for point in geom.points:
+            position = Util.lps_to_ras(point.coordinate)
+            index = fidNode.AddFiducial(*position)
+
+        # Jump to slice of the first seed
+        SlicerUtil.jumpToSlice("Red",  Util.lps_to_ras(geom.points[0].coordinate)[2])
+
 
     def reset(self):
         # Clean fiducials area
