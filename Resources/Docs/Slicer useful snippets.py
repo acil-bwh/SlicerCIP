@@ -106,7 +106,8 @@ selectedNode = self.volumeSelector.currentNode()
 selectionNode = slicer.app.applicationLogic().GetSelectionNode()
 selectionNode.SetReferenceActiveVolumeID( self.master.GetID() )
 selectionNode.SetReferenceActiveLabelVolumeID( merge.GetID() )
-self.applicationLogic.PropagateVolumeSelection(0)
+self.applicationLogic.PropagateVolumeSelection(0)     
+# IMPORTANT: the layer is the type of node (background, foreground, labelmap). We can use a particular method like appLogic.PropagateForegroundVolumeSelection()
 
 NOTE: selectionNode can be used not only for volumes, but also for fiducials, ROIs, etc.
 
@@ -177,7 +178,6 @@ with open(self.csvFilePath, 'a+b') as csvfile:
 ########################################################################
 # Handle user events (mouse, keyboard...)
 
-# get new slice nodes
 layoutManager = slicer.app.layoutManager()
 sliceNodeCount = slicer.mrmlScene.GetNumberOfNodesByClass('vtkMRMLSliceNode')
 for nodeIndex in xrange(sliceNodeCount):
@@ -350,6 +350,20 @@ m = slicer.util.mainWindow()
 m.moduleSelector().selectModule('ModelMaker')
 
 
+###
+# Iterate over the different 2D windows  and change opacity
+nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLSliceCompositeNode")  
+# Call necessary to allow the iteration.
+nodes.InitTraversal()
+# Get the first CompositeNode (typically Red)
+compositeNode = nodes.GetNextItemAsObject()    
+
+# Link the nodes by default
+while compositeNode:
+    compositeNode.SetLinkedControl(True)
+    compositeNode.SetLabelOpacity(0.5)        # In order the structures are visible
+    compositeNode = nodes.GetNextItemAsObject()
+
 ####################################################################################
 # WORKING WITH CLIs
 
@@ -381,5 +395,18 @@ writeFile << "output = " << valueThatIWantToReturn << std::endl;
 writeFile.close();
 
 
-
+####################################################################################
+# Camera node selector
+cameraNodeSelector = slicer.qMRMLNodeComboBox()
+cameraNodeSelector.objectName = 'cameraNodeSelector'
+cameraNodeSelector.toolTip = "Select a camera that will fly along this path."
+cameraNodeSelector.nodeTypes = ['vtkMRMLCameraNode']
+cameraNodeSelector.noneEnabled = False
+cameraNodeSelector.addEnabled = False
+cameraNodeSelector.removeEnabled = False
+cameraNodeSelector.connect('currentNodeChanged(bool)', self.enableOrDisableCreateButton)
+cameraNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.setCameraNode)
+pathFormLayout.addRow("Camera:", cameraNodeSelector)
+self.parent.connect('mrmlSceneChanged(vtkMRMLScene*)',
+                    cameraNodeSelector, 'setMRMLScene(vtkMRMLScene*)')
 

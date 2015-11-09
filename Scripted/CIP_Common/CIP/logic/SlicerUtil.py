@@ -301,18 +301,48 @@ class SlicerUtil:
         return node
 
     @staticmethod
-    def getActiveVolumeIdInRedSlice():
-        """ Get the active volume in the Red Slice
+    def getActiveVolumeIdInSlice(sliceName):
+        """ Get the active volume in a 2D Slice (background if possible, foreground otherwise)
+        :param sliceName: typically "Red", "Green" or "Yellow"
         :return: volume node id or None
         """
         layoutManager = slicer.app.layoutManager()
-        compositeNode = layoutManager.sliceWidget("Red").mrmlSliceCompositeNode()
-        backgroundNode = compositeNode.GetBackgroundVolumeID()
-        if backgroundNode is not None:
-            return backgroundNode
+        compositeNode = layoutManager.sliceWidget(sliceName).mrmlSliceCompositeNode()
+        node = compositeNode.GetBackgroundVolumeID()
+        if node is not None:
+            return node
         # If background is None, try foreground
-        backgroundNode = compositeNode.GetForegroundVolumeID()
-        return backgroundNode
+        node = compositeNode.GetForegroundVolumeID()
+        return node
+
+    @staticmethod
+    def getActiveVolumeIdInRedSlice():
+        """ Get the active volume in the Red Slice (background if possible, foreground otherwise)
+        :return: volume node id or None
+        """
+        return SlicerUtil.getActiveVolumeIdInSlice("Red")
+
+    @staticmethod
+    def getFirstScalarNode():
+        """ Get the first vtkMRMLScalarVolumeNode in the scene
+        :return: node or None
+        """
+        nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLScalarVolumeNode")
+        nodes.UnRegister(nodes)
+        if nodes.GetNumberOfItems() > 0:
+            return nodes.GetItemAsObject(0)
+        return None
+
+    @staticmethod
+    def getFirstLabelmapNode():
+        """ Get the first vtkMRMLLabelMapVolumeNode in the scene
+        :return: node or None
+        """
+        nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLLabelMapVolumeNode")
+        nodes.UnRegister(nodes)
+        if nodes.GetNumberOfItems() > 0:
+            return nodes.GetItemAsObject(0)
+        return None
 
 
     @staticmethod
@@ -347,6 +377,10 @@ class SlicerUtil:
 
     @staticmethod
     def jumpToSlice(widgetName, slice):
+        """ Jump one of the three 2D windows to a number of slice.
+        :param widgetName: "Red", "Yellow" or "Green"
+        :param slice: number of slice (RAS coords)
+        """
         layoutManager = slicer.app.layoutManager()
         widget = layoutManager.sliceWidget(widgetName)
         widgetSliceNode = widget.sliceLogic().GetLabelLayer().GetSliceNode()
@@ -357,6 +391,14 @@ class SlicerUtil:
         elif widgetName == "Green":
             widgetSliceNode.JumpSlice(0, slice, 0)
 
+    @staticmethod
+    def jumpToSeed(coords):
+        """ Position all the 2D windows in a RAS coordinate, and also centers the windows around
+        :param coord: array/list/tuple that contains a RAS coordinate
+        """
+        sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
+        for sliceNode in sliceNodes.values():
+            sliceNode.JumpSliceByCentering(coords[0], coords[1], coords[2])
 
 
         # @staticmethod

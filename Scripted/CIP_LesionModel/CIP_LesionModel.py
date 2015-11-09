@@ -80,6 +80,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.logic = CIP_LesionModelLogic()
         self.__featureClasses__ = None
         self.__storedColumnNames__ = None
+        # Timer for dynamic zooming
+        self.timer = qt.QTimer()
+        self.timer.setInterval(150)
+        self.timer.timeout.connect(self.updateFOV)
         # self.selectedMainFeaturesKeys = set()
         # self.selectedFeatureKeys = set()
         # self.analysisResults = dict()
@@ -399,6 +403,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.advancedParametersLayout = qt.QFormLayout(collapsibleButton)
         self.evaluateSegmentationCheckbox = qt.QCheckBox()
         self.evaluateSegmentationCheckbox.setText("Enable saving seeds mode for batch processing")
+        self.evaluateSegmentationCheckbox.setChecked(True)
         self.advancedParametersLayout.addWidget(self.evaluateSegmentationCheckbox)
         self.saveTimeCostCheckbox = qt.QCheckBox()
         self.saveTimeCostCheckbox.setText("Save time cost of every operation")
@@ -781,6 +786,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
 
     def loadSeedsFromXML(self):
+        if self.logic.currentVolume is None:
+            self.logic.setActiveVolume(SlicerUtil.getFirstScalarNode().GetID())
         dirPath = os.path.join(SlicerUtil.getModuleFolder(self.moduleName), "Results")
         filePath = os.path.join(dirPath, self.logic.currentVolume.GetName() + "_seedEvaluation.xml")
         geom = GeometryTopologyData.from_xml_file(filePath)
@@ -789,9 +796,27 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             position = Util.lps_to_ras(point.coordinate)
             index = fidNode.AddFiducial(*position)
 
-        # Jump to slice of the first seed
-        SlicerUtil.jumpToSlice("Red",  Util.lps_to_ras(geom.points[0].coordinate)[2])
+        coords = Util.lps_to_ras(geom.points[0].coordinate)
+        SlicerUtil.jumpToSeed(coords)
 
+        self.timer.start()
+
+
+    def updateFOV(self):
+        sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
+        sliceNode = sliceNodes["Red"]
+        fov = sliceNode.GetFieldOfView()
+        if fov[0] > 45:
+            sliceNode.SetFieldOfView(fov[0] * 0.90,
+                                     fov[1] * 0.90, fov[2])
+            sliceNode = sliceNodes["Yellow"]
+            sliceNode.SetFieldOfView(fov[0] * 0.90,
+                                     fov[1] * 0.90, fov[2])
+            sliceNode = sliceNodes["Green"]
+            sliceNode.SetFieldOfView(fov[0] * 0.90,
+                                     fov[1] * 0.90, fov[2])
+        else:
+            self.timer.stop()
 
     def reset(self):
         # Clean fiducials area
