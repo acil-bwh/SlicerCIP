@@ -467,6 +467,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.saveSeedsButton.visible = self.loadSeedsButton.visible = self.__evaluateSegmentationModeOn__
         self.reportsWidget.showSaveButton(self.__evaluateSegmentationModeOn__)
 
+
+
     def __removeFiducialsFrames__(self):
         """ Remove all the possible fiducial frames that can remain obsolete (for example after closing a scene)
         """
@@ -976,6 +978,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
     def onAnalyzeButtonClicked(self):
         self.runAnalysis()
+
 
 
 #############################
