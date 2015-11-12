@@ -1215,7 +1215,6 @@ class CIP_BodyCompositionLogic(ScriptedLoadableModuleLogic):
                 #         cubicMMPerVoxel = reduce(lambda x,y: x*y, labelNode.GetSpacing())
                 #         ccPerCubicMM = 0.001
                 #
-                #         # TODO: progress and status updates
                 #         # this->InvokeEvent(vtkLabelStatisticsLogic::StartLabelStats, (void*)"start label stats")
                 #
                 #

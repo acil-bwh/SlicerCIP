@@ -4,10 +4,11 @@ Created on Feb 17, 2015
 Common functions that can be useful in any Slicer module development
 '''
 
-from __main__ import slicer, vtk
 import os
 
+from __main__ import slicer, vtk
 from . import Util
+
 
 class SlicerUtil:
     # Constants    

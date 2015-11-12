@@ -47,6 +47,8 @@ class CIP_BlankWidget(ScriptedLoadableModuleWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
+    def __init__(self, parent):
+        ScriptedLoadableModuleWidget.__init__(self, parent)
 
     def setup(self):
         """This is called one time when the module GUI is initialized
@@ -107,6 +109,10 @@ class CIP_BlankLogic(ScriptedLoadableModuleLogic):
     Uses ScriptedLoadableModuleLogic base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
+    def __init__(self):
+        """Constructor. """
+        ScriptedLoadableModuleLogic.__init__(self)
+
     def printMessage(self, message):
         print("This is your message: ", message)
         return "I have printed this message: " + message
