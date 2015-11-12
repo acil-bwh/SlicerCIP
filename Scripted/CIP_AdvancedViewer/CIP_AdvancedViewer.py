@@ -43,7 +43,7 @@ class CIP_AdvancedViewer(ScriptedLoadableModule):
 # CIP_AdvancedViewerWidget
 #
 
-class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget):
+class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
@@ -64,10 +64,9 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget):
     OPERATION_MEAN = 3
     OPERATION_NONE = -1
 
-    PLANE_ALL = 0
-    PLANE_AXIAL = 1
-    PLANE_SAGITTAL = 2
-    PLANE_CORONAL = 3
+    PLANE_AXIAL = 0
+    PLANE_SAGITTAL = 1
+    PLANE_CORONAL = 2
 
 
     def __init__(self, parent):
@@ -90,6 +89,41 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget):
             self.OPERATION_MEAN: "Mean"
         }
 
+    # @property
+    # def currentContext(self):
+    #     return self.contextComboBox.currentIndex
+    # @currentContext.setter
+    # def currentContext(self, value):
+    #     self.contextComboBox.blockSignals(True)
+    #     self.contextComboBox.currentIndex = value
+    #     self.contextComboBox.blockSignals(False)
+
+    @property
+    def currentPlane(self):
+        return self.planeComboBox.currentIndex
+    @currentPlane.setter
+    def currentPlane(self, value):
+        self.planeComboBox.blockSignals(True)
+        self.planeComboBox.currentIndex = value
+        self.planeComboBox.blockSignals(False)
+
+    @property
+    def currentOperation(self):
+        return self.operationComboBox.currentIndex
+    @currentOperation.setter
+    def currentOperation(self, value):
+        self.operationComboBox.blockSignals(True)
+        self.operationComboBox.currentIndex = value
+        self.operationComboBox.blockSignals(False)
+
+    @property
+    def currentNumberOfSlices(self):
+        return self.slicesSpinBox.value
+    @currentNumberOfSlices.setter
+    def currentNumberOfSlices(self, value):
+        self.slicesSpinBox.blockSignals(True)
+        self.slicesSpinBox.setValue(value)
+        self.slicesSpinBox.blockSignals(False)
 
     def setup(self):
         """This is called one time when the module GUI is initialized
@@ -99,14 +133,10 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget):
         # Create objects that can be used anywhere in the module. Example: in most cases there should be just one
         # object of the logic class
         self.logic = CIP_AdvancedViewerLogic()
-        self.context = self.CONTEXT_UNKNOWN
+        self.currentContext = self.CONTEXT_UNKNOWN
         self.currentLayout = self.LAYOUT_DEFAULT
-        self.currentOperation = 0   # Default: MIP
-        self.currentPlane = self.PLANE_AXIAL
-        self.currentNumberOfSlices = 40
-
-        layoutManager = slicer.app.layoutManager()
-        self.originalLayout = layoutManager.layout
+        # self.currentNumberOfSlices = 10
+        self.originalLayout = slicer.app.layoutManager().layout
 
         ##
         ## Main Area
@@ -193,6 +223,16 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget):
         label = qt.QLabel("Reset")
         self.mainAreaLayout.addWidget(label, 4, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
 
+        # Number of slices
+        label = qt.QLabel("Number of slices")
+        self.mainAreaLayout.addWidget(label, 5, 0)
+        self.slicesSpinBox = qt.QSpinBox()
+        self.mainAreaLayout.addWidget(self.slicesSpinBox, 5, 1)
+        self.slicesSpinBox.minimum = 1
+        self.slicesSpinBox.maximum = 80
+        self.slicesSpinBox.setSingleStep(5)
+        self.slicesSpinBox.setValue(10)     # Default number of slices: 10
+
         # Apply changes button
         # self.applyChangesButton = qt.QPushButton()
         # self.applyChangesButton.text = "Apply changes"
@@ -204,11 +244,12 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget):
         self.contextComboBox.connect("currentIndexChanged (int)", self.__onContextIndexChanged__)
         self.planeComboBox.connect("currentIndexChanged (int)", self.__onPlaneIndexChanged__)
         self.operationComboBox.connect("currentIndexChanged (int)", self.__onOperationIndexChanged__)
-        self.sideBySideViewButton.connect('clicked()', self.__onSideBySideButtonClicked__)
-        self.threeOverThreeViewButton.connect('clicked()', self.__onThreeOverThreeViewButtonClicked__)
-        self.maxMinCompareViewButton.connect('clicked()', self.__onMaxMinCompareViewButtonClicked__)
-        self.resetViewButton.connect('clicked()', self.__onResetViewButtonClicked__)
-        self.applyChangesButton.connect('clicked()', self.__onApplyChangesButtonClicked__)
+        self.sideBySideViewButton.connect("clicked()", self.__onSideBySideButtonClicked__)
+        self.threeOverThreeViewButton.connect("clicked()", self.__onThreeOverThreeViewButtonClicked__)
+        self.maxMinCompareViewButton.connect("clicked()", self.__onMaxMinCompareViewButtonClicked__)
+        self.resetViewButton.connect("clicked()", self.__onResetViewButtonClicked__)
+        self.slicesSpinBox.connect("valueChanged(int)", self.__onNumberOfSlicesChanged__)
+        # self.applyChangesButton.connect('clicked()', self.__onApplyChangesButtonClicked__)
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
@@ -226,19 +267,21 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget):
         """ Configure the widget for a particular context. Fix operation, plane, layout and optionally number of slices
         :param context: element of "contexts" list
         """
-        self.context = context
-        if self.context == self.CONTEXT_UNKNOWN:
+        self.currentContext = context
+        if context == self.CONTEXT_UNKNOWN:
             # No action to do
             return
 
         if context == self.CONTEXT_NODULES:
-            # MinMP. Three over three
-            self.currentLayout = self.LAYOUT_THREE_OVER_THREE
+            # MIP, Axial, Side by side
+            self.currentLayout = self.LAYOUT_SIDE_BY_SIDE
+            self.currentPlane = self.PLANE_AXIAL
             self.currentOperation = self.OPERATION_MIP
         elif context == self.CONTEXT_EMPHYSEMA:
+            # MinIP, Axial, Side by side
             self.currentLayout = self.LAYOUT_SIDE_BY_SIDE
-            self.currentOperation = self.OPERATION_MIP
-            self.currentPlane = self.PLANE_SAGGITAL
+            self.currentPlane = self.PLANE_AXIAL
+            self.currentOperation = self.OPERATION_MinIP
         self.executeCurrentSettings()
 
 
@@ -364,7 +407,7 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget):
         """ Change the active plane
         :param index:
         """
-        self.currentPlane = index
+        # self.currentPlane = index
         self.executeCurrentSettings()
 
     def __onOperationIndexChanged__(self, index):
@@ -382,10 +425,8 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget):
         """
         self.currentLayout = 29
         if self.currentOperation == self.OPERATION_MIP_MinIP:
-            # Force a default operation (MIP)
-            self.operationComboBox.blockSignals(True)
-            self.operationComboBox.currentIndex = self.currentOperation = 0
-            self.operationComboBox.blockSignals(False)
+            # Force a default operation (MIP) because side by side and MIP+MinIP is not a valid combination
+            self.currentOperation = self.OPERATION_MIP
         self.executeCurrentSettings()
 
     def __onThreeOverThreeViewButtonClicked__(self):
@@ -393,10 +434,8 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget):
         """
         self.currentLayout = 21
         if self.currentOperation == self.OPERATION_MIP_MinIP:
-            # Force a default operation (MIP)
-            self.operationComboBox.blockSignals(True)
-            self.operationComboBox.currentIndex = self.currentOperation = 0
-            self.operationComboBox.blockSignals(False)
+            # Force a default operation (MIP) because 3x3 and MIP+MinIP is not a valid combination
+            self.currentOperation = self.OPERATION_MIP
         self.executeCurrentSettings()
 
     def __onMaxMinCompareViewButtonClicked__(self):
@@ -405,9 +444,6 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget):
         self.currentLayout = 3
         # Force the operation (just one is possible)
         self.currentOperation = self.OPERATION_MIP_MinIP
-        self.operationComboBox.blockSignals(True)
-        self.operationComboBox.currentIndex = self.currentOperation
-        self.operationComboBox.blockSignals(False)
         self.executeCurrentSettings()
 
     def __onResetViewButtonClicked__(self):
@@ -415,10 +451,16 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget):
         """
         SlicerUtil.changeLayout(self.originalLayout)
 
-    def __onApplyChangesButtonClicked__(self):
-        self.currentPlane = self.planeComboBox.currentIndex
-        self.currentOperation = self.operationComboBox.currentIndex
+    def __onNumberOfSlicesChanged__(self, number):
+        """ Number of slices was modified
+        :param number:
+        """
         self.executeCurrentSettings()
+
+    # def __onApplyChangesButtonClicked__(self):
+    #     self.currentPlane = self.planeComboBox.currentIndex
+    #     self.currentOperation = self.operationComboBox.currentIndex
+    #     self.executeCurrentSettings()
 
 #
 # CIP_AdvancedViewerLogic
