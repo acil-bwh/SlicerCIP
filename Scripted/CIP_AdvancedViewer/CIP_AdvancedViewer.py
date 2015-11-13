@@ -54,6 +54,7 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
     # CONTEXT_VASCULATURE = 3
 
     LAYOUT_DEFAULT = 0
+    LAYOUT_RED_ONLY = 6
     LAYOUT_SIDE_BY_SIDE = 29
     LAYOUT_THREE_OVER_THREE = 21
     LAYOUT_COMPARE = 3
@@ -68,6 +69,8 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
     PLANE_SAGITTAL = 1
     PLANE_CORONAL = 2
 
+    DEFAULT_NUMBER_OF_SLICES = 10
+    DEFAULT_SPACING_FRACTION = 1
 
     def __init__(self, parent):
         ScriptedLoadableModuleWidget.__init__(self, parent)
@@ -116,14 +119,31 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
         self.operationComboBox.currentIndex = value
         self.operationComboBox.blockSignals(False)
 
+    # @property
+    # def currentNumberOfSlices(self):
+    #     return self.slicesSpinBox.value
+    # @currentNumberOfSlices.setter
+    # def currentNumberOfSlices(self, value):
+    #     self.slicesSpinBox.blockSignals(True)
+    #     self.slicesSpinBox.setValue(value)
+    #     self.slicesSpinBox.blockSignals(False)
     @property
     def currentNumberOfSlices(self):
-        return self.slicesSpinBox.value
+        return self.numberOfSlicesSlider.value
     @currentNumberOfSlices.setter
     def currentNumberOfSlices(self, value):
-        self.slicesSpinBox.blockSignals(True)
-        self.slicesSpinBox.setValue(value)
-        self.slicesSpinBox.blockSignals(False)
+        self.numberOfSlicesSlider.blockSignals(True)
+        self.numberOfSlicesSlider.setValue(value)
+        self.numberOfSlicesSlider.blockSignals(False)
+
+    @property
+    def currentSpacingFraction(self):
+        return self.spacingFractionSlider.value / 10.0
+    @currentSpacingFraction.setter
+    def currentSpacingFraction(self, value):
+        self.spacingFractionSlider.blockSignals(True)
+        self.spacingFractionSlider.setValue(value * 10)
+        self.spacingFractionSlider.blockSignals(False)
 
     def setup(self):
         """This is called one time when the module GUI is initialized
@@ -147,11 +167,11 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
         self.mainAreaLayout = qt.QGridLayout(mainAreaCollapsibleButton)
 
         # Context
-        label = qt.QLabel("Context")
+        self.contextLabel = qt.QLabel("Context")
         self.contextComboBox = qt.QComboBox(mainAreaCollapsibleButton)
         for context in self.contexts.itervalues():
             self.contextComboBox.addItem(context)
-        self.mainAreaLayout.addWidget(label, 0, 0)
+        self.mainAreaLayout.addWidget(self.contextLabel, 0, 0)
         self.mainAreaLayout.addWidget(self.contextComboBox, 0, 1, 1, 3)
 
         # Plane
@@ -159,18 +179,17 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
         self.planeComboBox.addItem("Axial")
         self.planeComboBox.addItem("Sagittal")
         self.planeComboBox.addItem("Coronal")
-        #self.mainAreaLayout.addRow("Select the plane", self.planeComboBox)
-        label = qt.QLabel("Plane")
-        self.mainAreaLayout.addWidget(label, 1, 0)
+        self.planeLabel = qt.QLabel("Plane")
+        self.mainAreaLayout.addWidget(self.planeLabel, 1, 0)
         self.mainAreaLayout.addWidget(self.planeComboBox, 1, 1, 1, 3)
 
         # Operation
-        label = qt.QLabel("Operation")
+        self.operationLabel = qt.QLabel("Optimization")
         self.operationComboBox = qt.QComboBox(mainAreaCollapsibleButton)
         for operation in self.operations.itervalues():
             if operation != self.OPERATION_NONE:
                 self.operationComboBox.addItem(operation)
-        self.mainAreaLayout.addWidget(label, 2, 0)
+        self.mainAreaLayout.addWidget(self.operationLabel, 2, 0)
         self.mainAreaLayout.addWidget(self.operationComboBox, 2, 1, 1, 3)
 
         ## Layout
@@ -178,6 +197,15 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
         self.mainAreaLayout.addWidget(label, 3, 0)
         # Buttons group
         self.viewsButtonGroup = qt.QButtonGroup()
+        # Single slice Button
+        self.singleSlideViewButton = qt.QPushButton()
+        self.singleSlideViewButton.setCheckable(True)
+        self.singleSlideViewButton.toolTip = "Single slice view"
+        self.singleSlideViewButton.setFixedSize(40, 40)
+        icon = qt.QIcon(":/Icons/LayoutOneUpRedSliceView.png")
+        self.singleSlideViewButton.setIcon(icon)
+        self.mainAreaLayout.addWidget(self.singleSlideViewButton, 3, 1, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.viewsButtonGroup.addButton(self.singleSlideViewButton)
         # Side by side Button
         self.sideBySideViewButton = qt.QPushButton()
         self.sideBySideViewButton.setCheckable(True)
@@ -185,7 +213,7 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
         self.sideBySideViewButton.setFixedSize(40, 40)
         icon = qt.QIcon(":/Icons/LayoutSideBySideView.png")
         self.sideBySideViewButton.setIcon(icon)
-        self.mainAreaLayout.addWidget(self.sideBySideViewButton, 3, 1, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.mainAreaLayout.addWidget(self.sideBySideViewButton, 3, 2, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
         self.viewsButtonGroup.addButton(self.sideBySideViewButton)
         # Three over three button
         self.threeOverThreeViewButton = qt.QPushButton()
@@ -194,7 +222,7 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
         self.threeOverThreeViewButton.setFixedSize(40, 40)
         icon = qt.QIcon(":/Icons/LayoutThreeOverThreeView.png")
         self.threeOverThreeViewButton.setIcon(icon)
-        self.mainAreaLayout.addWidget(self.threeOverThreeViewButton, 3, 2, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.mainAreaLayout.addWidget(self.threeOverThreeViewButton, 3, 3, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
         self.viewsButtonGroup.addButton(self.threeOverThreeViewButton)
         # Comparative MIP-MinIP button
         self.maxMinCompareViewButton = qt.QPushButton()
@@ -203,7 +231,7 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
         self.maxMinCompareViewButton.setFixedSize(40, 40)
         icon = qt.QIcon(":/Icons/LayoutFourUpView.png")
         self.maxMinCompareViewButton.setIcon(icon)
-        self.mainAreaLayout.addWidget(self.maxMinCompareViewButton, 3, 3, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.mainAreaLayout.addWidget(self.maxMinCompareViewButton, 3, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
         self.viewsButtonGroup.addButton(self.maxMinCompareViewButton)
         # Reset Button
         self.resetViewButton = qt.QPushButton()
@@ -212,31 +240,49 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
         icon = qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, "Reload.png"))
         self.resetViewButton.setIconSize(qt.QSize(24, 24))
         self.resetViewButton.setIcon(icon)
-        self.mainAreaLayout.addWidget(self.resetViewButton, 3, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.mainAreaLayout.addWidget(self.resetViewButton, 3, 5, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
         # Buttons labels
-        label = qt.QLabel("Side by side")
+        label = qt.QLabel("Single")
         self.mainAreaLayout.addWidget(label, 4, 1, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
-        label = qt.QLabel("3x3")
+        label = qt.QLabel("Side by side")
         self.mainAreaLayout.addWidget(label, 4, 2, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
-        label = qt.QLabel("MIP-MinIP")
+        label = qt.QLabel("3x3")
         self.mainAreaLayout.addWidget(label, 4, 3, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
-        label = qt.QLabel("Reset")
+        label = qt.QLabel("MIP-MinIP")
         self.mainAreaLayout.addWidget(label, 4, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        label = qt.QLabel("Reset")
+        self.mainAreaLayout.addWidget(label, 4, 5, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
 
         # Number of slices
-        label = qt.QLabel("Number of slices")
-        self.mainAreaLayout.addWidget(label, 5, 0)
-        self.slicesSpinBox = qt.QSpinBox()
-        self.mainAreaLayout.addWidget(self.slicesSpinBox, 5, 1)
-        self.slicesSpinBox.minimum = 1
-        self.slicesSpinBox.maximum = 80
-        self.slicesSpinBox.setSingleStep(5)
-        self.slicesSpinBox.setValue(10)     # Default number of slices: 10
+        # label = qt.QLabel("Number of slices")
+        # self.mainAreaLayout.addWidget(label, 5, 0)
+        # self.slicesSpinBox = qt.QSpinBox()
+        # self.mainAreaLayout.addWidget(self.slicesSpinBox, 5, 1)
+        # self.slicesSpinBox.minimum = 1
+        # self.slicesSpinBox.maximum = 80
+        # self.slicesSpinBox.setSingleStep(5)
+        # self.slicesSpinBox.setValue(10)     # Default number of slices: 10
+        self.numberOfSlicesLabel = qt.QLabel("Number of slices")
+        self.mainAreaLayout.addWidget(self.numberOfSlicesLabel, 5, 0)
+        self.numberOfSlicesSlider = qt.QSlider()
+        self.numberOfSlicesSlider.orientation = 1
+        self.numberOfSlicesSlider.setTickPosition(2)
+        self.numberOfSlicesSlider.minimum = 1
+        self.numberOfSlicesSlider.maximum = 200
+        self.numberOfSlicesSlider.setSingleStep(5)
+        self.numberOfSlicesSlider.setValue(10)
+        self.mainAreaLayout.addWidget(self.numberOfSlicesSlider, 5, 1, 1, 4)
 
-        # Apply changes button
-        # self.applyChangesButton = qt.QPushButton()
-        # self.applyChangesButton.text = "Apply changes"
-        # self.mainAreaLayout.addWidget(self.applyChangesButton, 5, 0)
+        self.spacingFractionLabel = qt.QLabel("Spacing fraction")
+        self.mainAreaLayout.addWidget(self.spacingFractionLabel, 6, 0)
+        self.spacingFractionSlider = qt.QSlider()
+        self.spacingFractionSlider.orientation = 1
+        self.spacingFractionSlider.setTickPosition(2)
+        self.spacingFractionSlider.minimum = 10
+        self.spacingFractionSlider.maximum = 100
+        self.spacingFractionSlider.setSingleStep(5)
+        self.spacingFractionSlider.setValue(10)
+        self.mainAreaLayout.addWidget(self.spacingFractionSlider, 6, 1, 1, 4)
 
         self.layout.addStretch(1)
 
@@ -244,12 +290,14 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
         self.contextComboBox.connect("currentIndexChanged (int)", self.__onContextIndexChanged__)
         self.planeComboBox.connect("currentIndexChanged (int)", self.__onPlaneIndexChanged__)
         self.operationComboBox.connect("currentIndexChanged (int)", self.__onOperationIndexChanged__)
+        self.singleSlideViewButton.connect("clicked()", self.__onSingleSlideButtonClicked__)
         self.sideBySideViewButton.connect("clicked()", self.__onSideBySideButtonClicked__)
         self.threeOverThreeViewButton.connect("clicked()", self.__onThreeOverThreeViewButtonClicked__)
         self.maxMinCompareViewButton.connect("clicked()", self.__onMaxMinCompareViewButtonClicked__)
         self.resetViewButton.connect("clicked()", self.__onResetViewButtonClicked__)
-        self.slicesSpinBox.connect("valueChanged(int)", self.__onNumberOfSlicesChanged__)
-        # self.applyChangesButton.connect('clicked()', self.__onApplyChangesButtonClicked__)
+        # self.slicesSpinBox.connect("valueChanged(int)", self.__onNumberOfSlicesChanged__)
+        self.numberOfSlicesSlider.connect('valueChanged(int)', self.__onNumberOfSlicesChanged__)
+        self.spacingFractionSlider.connect('valueChanged(int)', self.__onNumberOfSlicesChanged__)
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
@@ -326,7 +374,12 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
         else:
             # Set the layout and later the operation
             SlicerUtil.changeLayout(self.currentLayout)
-            if self.currentLayout == self.LAYOUT_SIDE_BY_SIDE:
+            if self.currentLayout == self.LAYOUT_RED_ONLY:
+                # Red window
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+                sliceNode.SetOrientation(self.planeComboBox.currentText)
+                self.__resliceNode__(sliceNode, self.currentOperation)
+            elif self.currentLayout == self.LAYOUT_SIDE_BY_SIDE:
                 # Red window
                 sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
                 sliceNode.SetOrientation(self.planeComboBox.currentText)
@@ -379,12 +432,13 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
         sliceLogic = appLogic.GetSliceLogic(sliceNode)
         sliceLayerLogic = sliceLogic.GetBackgroundLayer()
         reslice = sliceLayerLogic.GetReslice()
+
         if operation == self.OPERATION_NONE:
             reslice.SetSlabMode(0)          # This alone not always works
             reslice.SetSlabNumberOfSlices(1)
         else:
-            #reslice.SetSlabSliceSpacingFraction(0.5)
-            reslice.SetSlabNumberOfSlices(self.currentNumberOfSlices)   # TODO: parametrize number of slices
+            reslice.SetSlabSliceSpacingFraction(self.currentSpacingFraction)
+            reslice.SetSlabNumberOfSlices(self.currentNumberOfSlices)
             if operation == self.OPERATION_MIP:
                 reslice.SetSlabModeToMax()
             elif operation == self.OPERATION_MinIP:
@@ -393,6 +447,17 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
                 reslice.SetSlabModeToMean()
 
         sliceNode.Modified()
+
+    def resetLayout(self):
+        """ Return to the layout that was active when the user loaded the module
+        """
+        SlicerUtil.changeLayout(self.originalLayout)
+        self.currentNumberOfSlices = 1
+        self.currentSpacingFraction = 1
+        # Remove all possible reslicing
+        nodes = slicer.util.getNodes("vtkMRMLSliceNode*")
+        for node in nodes.itervalues():
+            self.__resliceNode__(node, self.OPERATION_NONE)
 
     #################
     # EVENTS
@@ -420,10 +485,19 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
             self.maxMinCompareViewButton.checked = True
         self.executeCurrentSettings()
 
+    def __onSingleSlideButtonClicked__(self):
+        """ Switch to side by side in the selected operation and plane
+        """
+        self.currentLayout = self.LAYOUT_RED_ONLY
+        if self.currentOperation == self.OPERATION_MIP_MinIP:
+            # Force a default operation (MIP) because side by side and MIP+MinIP is not a valid combination
+            self.currentOperation = self.OPERATION_MIP
+        self.executeCurrentSettings()
+
     def __onSideBySideButtonClicked__(self):
         """ Switch to side by side in the selected operation and plane
         """
-        self.currentLayout = 29
+        self.currentLayout = self.LAYOUT_SIDE_BY_SIDE
         if self.currentOperation == self.OPERATION_MIP_MinIP:
             # Force a default operation (MIP) because side by side and MIP+MinIP is not a valid combination
             self.currentOperation = self.OPERATION_MIP
@@ -432,7 +506,7 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
     def __onThreeOverThreeViewButtonClicked__(self):
         """ Switch to three over three in the selected operation and plane
         """
-        self.currentLayout = 21
+        self.currentLayout = self.LAYOUT_THREE_OVER_THREE
         if self.currentOperation == self.OPERATION_MIP_MinIP:
             # Force a default operation (MIP) because 3x3 and MIP+MinIP is not a valid combination
             self.currentOperation = self.OPERATION_MIP
@@ -441,7 +515,7 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
     def __onMaxMinCompareViewButtonClicked__(self):
         """ Show MIP and MinIP at the same time. Force the operation to MIP+MinIP
         """
-        self.currentLayout = 3
+        self.currentLayout = self.LAYOUT_COMPARE
         # Force the operation (just one is possible)
         self.currentOperation = self.OPERATION_MIP_MinIP
         self.executeCurrentSettings()
@@ -449,18 +523,14 @@ class CIP_AdvancedViewerWidget(ScriptedLoadableModuleWidget, object):
     def __onResetViewButtonClicked__(self):
         """ Return to the layout that was active when the user loaded the module
         """
-        SlicerUtil.changeLayout(self.originalLayout)
+        self.resetLayout()
+
 
     def __onNumberOfSlicesChanged__(self, number):
         """ Number of slices was modified
         :param number:
         """
         self.executeCurrentSettings()
-
-    # def __onApplyChangesButtonClicked__(self):
-    #     self.currentPlane = self.planeComboBox.currentIndex
-    #     self.currentOperation = self.operationComboBox.currentIndex
-    #     self.executeCurrentSettings()
 
 #
 # CIP_AdvancedViewerLogic

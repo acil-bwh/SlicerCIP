@@ -106,3 +106,11 @@ self.mainLayout.addWidget(mywidget, 2, 1, 0x0020|0x0002)
 #####################################################
 # Iterate over several subcategories ("flat")
 self.__storedColumnNames__.extend(itertools.chain.from_iterable(self.featureClasses.itervalues()))
+
+#####################################################
+# Timer
+self.timer = qt.QTimer()
+self.timer.setInterval(150)
+self.timer.timeout.connect(self.myFunction)		# Function without params
+self.timer.start()
+self.timer.stop()

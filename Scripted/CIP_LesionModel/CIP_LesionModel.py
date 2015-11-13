@@ -421,7 +421,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.distanceLevelSlider.connect('sliderReleased()', self.checkAndRefreshModels)
 
         # runAnalysisButton.connect("clicked()", self.__onRunAnalysisButtonClicked__)
-        self.runAnalysisButton.connect('clicked()', self.onAnalyzeButtonClicked)
+        self.runAnalysisButton.connect('clicked()', self.__onAnalyzeButtonClicked__)
 
         self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.forceSaveReport)
         self.evaluateSegmentationCheckbox.connect("clicked()", self.refreshUI)
@@ -845,6 +845,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.logic.getFiducialsListNode(self.inputVolumeSelector.currentNodeID, self.__onFiducialsNodeModified__)
             self.logic.setActiveVolume(self.inputVolumeSelector.currentNodeID)
 
+        if self.addFiducialButton.checked:
+            self.setAddSeedsMode(True)
             # if not self.timer.isActive() \
             #         and self.logic.currentLabelmap is not None:  # Segmentation was already performed
             #     self.timer.start(500)
@@ -901,13 +903,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.addFiducialRow(nodeID)
         self.refreshUI()
 
-    # def onFiducialButtonClicked(self, button):
-    #     print("Button pressed: ", button.objectName)
-    #     n = int(button.objectName)
-    #     logic = slicer.modules.markups.logic()
-    #     fiducialsNode = slicer.util.getNode(logic.GetActiveListID())
-    #     fiducialsNode.SetNthFiducialSelected(n, not button.checked)
-
     def __onFiducialCheckClicked__(self, checkBox):
         """ Click in one of the checkboxes that is associated with every fiducial
         :param checkBox: checkbox that has been clicked
@@ -949,11 +944,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def __onSaveTimeCostCheckboxClicked__(self, checked):
         self.logic.printTiming = (checked == 2)
 
+    def __onAnalyzeButtonClicked__(self):
+        self.runAnalysis()
+
     def __onSceneClosed__(self, arg1, arg2):
         # self.timer.stop()
         self.reset()
-
-
 
 
     def exit(self):
@@ -961,23 +957,22 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # Disable chekbox of fiducials so that the cursor is not in "fiducials mode" forever if the
         # user leaves the module
         # self.timer.stop()
-        pass
+        self.setAddSeedsMode(False)
 
     def cleanup(self):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         # self.timer.stop()
-        pass
+        self.setAddSeedsMode(False)
 
-    def updateFeatureParameterDict(self, intValue, featureWidget):
-        featureName = featureWidget.getName()
-        self.featureParametersDict[featureName].update(featureWidget.getParameterDict())
+    # def updateFeatureParameterDict(self, intValue, featureWidget):
+    #     featureName = featureWidget.getName()
+    #     self.featureParametersDict[featureName].update(featureWidget.getParameterDict())
+    #
+    # def updateFeatureClassParameterDict(self, intValue, featureClassWidget):
+    #     featureClassName = featureClassWidget.getName()
+    #     self.featureClassParametersDict[featureClassName].update(featureClassWidget.getParameterDict())
 
-    def updateFeatureClassParameterDict(self, intValue, featureClassWidget):
-        featureClassName = featureClassWidget.getName()
-        self.featureClassParametersDict[featureClassName].update(featureClassWidget.getParameterDict())
 
-    def onAnalyzeButtonClicked(self):
-        self.runAnalysis()
 
 
 
