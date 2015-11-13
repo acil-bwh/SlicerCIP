@@ -244,7 +244,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.saveSeedsButton.setMaximumWidth(100)
         noduleTypeLayout.addWidget(self.saveSeedsButton)
 
-
         # Example button with some common properties
         self.applySegmentationButton = ctk.ctkPushButton()
         self.applySegmentationButton.text = "Segment nodule"
@@ -324,6 +323,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.labelMapSelector.toolTip = "Select a labelmap if you want to run Parenchymal Volume analysis"
         # self.mainAreaLayout.addRow("Select a labelmap", self.labelMapSelector)
 
+        # Features
         gridWidth, gridHeight = 3, 9
         for featureClass in self.featureClasses:
             # by default, features from the following features classes are checked:
@@ -359,8 +359,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.featureWidgetList = list(itertools.chain.from_iterable(self.featureWidgets.values()))
         self.featureMainCategoriesStringList = list(self.featureWidgets.keys())
 
-
-
         # Feature Buttons Frame and Layout
         self.featureButtonFrame = qt.QFrame(self.HeterogeneityCADCollapsibleButton)
         self.featureButtonFrame.setLayout(qt.QHBoxLayout())
@@ -376,7 +374,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Reports widget
         self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
-                                               parent=self.featureButtonFrame)
+                                               parentWidget=self.featureButtonFrame)
         self.reportsWidget.setup()
         self.reportsWidget.showWarnigMessages(False)
 
@@ -390,8 +388,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             caseNavigatorAreaLayout = qt.QHBoxLayout(caseNavigatorCollapsibleButton)
 
             from ACIL.ui import CaseNavigatorWidget
-            self.caseNavigatorWidget = CaseNavigatorWidget(parentModuleName="CIP_LesionModel",
-                                                           parentContainer=caseNavigatorAreaLayout)
+            self.caseNavigatorWidget = CaseNavigatorWidget("CIP_LesionModel", caseNavigatorCollapsibleButton)
+            self.caseNavigatorWidget.setup()
+            self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_PRE_VOLUME_LOAD, self.__onPreVolumeLoad__)
 
         #######################
         # Advanced parameters area
@@ -403,7 +402,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.advancedParametersLayout = qt.QFormLayout(collapsibleButton)
         self.evaluateSegmentationCheckbox = qt.QCheckBox()
         self.evaluateSegmentationCheckbox.setText("Enable saving seeds mode for batch processing")
-        self.evaluateSegmentationCheckbox.setChecked(True)
         self.advancedParametersLayout.addWidget(self.evaluateSegmentationCheckbox)
         self.saveTimeCostCheckbox = qt.QCheckBox()
         self.saveTimeCostCheckbox.setText("Save time cost of every operation")
@@ -428,7 +426,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.saveSeedsButton.connect("clicked()", self.saveCurrentSeedsToXML)
         self.loadSeedsButton.connect("clicked()", self.loadSeedsFromXML)
         self.saveTimeCostCheckbox.connect("stateChanged(int)", self.__onSaveTimeCostCheckboxClicked__)
-        self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_PRE_VOLUME_LOAD, self.__onPreVolumeLoad__)
 
         self.refreshUI()
 

@@ -15,16 +15,16 @@ class CaseReportsWidget(EventsTrigger):
     def TIMESTAMP_COLUMN_NAME(self):
         return self.logic.TIMESTAMP_COLUMN_NAME
 
-    def __init__(self, moduleName, columnNames, parent = None, filePreffix=""):
+    def __init__(self, moduleName, columnNames, parentWidget = None, filePreffix=""):
         """Widget constructor (existing module)"""
         EventsTrigger.__init__(self)
         
-        if not parent:
+        if not parentWidget:
             self.parent = slicer.qMRMLWidget()
             self.parent.setLayout(qt.QVBoxLayout())
             self.parent.setMRMLScene(slicer.mrmlScene)
         else:
-            self.parent = parent
+            self.parent = parentWidget
         self.layout = self.parent.layout()
 
         self.__showWarningWhenIncompleteColumns__ = True

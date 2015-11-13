@@ -190,6 +190,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             from ACIL.ui import CaseNavigatorWidget
             self.caseNavigatorWidget = CaseNavigatorWidget(parentModuleName=self.moduleName
                                                            ,parentContainer=caseNavigatorAreaCollapsibleButton)
+            self.caseNavigatorWidget.setup()
             # Listen for the event of loading volume
             #self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_VOLUME_LOADED, self.onNewVolumeLoaded)
 

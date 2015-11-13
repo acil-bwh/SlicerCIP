@@ -225,7 +225,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
         # Reports widget
         self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
-                                               parent=self.statsButtonsFrame)
+                                               parentWidget=self.statsButtonsFrame)
         self.reportsWidget.setup()
 
 
@@ -270,6 +270,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                                                            , parentContainer=caseNavigatorAreaCollapsibleButton)
             self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_LABELMAP_LOADED,
                                                    self.onNavigatorLabelmapLoaded)
+            self.caseNavigatorWidget.setup()
 
         # Add vertical spacer
         self.layout.addStretch(1)

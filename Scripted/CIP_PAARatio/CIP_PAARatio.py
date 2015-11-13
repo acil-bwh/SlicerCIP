@@ -211,7 +211,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.storedColumnNames = ["caseId", "paDiameter_mm", "aortaDiameter_mm",
                                   "pa1r", "pa1a", "pa1s", "pa2r", "pa2a", "pa2s",
                                   "a1r", "a1a", "a1s", "a2r", "a2a", "a2s"]
-        self.reportsWidget = CaseReportsWidget("CIP_PAARatio", columnNames=self.storedColumnNames, parent=self.reportsCollapsibleButton)
+        self.reportsWidget = CaseReportsWidget("CIP_PAARatio", columnNames=self.storedColumnNames, parentWidget=self.reportsCollapsibleButton)
         self.reportsWidget.setup()
 
         self.switchToRedView()

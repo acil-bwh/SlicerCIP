@@ -96,7 +96,7 @@ class CIP_GetImageWidget:
         self.logic = CIP_GetImageLogic(self.modulePath)
         
         # Widget to load cases faster
-        self.loadSaveDatabuttonsWidget = CIPUI.LoadSaveDataWidget(parent=self.parent)
+        self.loadSaveDatabuttonsWidget = CIPUI.LoadSaveDataWidget(parentWidget=self.parent)
         self.loadSaveDatabuttonsWidget.setup(moduleName="CIP_GetImage")
         
         #
