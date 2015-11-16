@@ -6,7 +6,7 @@ Common functions that can be useful in any Slicer module development
 
 import os
 
-from __main__ import slicer, vtk
+from __main__ import slicer, vtk, qt
 from . import Util
 
 
@@ -345,6 +345,9 @@ class SlicerUtil:
             return nodes.GetItemAsObject(0)
         return None
 
+    @staticmethod
+    def getIcon(iconName):
+        return qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, iconName))
 
     @staticmethod
     def changeLayout(layoutNumber):
