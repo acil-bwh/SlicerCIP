@@ -161,6 +161,16 @@ class SlicerUtil:
         SlicerUtil.__setMarkupsMode__(isFiducialsMode, "vtkMRMLMarkupsFiducialNode", keepFiducialsModeOn)
 
     @staticmethod
+    def setCrosshair(isActive):
+        """Turn on or off the crosshair and enable navigation mode
+        by manipulating the scene's singleton crosshair node.
+        :param isActive: enable / disable crosshair (boolean value)
+        """
+        crosshairNode = slicer.util.getNode('vtkMRMLCrosshairNode*')
+        if crosshairNode:
+            crosshairNode.SetCrosshairMode(int(isActive))
+
+    @staticmethod
     def setRulersMode(isRulersMode, keepFiducialsModeOn=False):
         """ Activate fiducials ruler mode.
         When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if

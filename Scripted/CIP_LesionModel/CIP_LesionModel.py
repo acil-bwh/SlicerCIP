@@ -25,7 +25,8 @@ except Exception as ex:
 
 from CIP.logic import Util
 from CIP.logic import GeometryTopologyData, Point
-from CIP.ui import CaseReportsWidget
+from CIP.ui import CaseReportsWidget, MIPViewerWidget
+
 
 import FeatureWidgetHelperLib
 import FeatureExtractionLib
@@ -183,6 +184,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
         self.mainAreaLayout.addRow("Select an input volume", self.inputVolumeSelector)
 
+        # mipWidgetFrame = qt.QFrame()
+        # mipWidgetFrame.setLayout(qt.QVBoxLayout())
+        # self.mipViewer = MIPViewerWidget(mipWidgetFrame, MIPViewerWidget.CONTEXT_NODULES)
+        # self.mipViewer.setup()
+        # self.mainAreaLayout.addRow(mipWidgetFrame)
+
         # # Whole lung labelmap selector
         # self.labelMapSelector = slicer.qMRMLNodeComboBox()
         # self.labelMapSelector.nodeTypes = ("vtkMRMLLabelMapVolumeNode", "")
@@ -199,8 +206,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.addFiducialButton = ctk.ctkPushButton()
         self.addFiducialButton.text = "Add new seed"
         self.addFiducialButton.setFixedWidth(100)
+        self.addFiducialButton.setIcon(qt.QIcon("{0}/plus.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.addFiducialButton.setIconSize(qt.QSize(16, 16))
         self.addFiducialButton.checkable = True
         self.addFiducialButton.enabled = False
+        self.addFiducialButton.setFixedSize(qt.QSize(115, 30))
         self.mainAreaLayout.addRow("Add seeds: ", self.addFiducialButton)
 
         # Container for the fiducials
@@ -233,7 +243,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.lesionTypeRadioButtonGroup.addButton(button, 2)
         noduleTypeLayout.addWidget(button)
         label = qt.QLabel("Lesion type:")
-        label.setStyleSheet("margin-top:10px")
+        label.setStyleSheet("margin-top:5px")
         self.mainAreaLayout.addRow(label, noduleTypeFrame)
 
         self.saveSeedsButton = ctk.ctkPushButton()

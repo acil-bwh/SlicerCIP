@@ -4,9 +4,6 @@ from __main__ import vtk, qt, ctk, slicer
 from CIP.logic.SlicerUtil import SlicerUtil
 
 class MIPViewerWidget():
-    """Uses ScriptedLoadableModuleWidget base class, available at:
-    https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
-    """
     CONTEXT_UNKNOWN = 0
     CONTEXT_NODULES = 1
     CONTEXT_EMPHYSEMA = 2
@@ -28,7 +25,28 @@ class MIPViewerWidget():
     PLANE_SAGITTAL = 1
     PLANE_CORONAL = 2
 
-    DEFAULT_NUMBER_OF_SLICES = 10
+
+    def __init__(self, parentWidget, context=CONTEXT_UNKNOWN):
+        """ Widget constructor
+        :param parentWidget: parent widget where the CaseNavigatorWidget will be embedded. If none, a blank widget will be created
+        :param fullModeOn: True to show all the options of the widget. Usually False when the
+        widget is embedded in a module, where we want a compact display
+        :return:
+        """
+        if parentWidget is None:
+            self.parent = slicer.qMRMLWidget()
+            self.parent.setLayout(qt.QVBoxLayout())
+            self.parent.setMRMLScene(slicer.mrmlScene)
+        else:
+            self.parent = parentWidget
+            if self.parent.layout() is None:
+                self.parent.setLayout(qt.QVBoxLayout())
+        self.layout = self.parent.layout()
+
+        # If no context is set, display the whole widget
+        self.fullModeOn = (context == self.CONTEXT_UNKNOWN)
+        self.currentContext = context
+        self.currentLayout = self.LAYOUT_DEFAULT
 
     # Properties
     @property
@@ -49,22 +67,36 @@ class MIPViewerWidget():
         }
 
     @property
-    def currentContext(self):
-        return self.contextComboBox.currentIndex
-    @currentContext.setter
-    def currentContext(self, value):
-        self.contextComboBox.blockSignals(True)
-        self.contextComboBox.currentIndex = value
-        self.contextComboBox.blockSignals(False)
+    def planes(self):
+        return {
+            self.PLANE_AXIAL: "Axial",
+            self.PLANE_SAGITTAL: "Sagittal",
+            self.PLANE_CORONAL: "Coronal"
+        }
+
+    # @property
+    # def currentContext(self):
+    #     return self.contextComboBox.currentIndex
+    # @currentContext.setter
+    # def currentContext(self, value):
+    #     self.contextComboBox.blockSignals(True)
+    #     self.contextComboBox.currentIndex = value
+    #     self.contextComboBox.blockSignals(False)
 
     @property
     def currentPlane(self):
-        return self.planeComboBox.currentIndex
+        return self.planesButtonGroup.checkedId() if self.fullModeOn \
+            else self.planesButtonGroup2.checkedId()
     @currentPlane.setter
     def currentPlane(self, value):
-        self.planeComboBox.blockSignals(True)
-        self.planeComboBox.currentIndex = value
-        self.planeComboBox.blockSignals(False)
+        if self.fullModeOn:
+            if value == self.PLANE_AXIAL: self.axialButton.setChecked(True)
+            elif value == self.PLANE_SAGITTAL: self.sagittalButton.setChecked(True)
+            elif value == self.PLANE_CORONAL: self.coronalButton.setChecked(True)
+        else:
+            if value == self.PLANE_AXIAL: self.axialButton2.setChecked(True)
+            elif value == self.PLANE_SAGITTAL: self.sagittalButton2.setChecked(True)
+            elif value == self.PLANE_CORONAL: self.coronalButton2.setChecked(True)
 
     @property
     def currentOperation(self):
@@ -76,80 +108,60 @@ class MIPViewerWidget():
         self.operationComboBox.blockSignals(False)
 
     @property
-    def currentNumberOfSlices(self):
-        return self.numberOfSlicesSlider.value
-    @currentNumberOfSlices.setter
-    def currentNumberOfSlices(self, value):
-        self.numberOfSlicesSlider.blockSignals(True)
-        self.numberOfSlicesSlider.setValue(value)
-        self.numberOfSlicesSlider.blockSignals(False)
-
-    # @property
-    # def currentSpacingFraction(self):
-    #     return self.spacingFractionSlider.value * 10.0
-    # @currentSpacingFraction.setter
-    # def currentSpacingFraction(self, value):
-    #     self.spacingFractionSlider.blockSignals(True)
-    #     self.spacingFractionSlider.setValue(value * 10)
-    #     self.spacingFractionSlider.blockSignals(False)
-
-
-    def __init__(self, parentWidget, reducedMode=False):
-        """ Widget constructor
-        :param parentWidget: parent widget where the CaseNavigatorWidget will be embedded. If none, a blank widget will be created
-        :return:
-        """
-        if parentWidget is None:
-            self.parent = slicer.qMRMLWidget()
-            self.parent.setLayout(qt.QVBoxLayout())
-            self.parent.setMRMLScene(slicer.mrmlScene)
+    def currentSliderValue(self):
+        if self.fullModeOn:
+            return self.spacingSlider.value / 10.0
         else:
-            self.parent = parentWidget
-            if self.parent.layout() is None:
-                self.parent.setLayout(qt.QVBoxLayout())
-        self.reducedMode = reducedMode
+            return self.spacingSlider2.value / 10.0
+    @currentSliderValue.setter
+    def currentSliderValue(self, value):
+        if self.fullModeOn:
+            self.spacingSlider.value = value * 10
+        else:
+            self.spacingSlider2.value = value * 10
 
+    @property
+    def currentSpacingInMm(self):
+        """ Get the current spacing (in mm) based on the slider text
+        :return: spacing in mm
+        """
+        if self.fullModeOn:
+            text = self.currentSpacingLabel.text
+        else:
+            text = self.currentSpacingLabel2.text
+        if text == "":
+            return self.__calculateSpacingMm__()
 
-    def setFullModeOn(self):
-        self.reducedMode = True
-        self.__refreshUI__()
+        return float(text.replace(" mm", ""))
 
-    def setCollapasedModeOn(self):
-        self.fullMode = False
-        self.__refreshUI__()
 
 
     def setup(self):
         """This is called one time when the module GUI is initialized
         """
-        self.currentContext = self.CONTEXT_UNKNOWN
-        self.currentLayout = self.LAYOUT_DEFAULT
-        self.originalLayout = slicer.app.layoutManager().layout
+        if not self.fullModeOn and self.currentContext == self.CONTEXT_UNKNOWN:
+            raise Exception("The module is configured to display in a compact mode but the context was not set. "
+                            "Please set the context before executing setup")
 
-        ###
+
+        self.originalLayout = slicer.app.layoutManager().layout
+        self.currentLayout = self.LAYOUT_DEFAULT
+
+        ###########
         # Frame that contains the widget in FULL MODE
-        self.mainFrame = qt.QFrame()
-        self.mainAreaLayout = qt.QGridLayout()
-        self.mainFrame.setLayout(self.mainAreaLayout)
-        self.parent.layout().addWidget(self.mainFrame)
-        self.mainFrame.visible = self.fullMode
+        ###########
+        self.fullModeFrame = qt.QFrame()
+        self.fullModeLayout = qt.QGridLayout()
+        self.fullModeFrame.setLayout(self.fullModeLayout)
+        self.layout.addWidget(self.fullModeFrame)
 
         # Context
         self.contextLabel = qt.QLabel("Context")
         self.contextComboBox = qt.QComboBox()
         for context in self.contexts.itervalues():
             self.contextComboBox.addItem(context)
-        self.mainAreaLayout.addWidget(self.contextLabel, 0, 0)
-        self.mainAreaLayout.addWidget(self.contextComboBox, 0, 1, 1, 3)
-
-        # Plane
-        self.planeComboBox = qt.QComboBox()
-        self.planeComboBox.addItem("Axial")
-        self.planeComboBox.addItem("Sagittal")
-        self.planeComboBox.addItem("Coronal")
-        self.planeLabel = qt.QLabel("Plane")
-        self.mainAreaLayout.addWidget(self.planeLabel, 1, 0)
-        self.mainAreaLayout.addWidget(self.planeComboBox, 1, 1, 1, 3)
+        self.fullModeLayout.addWidget(self.contextLabel, 0, 0)
+        self.fullModeLayout.addWidget(self.contextComboBox, 0, 1, 1, 3)
 
         # Operation
         self.operationLabel = qt.QLabel("Optimization")
@@ -157,12 +169,54 @@ class MIPViewerWidget():
         for operation in self.operations.itervalues():
             if operation != self.OPERATION_NONE:
                 self.operationComboBox.addItem(operation)
-        self.mainAreaLayout.addWidget(self.operationLabel, 2, 0)
-        self.mainAreaLayout.addWidget(self.operationComboBox, 2, 1, 1, 3)
+        self.fullModeLayout.addWidget(self.operationLabel, 1, 0)
+        self.fullModeLayout.addWidget(self.operationComboBox, 1, 1, 1, 3)
+
+        # Plane
+        self.planeLabel = qt.QLabel("Plane")
+        self.fullModeLayout.addWidget(self.planeLabel, 2, 0)
+        # Buttons group
+        self.planesButtonGroup = qt.QButtonGroup()
+        # Axial
+        self.axialButton = qt.QPushButton()
+        self.axialButton.setCheckable(True)
+        self.axialButton.setChecked(True)
+        self.axialButton.toolTip = "Axial plane"
+        self.axialButton.setFixedSize(40, 40)
+        self.axialButton.setIcon(SlicerUtil.getIcon("axial.png"))
+        self.fullModeLayout.addWidget(self.axialButton, 2, 1, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.planesButtonGroup.addButton(self.axialButton, self.PLANE_AXIAL)
+        # Sagittal
+        self.sagittalButton = qt.QPushButton()
+        self.sagittalButton.setCheckable(True)
+        self.sagittalButton.toolTip = "Sagittal plane"
+        self.sagittalButton.setFixedSize(40, 40)
+        self.sagittalButton.setIcon(SlicerUtil.getIcon("sagittal.png"))
+        self.fullModeLayout.addWidget(self.sagittalButton, 2, 2, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.planesButtonGroup.addButton(self.sagittalButton, self.PLANE_SAGITTAL)
+        # Coronal
+        self.coronalButton = qt.QPushButton()
+        self.coronalButton.setCheckable(True)
+        self.coronalButton.toolTip = "coronal plane"
+        self.coronalButton.setFixedSize(40, 40)
+        self.coronalButton.setIcon(SlicerUtil.getIcon("coronal.png"))
+        self.fullModeLayout.addWidget(self.coronalButton, 2, 3, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.planesButtonGroup.addButton(self.coronalButton, self.PLANE_CORONAL)
+        # Buttons labels
+        self.axialButtonLabel = qt.QLabel("Axial")
+        self.axialButtonLabel.setStyleSheet("margin-bottom: 10px")
+        self.fullModeLayout.addWidget(self.axialButtonLabel, 3, 1, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.sagittalButtonLabel = qt.QLabel("Sagittal")
+        self.sagittalButtonLabel.setStyleSheet("margin-bottom: 10px")
+        self.fullModeLayout.addWidget(self.sagittalButtonLabel, 3, 2, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.coronalButtonLabel = qt.QLabel("Coronal")
+        self.coronalButtonLabel.setStyleSheet("margin-bottom: 10px")
+        self.fullModeLayout.addWidget(self.coronalButtonLabel, 3, 3, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+
 
         ## Layout
-        label = qt.QLabel("Layout")
-        self.mainAreaLayout.addWidget(label, 3, 0)
+        self.layoutLabel = qt.QLabel("Layout")
+        self.fullModeLayout.addWidget(self.layoutLabel, 4, 0)
         # Buttons group
         self.viewsButtonGroup = qt.QButtonGroup()
         # Single slice Button
@@ -172,7 +226,7 @@ class MIPViewerWidget():
         self.singleSlideViewButton.setFixedSize(40, 40)
         icon = qt.QIcon(":/Icons/LayoutOneUpRedSliceView.png")
         self.singleSlideViewButton.setIcon(icon)
-        self.mainAreaLayout.addWidget(self.singleSlideViewButton, 3, 1, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.fullModeLayout.addWidget(self.singleSlideViewButton, 4, 1, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
         self.viewsButtonGroup.addButton(self.singleSlideViewButton)
         # Side by side Button
         self.sideBySideViewButton = qt.QPushButton()
@@ -181,7 +235,7 @@ class MIPViewerWidget():
         self.sideBySideViewButton.setFixedSize(40, 40)
         icon = qt.QIcon(":/Icons/LayoutSideBySideView.png")
         self.sideBySideViewButton.setIcon(icon)
-        self.mainAreaLayout.addWidget(self.sideBySideViewButton, 3, 2, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.fullModeLayout.addWidget(self.sideBySideViewButton, 4, 2, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
         self.viewsButtonGroup.addButton(self.sideBySideViewButton)
         # Three over three button
         self.threeOverThreeViewButton = qt.QPushButton()
@@ -190,7 +244,7 @@ class MIPViewerWidget():
         self.threeOverThreeViewButton.setFixedSize(40, 40)
         icon = qt.QIcon(":/Icons/LayoutThreeOverThreeView.png")
         self.threeOverThreeViewButton.setIcon(icon)
-        self.mainAreaLayout.addWidget(self.threeOverThreeViewButton, 3, 3, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.fullModeLayout.addWidget(self.threeOverThreeViewButton, 4, 3, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
         self.viewsButtonGroup.addButton(self.threeOverThreeViewButton)
         # Comparative MIP-MinIP button
         self.maxMinCompareViewButton = qt.QPushButton()
@@ -199,7 +253,7 @@ class MIPViewerWidget():
         self.maxMinCompareViewButton.setFixedSize(40, 40)
         icon = qt.QIcon(":/Icons/LayoutFourUpView.png")
         self.maxMinCompareViewButton.setIcon(icon)
-        self.mainAreaLayout.addWidget(self.maxMinCompareViewButton, 3, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.fullModeLayout.addWidget(self.maxMinCompareViewButton, 4, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
         self.viewsButtonGroup.addButton(self.maxMinCompareViewButton)
         # Reset Button
         self.resetViewButton = qt.QPushButton()
@@ -208,56 +262,125 @@ class MIPViewerWidget():
         icon = qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, "Reload.png"))
         self.resetViewButton.setIconSize(qt.QSize(24, 24))
         self.resetViewButton.setIcon(icon)
-        self.mainAreaLayout.addWidget(self.resetViewButton, 3, 5, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.fullModeLayout.addWidget(self.resetViewButton, 4, 5, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
         # Buttons labels
-        label = qt.QLabel("Single")
-        self.mainAreaLayout.addWidget(label, 4, 1, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
-        label = qt.QLabel("Side by side")
-        self.mainAreaLayout.addWidget(label, 4, 2, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
-        label = qt.QLabel("3x3")
-        self.mainAreaLayout.addWidget(label, 4, 3, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
-        label = qt.QLabel("MIP-MinIP")
-        self.mainAreaLayout.addWidget(label, 4, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
-        label = qt.QLabel("Reset")
-        self.mainAreaLayout.addWidget(label, 4, 5, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.singleSlideButtonLabel = qt.QLabel("Single")
+        self.fullModeLayout.addWidget(self.singleSlideButtonLabel, 5, 1, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.sideBySideButtonLabel = qt.QLabel("Side by side")
+        self.fullModeLayout.addWidget(self.sideBySideButtonLabel, 5, 2, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.threeOverThreeButtonLabel = qt.QLabel("3x3")
+        self.fullModeLayout.addWidget(self.threeOverThreeButtonLabel, 5, 3, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.maxMinCompareButtonLabel = qt.QLabel("MIP-MinIP")
+        self.fullModeLayout.addWidget(self.maxMinCompareButtonLabel, 5, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.resetLabel = qt.QLabel("Reset")
+        self.fullModeLayout.addWidget(self.resetLabel, 5, 5, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
 
         # Number of slices
-        self.numberOfSlicesLabel = qt.QLabel("Number of slices")
-        self.mainAreaLayout.addWidget(self.numberOfSlicesLabel, 5, 0)
-        self.numberOfSlicesSlider = qt.QSlider()
-        self.numberOfSlicesSlider.orientation = 1
-        self.numberOfSlicesSlider.setTickPosition(2)
-        self.numberOfSlicesSlider.minimum = 1
-        self.numberOfSlicesSlider.maximum = 200
-        self.numberOfSlicesSlider.setSingleStep(5)
-        # self.numberOfSlicesSlider.setValue(10)
-        self.mainAreaLayout.addWidget(self.numberOfSlicesSlider, 5, 1, 1, 4)
+        self.spacingLabel = qt.QLabel("Slice size")
+        self.fullModeLayout.addWidget(self.spacingLabel, 6, 0)
+        self.spacingSlider = qt.QSlider()
+        self.spacingSlider.orientation = 1
+        self.spacingSlider.setTickPosition(2)
+        self.spacingSlider.minimum = 0
+        self.spacingSlider.maximum = 2000
+        self.spacingSlider.setPageStep(50)
+        self.spacingSlider.value = 200
+        self.fullModeLayout.addWidget(self.spacingSlider, 6, 1, 1, 3)
+        self.currentSpacingLabel = qt.QLabel()
+        self.fullModeLayout.addWidget(self.currentSpacingLabel, 6, 4)
 
 
-        ###
+
+        ###########
         # Frame that contains the widget in COLLAPSED MODE
-        self.collapsedFrame = qt.QFrame()
-        self.collapsedLayout = qt.QGridLayout()
-        self.collapsedFrame.setLayout(self.collapsedLayout)
-        self.parent.layout().addWidget(self.collapsedFrame)
-        self.numberOfSlicesLabel = qt.QLabel("Optimization factor")
-        self.collapsedLayout.addWidget(self.numberOfSlicesLabel, 0, 0)
-        self.collapsedLayout.addWidget(self.numberOfSlicesSlider, 0, 1)
-        self.collapsedFrame.visible = not self.mainFrame.visible
+        ###########
+        self.reducedModeFrame = qt.QFrame()
+        self.reducedModeLayout = qt.QGridLayout()
+        self.reducedModeFrame.setLayout(self.reducedModeLayout)
+        self.layout.addWidget(self.reducedModeFrame)
+        # Plane
+        self.planeLabel2 = qt.QLabel("Plane")
+        self.reducedModeLayout.addWidget(self.planeLabel2, 0, 0)
+        # Buttons group
+        self.planesButtonGroup2 = qt.QButtonGroup()
+        # Axial
+        self.axialButton2 = qt.QPushButton()
+        self.axialButton2.setCheckable(True)
+        self.axialButton2.setChecked(True)
+        self.axialButton2.toolTip = "Axial plane"
+        self.axialButton2.setFixedSize(40, 40)
+        self.axialButton2.setIcon(qt.QIcon(":/Icons/LayoutOneUpRedSliceView.png"))
+        self.reducedModeLayout.addWidget(self.axialButton2, 0, 1, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.planesButtonGroup2.addButton(self.axialButton2, self.PLANE_AXIAL)
+        # Sagittal
+        self.sagittalButton2 = qt.QPushButton()
+        self.sagittalButton2.setCheckable(True)
+        self.sagittalButton2.toolTip = "Sagittal plane"
+        self.sagittalButton2.setFixedSize(40, 40)
+        self.sagittalButton2.setIcon(qt.QIcon(":/Icons/LayoutOneUpYellowSliceView.png"))
+        self.reducedModeLayout.addWidget(self.sagittalButton2, 0, 2, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.planesButtonGroup2.addButton(self.sagittalButton2, self.PLANE_SAGITTAL)
+        # Coronal
+        self.coronalButton2 = qt.QPushButton()
+        self.coronalButton2.setCheckable(True)
+        self.coronalButton2.toolTip = "Coronal plane"
+        self.coronalButton2.setFixedSize(40, 40)
+        self.coronalButton2.setIcon(qt.QIcon(":/Icons/LayoutOneUpGreenSliceView.png"))
+        self.reducedModeLayout.addWidget(self.coronalButton2, 0, 3, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.planesButtonGroup2.addButton(self.coronalButton2, self.PLANE_CORONAL)
+        # 3x3
+        self.threeOverThreeViewButton2 = qt.QPushButton()
+        self.threeOverThreeViewButton2.setCheckable(True)
+        self.threeOverThreeViewButton2.toolTip = "Compare 2 images in their 3 planes"
+        self.threeOverThreeViewButton2.setFixedSize(40, 40)
+        self.threeOverThreeViewButton2.setIcon(qt.QIcon(":/Icons/LayoutThreeOverThreeView.png"))
+        self.reducedModeLayout.addWidget(self.threeOverThreeViewButton2, 0, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.planesButtonGroup2.addButton(self.threeOverThreeViewButton2)
+        # Buttons labels
+        self.axialButtonLabel2 = qt.QLabel("Axial")
+        self.reducedModeLayout.addWidget(self.axialButtonLabel2, 1, 1, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.sagittalButtonLabel2 = qt.QLabel("Sagittal")
+        self.reducedModeLayout.addWidget(self.sagittalButtonLabel2, 1, 2, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.coronalButtonLabel2 = qt.QLabel("Coronal")
+        self.reducedModeLayout.addWidget(self.coronalButtonLabel2, 1, 3, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+        self.threeOverThreeButtonLabel2 = qt.QLabel("3x3")
+        self.reducedModeLayout.addWidget(self.threeOverThreeButtonLabel2, 1, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
+
+        # Number of slices
+        self.spacingLabel2 = qt.QLabel("Slice size")
+        self.reducedModeLayout.addWidget(self.spacingLabel2, 2, 0)
+        self.spacingSlider2 = qt.QSlider()
+        self.spacingSlider2.orientation = 1
+        self.spacingSlider2.setTickPosition(2)
+        self.spacingSlider2.minimum = 0
+        self.spacingSlider2.maximum = 2000
+        self.spacingSlider2.setPageStep(50)
+        self.spacingSlider2.value = 200
+        self.reducedModeLayout.addWidget(self.spacingSlider2, 2, 1, 1, 3)
+        self.currentSpacingLabel2 = qt.QLabel()
+        self.reducedModeLayout.addWidget(self.currentSpacingLabel2, 2, 4)
+
+
+        # self.externalLayout.addWidget(self.fullModeFrame)
+        # self.externalLayout.addWidget(self.reducedModeFrame)
+        #
+        self.layout.addStretch(1)
 
         # Connections
         self.contextComboBox.connect("currentIndexChanged (int)", self.__onContextIndexChanged__)
-        self.planeComboBox.connect("currentIndexChanged (int)", self.__onPlaneIndexChanged__)
         self.operationComboBox.connect("currentIndexChanged (int)", self.__onOperationIndexChanged__)
+        self.planesButtonGroup.connect("buttonClicked(int)", self.__onPlaneButtonClicked__)
         self.singleSlideViewButton.connect("clicked()", self.__onSingleSlideButtonClicked__)
         self.sideBySideViewButton.connect("clicked()", self.__onSideBySideButtonClicked__)
         self.threeOverThreeViewButton.connect("clicked()", self.__onThreeOverThreeViewButtonClicked__)
         self.maxMinCompareViewButton.connect("clicked()", self.__onMaxMinCompareViewButtonClicked__)
         self.resetViewButton.connect("clicked()", self.__onResetViewButtonClicked__)
-        self.numberOfSlicesSlider.connect('valueChanged(int)', self.__onNumberOfSlicesChanged__)
-        self.spacingFractionSlider.connect('valueChanged(int)', self.__onNumberOfSlicesChanged__)
+        self.spacingSlider.connect('valueChanged(int)', self.__onNumberOfSlicesChanged__)
 
-        self.currentNumberOfSlices = self.DEFAULT_NUMBER_OF_SLICES
+        self.planesButtonGroup2.connect("buttonClicked(int)", self.__onPlaneButtonClicked__)
+        self.threeOverThreeViewButton2.connect("clicked()", self.__onThreeOverThreeViewButtonClicked__)
+        self.spacingSlider2.connect('valueChanged(int)', self.__onNumberOfSlicesChanged__)
+
         self.__refreshUI__()
 
     def enter(self):
@@ -272,31 +395,27 @@ class MIPViewerWidget():
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         pass
 
+    def setFullModeOn(self):
+        self.fullModeOn = True
+        self.__refreshUI__()
 
-    def __refreshUI__(self):
-        pass
+    def setFullModeOff(self):
+        self.fullModeOn = False
+        self.__refreshUI__()
 
-
-    def fixContext(self, context):
-        self.setContext(context)
-        self.contextComboBox.visible = self.contextLabel.visible = False
-
-    def unfixContext(self):
-        self.contextComboBox.visible = self.contextLabel.visible = True
 
     def setContext(self, context):
         """ Configure the widget for a particular context. Fix operation, plane, layout and optionally number of slices
         :param context: element of "contexts" list
         """
         self.currentContext = context
-        if context == self.CONTEXT_UNKNOWN:
-            self.currentNumberOfSlices = self.DEFAULT_NUMBER_OF_SLICES
-            self.currentSpacingFraction = self.DEFAULT_SPACING_FRACTION
+        # if context == self.CONTEXT_UNKNOWN:
+        #     self.currentNumberOfSlices = self.DEFAULT_NUMBER_OF_SLICES
 
         if context == self.CONTEXT_NODULES:
             # MIP, Axial, Side by side
             self.currentLayout = self.LAYOUT_SIDE_BY_SIDE
-            # self.currentPlane = self.PLANE_AXIAL
+            self.currentPlane = self.PLANE_AXIAL
             self.currentOperation = self.OPERATION_MIP
         elif context == self.CONTEXT_EMPHYSEMA:
             # MinIP, Axial, Side by side
@@ -304,9 +423,10 @@ class MIPViewerWidget():
             self.currentPlane = self.PLANE_AXIAL
             self.currentOperation = self.OPERATION_MinIP
         self.executeCurrentSettings()
+        self.changeContrast(context)
 
 
-    def executeCurrentSettings(self, isReset=False):
+    def executeCurrentSettings(self):
         """ Based on the current GUI settings, configure the viewer.
         It also forces some GUI decisions for incompatible settings (example: comparing operations in a 3x3 layout)
         """
@@ -314,6 +434,64 @@ class MIPViewerWidget():
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
         for compNode in compNodes.itervalues():
             compNode.SetLinkedControl(False)
+
+        if self.currentOperation == self.OPERATION_MIP_MinIP \
+            or self.currentLayout == self.LAYOUT_COMPARE:
+            # Compare MIP-MinIP. Force GUI
+            self.currentLayout = self.LAYOUT_COMPARE
+            self.currentOperation = self.OPERATION_MIP_MinIP
+            SlicerUtil.changeLayout(self.currentLayout)
+            # Red window
+            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+            sliceNode.SetOrientation(self.planes[self.currentPlane])
+            self.__resliceNode__(sliceNode, self.currentPlane, self.OPERATION_NONE)
+            # Bottom-left (Yellow). MIP
+            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
+            sliceNode.SetOrientation(self.planes[self.currentPlane])
+            self.__resliceNode__(sliceNode, self.currentPlane, self.OPERATION_MIP)
+            # Bottom-right (Green). MinIP
+            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeGreen')
+            sliceNode.SetOrientation(self.planes[self.currentPlane])
+            self.__resliceNode__(sliceNode, self.currentPlane, self.OPERATION_MinIP)
+        else:
+            # Set the layout and later the operation
+            SlicerUtil.changeLayout(self.currentLayout)
+            if self.currentLayout == self.LAYOUT_RED_ONLY:
+                # Red window
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+                sliceNode.SetOrientation(self.planes[self.currentPlane])
+                self.__resliceNode__(sliceNode, self.currentPlane, self.currentOperation)
+            elif self.currentLayout == self.LAYOUT_SIDE_BY_SIDE:
+                # Red window
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+                sliceNode.SetOrientation(self.planes[self.currentPlane])
+                self.__resliceNode__(sliceNode, self.currentPlane, self.OPERATION_NONE)
+                # Yellow window
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
+                sliceNode.SetOrientation(self.planes[self.currentPlane])
+                self.__resliceNode__(sliceNode, self.currentPlane, self.currentOperation)
+            elif self.currentLayout == self.LAYOUT_THREE_OVER_THREE:
+                # Top row (no reslice)
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+                sliceNode.SetOrientationToAxial()
+                self.__resliceNode__(sliceNode, self.PLANE_AXIAL, self.OPERATION_NONE)
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
+                sliceNode.SetOrientationToSagittal()
+                self.__resliceNode__(sliceNode, self.PLANE_SAGITTAL, self.OPERATION_NONE)
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeGreen')
+                sliceNode.SetOrientationToCoronal()
+                self.__resliceNode__(sliceNode, self.PLANE_CORONAL, self.OPERATION_NONE)
+                # Bottom row (reslice)
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeSlice4')
+                sliceNode.SetOrientationToAxial()
+                self.__resliceNode__(sliceNode,  self.PLANE_AXIAL, self.currentOperation)
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeSlice5')
+                sliceNode.SetOrientationToSagittal()
+                self.__resliceNode__(sliceNode,  self.PLANE_SAGITTAL, self.currentOperation)
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeSlice6')
+                sliceNode.SetOrientationToCoronal()
+                self.__resliceNode__(sliceNode,  self.PLANE_CORONAL, self.currentOperation)
+
         # Active volumes
         compNode = slicer.mrmlScene.GetNodeByID("vtkMRMLSliceCompositeNodeRed")
         labelmapVolumeID = compNode.GetLabelVolumeID()
@@ -326,63 +504,6 @@ class MIPViewerWidget():
             compNode.SetForegroundVolumeID(foregroundVolumeID)
             compNode.SetBackgroundVolumeID(backgroundVolumeID)
 
-        if self.currentOperation == self.OPERATION_MIP_MinIP \
-            or self.currentLayout == self.LAYOUT_COMPARE:
-            # Compare MIP-MinIP. Force GUI
-            self.currentLayout = self.LAYOUT_COMPARE
-            self.currentOperation = self.OPERATION_MIP_MinIP
-            SlicerUtil.changeLayout(self.currentLayout)
-            # Red window
-            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
-            sliceNode.SetOrientation(self.planeComboBox.currentText)
-            self.__resliceNode__(sliceNode, self.OPERATION_NONE)
-            # Bottom-left (Yellow). MIP
-            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
-            sliceNode.SetOrientation(self.planeComboBox.currentText)
-            self.__resliceNode__(sliceNode, self.OPERATION_MIP)
-            # Bottom-right (Green). MinIP
-            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeGreen')
-            sliceNode.SetOrientation(self.planeComboBox.currentText)
-            self.__resliceNode__(sliceNode, self.OPERATION_MinIP)
-        else:
-            # Set the layout and later the operation
-            SlicerUtil.changeLayout(self.currentLayout)
-            if self.currentLayout == self.LAYOUT_RED_ONLY:
-                # Red window
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
-                sliceNode.SetOrientation(self.planeComboBox.currentText)
-                self.__resliceNode__(sliceNode, self.currentOperation)
-            elif self.currentLayout == self.LAYOUT_SIDE_BY_SIDE:
-                # Red window
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
-                sliceNode.SetOrientation(self.planeComboBox.currentText)
-                self.__resliceNode__(sliceNode, self.OPERATION_NONE)
-                # Yellow window
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
-                sliceNode.SetOrientation(self.planeComboBox.currentText)
-                self.__resliceNode__(sliceNode, self.currentOperation)
-            elif self.currentLayout == self.LAYOUT_THREE_OVER_THREE:
-                # Top row (no reslice)
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
-                sliceNode.SetOrientationToAxial()
-                self.__resliceNode__(sliceNode, self.OPERATION_NONE)
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
-                sliceNode.SetOrientationToSagittal()
-                self.__resliceNode__(sliceNode, self.OPERATION_NONE)
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeGreen')
-                sliceNode.SetOrientationToCoronal()
-                self.__resliceNode__(sliceNode, self.OPERATION_NONE)
-                # Bottom row (reslice)
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeSlice4')
-                sliceNode.SetOrientationToAxial()
-                self.__resliceNode__(sliceNode, self.currentOperation)
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeSlice5')
-                sliceNode.SetOrientationToSagittal()
-                self.__resliceNode__(sliceNode, self.currentOperation)
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeSlice6')
-                sliceNode.SetOrientationToCoronal()
-                self.__resliceNode__(sliceNode, self.currentOperation)
-
         # Relink all the controls
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
         for compNode in compNodes.itervalues():
@@ -392,11 +513,65 @@ class MIPViewerWidget():
         SlicerUtil.refreshActiveWindows()
 
         # Disable plane selection if we are viewing all the planes
-        self.planeComboBox.enabled = (self.currentLayout != self.LAYOUT_THREE_OVER_THREE)
+        #self.planeComboBox.enabled = (self.currentLayout != self.LAYOUT_THREE_OVER_THREE)
         # Disable operation if we are comparing MIP and MinIP
         self.operationComboBox.enabled = (self.currentLayout != self.LAYOUT_COMPARE)
 
-    def __resliceNode__(self, sliceNode, operation):
+
+    def setCurrentSpacingInMm(self, value):
+        """ Set the value of the spacing slider from a value in mm
+        :param value: spacing in mm
+        """
+        # Get the spacing of the displayed volume
+        compNode = slicer.mrmlScene.GetNodeByID("vtkMRMLSliceCompositeNodeRed")
+        volumeId = compNode.GetBackgroundVolumeID()
+        if volumeId == "":
+            return
+        volume = slicer.mrmlScene.GetNodeByID(volumeId)
+        if self.currentLayout == self.LAYOUT_THREE_OVER_THREE or self.currentPlane == self.PLANE_AXIAL:
+            # All the planes are shown. Take the axial as a reference
+            position = 2
+        elif self.currentPlane == self.PLANE_SAGITTAL:
+            position = 0
+        else:
+            position = 1
+        spacing = volume.GetSpacing()[position]
+        self.currentSliderValue = value / spacing  # Spacing is in cm
+        if self.fullModeOn:
+            self.currentSpacingLabel.setText(str(value) + " mm")
+        else:
+            self.currentSpacingLabel2.setText(str(value) + " mm")
+
+    def changeContrast(self, context):
+        """ Adjust the window constrast based on the given context
+        :param context: one of the context defined inside this class
+        """
+        # TODO: implement for the different contexts
+        pass
+
+    def resetLayout(self):
+        """ Return to the layout that was active when the user loaded the module
+        """
+        # Remove links
+        compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
+        for compNode in compNodes.itervalues():
+            compNode.SetLinkedControl(False)
+        SlicerUtil.changeLayout(self.originalLayout)
+
+        # Remove all possible reslicing
+        nodes = slicer.util.getNodes("vtkMRMLSliceNode*")
+        for node in nodes.itervalues():
+            self.__resliceNode__(node, self.currentPlane, self.OPERATION_NONE)
+
+    #####
+    # PRIVATE METHODS
+    #####
+    def __refreshUI__(self):
+        self.fullModeFrame.visible = self.fullModeOn
+        self.reducedModeFrame.visible = not self.fullModeOn
+
+
+    def __resliceNode__(self, sliceNode, plane, operation):
         """ Apply a reslicing operation in the specified window
         :param sliceNode: vktMRMLSliceNode that represents the 2D window
         :param operation: reslicing operation (MIP, MinIP, Median...)
@@ -410,8 +585,7 @@ class MIPViewerWidget():
             reslice.SetSlabMode(0)          # This alone not always works
             reslice.SetSlabNumberOfSlices(1)
         else:
-            reslice.SetSlabSliceSpacingFraction(self.currentSpacingFraction)
-            reslice.SetSlabNumberOfSlices(self.currentNumberOfSlices)
+            reslice.SetSlabNumberOfSlices(self.__calculateSlices__(plane))
             if operation == self.OPERATION_MIP:
                 reslice.SetSlabModeToMax()
             elif operation == self.OPERATION_MinIP:
@@ -421,24 +595,50 @@ class MIPViewerWidget():
 
         sliceNode.Modified()
 
-    def resetLayout(self):
-        """ Return to the layout that was active when the user loaded the module
+    def __calculateSpacingMm__(self):
+        """ Calculate the mm that are selected by the user when he adjusts the slider value.
+        It also sets the text of the slider (value in mm)
         """
-        # Remove links
-        compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
-        for compNode in compNodes.itervalues():
-            compNode.SetLinkedControl(False)
-        SlicerUtil.changeLayout(self.originalLayout)
-        self.currentNumberOfSlices = 1
-        self.currentSpacingFraction = 1
+        if self.currentLayout == self.LAYOUT_THREE_OVER_THREE or self.currentPlane == self.PLANE_AXIAL:
+            # All the planes are shown. Take the axial as a reference
+            position = 2
+        elif self.currentPlane == self.PLANE_SAGITTAL:
+            position = 0
+        else:
+            position = 1
+        spacing = 0
+        # Get the spacing of the displayed volume
+        compNode = slicer.mrmlScene.GetNodeByID("vtkMRMLSliceCompositeNodeRed")
+        volume = slicer.util.getNode(compNode.GetBackgroundVolumeID())
+        if volume is not None:
+            spacing = round(volume.GetSpacing()[position] * self.currentSliderValue, 2)
+            if self.fullModeOn:
+                self.currentSpacingLabel.setText(str(spacing) + " mm")
+            else:
+                self.currentSpacingLabel2.setText(str(spacing) + " mm")
+        return spacing
 
-        # Remove all possible reslicing
-        nodes = slicer.util.getNodes("vtkMRMLSliceNode*")
-        for node in nodes.itervalues():
-            self.__resliceNode__(node, self.OPERATION_NONE)
 
-        self.currentNumberOfSlices = self.DEFAULT_NUMBER_OF_SLICES
-        self.currentSpacingFraction = self.DEFAULT_SPACING_FRACTION
+    def __calculateSlices__(self, plane=PLANE_AXIAL):
+        """ Calculate the number of slices based on the current spacing in mm.
+        :param plane: plane to calculate the number of slices (to adjust to the current spacing in mm)
+        :return: number of slices (int)
+        """
+        if plane == self.PLANE_SAGITTAL:
+            position = 0
+        elif plane == self.PLANE_CORONAL:
+            position = 1
+        else:
+            position = 2
+        # Get the spacing of the displayed volume
+        compNode = slicer.mrmlScene.GetNodeByID("vtkMRMLSliceCompositeNodeRed")
+        volumeId = compNode.GetBackgroundVolumeID()
+        if volumeId == "":
+            return 0
+        volume = slicer.mrmlScene.GetNodeByID(volumeId)
+        slices = self.currentSpacingInMm / volume.GetSpacing()[position]
+        return int(slices)
+
 
     #################
     # EVENTS
@@ -449,12 +649,12 @@ class MIPViewerWidget():
         """
         self.setContext(index)
 
-    def __onPlaneIndexChanged__(self, index):
-        """ Change the active plane
-        :param index:
-        """
-        # self.currentPlane = index
-        self.executeCurrentSettings()
+    # def __onPlaneIndexChanged__(self, index):
+    #     """ Change the active plane
+    #     :param index:
+    #     """
+    #     # self.currentPlane = index
+    #     self.executeCurrentSettings()
 
     def __onOperationIndexChanged__(self, index):
         """ Change the operation. If it is OPERATION_MIP_MinIP, the layout is forced
@@ -465,6 +665,11 @@ class MIPViewerWidget():
             # Force the layout
             self.maxMinCompareViewButton.checked = True
         self.executeCurrentSettings()
+
+    def __onPlaneButtonClicked__(self, index):
+        self.currentPlane = index
+        if self.currentLayout != self.LAYOUT_DEFAULT:
+            self.executeCurrentSettings()
 
     def __onSingleSlideButtonClicked__(self):
         """ Switch to side by side in the selected operation and plane
@@ -508,7 +713,8 @@ class MIPViewerWidget():
 
 
     def __onNumberOfSlicesChanged__(self, number):
-        """ Number of slices was modified
-        :param number:
+        """ The slider that control the number of slices was modified
+        :param number: value of the slider
         """
+        self.__calculateSpacingMm__()
         self.executeCurrentSettings()
