@@ -155,6 +155,12 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
             return self.spacingSlider.value / 10.0
         else:
             return self.spacingSlider2.value / 10.0
+    @currentSliderValue.setter
+    def currentSliderValue(self, value):
+        if self.fullModeOn:
+            self.spacingSlider.value = value * 10
+        else:
+            self.spacingSlider2.value = value * 10
 
     @property
     def currentSpacingInMm(self):
@@ -169,6 +175,7 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
             return self.__calculateSpacingMm__()
 
         return float(text.replace(" mm", ""))
+
 
     # def __init__(self, parentWidget, reducedMode=False):
     #     """ Widget constructor
@@ -384,7 +391,7 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
         # Coronal
         self.coronalButton2 = qt.QPushButton()
         self.coronalButton2.setCheckable(True)
-        self.coronalButton2.toolTip = "coronal plane"
+        self.coronalButton2.toolTip = "Coronal plane"
         self.coronalButton2.setFixedSize(40, 40)
         self.coronalButton2.setIcon(qt.QIcon(":/Icons/LayoutOneUpGreenSliceView.png"))
         self.reducedModeLayout.addWidget(self.coronalButton2, 0, 3, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
@@ -407,18 +414,19 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
         self.threeOverThreeButtonLabel2 = qt.QLabel("3x3")
         self.reducedModeLayout.addWidget(self.threeOverThreeButtonLabel2, 1, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
 
-
         # Number of slices
         self.spacingLabel2 = qt.QLabel("Spacing")
+        self.reducedModeLayout.addWidget(self.spacingLabel2, 2, 0)
         self.spacingSlider2 = qt.QSlider()
         self.spacingSlider2.orientation = 1
         self.spacingSlider2.setTickPosition(2)
         self.spacingSlider2.minimum = 0
         self.spacingSlider2.maximum = 2000
-        self.spacingSlider2.setSingleStep(50)
+        self.spacingSlider2.setPageStep(50)
+        self.spacingSlider2.value = 200
         self.reducedModeLayout.addWidget(self.spacingSlider2, 2, 1, 1, 3)
         self.currentSpacingLabel2 = qt.QLabel()
-        self.reducedModeLayout.addWidget(self.currentSpacingLabel2, 2, 2)
+        self.reducedModeLayout.addWidget(self.currentSpacingLabel2, 2, 4)
 
 
         self.externalLayout.addWidget(self.fullModeFrame)
@@ -428,16 +436,18 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
 
         # Connections
         self.contextComboBox.connect("currentIndexChanged (int)", self.__onContextIndexChanged__)
-        # self.planeComboBox.connect("currentIndexChanged (int)", self.__onPlaneIndexChanged__)
         self.operationComboBox.connect("currentIndexChanged (int)", self.__onOperationIndexChanged__)
         self.planesButtonGroup.connect("buttonClicked(int)", self.__onPlaneButtonClicked__)
-
         self.singleSlideViewButton.connect("clicked()", self.__onSingleSlideButtonClicked__)
         self.sideBySideViewButton.connect("clicked()", self.__onSideBySideButtonClicked__)
         self.threeOverThreeViewButton.connect("clicked()", self.__onThreeOverThreeViewButtonClicked__)
         self.maxMinCompareViewButton.connect("clicked()", self.__onMaxMinCompareViewButtonClicked__)
         self.resetViewButton.connect("clicked()", self.__onResetViewButtonClicked__)
         self.spacingSlider.connect('valueChanged(int)', self.__onNumberOfSlicesChanged__)
+
+        self.planesButtonGroup2.connect("buttonClicked(int)", self.__onPlaneButtonClicked__)
+        self.threeOverThreeViewButton2.connect("clicked()", self.__onThreeOverThreeViewButtonClicked__)
+        self.spacingSlider2.connect('valueChanged(int)', self.__onNumberOfSlicesChanged__)
 
         self.__refreshUI__()
 
@@ -477,17 +487,17 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
         if context == self.CONTEXT_NODULES:
             # MIP, Axial, Side by side
             self.currentLayout = self.LAYOUT_SIDE_BY_SIDE
-            # self.currentPlane = self.PLANE_AXIAL
+            self.currentPlane = self.PLANE_AXIAL
             self.currentOperation = self.OPERATION_MIP
         elif context == self.CONTEXT_EMPHYSEMA:
             # MinIP, Axial, Side by side
             self.currentLayout = self.LAYOUT_SIDE_BY_SIDE
-            # self.currentPlane = self.PLANE_AXIAL
+            self.currentPlane = self.PLANE_AXIAL
             self.currentOperation = self.OPERATION_MinIP
         self.executeCurrentSettings()
 
 
-    def executeCurrentSettings(self, isReset=False):
+    def executeCurrentSettings(self):
         """ Based on the current GUI settings, configure the viewer.
         It also forces some GUI decisions for incompatible settings (example: comparing operations in a 3x3 layout)
         """
@@ -495,6 +505,64 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
         for compNode in compNodes.itervalues():
             compNode.SetLinkedControl(False)
+
+        if self.currentOperation == self.OPERATION_MIP_MinIP \
+            or self.currentLayout == self.LAYOUT_COMPARE:
+            # Compare MIP-MinIP. Force GUI
+            self.currentLayout = self.LAYOUT_COMPARE
+            self.currentOperation = self.OPERATION_MIP_MinIP
+            SlicerUtil.changeLayout(self.currentLayout)
+            # Red window
+            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+            sliceNode.SetOrientation(self.planes[self.currentPlane])
+            self.__resliceNode__(sliceNode, self.currentPlane, self.OPERATION_NONE)
+            # Bottom-left (Yellow). MIP
+            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
+            sliceNode.SetOrientation(self.planes[self.currentPlane])
+            self.__resliceNode__(sliceNode, self.currentPlane, self.OPERATION_MIP)
+            # Bottom-right (Green). MinIP
+            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeGreen')
+            sliceNode.SetOrientation(self.planes[self.currentPlane])
+            self.__resliceNode__(sliceNode, self.currentPlane, self.OPERATION_MinIP)
+        else:
+            # Set the layout and later the operation
+            SlicerUtil.changeLayout(self.currentLayout)
+            if self.currentLayout == self.LAYOUT_RED_ONLY:
+                # Red window
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+                sliceNode.SetOrientation(self.planes[self.currentPlane])
+                self.__resliceNode__(sliceNode, self.currentPlane, self.currentOperation)
+            elif self.currentLayout == self.LAYOUT_SIDE_BY_SIDE:
+                # Red window
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+                sliceNode.SetOrientation(self.planes[self.currentPlane])
+                self.__resliceNode__(sliceNode, self.currentPlane, self.OPERATION_NONE)
+                # Yellow window
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
+                sliceNode.SetOrientation(self.planes[self.currentPlane])
+                self.__resliceNode__(sliceNode, self.currentPlane, self.currentOperation)
+            elif self.currentLayout == self.LAYOUT_THREE_OVER_THREE:
+                # Top row (no reslice)
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+                sliceNode.SetOrientationToAxial()
+                self.__resliceNode__(sliceNode, self.PLANE_AXIAL, self.OPERATION_NONE)
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
+                sliceNode.SetOrientationToSagittal()
+                self.__resliceNode__(sliceNode, self.PLANE_SAGITTAL, self.OPERATION_NONE)
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeGreen')
+                sliceNode.SetOrientationToCoronal()
+                self.__resliceNode__(sliceNode, self.PLANE_CORONAL, self.OPERATION_NONE)
+                # Bottom row (reslice)
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeSlice4')
+                sliceNode.SetOrientationToAxial()
+                self.__resliceNode__(sliceNode,  self.PLANE_AXIAL, self.currentOperation)
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeSlice5')
+                sliceNode.SetOrientationToSagittal()
+                self.__resliceNode__(sliceNode,  self.PLANE_SAGITTAL, self.currentOperation)
+                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeSlice6')
+                sliceNode.SetOrientationToCoronal()
+                self.__resliceNode__(sliceNode,  self.PLANE_CORONAL, self.currentOperation)
+
         # Active volumes
         compNode = slicer.mrmlScene.GetNodeByID("vtkMRMLSliceCompositeNodeRed")
         labelmapVolumeID = compNode.GetLabelVolumeID()
@@ -506,63 +574,6 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
             compNode.SetLabelVolumeID(labelmapVolumeID)
             compNode.SetForegroundVolumeID(foregroundVolumeID)
             compNode.SetBackgroundVolumeID(backgroundVolumeID)
-
-        if self.currentOperation == self.OPERATION_MIP_MinIP \
-            or self.currentLayout == self.LAYOUT_COMPARE:
-            # Compare MIP-MinIP. Force GUI
-            self.currentLayout = self.LAYOUT_COMPARE
-            self.currentOperation = self.OPERATION_MIP_MinIP
-            SlicerUtil.changeLayout(self.currentLayout)
-            # Red window
-            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
-            sliceNode.SetOrientation(self.planes[self.currentPlane])
-            self.__resliceNode__(sliceNode, self.OPERATION_NONE)
-            # Bottom-left (Yellow). MIP
-            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
-            sliceNode.SetOrientation(self.planes[self.currentPlane])
-            self.__resliceNode__(sliceNode, self.OPERATION_MIP)
-            # Bottom-right (Green). MinIP
-            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeGreen')
-            sliceNode.SetOrientation(self.planes[self.currentPlane])
-            self.__resliceNode__(sliceNode, self.OPERATION_MinIP)
-        else:
-            # Set the layout and later the operation
-            SlicerUtil.changeLayout(self.currentLayout)
-            if self.currentLayout == self.LAYOUT_RED_ONLY:
-                # Red window
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
-                sliceNode.SetOrientation(self.planes[self.currentPlane])
-                self.__resliceNode__(sliceNode, self.currentOperation)
-            elif self.currentLayout == self.LAYOUT_SIDE_BY_SIDE:
-                # Red window
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
-                sliceNode.SetOrientation(self.planes[self.currentPlane])
-                self.__resliceNode__(sliceNode, self.OPERATION_NONE)
-                # Yellow window
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
-                sliceNode.SetOrientation(self.planes[self.currentPlane])
-                self.__resliceNode__(sliceNode, self.currentOperation)
-            elif self.currentLayout == self.LAYOUT_THREE_OVER_THREE:
-                # Top row (no reslice)
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
-                sliceNode.SetOrientationToAxial()
-                self.__resliceNode__(sliceNode, self.OPERATION_NONE)
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
-                sliceNode.SetOrientationToSagittal()
-                self.__resliceNode__(sliceNode, self.OPERATION_NONE)
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeGreen')
-                sliceNode.SetOrientationToCoronal()
-                self.__resliceNode__(sliceNode, self.OPERATION_NONE)
-                # Bottom row (reslice)
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeSlice4')
-                sliceNode.SetOrientationToAxial()
-                self.__resliceNode__(sliceNode, self.currentOperation)
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeSlice5')
-                sliceNode.SetOrientationToSagittal()
-                self.__resliceNode__(sliceNode, self.currentOperation)
-                sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeSlice6')
-                sliceNode.SetOrientationToCoronal()
-                self.__resliceNode__(sliceNode, self.currentOperation)
 
         # Relink all the controls
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
@@ -577,7 +588,7 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
         # Disable operation if we are comparing MIP and MinIP
         self.operationComboBox.enabled = (self.currentLayout != self.LAYOUT_COMPARE)
 
-    def __resliceNode__(self, sliceNode, operation):
+    def __resliceNode__(self, sliceNode, plane, operation):
         """ Apply a reslicing operation in the specified window
         :param sliceNode: vktMRMLSliceNode that represents the 2D window
         :param operation: reslicing operation (MIP, MinIP, Median...)
@@ -591,10 +602,7 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
             reslice.SetSlabMode(0)          # This alone not always works
             reslice.SetSlabNumberOfSlices(1)
         else:
-            # reslice.SetSlabSliceSpacingFraction(self.currentSpacingFraction)
-            # reslice.SetSlabNumberOfSlices(self.currentNumberOfSlices)
-            print ("Number of slices: ", self.__calculateSlices__())
-            reslice.SetSlabNumberOfSlices(self.__calculateSlices__())
+            reslice.SetSlabNumberOfSlices(self.__calculateSlices__(plane))
             if operation == self.OPERATION_MIP:
                 reslice.SetSlabModeToMax()
             elif operation == self.OPERATION_MinIP:
@@ -627,10 +635,16 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
                 self.currentSpacingLabel2.setText(str(spacing) + " mm")
         return spacing
 
-    def __calculateSlices__(self):
-        """ Calculate the number of slices based on the current spacing in mm.
-        :return: number of slices (int)
+    def setCurrentSpacingInMm(self, value):
+        """ Set the value of the spacing slider from a value in mm
+        :param value: spacing in mm
         """
+        # Get the spacing of the displayed volume
+        compNode = slicer.mrmlScene.GetNodeByID("vtkMRMLSliceCompositeNodeRed")
+        volumeId = compNode.GetBackgroundVolumeID()
+        if volumeId == "":
+            return
+        volume = slicer.mrmlScene.GetNodeByID(volumeId)
         if self.currentLayout == self.LAYOUT_THREE_OVER_THREE or self.currentPlane == self.PLANE_AXIAL:
             # All the planes are shown. Take the axial as a reference
             position = 2
@@ -638,9 +652,31 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
             position = 0
         else:
             position = 1
+        spacing = volume.GetSpacing()[position]
+        self.currentSliderValue = value / spacing  # Spacing is in cm
+        if self.fullModeOn:
+            self.currentSpacingLabel.setText(str(value) + " mm")
+        else:
+            self.currentSpacingLabel2.setText(str(value) + " mm")
+
+
+    def __calculateSlices__(self, plane=PLANE_AXIAL):
+        """ Calculate the number of slices based on the current spacing in mm.
+        :param plane: plane to calculate the number of slices (to adjust to the current spacing in mm)
+        :return: number of slices (int)
+        """
+        if plane == self.PLANE_SAGITTAL:
+            position = 0
+        elif plane == self.PLANE_CORONAL:
+            position = 1
+        else:
+            position = 2
         # Get the spacing of the displayed volume
         compNode = slicer.mrmlScene.GetNodeByID("vtkMRMLSliceCompositeNodeRed")
-        volume = slicer.mrmlScene.GetNodeByID(compNode.GetBackgroundVolumeID())
+        volumeId = compNode.GetBackgroundVolumeID()
+        if volumeId == "":
+            return 0
+        volume = slicer.mrmlScene.GetNodeByID(volumeId)
         slices = self.currentSpacingInMm / volume.GetSpacing()[position]
         return int(slices)
 
@@ -657,7 +693,7 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
         # Remove all possible reslicing
         nodes = slicer.util.getNodes("vtkMRMLSliceNode*")
         for node in nodes.itervalues():
-            self.__resliceNode__(node, self.OPERATION_NONE)
+            self.__resliceNode__(node, self.currentPlane, self.OPERATION_NONE)
 
 
     #################
@@ -733,8 +769,8 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
 
 
     def __onNumberOfSlicesChanged__(self, number):
-        """ The slicer that control the number of slices was modified
-        :param number:
+        """ The slider that control the number of slices was modified
+        :param number: value of the slider
         """
         self.__calculateSpacingMm__()
         self.executeCurrentSettings()
