@@ -266,8 +266,8 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
             self.layout.addWidget(caseNavigatorAreaCollapsibleButton, 0x0020)
             # Add a case list navigator
             from ACIL.ui import CaseNavigatorWidget
-            self.caseNavigatorWidget = CaseNavigatorWidget(parentModuleName=self.moduleName
-                                                           , parentContainer=caseNavigatorAreaCollapsibleButton)
+            self.caseNavigatorWidget = CaseNavigatorWidget(self.moduleName,
+                                                           caseNavigatorAreaCollapsibleButton)
             self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_LABELMAP_LOADED,
                                                    self.onNavigatorLabelmapLoaded)
             self.caseNavigatorWidget.setup()
