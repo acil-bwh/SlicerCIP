@@ -62,8 +62,9 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
         self.layout.addWidget(mainAreaCollapsibleButton)
         self.mainAreaLayout = qt.QVBoxLayout(mainAreaCollapsibleButton)
 
-        self.viewer = MIPViewerWidget(mainAreaCollapsibleButton)
+        self.viewer = MIPViewerWidget(mainAreaCollapsibleButton, MIPViewerWidget.CONTEXT_UNKNOWN)
         self.viewer.setup()
+        # self.viewer.activateCurrentContext()
         self.layout.addStretch(1)
 
 
