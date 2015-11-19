@@ -372,6 +372,23 @@ class SlicerUtil:
         layoutManager.setLayout(layoutNumber)
 
     @staticmethod
+    def changeConstrastWindow(window, level):
+        """ Adjust the window contrast level in the range min-max.
+        Note: it takes the first visible node in 2D windows
+        :param window: size of the window
+        :param level: center of the window
+        """
+        compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
+        for compNode in compNodes.itervalues():
+            v = compNode.GetBackgroundVolumeID()
+            if v is not None and v != "":
+                displayNode = slicer.mrmlScene.GetNodeByID(v).GetDisplayNode()
+                displayNode.AutoWindowLevelOff()
+                displayNode.SetWindow(window)
+                displayNode.SetLevel(level)
+                return
+
+    @staticmethod
     def vtkImageData_numpy_array(vtkImageData_node):
         """ Return a numpy array from a vtkImageData node
         :param vtkImageData_node:
@@ -414,6 +431,13 @@ class SlicerUtil:
         for sliceNode in sliceNodes.values():
             sliceNode.JumpSliceByCentering(coords[0], coords[1], coords[2])
 
+    @staticmethod
+    def centerAllVolumes():
+        """ Center all the volumes that are currently visible in the 2D Windows
+        """
+        lm = slicer.app.layoutManager()
+        for sliceView in lm.sliceViewNames():
+            lm.sliceWidget(sliceView).sliceLogic().FitSliceToAll()
 
         # @staticmethod
     # def gitUpdateCIP():

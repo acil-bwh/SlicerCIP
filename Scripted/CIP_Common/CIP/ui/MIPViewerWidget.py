@@ -1,5 +1,7 @@
 import os
+from collections import OrderedDict
 from __main__ import vtk, qt, ctk, slicer
+
 
 from CIP.logic.SlicerUtil import SlicerUtil
 
@@ -8,7 +10,7 @@ class MIPViewerWidget(object):
     CONTEXT_VASCULATURE = 1
     CONTEXT_EMPHYSEMA = 2
 
-    LAYOUT_DEFAULT = 0
+    LAYOUT_DEFAULT = -1
     LAYOUT_RED_ONLY = 6
     LAYOUT_SIDE_BY_SIDE = 29
     LAYOUT_THREE_OVER_THREE = 21
@@ -45,31 +47,26 @@ class MIPViewerWidget(object):
         # If no context is set, display the whole widget
         self.fullModeOn = (context == self.CONTEXT_UNKNOWN)
         self.currentContext = context
-        self.currentLayout = self.LAYOUT_DEFAULT
         self.originalLayout = slicer.app.layoutManager().layout
-        self.currentSpacingsInMm = {
-            self.OPERATION_MIP: 0,
-            self.OPERATION_MinIP: 0,
-            self.OPERATION_MEAN: 0
-        }      # Different spacing for each operation
 
-    # Properties
+    ####
+    # PROPERTIES
     @property
     def contexts(self):
         return {
-            self.CONTEXT_UNKNOWN: "Unknown",
-            self.CONTEXT_VASCULATURE: "Nodules",
+            self.CONTEXT_UNKNOWN: "Not selected",
+            self.CONTEXT_VASCULATURE: "Vasculature",
             self.CONTEXT_EMPHYSEMA: "Emphysema"
         }
 
     @property
     def operations(self):
-        return {
+        return OrderedDict({
             self.OPERATION_MIP: "MIP",
             self.OPERATION_MinIP: "MinIP",
             self.OPERATION_MIP_MinIP: "MIP + MinIP",
             self.OPERATION_MEAN: "Mean"
-        }
+        })
 
     @property
     def planes(self):
@@ -79,6 +76,13 @@ class MIPViewerWidget(object):
             self.PLANE_CORONAL: "Coronal"
         }
 
+    @property
+    def currentLayout(self):
+        return self.layoutsButtonGroup.checkedId()
+    @currentLayout.setter
+    def currentLayout(self, value):
+        for b in self.layoutsButtonGroup.buttons():
+            b.setChecked(self.layoutsButtonGroup.id(b) == value)
     # @property
     # def currentContext(self):
     #     return self.contextComboBox.currentIndex
@@ -109,26 +113,10 @@ class MIPViewerWidget(object):
         self.operationComboBox.currentIndex = value
         self.operationComboBox.blockSignals(False)
 
-    @property
-    def currentSliderValue(self):
-        return self.spacingSlider.value / 10.0
-
-    @currentSliderValue.setter
-    def currentSliderValue(self, value):
-        self.spacingSlider.value = value * 10
-
-    @property
-    def currentSpacingInMm(self):
-        """ Get the current spacing (in mm) based on the slider text
-        :return: spacing in mm
-        """
-        text = self.currentSpacingLabel.text
-        if text == "":
-            return self.__calculateSpacingMm__()
-        return float(text.replace(" mm", ""))
 
 
-
+    ####
+    # PUBLIC METHODS
     def setup(self):
         """This is called one time when the module GUI is initialized
         """
@@ -187,63 +175,93 @@ class MIPViewerWidget(object):
         ## Layout
         self.layoutLabel = qt.QLabel("Layout")
         # Buttons group
-        self.viewsButtonGroup = qt.QButtonGroup()
+        self.layoutsButtonGroup = qt.QButtonGroup()
         # Single slice Button
         self.singleSlideViewButton = qt.QPushButton()
         self.singleSlideViewButton.setCheckable(True)
         self.singleSlideViewButton.toolTip = "Single slice view"
         self.singleSlideViewButton.setFixedSize(40, 40)
-        icon = qt.QIcon(":/Icons/LayoutOneUpRedSliceView.png")
-        self.singleSlideViewButton.setIcon(icon)
-        self.viewsButtonGroup.addButton(self.singleSlideViewButton)
+        self.singleSlideViewButton.setIcon(qt.QIcon(":/Icons/LayoutOneUpRedSliceView.png"))
+        self.layoutsButtonGroup.addButton(self.singleSlideViewButton, self.LAYOUT_RED_ONLY)
         # Side by side Button
         self.sideBySideViewButton = qt.QPushButton()
         self.sideBySideViewButton.setCheckable(True)
         self.sideBySideViewButton.toolTip = "Side by side view"
         self.sideBySideViewButton.setFixedSize(40, 40)
-        icon = qt.QIcon(":/Icons/LayoutSideBySideView.png")
-        self.sideBySideViewButton.setIcon(icon)
-        self.viewsButtonGroup.addButton(self.sideBySideViewButton)
+        self.sideBySideViewButton.setIcon(qt.QIcon(":/Icons/LayoutSideBySideView.png"))
+        self.layoutsButtonGroup.addButton(self.sideBySideViewButton, self.LAYOUT_SIDE_BY_SIDE)
         # Three over three button
         self.threeOverThreeViewButton = qt.QPushButton()
         self.threeOverThreeViewButton.setCheckable(True)
         self.threeOverThreeViewButton.toolTip = "Compare 2 images in their 3 planes"
         self.threeOverThreeViewButton.setFixedSize(40, 40)
-        icon = qt.QIcon(":/Icons/LayoutThreeOverThreeView.png")
-        self.threeOverThreeViewButton.setIcon(icon)
-        self.viewsButtonGroup.addButton(self.threeOverThreeViewButton)
+        self.threeOverThreeViewButton.setIcon(qt.QIcon(":/Icons/LayoutThreeOverThreeView.png"))
+        self.layoutsButtonGroup.addButton(self.threeOverThreeViewButton, self.LAYOUT_THREE_OVER_THREE)
         # Comparative MIP-MinIP button
         self.maxMinCompareViewButton = qt.QPushButton()
         self.maxMinCompareViewButton.setCheckable(True)
         self.maxMinCompareViewButton.toolTip = "MIP and MinIP comparison"
         self.maxMinCompareViewButton.setFixedSize(40, 40)
-        icon = qt.QIcon(":/Icons/LayoutFourUpView.png")
-        self.maxMinCompareViewButton.setIcon(icon)
-        self.viewsButtonGroup.addButton(self.maxMinCompareViewButton)
+        self.maxMinCompareViewButton.setIcon(qt.QIcon(":/Icons/LayoutFourUpView.png"))
+        self.layoutsButtonGroup.addButton(self.maxMinCompareViewButton, self.LAYOUT_COMPARE)
         # Reset Button
         self.resetViewButton = qt.QPushButton()
         self.resetViewButton.toolTip = "Go back to the original layout"
         self.resetViewButton.setFixedSize(40,40)
-        icon = qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, "Reload.png"))
-        self.resetViewButton.setIconSize(qt.QSize(24, 24))
-        self.resetViewButton.setIcon(icon)
+        # self.resetViewButton.setIconSize(qt.QSize(24, 24))
+        self.resetViewButton.setIcon(qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, "Reload.png")))
         # Buttons labels
         self.singleSlideButtonLabel = qt.QLabel("Single")
         self.sideBySideButtonLabel = qt.QLabel("Side by side")
         self.threeOverThreeButtonLabel = qt.QLabel("3x3")
-        self.maxMinCompareButtonLabel = qt.QLabel("MIP-MinIP")
+        self.maxMinCompareButtonLabel = qt.QLabel("MIP+MinIP")
         self.resetLabel = qt.QLabel("Reset")
+        self.resetLabel.setStyleSheet("font-weight: bold")
 
-        # Number of slices
-        self.spacingLabel = qt.QLabel("Slice size")
-        self.spacingSlider = qt.QSlider()
-        self.spacingSlider.orientation = 1
-        self.spacingSlider.setTickPosition(2)
-        self.spacingSlider.minimum = 0
-        self.spacingSlider.maximum = 2000
-        self.spacingSlider.setPageStep(50)
-        self.spacingSlider.value = 200
-        self.currentSpacingLabel = qt.QLabel()
+        # Number of slices (different for each operation). The size of the slider also changes
+        self.spacingSliderItems = OrderedDict()
+        spacingLabel = qt.QLabel("Slice size " + self.operations[self.OPERATION_MIP])
+        spacingSlider = qt.QSlider()
+        spacingSlider.orientation = 1
+        spacingSlider.setTickPosition(2)
+        spacingSlider.minimum = 0
+        spacingSlider.maximum = 1000
+        spacingSlider.setPageStep(50)
+        spacingMmLabel = qt.QLabel()
+        self.spacingSliderItems[self.OPERATION_MIP] = (spacingLabel, spacingSlider, spacingMmLabel)
+        self.setCurrentSpacingInMm(self.OPERATION_MIP, 20)
+
+        spacingLabel = qt.QLabel("Slice size " + self.operations[self.OPERATION_MinIP])
+        spacingSlider = qt.QSlider()
+        spacingSlider.orientation = 1
+        spacingSlider.setTickPosition(2)
+        spacingSlider.minimum = 0
+        spacingSlider.maximum = 200
+        spacingSlider.setPageStep(50)
+        spacingMmLabel = qt.QLabel()
+        self.spacingSliderItems[self.OPERATION_MinIP] = (spacingLabel, spacingSlider, spacingMmLabel)
+        self.setCurrentSpacingInMm(self.OPERATION_MinIP, 5)
+
+        spacingLabel = qt.QLabel("Slice size " + self.operations[self.OPERATION_MEAN])
+        spacingSlider = qt.QSlider()
+        spacingSlider.orientation = 1
+        spacingSlider.setTickPosition(2)
+        spacingSlider.minimum = 0
+        spacingSlider.maximum = 200
+        spacingSlider.setPageStep(50)
+        spacingMmLabel = qt.QLabel()
+        self.spacingSliderItems[self.OPERATION_MEAN] = (spacingLabel, spacingSlider, spacingMmLabel)
+        self.setCurrentSpacingInMm(self.OPERATION_MEAN, 20)
+
+        # Crosshair
+        self.crosshairCheckbox = qt.QCheckBox()
+        self.crosshairCheckbox.setText("Crosshair cursor")
+        self.crosshairCheckbox.setChecked(True)
+        self.crosshairCheckbox.toolTip = "Activate/Desactivate the crosshair cursor for a better visualization"
+
+        self.centerButton = qt.QPushButton()
+        self.centerButton.setText("Center volumes")
+        # self.centerButton.setFixedSize(100, 70)
 
 
         if self.fullModeOn:
@@ -274,9 +292,14 @@ class MIPViewerWidget(object):
             self.widgetMainLayout.addWidget(self.maxMinCompareButtonLabel, 5, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
             self.widgetMainLayout.addWidget(self.resetLabel, 5, 5, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
             # Number of slices
-            self.widgetMainLayout.addWidget(self.spacingLabel, 6, 0)
-            self.widgetMainLayout.addWidget(self.spacingSlider, 6, 1, 1, 3)
-            self.widgetMainLayout.addWidget(self.currentSpacingLabel, 6, 4)
+            row = 6
+            for structure in self.spacingSliderItems.itervalues():
+                self.widgetMainLayout.addWidget(structure[0], row, 0, 1, 2)
+                self.widgetMainLayout.addWidget(structure[1], row, 2, 1, 3)
+                self.widgetMainLayout.addWidget(structure[2], row, 5)
+                row += 1
+            self.widgetMainLayout.addWidget(self.crosshairCheckbox, row, 0, 1, 2)
+            self.widgetMainLayout.addWidget(self.centerButton, row, 2, 1, 2)
 
         else:
             ##### COLLAPSED MODE
@@ -291,11 +314,17 @@ class MIPViewerWidget(object):
             self.widgetMainLayout.addWidget(self.coronalButtonLabel, 1, 3, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
             self.widgetMainLayout.addWidget(self.threeOverThreeButtonLabel, 1, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
             # Number of slices
-            self.widgetMainLayout.addWidget(self.spacingLabel, 2, 0)
-            self.widgetMainLayout.addWidget(self.spacingSlider, 2, 1, 1, 3)
-            self.widgetMainLayout.addWidget(self.currentSpacingLabel, 2, 4)
+            row = 2
+            for structure in self.spacingSliderItems.itervalues():
+                self.widgetMainLayout.addWidget(structure[0], row, 0)
+                self.widgetMainLayout.addWidget(structure[1], row, 1, 1, 3)
+                self.widgetMainLayout.addWidget(structure[2], row, 4)
+                row += 1
+            self.widgetMainLayout.addWidget(self.crosshairCheckbox, row, 0, 1, 2)
 
         self.layout.addStretch(1)
+
+        self.__refreshUI__()
 
         # Connections
         self.contextComboBox.connect("currentIndexChanged (int)", self.__onContextIndexChanged__)
@@ -306,7 +335,10 @@ class MIPViewerWidget(object):
         self.threeOverThreeViewButton.connect("clicked()", self.__onThreeOverThreeViewButtonClicked__)
         self.maxMinCompareViewButton.connect("clicked()", self.__onMaxMinCompareViewButtonClicked__)
         self.resetViewButton.connect("clicked()", self.__onResetViewButtonClicked__)
-        self.spacingSlider.connect('valueChanged(int)', self.__onNumberOfSlicesChanged__)
+        for slicer in (item[1] for item in self.spacingSliderItems.itervalues()):
+            slicer.connect('valueChanged(int)', self.__onNumberOfSlicesChanged__)
+        self.crosshairCheckbox.connect("stateChanged(int)", self.__onCrosshairCheckChanged__)
+        self.centerButton.connect("clicked()", self.__onCenterButtonClicked__)
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
@@ -320,32 +352,13 @@ class MIPViewerWidget(object):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         pass
 
-    def __setContext__(self, context):
-        """ Configure the widget for a particular context. Fix operation, plane, layout and optionally number of slices
-        :param context: element of "contexts" list
-        """
-        self.currentContext = context
-        if context == self.CONTEXT_UNKNOWN:
-            return
+    def activateEnhacedVisualization(self, active):
+        if active:
+            self.__setContext__(self.currentContext)
+        else:
+            self.resetLayout()
 
-        if context == self.CONTEXT_VASCULATURE:
-            # MIP, Axial, Side by side
-            self.currentLayout = self.LAYOUT_SIDE_BY_SIDE
-            self.currentPlane = self.PLANE_AXIAL
-            self.currentOperation = self.OPERATION_MIP
-            self.setCurrentSpacingInMm(20)
-        elif context == self.CONTEXT_EMPHYSEMA:
-            # MinIP, Axial, Side by side
-            self.currentLayout = self.LAYOUT_SIDE_BY_SIDE
-            self.currentPlane = self.PLANE_AXIAL
-            self.currentOperation = self.OPERATION_MinIP
-            self.setCurrentSpacingInMm(5)
 
-        self.changeContrast(context)
-        self.executeCurrentSettings()
-
-    def activateCurrentContext(self):
-        self.__setContext__(self.currentContext)
 
     def executeCurrentSettings(self):
         """ Based on the current GUI settings, configure the viewer.
@@ -433,39 +446,18 @@ class MIPViewerWidget(object):
         # Refresh windows to show changes
         SlicerUtil.refreshActiveWindows()
 
-        # Disable plane selection if we are viewing all the planes
-        #self.planeComboBox.enabled = (self.currentLayout != self.LAYOUT_THREE_OVER_THREE)
-        # Disable operation if we are comparing MIP and MinIP
-        self.operationComboBox.enabled = (self.currentLayout != self.LAYOUT_COMPARE)
+        self.__refreshUI__()
 
 
-    def setCurrentSpacingInMm(self, value):
-        """ Set the value of the spacing slider from a value in mm
+    def setCurrentSpacingInMm(self, operation, value):
+        """ Set the value of the spacing slider and the corresponding label from a value in mm
+        :param operation: operation (from self.operations)
         :param value: spacing in mm
         """
-        # Get the spacing of the displayed volume
-        compNode = slicer.mrmlScene.GetNodeByID("vtkMRMLSliceCompositeNodeRed")
-        volumeId = compNode.GetBackgroundVolumeID()
-        if volumeId == "":
-            return
-        volume = slicer.mrmlScene.GetNodeByID(volumeId)
-        if self.currentLayout == self.LAYOUT_THREE_OVER_THREE or self.currentPlane == self.PLANE_AXIAL:
-            # All the planes are shown. Take the axial as a reference
-            position = 2
-        elif self.currentPlane == self.PLANE_SAGITTAL:
-            position = 0
-        else:
-            position = 1
-        spacing = volume.GetSpacing()[position]
-        self.currentSliderValue = value / spacing  # Spacing is in cm
-        self.currentSpacingLabel.setText(str(value) + " mm")
+        # Set the value
+        self.spacingSliderItems[operation][2].setText("{0} mm".format(value))
+        self.spacingSliderItems[operation][1].value = value * 10
 
-    def changeContrast(self, context):
-        """ Adjust the window constrast based on the given context
-        :param context: one of the context defined inside this class
-        """
-        # TODO: implement for the different contexts
-        pass
 
     def resetLayout(self):
         """ Return to the layout that was active when the user loaded the module
@@ -481,9 +473,56 @@ class MIPViewerWidget(object):
         for node in nodes.itervalues():
             self.__resliceNode__(node, self.currentPlane, self.OPERATION_NONE)
 
+        self.currentLayout = self.LAYOUT_DEFAULT
+
     #####
     # PRIVATE METHODS
     #####
+    def __refreshUI__(self):
+        """ Show/hide GUI elements based on the current configuration
+        """
+        # Disable operation if we are comparing MIP and MinIP
+        self.operationComboBox.enabled = (self.currentLayout != self.LAYOUT_COMPARE)
+
+        for operation, controls in self.spacingSliderItems.iteritems():
+            for elem in controls:
+                elem.visible = False
+        if self.currentOperation in (self.OPERATION_MIP, self.OPERATION_MinIP, self.OPERATION_MEAN):
+            for elem in self.spacingSliderItems[self.currentOperation]:
+                elem.visible = True
+        elif self.currentOperation == self.OPERATION_MIP_MinIP:
+            for elem in self.spacingSliderItems[self.OPERATION_MIP]:
+                elem.visible = True
+            for elem in self.spacingSliderItems[self.OPERATION_MinIP]:
+                elem.visible = True
+
+        SlicerUtil.setCrosshair(self.crosshairCheckbox.isChecked())
+
+    def __setContext__(self, context):
+        """ Configure the widget for a particular context. Fix operation, plane, layout and optionally number of slices
+        :param context: element of "contexts" list
+        """
+        self.currentContext = context
+        # if context == self.CONTEXT_UNKNOWN:
+        #     return
+
+        if context == self.CONTEXT_VASCULATURE:
+            # MIP, Axial, Side by side
+            self.currentLayout = self.LAYOUT_SIDE_BY_SIDE
+            self.currentPlane = self.PLANE_AXIAL
+            self.currentOperation = self.OPERATION_MIP
+            self.setCurrentSpacingInMm(self.currentOperation, 20)
+            SlicerUtil.changeConstrastWindow(1400, -500)
+        elif context == self.CONTEXT_EMPHYSEMA:
+            # MinIP, Axial, Side by side
+            self.currentLayout = self.LAYOUT_SIDE_BY_SIDE
+            self.currentPlane = self.PLANE_AXIAL
+            self.currentOperation = self.OPERATION_MinIP
+            self.setCurrentSpacingInMm(self.currentOperation, 5)
+            SlicerUtil.changeConstrastWindow(1400, -500)
+
+        self.executeCurrentSettings()
+
     def __resliceNode__(self, sliceNode, plane, operation):
         """ Apply a reslicing operation in the specified window
         :param sliceNode: vktMRMLSliceNode that represents the 2D window
@@ -498,7 +537,9 @@ class MIPViewerWidget(object):
             reslice.SetSlabMode(0)          # This alone not always works
             reslice.SetSlabNumberOfSlices(1)
         else:
-            reslice.SetSlabNumberOfSlices(self.__calculateSlices__(plane))
+            # Get the value from the slider matching this operation
+            spacing = self.spacingSliderItems[operation][1].value / 10.0
+            reslice.SetSlabNumberOfSlices(self.__calculateSlices__(spacing, plane))
             if operation == self.OPERATION_MIP:
                 reslice.SetSlabModeToMax()
             elif operation == self.OPERATION_MinIP:
@@ -508,29 +549,30 @@ class MIPViewerWidget(object):
 
         sliceNode.Modified()
 
-    def __calculateSpacingMm__(self):
-        """ Calculate the mm that are selected by the user when he adjusts the slider value.
-        It also sets the text of the slider (value in mm)
-        """
-        if self.currentLayout == self.LAYOUT_THREE_OVER_THREE or self.currentPlane == self.PLANE_AXIAL:
-            # All the planes are shown. Take the axial as a reference
-            position = 2
-        elif self.currentPlane == self.PLANE_SAGITTAL:
-            position = 0
-        else:
-            position = 1
-        spacing = 0
-        # Get the spacing of the displayed volume
-        compNode = slicer.mrmlScene.GetNodeByID("vtkMRMLSliceCompositeNodeRed")
-        volume = slicer.util.getNode(compNode.GetBackgroundVolumeID())
-        if volume is not None:
-            spacing = round(volume.GetSpacing()[position] * self.currentSliderValue, 2)
-            self.currentSpacingLabel.setText(str(spacing) + " mm")
-        return spacing
+    # def __calculateSpacingMm__(self):
+    #     """ Calculate the mm that are selected by the user when he adjusts the slider value.
+    #     It also sets the text of the slider (value in mm)
+    #     """
+    #     if self.currentLayout == self.LAYOUT_THREE_OVER_THREE or self.currentPlane == self.PLANE_AXIAL:
+    #         # All the planes are shown. Take the axial as a reference
+    #         position = 2
+    #     elif self.currentPlane == self.PLANE_SAGITTAL:
+    #         position = 0
+    #     else:
+    #         position = 1
+    #     spacing = 0
+    #     # Get the spacing of the displayed volume
+    #     compNode = slicer.mrmlScene.GetNodeByID("vtkMRMLSliceCompositeNodeRed")
+    #     volume = slicer.util.getNode(compNode.GetBackgroundVolumeID())
+    #     if volume is not None:
+    #         spacing = round(volume.GetSpacing()[position] * self.currentSliderValue, 2)
+    #         self.currentSpacingLabel.setText(str(spacing) + " mm")
+    #     return spacing
 
 
-    def __calculateSlices__(self, plane=PLANE_AXIAL):
+    def __calculateSlices__(self, spacing, plane):
         """ Calculate the number of slices based on the current spacing in mm.
+        :param spacing: spacing in mm
         :param plane: plane to calculate the number of slices (to adjust to the current spacing in mm)
         :return: number of slices (int)
         """
@@ -546,7 +588,7 @@ class MIPViewerWidget(object):
         if volumeId == "":
             return 0
         volume = slicer.mrmlScene.GetNodeByID(volumeId)
-        slices = self.currentSpacingInMm / volume.GetSpacing()[position]
+        slices = spacing / volume.GetSpacing()[position]
         return int(slices)
 
 
@@ -629,5 +671,12 @@ class MIPViewerWidget(object):
         """ The slider that control the number of slices was modified
         :param number: value of the slider
         """
-        self.__calculateSpacingMm__()
+        for row in self.spacingSliderItems.itervalues():
+            row[2].setText("{0} mm".format(row[1].value / 10.0))
         self.executeCurrentSettings()
+
+    def __onCrosshairCheckChanged__(self, checkedState):
+        SlicerUtil.setCrosshair(checkedState==2)
+
+    def __onCenterButtonClicked__(self):
+        SlicerUtil.centerAllVolumes()
