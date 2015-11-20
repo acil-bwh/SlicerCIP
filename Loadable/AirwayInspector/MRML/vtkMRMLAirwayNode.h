@@ -23,6 +23,7 @@
 
 #include "vtkImageData.h"
 #include "vtkPolyData.h"
+#include "vtkEllipseFitting.h"
 
 #include "vtkMRMLNode.h"
 #include "vtkMRMLModelNode.h"
@@ -79,9 +80,14 @@ public:
 
   ///
   /// Get/Set for orientation
-  vtkSetVector4Macro(OrientationWXYZ,double);
-  vtkGetVectorMacro(OrientationWXYZ,double,4);
-  //void SetOrientationWXYZFromMatrix4x4(vtkMatrix4x4 *mat);
+  vtkSetVector3Macro(XAxis,double);
+  vtkGetVectorMacro(XAxis,double,3);
+
+  vtkSetVector3Macro(YAxis,double);
+  vtkGetVectorMacro(YAxis,double,3);
+
+  vtkSetVector3Macro(ZAxis,double);
+  vtkGetVectorMacro(ZAxis,double,3);
 
   /// Get/Set Threshold
   vtkSetMacro(Threshold, int);
@@ -98,6 +104,12 @@ public:
   vtkBooleanMacro(ComputeCenter,int);
   vtkSetMacro(ComputeCenter,int);
   vtkGetMacro(ComputeCenter,int);
+
+  // Description:
+  // Compute Center of reslice
+  vtkBooleanMacro(RefineCenter,int);
+  vtkSetMacro(RefineCenter,int);
+  vtkGetMacro(RefineCenter,int);
 
   // Description:
   // SegmentPercentage
@@ -172,6 +184,8 @@ public:
   vtkGetObjectMacro(Min, vtkDoubleArray);
   vtkGetObjectMacro(Max, vtkDoubleArray);
   vtkGetObjectMacro(Ellipse, vtkDoubleArray);
+  vtkGetObjectMacro(EllipseInside, vtkEllipseFitting);
+  vtkGetObjectMacro(EllipseOutside, vtkEllipseFitting);
 
   enum AxisMode { HESSIAN, POLYDATA, VECTOR};
   enum ReconstructionMode {SMOOTH, SHARP};
@@ -186,7 +200,9 @@ protected:
 private:
   /// Data
   double XYZ[3];
-  double OrientationWXYZ[4];
+  double XAxis[3];
+  double YAxis[3];
+  double ZAxis[3];
   double Threshold;
   char *VolumeNodeID;
 
@@ -194,6 +210,7 @@ private:
   int    Reformat;
   int    AxisMode;
   int    ComputeCenter;
+  int    RefineCenter;
   int    Reconstruction;
   int    Method;
   double SegmentPercentage;
@@ -210,6 +227,9 @@ private:
   vtkDoubleArray *Min;
   vtkDoubleArray *Max;
   vtkDoubleArray *Ellipse;
+
+  vtkEllipseFitting *EllipseInside;
+  vtkEllipseFitting *EllipseOutside;
 };
 
 #endif

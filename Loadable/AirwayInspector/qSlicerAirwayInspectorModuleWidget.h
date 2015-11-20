@@ -70,15 +70,22 @@ protected:
   void addAndObserveInteractor(vtkRenderWindowInteractor* newInteractor,
                                 vtkMRMLSliceNode* snode);
   void updateReport(vtkMRMLAirwayNode* airwayNode);
-  void createColorImage(vtkImageData* image);
+  void updateViewer(vtkMRMLAirwayNode* airwayNode);
+  void createColorImage(vtkImageData *image, vtkImageData *colorImage);
   void saveAirwayImage(vtkMRMLAirwayNode* airwayNode);
   void updateWidgetFromMRML(vtkMRMLAirwayNode* airwayNode);
   void updateMRMLFromWidget(vtkMRMLAirwayNode* airwayNode);
+  void updateAirwaySlice();
 
 protected slots:
   void setMRMLVolumeNode(vtkMRMLNode*);
   void setMRMLAirwayNode(vtkMRMLNode*);
-  void analyzePressed();
+  void analyzeSelected();
+  void analyzeAll();
+  void writeCSV();
+  void onThresholdChanged(double);
+  void onToggled(bool);
+  void onMethodChanged(int);
 
 protected:
   QScopedPointer<qSlicerAirwayInspectorModuleWidgetPrivate> d_ptr;

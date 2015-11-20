@@ -28,12 +28,19 @@ public:
   virtual void PrintSelf(ostream& os, vtkIndent indent);
 
   vtkMRMLAirwayNode* AddAirwayNode(char *volumeNodeID,
-                                   double x, double y, double z,
-                                   double threshold);
+                                   double x, double y, double z);
 
   void ComputeCenter(vtkMRMLAirwayNode* node);
 
-  void CreateAirway(vtkMRMLAirwayNode *node);
+  vtkImageData* CreateAirwaySlice(vtkMRMLAirwayNode *node);
+
+  void ComputeAirwayWall(vtkImageData* slice, vtkMRMLAirwayNode *node);
+
+  void  AddEllipsesToImage(vtkImageData *sliceRGBImage,
+                           vtkMRMLAirwayNode *node,
+                           vtkImageData *rgbImage);
+
+  void CreateColorImage(vtkImageData *resliceCT, vtkImageData *colorImage);
 
   vtkGetObjectMacro (Reslicer, vtkImageResliceWithPlane);
   vtkGetObjectMacro (WallSolver, vtkComputeAirwayWall);
@@ -41,11 +48,6 @@ public:
 protected:
 
   vtkSlicerAirwayInspectorModuleLogic();
-
-  void CreateAirwayImage(vtkImageData *resliceCT,
-                        vtkEllipseFitting *eifit,
-                        vtkEllipseFitting *eofit,
-                        vtkImageData *airwayImage);
 
   void SetWallSolver(vtkComputeAirwayWall *ref,
                      vtkComputeAirwayWall *out);

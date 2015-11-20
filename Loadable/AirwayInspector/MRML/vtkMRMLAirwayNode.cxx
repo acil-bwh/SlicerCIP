@@ -29,6 +29,7 @@
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
 #include <vtkDoubleArray.h>
+#include <vtkEllipseFitting.h>
 
 // STD includes
 #include <sstream>
@@ -45,10 +46,9 @@ vtkMRMLAirwayNode::vtkMRMLAirwayNode()
   XYZ[0] = 0;
   XYZ[1] = 0;
   XYZ[2] = 0;
-  OrientationWXYZ[0];
-  OrientationWXYZ[1];
-  OrientationWXYZ[2];
-  OrientationWXYZ[3];
+  XAxis[0] = 0;
+  XAxis[1] = 0;
+  XAxis[2] = 0;
   Threshold = -850;
   VolumeNodeID = 0;
 
@@ -57,6 +57,9 @@ vtkMRMLAirwayNode::vtkMRMLAirwayNode()
   this->Min = vtkDoubleArray::New();
   this->Max = vtkDoubleArray::New();
   this->Ellipse = vtkDoubleArray::New();
+
+  this->EllipseInside = vtkEllipseFitting::New();
+  this->EllipseOutside = vtkEllipseFitting::New();
 
   AirwayImage = 0;
   InnerContour = 0;
@@ -67,6 +70,7 @@ vtkMRMLAirwayNode::vtkMRMLAirwayNode()
   this->Reformat = 0;
   this->Threshold = -850;
   this->ComputeCenter = 1;
+  this->RefineCenter = 1;
 
   this->AirBaselineIntensity = -1024;
 
@@ -92,6 +96,8 @@ vtkMRMLAirwayNode::~vtkMRMLAirwayNode()
   this->Min->Delete();
   this->Max->Delete();
   this->Ellipse->Delete();
+  this->EllipseInside->Delete();
+  this->EllipseOutside->Delete();
 }
 
 //----------------------------------------------------------------------------
@@ -106,15 +112,23 @@ void vtkMRMLAirwayNode::WriteXML(ostream& of, int nIndent)
   of << indent << " xyz=\"" << this->XYZ[0] << " "
                             << this->XYZ[1] << " "
                             << this->XYZ[2] << "\"";
-  of << indent << " orientation=\"" << this->OrientationWXYZ[0] << " "
-                            << this->OrientationWXYZ[1] << " "
-                            << this->OrientationWXYZ[2] << " "
-                            << this->OrientationWXYZ[3] << "\"";
+  of << indent << " xaxis=\"" << this->XAxis[0] << " "
+                            << this->XAxis[1] << " "
+                            << this->XAxis[2] << "\"";
+
+  of << indent << " yaxis=\"" << this->YAxis[0] << " "
+                            << this->YAxis[1] << " "
+                            << this->ZAxis[2] << "\"";
+
+  of << indent << " zaxis=\"" << this->ZAxis[0] << " "
+                            << this->ZAxis[1] << " "
+                            << this->ZAxis[2] << "\"";
 
   of << indent << " method=\"" << this->Method << "\"";
   of << indent << " axisMode=\"" << this->AxisMode << "\"";
   of << indent << " reformat=\"" << this->Reformat << "\"";
   of << indent << " computeCenter=\"" << this->ComputeCenter << "\"";
+  of << indent << " refineCenter=\"" << this->RefineCenter << "\"";
   of << indent << " airBaselineIntensity=\"" << this->AirBaselineIntensity << "\"";
   of << indent << " segmentPercentage=\"" << this->SegmentPercentage << "\"";
   of << indent << " resolution=\"" << this->Resolution << "\"";
@@ -150,14 +164,29 @@ void vtkMRMLAirwayNode::ReadXMLAttributes(const char** atts)
       ss >> XYZ[1];
       ss >> XYZ[2];
       }
-    else if (!strcmp(attName, "orientation"))
+    else if (!strcmp(attName, "xaxis"))
       {
       std::stringstream ss;
       ss << attValue;
-      ss >> OrientationWXYZ[0];
-      ss >> OrientationWXYZ[1];
-      ss >> OrientationWXYZ[2];
-      ss >> OrientationWXYZ[3];
+      ss >> XAxis[0];
+      ss >> XAxis[1];
+      ss >> XAxis[2];
+      }
+    else if (!strcmp(attName, "yaxis"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> YAxis[0];
+      ss >> YAxis[1];
+      ss >> YAxis[2];
+      }
+    else if (!strcmp(attName, "zaxis"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> ZAxis[0];
+      ss >> ZAxis[1];
+      ss >> ZAxis[2];
       }
     else if (!strcmp(attName, "threshold"))
       {
@@ -217,6 +246,12 @@ void vtkMRMLAirwayNode::ReadXMLAttributes(const char** atts)
       ss << attValue;
       ss >> ComputeCenter;
       }
+    else if (!strcmp(attName, "refineCenter"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> RefineCenter;
+      }
     else if (!strcmp(attName, "airBaselineIntensity"))
       {
       std::stringstream ss;
@@ -270,12 +305,15 @@ void vtkMRMLAirwayNode::Copy(vtkMRMLNode *anode)
 
   this->SetVolumeNodeID(node->GetVolumeNodeID());
   this->SetXYZ(node->GetXYZ());
-  this->SetOrientationWXYZ(node->GetOrientationWXYZ());
+  this->SetXAxis(node->GetXAxis());
+  this->SetYAxis(node->GetYAxis());
+  this->SetZAxis(node->GetZAxis());
   this->SetThreshold(node->GetThreshold());
   this->SetMethod(node->GetMethod());
   this->SetAxisMode(node->GetAxisMode());
   this->SetReformat(node->GetReformat());
   this->SetComputeCenter(node->GetComputeCenter());
+  this->SetRefineCenter(node->GetRefineCenter());
   this->SetAirBaselineIntensity(node->GetAirBaselineIntensity());
   this->SetSegmentPercentage(node->GetSegmentPercentage());
   this->SetResolution(node->GetResolution());
@@ -296,12 +334,15 @@ void vtkMRMLAirwayNode::PrintSelf(ostream& os, vtkIndent indent)
 
   os << indent << "VolumeNodeID: " << this->VolumeNodeID << "\n";
   os << indent << "XYZ: " << this->XYZ << "\n";
-  os << indent << "OrientationWXYZ: " << this->OrientationWXYZ << "\n";
+  os << indent << "XAxis: " << this->XAxis << "\n";
+  os << indent << "YAxis: " << this->YAxis << "\n";
+  os << indent << "ZAxis: " << this->ZAxis << "\n";
   os << indent << "Threshold: " << this->Threshold << "\n";
   os << indent << "Method: " << this->Method << "\n";
   os << indent << "AxisMode: " << this->AxisMode << "\n";
   os << indent << "Reformat: " << this->Reformat << "\n";
   os << indent << "ComputeCenter: " << this->ComputeCenter << "\n";
+  os << indent << "RefineCenter: " << this->RefineCenter << "\n";
   os << indent << "AirBaselineIntensity: " << this->AirBaselineIntensity << "\n";
   os << indent << "SegmentPercentage: " << this->SegmentPercentage << "\n";
   os << indent << "Resolution: " << this->Resolution << "\n";

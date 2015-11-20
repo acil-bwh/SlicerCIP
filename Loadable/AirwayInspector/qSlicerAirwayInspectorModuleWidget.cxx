@@ -31,6 +31,8 @@
 #include "vtkRendererCollection.h"
 #include "vtkInteractorObserver.h"
 #include "vtkActor2D.h"
+#include "vtkPolyDataMapper2D.h"
+#include "vtkProperty2D.h"
 #include "vtkImageMapToColors.h"
 #include "vtkImageMapper.h"
 #include "vtkLookupTable.h"
@@ -115,10 +117,31 @@ void qSlicerAirwayInspectorModuleWidget::setup()
                    this, SLOT(setMRMLVolumeNode(vtkMRMLNode*)));
 
   QObject::connect(d->AnalyzeButton, SIGNAL(pressed()),
-                   this, SLOT(analyzePressed()));
+                   this, SLOT(analyzeSelected()));
+
+  QObject::connect(d->AnalyzeAllButton, SIGNAL(pressed()),
+                   this, SLOT(analyzeAll()));
+
+  QObject::connect(d->WriteCSVFileButton, SIGNAL(pressed()),
+                   this, SLOT(writeCSV()));
 
   QObject::connect(d->AirwayComboBox, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
                    this, SLOT(setMRMLAirwayNode(vtkMRMLNode*)));
+
+  QObject::connect(d->ThresholdSpinBox, SIGNAL(valueChanged(double)),
+                   this, SLOT(onThresholdChanged(double)));
+
+  QObject::connect(d->ComputeCenterCheckBox, SIGNAL(toggled(bool)),
+                   this, SLOT(onToggled(bool)));
+
+  QObject::connect(d->RefineCenterCheckBox, SIGNAL(toggled(bool)),
+                   this, SLOT(onToggled(bool)));
+
+  QObject::connect(d->ReformatCheckBox, SIGNAL(toggled(bool)),
+                   this, SLOT(onToggled(bool)));
+
+  QObject::connect(d->MethodComboBox, SIGNAL(currentIndexChanged(int)),
+                   this, SLOT(onMethodChanged(int)));
 }
 
 //-----------------------------------------------------------------------------
@@ -274,11 +297,23 @@ void qSlicerAirwayInspectorModuleWidget::onInteractorEvent(vtkRenderWindowIntera
       //std::cout << "RAS xyz =" << x << "," << y << "," << z << std::endl;
 
       vtkMRMLAirwayNode *airwayNode =
-        logic->AddAirwayNode(d->InputVolumeComboBox->currentNode()->GetID(),
-        x,y,z, d->ThresholdSpinBox->value());
+        logic->AddAirwayNode(d->InputVolumeComboBox->currentNode()->GetID(), x,y,z);
+
+      this->updateMRMLFromWidget(airwayNode);
+
+      logic->CreateAirwaySlice(airwayNode);
 
       d->AirwayComboBox->setCurrentNode(airwayNode);
-      this->analyzePressed();
+      //this->updateViewer(airwayNode);
+
+      if (d->DetectAutomaticallyCheckBox->isChecked())
+        {
+        this->analyzeSelected();
+        }
+      if (d->WriteAirwaysCheckBox->isChecked())
+        {
+        this->saveAirwayImage(airwayNode);
+        }
       }
     }
 }
@@ -310,7 +345,7 @@ void qSlicerAirwayInspectorModuleWidget::setMRMLVolumeNode(vtkMRMLNode* mrmlNode
     }
 }
 
-///////////////////////////////
+//-----------------------------------------------------------------------------
 void qSlicerAirwayInspectorModuleWidget::setMRMLAirwayNode(vtkMRMLNode* mrmlNode)
 {
   Q_D(qSlicerAirwayInspectorModuleWidget);
@@ -321,6 +356,57 @@ void qSlicerAirwayInspectorModuleWidget::setMRMLAirwayNode(vtkMRMLNode* mrmlNode
    this->updateWidgetFromMRML(airwayNode);
 
    this->updateReport(airwayNode);
+
+   this->updateViewer(airwayNode);
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerAirwayInspectorModuleWidget::updateAirwaySlice()
+{
+  Q_D(qSlicerAirwayInspectorModuleWidget);
+
+  vtkMRMLAirwayNode *airwayNode = vtkMRMLAirwayNode::SafeDownCast(d->AirwayComboBox->currentNode());
+  vtkSlicerAirwayInspectorModuleLogic *logic = vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
+
+  if (!logic || !airwayNode)
+    {
+    return;
+    }
+
+  this->updateMRMLFromWidget(airwayNode);
+
+  logic->CreateAirwaySlice(airwayNode);
+
+  this->updateViewer(airwayNode);
+
+  if (d->DetectAutomaticallyCheckBox->isChecked())
+    {
+    this->analyzeSelected();
+    }
+  if (d->WriteAirwaysCheckBox->isChecked())
+    {
+    this->saveAirwayImage(airwayNode);
+    }
+
+  return;
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerAirwayInspectorModuleWidget::onThresholdChanged(double)
+{
+  this->updateAirwaySlice();
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerAirwayInspectorModuleWidget::onToggled(bool)
+{
+  this->updateAirwaySlice();
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerAirwayInspectorModuleWidget::onMethodChanged(int)
+{
+  this->updateAirwaySlice();
 }
 
 //-----------------------------------------------------------------------------
@@ -330,6 +416,7 @@ void qSlicerAirwayInspectorModuleWidget::updateWidgetFromMRML(vtkMRMLAirwayNode*
 
   if (airwayNode)
     {
+    d->RefineCenterCheckBox->setChecked(airwayNode->GetRefineCenter());
     d->ComputeCenterCheckBox->setChecked(airwayNode->GetComputeCenter());
     d->ThresholdSpinBox->setValue(airwayNode->GetThreshold());
     d->MethodComboBox->setCurrentIndex(airwayNode->GetMethod());
@@ -345,6 +432,7 @@ void qSlicerAirwayInspectorModuleWidget::updateMRMLFromWidget(vtkMRMLAirwayNode*
   if (airwayNode)
     {
     airwayNode->SetComputeCenter(d->ComputeCenterCheckBox->isChecked());
+    airwayNode->SetRefineCenter(d->RefineCenterCheckBox->isChecked());
     airwayNode->SetThreshold(d->ThresholdSpinBox->value());
     airwayNode->SetMethod(d->MethodComboBox->currentIndex());
     airwayNode->SetReformat(d->ReformatCheckBox->isChecked());
@@ -352,7 +440,7 @@ void qSlicerAirwayInspectorModuleWidget::updateMRMLFromWidget(vtkMRMLAirwayNode*
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerAirwayInspectorModuleWidget::analyzePressed()
+void qSlicerAirwayInspectorModuleWidget::analyzeSelected()
 {
   Q_D(qSlicerAirwayInspectorModuleWidget);
 
@@ -364,15 +452,52 @@ void qSlicerAirwayInspectorModuleWidget::analyzePressed()
     {
     this->updateMRMLFromWidget(airwayNode);
 
-    airwayLogic->CreateAirway(airwayNode);
+    airwayLogic->ComputeAirwayWall(airwayNode->GetAirwayImage(), airwayNode);
     }
 
   this->updateReport(airwayNode);
+
+  this->updateViewer(airwayNode);
 
   if (d->WriteAirwaysCheckBox->isChecked())
   {
     this->saveAirwayImage(airwayNode);
   }
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerAirwayInspectorModuleWidget::analyzeAll()
+{
+  Q_D(qSlicerAirwayInspectorModuleWidget);
+  vtkSlicerAirwayInspectorModuleLogic *airwayLogic = vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
+  if (!airwayLogic || !this->mrmlScene() )
+    {
+    return;
+    }
+
+  std::vector<vtkMRMLNode *> nodes;
+  this->mrmlScene()->GetNodesByClass("vtkMRMLAirwayNode", nodes);
+
+  for (int i=0; i<nodes.size(); i++)
+    {
+    vtkMRMLAirwayNode* airwayNode = vtkMRMLAirwayNode::SafeDownCast(nodes[i]);
+
+    this->updateMRMLFromWidget(airwayNode);
+
+    airwayLogic->ComputeAirwayWall(airwayNode->GetAirwayImage(), airwayNode);
+
+    if (d->WriteAirwaysCheckBox->isChecked())
+      {
+      this->saveAirwayImage(airwayNode);
+      }
+    }
+
+  vtkMRMLAirwayNode* airwayNode = vtkMRMLAirwayNode::SafeDownCast(
+    d->AirwayComboBox->currentNode());
+
+  this->updateReport(airwayNode);
+
+  this->updateViewer(airwayNode);
 }
 
 //-----------------------------------------------------------------------------
@@ -436,21 +561,37 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
   //d->MaxSpinBox->setValue(airwayNode->GetMax());
   //d->MeanSpinBox->setValue(airwayNode->GetMean());
   //d->StdSpinBox->setValue(airwayNode->GetStd());
+  if (d->WriteAirwaysCheckBox->isChecked())
+  {
+    this->saveAirwayImage(airwayNode);
+  }
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerAirwayInspectorModuleWidget::updateViewer(vtkMRMLAirwayNode* airwayNode)
+{
+  Q_D(qSlicerAirwayInspectorModuleWidget);
+
+  vtkSlicerAirwayInspectorModuleLogic *logic = vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
+  if (!logic || !airwayNode || !airwayNode->GetAirwayImage())
+    {
+    return;
+    }
 
   vtkImageData *image= airwayNode->GetAirwayImage();
 
+  vtkImageData *colorImage = vtkImageData::New();
+
+  vtkImageData *viewImage = vtkImageData::New();
+
+  this->createColorImage(image, colorImage);
+
+  logic->AddEllipsesToImage(colorImage, airwayNode, viewImage);
+
   vtkImageFlip *flip = vtkImageFlip::New();
-  flip->SetInputData(image);
+  flip->SetInputData(viewImage);
   flip->SetFilteredAxis(1);
   flip->Update();
-
-  //vtkImageReader *reader = vtkImageReader::New();
-  //reader->SetFileName("C:\\tmp\\foo.png");
-  //reader->Update();
-  //vtkImageData *image1 = reader->GetOutput();
-
-  //vtkImageData *image1 = vtkImageData::New();
-  //this->createColorImage(image1);
 
   this->Renderer->RemoveAllViewProps();
 
@@ -467,8 +608,35 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
   //this-Renderer->AddViewProp(imageActor);
   this->Renderer->AddActor2D(imageActor);
 
+  // add ellipse polydata
+  if (airwayNode->GetEllipseInside() && airwayNode->GetEllipseInside()->GetInput())
+    {
+    vtkPolyData *poly = vtkPolyData::SafeDownCast(airwayNode->GetEllipseInside()->GetInput());
+    vtkSmartPointer<vtkPolyDataMapper2D> polyMapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
+    vtkSmartPointer<vtkActor2D> polyActor = vtkSmartPointer<vtkActor2D>::New();
+    polyMapper->SetInputData(poly);
+    polyActor->SetMapper(polyMapper);
+    polyActor->GetProperty()->SetColor(1, 0.5, 0.05);
+    this->Renderer->AddActor2D(polyActor);
+    }
+
+  if (airwayNode->GetEllipseOutside() && airwayNode->GetEllipseOutside()->GetInput())
+    {
+    vtkPolyData *poly = vtkPolyData::SafeDownCast(airwayNode->GetEllipseOutside()->GetInput());
+    vtkSmartPointer<vtkPolyDataMapper2D> polyMapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
+    vtkSmartPointer<vtkActor2D> polyActor = vtkSmartPointer<vtkActor2D>::New();
+    polyMapper->SetInputData(poly);
+    polyActor->SetMapper(polyMapper);
+    this->Renderer->AddActor2D(polyActor);
+    polyActor->GetProperty()->SetColor(0.99, 0.99, 0.05);
+    }
+
   this->Renderer->Render();
   d->qvtkWidget->GetRenderWindow()->Render();
+
+  flip->Delete();
+  colorImage->Delete();
+  viewImage->Delete();
 
     /***
  QPixmap imagePixmap;
@@ -491,39 +659,34 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
     ***/
 }
 
-void qSlicerAirwayInspectorModuleWidget::createColorImage(vtkImageData* image)
+void qSlicerAirwayInspectorModuleWidget::createColorImage(vtkImageData *image,
+                                                           vtkImageData *colorImage)
 {
-  unsigned int dim = 256;
+  vtkImageMapToColors *rgbFilter = vtkImageMapToColors::New();
+  vtkLookupTable *lut = vtkLookupTable::New();
 
-  image->SetDimensions(dim, dim, 1);
-#if VTK_MAJOR_VERSION <= 5
-  image->SetNumberOfScalarComponents(3);
-  image->SetScalarTypeToUnsignedChar();
-  image->AllocateScalars();
-#else
-  image->AllocateScalars(VTK_UNSIGNED_CHAR,3);
-#endif
-  for(unsigned int x = 0; x < dim; x++)
-    {
-    for(unsigned int y = 0; y < dim; y++)
-      {
-      unsigned char* pixel = static_cast<unsigned char*>(image->GetScalarPointer(x,y,0));
-      if(x < dim/2)
-	    {
-	    pixel[0] = 200;
-	    pixel[1] = 0;
-	    }
-          else
-	    {
-	    pixel[0] = 0;
-	    pixel[1] = 200;
-	    }
+  rgbFilter->SetInputData(image);
+  rgbFilter->SetOutputFormatToRGB();
 
-      pixel[2] = 0;
-      }
-    }
+  double *range = image->GetScalarRange();
 
-  image->Modified();
+  lut->SetSaturationRange(0,0);
+  lut->SetHueRange(0,0);
+  lut->SetValueRange(0,1);
+  //lut->SetTableRange(-150,1500);
+  lut->SetTableRange(range[0], range[1]);
+  lut->SetTableRange(-1000, -500);
+  lut->Build();
+  rgbFilter->SetLookupTable(lut);
+
+  rgbFilter->Update();
+
+  vtkImageData *rgbImage=rgbFilter->GetOutput();
+
+  colorImage->DeepCopy(rgbImage);
+
+  lut->Delete();
+  rgbFilter->Delete();
 }
 
 void qSlicerAirwayInspectorModuleWidget::saveAirwayImage(vtkMRMLAirwayNode* airwayNode)
@@ -543,3 +706,37 @@ void qSlicerAirwayInspectorModuleWidget::saveAirwayImage(vtkMRMLAirwayNode* airw
    writer->Write();
    writer->Delete();
  }
+
+//-----------------------------------------------------------------------------
+void qSlicerAirwayInspectorModuleWidget::writeCSV()
+{
+  Q_D(qSlicerAirwayInspectorModuleWidget);
+  if (!this->mrmlScene() )
+    {
+    return;
+    }
+
+  QString path = d->CSVFilePathEdit->currentPath();
+  std::ofstream ofs(path.toStdString().c_str());
+  if (ofs.fail())
+    {
+    std::cerr << "Output file doesn't exist: " <<  path.toStdString() << std::endl;
+    return;
+    }
+
+  std::vector<vtkMRMLNode *> nodes;
+  this->mrmlScene()->GetNodesByClass("vtkMRMLAirwayNode", nodes);
+
+  for (int i=0; i<nodes.size(); i++)
+    {
+    vtkMRMLAirwayNode* node = vtkMRMLAirwayNode::SafeDownCast(nodes[i]);
+    ofs << node->GetName() << "," << node->GetMethod() << ","
+        << node->GetMean()->GetValue(0) << ","
+        << node->GetStd()->GetValue(0) << ","
+        << node->GetMin()->GetValue(0) << ","
+        << node->GetMax()->GetValue(0) << "\n";
+    }
+  ofs.flush();
+  ofs.close();
+}
+
