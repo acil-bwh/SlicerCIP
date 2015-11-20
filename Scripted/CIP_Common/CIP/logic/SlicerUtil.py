@@ -4,10 +4,11 @@ Created on Feb 17, 2015
 Common functions that can be useful in any Slicer module development
 '''
 
-from __main__ import slicer, vtk
 import os
 
+from __main__ import slicer, vtk, qt
 from . import Util
+
 
 class SlicerUtil:
     # Constants    
@@ -160,6 +161,16 @@ class SlicerUtil:
         SlicerUtil.__setMarkupsMode__(isFiducialsMode, "vtkMRMLMarkupsFiducialNode", keepFiducialsModeOn)
 
     @staticmethod
+    def setCrosshair(isActive):
+        """Turn on or off the crosshair and enable navigation mode
+        by manipulating the scene's singleton crosshair node.
+        :param isActive: enable / disable crosshair (boolean value)
+        """
+        crosshairNode = slicer.util.getNode('vtkMRMLCrosshairNode*')
+        if crosshairNode:
+            crosshairNode.SetCrosshairMode(int(isActive))
+
+    @staticmethod
     def setRulersMode(isRulersMode, keepFiducialsModeOn=False):
         """ Activate fiducials ruler mode.
         When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
@@ -301,19 +312,61 @@ class SlicerUtil:
         return node
 
     @staticmethod
-    def getActiveVolumeIdInRedSlice():
-        """ Get the active volume in the Red Slice
+    def getActiveVolumeIdInSlice(sliceName):
+        """ Get the active volume in a 2D Slice (background if possible, foreground otherwise)
+        :param sliceName: typically "Red", "Green" or "Yellow"
         :return: volume node id or None
         """
         layoutManager = slicer.app.layoutManager()
-        compositeNode = layoutManager.sliceWidget("Red").mrmlSliceCompositeNode()
-        backgroundNode = compositeNode.GetBackgroundVolumeID()
-        if backgroundNode is not None:
-            return backgroundNode
+        compositeNode = layoutManager.sliceWidget(sliceName).mrmlSliceCompositeNode()
+        node = compositeNode.GetBackgroundVolumeID()
+        if node is not None:
+            return node
         # If background is None, try foreground
-        backgroundNode = compositeNode.GetForegroundVolumeID()
-        return backgroundNode
+        node = compositeNode.GetForegroundVolumeID()
+        return node
 
+    @staticmethod
+    def getActiveVolumeIdInRedSlice():
+        """ Get the active volume in the Red Slice (background if possible, foreground otherwise)
+        :return: volume node id or None
+        """
+        return SlicerUtil.getActiveVolumeIdInSlice("Red")
+
+    @staticmethod
+    def getFirstScalarNode():
+        """ Get the first vtkMRMLScalarVolumeNode in the scene
+        :return: node or None
+        """
+        nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLScalarVolumeNode")
+        nodes.UnRegister(nodes)
+        if nodes.GetNumberOfItems() > 0:
+            return nodes.GetItemAsObject(0)
+        return None
+
+    @staticmethod
+    def getFirstLabelmapNode():
+        """ Get the first vtkMRMLLabelMapVolumeNode in the scene
+        :return: node or None
+        """
+        nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLLabelMapVolumeNode")
+        nodes.UnRegister(nodes)
+        if nodes.GetNumberOfItems() > 0:
+            return nodes.GetItemAsObject(0)
+        return None
+
+    @staticmethod
+    def getIcon(iconName, isSystemIcon=False):
+        """ Build a new QIcon from the common CIP icons library or from the Slicer system icons
+        :param iconName: name of the file (ex: previous.png)
+        :param isSystemIcon: True if the icon belongs to the Slicer library. The available files can be found in the
+        folder "/Users/Jorge/Projects/BWH/Slicer/Libs/MRML/Widgets/Resources/Icons".
+        isSystemIcon=False for CIP icons (in "SlicerCIP/Scripted/CIP_Common/CIP/ui/Resources/Icons/")
+        :return: QIcon object
+        """
+        if not isSystemIcon:
+            return qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, iconName))
+        return qt.QIcon(":/Icons/" + iconName)
 
     @staticmethod
     def changeLayout(layoutNumber):
@@ -326,6 +379,23 @@ class SlicerUtil:
         interactionNode.SwitchToPersistentPlaceMode()
         layoutManager = slicer.app.layoutManager()
         layoutManager.setLayout(layoutNumber)
+
+    @staticmethod
+    def changeConstrastWindow(window, level):
+        """ Adjust the window contrast level in the range min-max.
+        Note: it takes the first visible node in 2D windows
+        :param window: size of the window
+        :param level: center of the window
+        """
+        compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
+        for compNode in compNodes.itervalues():
+            v = compNode.GetBackgroundVolumeID()
+            if v is not None and v != "":
+                displayNode = slicer.mrmlScene.GetNodeByID(v).GetDisplayNode()
+                displayNode.AutoWindowLevelOff()
+                displayNode.SetWindow(window)
+                displayNode.SetLevel(level)
+                return
 
     @staticmethod
     def vtkImageData_numpy_array(vtkImageData_node):
@@ -345,6 +415,38 @@ class SlicerUtil:
         # origin.reverse()
         # return arr, spacing, origin
 
+    @staticmethod
+    def jumpToSlice(widgetName, slice):
+        """ Jump one of the three 2D windows to a number of slice.
+        :param widgetName: "Red", "Yellow" or "Green"
+        :param slice: number of slice (RAS coords)
+        """
+        layoutManager = slicer.app.layoutManager()
+        widget = layoutManager.sliceWidget(widgetName)
+        widgetSliceNode = widget.sliceLogic().GetLabelLayer().GetSliceNode()
+        if widgetName == "Red":
+            widgetSliceNode.JumpSlice(0, 0, slice)
+        elif widgetName == "Yellow":
+            widgetSliceNode.JumpSlice(slice, 0, 0)
+        elif widgetName == "Green":
+            widgetSliceNode.JumpSlice(0, slice, 0)
+
+    @staticmethod
+    def jumpToSeed(coords):
+        """ Position all the 2D windows in a RAS coordinate, and also centers the windows around
+        :param coord: array/list/tuple that contains a RAS coordinate
+        """
+        sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
+        for sliceNode in sliceNodes.values():
+            sliceNode.JumpSliceByCentering(coords[0], coords[1], coords[2])
+
+    @staticmethod
+    def centerAllVolumes():
+        """ Center all the volumes that are currently visible in the 2D Windows
+        """
+        lm = slicer.app.layoutManager()
+        for sliceView in lm.sliceViewNames():
+            lm.sliceWidget(sliceView).sliceLogic().FitSliceToAll()
 
         # @staticmethod
     # def gitUpdateCIP():

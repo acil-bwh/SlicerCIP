@@ -1,4 +1,4 @@
-import os
+import os, sys
 import unittest
 from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
@@ -6,17 +6,17 @@ import logging
 
 # Add the CIP common library to the path if it has not been loaded yet
 try:
-        from CIP.logic import SlicerUtil
+    from CIP.logic.SlicerUtil import SlicerUtil
 except Exception as ex:
-        import inspect
-        path = os.path.dirname(inspect.getfile(inspect.currentframe()))
-        if os.path.exists(os.path.normpath(path + '/../CIP_Common')):
-                path = os.path.normpath(path + '/../CIP_Common')        # We assume that CIP_Common is a sibling folder of the one that contains this module
-        elif os.path.exists(os.path.normpath(path + '/CIP')):
-                path = os.path.normpath(path + '/CIP')        # We assume that CIP is a subfolder (Slicer behaviour)
-        sys.path.append(path)
-        from CIP.logic import SlicerUtil
-        print("CIP was added to the python path manually in CIP_Blank")
+    import inspect
+    path = os.path.dirname(inspect.getfile(inspect.currentframe()))
+    if os.path.exists(os.path.normpath(path + '/../CIP_Common')):
+        path = os.path.normpath(path + '/../CIP_Common')        # We assume that CIP_Common is a sibling folder of the one that contains this module
+    elif os.path.exists(os.path.normpath(path + '/CIP')):
+        path = os.path.normpath(path + '/CIP')        # We assume that CIP is a subfolder (Slicer behaviour)
+    sys.path.append(path)
+    from CIP.logic.SlicerUtil import SlicerUtil
+    print("CIP was added to the python path manually in CIP_Blank")
 
 from CIP.logic import Util
 
@@ -47,6 +47,8 @@ class CIP_BlankWidget(ScriptedLoadableModuleWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
+    def __init__(self, parent):
+        ScriptedLoadableModuleWidget.__init__(self, parent)
 
     def setup(self):
         """This is called one time when the module GUI is initialized
@@ -57,13 +59,13 @@ class CIP_BlankWidget(ScriptedLoadableModuleWidget):
         # object of the logic class
         self.logic = CIP_BlankLogic()
 
-        #
-        # Create all the widgets. Example Area
-        exampleAreaCollapsibleButton = ctk.ctkCollapsibleButton()
-        exampleAreaCollapsibleButton.text = "Example area"
-        self.layout.addWidget(exampleAreaCollapsibleButton)
+
+        # Create all the widgets. Main Area
+        mainAreaCollapsibleButton = ctk.ctkCollapsibleButton()
+        mainAreaCollapsibleButton.text = "Main parameters"
+        self.layout.addWidget(mainAreaCollapsibleButton)
         # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
-        exampleAreaLayout = qt.QFormLayout(exampleAreaCollapsibleButton)
+        self.mainAreaLayout = qt.QFormLayout(mainAreaCollapsibleButton)
 
         # Example button with some common properties
         self.exampleButton = ctk.ctkPushButton()
@@ -73,7 +75,7 @@ class CIP_BlankWidget(ScriptedLoadableModuleWidget):
         self.exampleButton.setIconSize(qt.QSize(20,20))
         self.exampleButton.setStyleSheet("font-weight:bold; font-size:12px" )
         self.exampleButton.setFixedWidth(200)
-        exampleAreaLayout.addWidget(self.exampleButton)
+        self.mainAreaLayout.addWidget(self.exampleButton)
 
         # Connections
         self.exampleButton.connect('clicked()', self.onApplyButton)
@@ -107,6 +109,10 @@ class CIP_BlankLogic(ScriptedLoadableModuleLogic):
     Uses ScriptedLoadableModuleLogic base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
+    def __init__(self):
+        """Constructor. """
+        ScriptedLoadableModuleLogic.__init__(self)
+
     def printMessage(self, message):
         print("This is your message: ", message)
         return "I have printed this message: " + message

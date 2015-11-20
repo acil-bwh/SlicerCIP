@@ -225,7 +225,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
         # Reports widget
         self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
-                                               parent=self.statsButtonsFrame)
+                                               parentWidget=self.statsButtonsFrame)
         self.reportsWidget.setup()
 
 
@@ -266,10 +266,10 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
             self.layout.addWidget(caseNavigatorAreaCollapsibleButton, 0x0020)
             # Add a case list navigator
             from ACIL.ui import CaseNavigatorWidget
-            self.caseNavigatorWidget = CaseNavigatorWidget(parentModuleName=self.moduleName
-                                                           , parentContainer=caseNavigatorAreaCollapsibleButton)
+            self.caseNavigatorWidget = CaseNavigatorWidget(self.moduleName, caseNavigatorAreaCollapsibleButton)
             self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_LABELMAP_LOADED,
                                                    self.onNavigatorLabelmapLoaded)
+            self.caseNavigatorWidget.setup()
 
         # Add vertical spacer
         self.layout.addStretch(1)
@@ -1215,7 +1215,6 @@ class CIP_BodyCompositionLogic(ScriptedLoadableModuleLogic):
                 #         cubicMMPerVoxel = reduce(lambda x,y: x*y, labelNode.GetSpacing())
                 #         ccPerCubicMM = 0.001
                 #
-                #         # TODO: progress and status updates
                 #         # this->InvokeEvent(vtkLabelStatisticsLogic::StartLabelStats, (void*)"start label stats")
                 #
                 #

@@ -20,12 +20,24 @@ self.exampleButton.setFixedWidth(200)
 self.btnGoToPreviousStructure = ctk.ctkPushButton()
 self.btnGoToPreviousStructure.text = " Previous slice"
 self.btnGoToPreviousStructure.toolTip = "Go to the previous slice that contains the selected label" 
-self.btnGoToPreviousStructure.setIcon(qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, "previous.png")))
+#self.btnGoToPreviousStructure.setIcon(qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, "previous.png")))
+self.btnGoToPreviousStructure.setIcon(SlicerUtil.getIcon("previous.png"))
+# To Reuse one of the system icons: self.singleSlideViewButton.setIcon(qt.QIcon(":/Icons/LayoutOneUpRedSliceView.png"))
 self.btnGoToPreviousStructure.setIconSize(qt.QSize(24,24))
 self.btnGoToPreviousStructure.setFixedWidth(150)        
 self.btnGoToPreviousStructure.iconAlignment = 0x0001    # Align the icon to the right. See http://qt-project.org/doc/qt-4.8/qt.html#AlignmentFlag-enum for a complete list
 self.btnGoToPreviousStructure.buttonTextAlignment = (0x0081) # Aling the text to the left and vertical center
 self.btnGoToPreviousStructure.enabled = False
+
+
+#####################################################
+# Checkbox
+self.evaluateSegmentationCheckbox = qt.QCheckBox()
+self.evaluateSegmentationCheckbox.setText("Allow saving seeds for batch mode processing")
+self.evaluateSegmentationCheckbox.connect("stateChanged(int)", self.onCheckboxEvaluateSegmentationClicked)
+self.evaluateSegmentationCheckbox.connect("clicked()", self.onCheckboxEvaluateSegmentationClicked)
+def __onSaveTimeCostCheckboxClicked__(self, checked):
+    selected = (checked == 2)		#(0 for False)
 
 
 #####################################################
@@ -92,3 +104,15 @@ self.mainLayout.addWidget(mywidget, 2, 1, 0x0020)
 # Top vertical and right edge:
 self.mainLayout.addWidget(mywidget, 2, 1, 0x0020|0x0002)    
 # You can see all the flag combinations for vertical and horizontal aligments here: http://doc.qt.io/qt-4.8/qt.html#AlignmentFlag-enum   
+
+#####################################################
+# Iterate over several subcategories ("flat")
+self.__storedColumnNames__.extend(itertools.chain.from_iterable(self.featureClasses.itervalues()))
+
+#####################################################
+# Timer
+self.timer = qt.QTimer()
+self.timer.setInterval(150)
+self.timer.timeout.connect(self.myFunction)		# Function without params
+self.timer.start()
+self.timer.stop()

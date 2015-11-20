@@ -21,14 +21,15 @@ class LoadSaveDataWidget(object):
     This widget provides with a shortcut to load and save cases and label maps in a faster way than with the generic Slicer interface.
     At the moment it is just ready for label maps, but it is easily extensible to store volumes too
     '''
-    def __init__(self, parent = None):                
-        """Widget constructor (existing module)"""
-        if not parent:
+    def __init__(self, parentWidget = None):
+        """Widget constructor.
+        :param parentWidget: widget that will contain the LoadSaveDataWidget"""
+        if not parentWidget:
             self.parent = slicer.qMRMLWidget()
             self.parent.setLayout(qt.QVBoxLayout())
             self.parent.setMRMLScene(slicer.mrmlScene)
         else:
-            self.parent = parent
+            self.parent = parentWidget
         self.layout = self.parent.layout()
         
         # Init variables 
