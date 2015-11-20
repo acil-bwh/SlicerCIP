@@ -41,6 +41,7 @@
 #include "vtkNRRDWriter.h"
 #include "vtkPNGWriter.h"
 #include "vtkImageFlip.h"
+#include "vtkImageCast.h"
 
 #include "qpainter.h"
 #include "qmainwindow.h"
@@ -692,18 +693,27 @@ void qSlicerAirwayInspectorModuleWidget::createColorImage(vtkImageData *image,
 void qSlicerAirwayInspectorModuleWidget::saveAirwayImage(vtkMRMLAirwayNode* airwayNode)
 {
   Q_D(qSlicerAirwayInspectorModuleWidget);
-  if (airwayNode == 0 || airwayNode->GetAirwayImage() == 0)
+  if (airwayNode == 0 || airwayNode->GetAirwayImage() == 0 ||
+      d->OutputDirectoryButton->directory().toStdString().empty())
     {
     return;
     }
 
    char fileName[10*256];
    vtkPNGWriter *writer = vtkPNGWriter::New();
-   writer->SetInputData(airwayNode->GetAirwayImage());
-   sprintf(fileName,"%s/s_%s.png", d->OutputDirectoryButton->directory().toStdString().c_str(),
+   sprintf(fileName,"%s/%s_%s.png", d->OutputDirectoryButton->directory().toStdString().c_str(),
                                     d->FilePrefixLineEdit->text().toStdString().c_str(), airwayNode->GetName());
+
+   vtkImageCast *imgCast = vtkImageCast::New();
+   imgCast->SetInputData(airwayNode->GetAirwayImage());
+   imgCast->SetOutputScalarTypeToUnsignedChar();
+   writer->SetInputData(imgCast->GetOutput());
    writer->SetFileName(fileName);
+
+   imgCast->Update();
    writer->Write();
+
+   imgCast->Delete();
    writer->Delete();
  }
 
