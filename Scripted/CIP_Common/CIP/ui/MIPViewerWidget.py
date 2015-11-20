@@ -256,12 +256,11 @@ class MIPViewerWidget(object):
         # Crosshair
         self.crosshairCheckbox = qt.QCheckBox()
         self.crosshairCheckbox.setText("Crosshair cursor")
-        self.crosshairCheckbox.setChecked(True)
         self.crosshairCheckbox.toolTip = "Activate/Desactivate the crosshair cursor for a better visualization"
-
+        self.crosshairCheckbox.setStyleSheet("margin-top:10px")
         self.centerButton = qt.QPushButton()
         self.centerButton.setText("Center volumes")
-        # self.centerButton.setFixedSize(100, 70)
+        self.centerButton.setFixedSize(100, 40)
 
 
         if self.fullModeOn:
@@ -299,6 +298,7 @@ class MIPViewerWidget(object):
                 self.widgetMainLayout.addWidget(structure[2], row, 5)
                 row += 1
             self.widgetMainLayout.addWidget(self.crosshairCheckbox, row, 0, 1, 2)
+            self.crosshairCheckbox.setChecked(True)
             self.widgetMainLayout.addWidget(self.centerButton, row, 2, 1, 2)
 
         else:
@@ -320,7 +320,8 @@ class MIPViewerWidget(object):
                 self.widgetMainLayout.addWidget(structure[1], row, 1, 1, 3)
                 self.widgetMainLayout.addWidget(structure[2], row, 4)
                 row += 1
-            self.widgetMainLayout.addWidget(self.crosshairCheckbox, row, 0, 1, 2)
+            self.widgetMainLayout.addWidget(self.crosshairCheckbox, row, 0)
+            self.widgetMainLayout.addWidget(self.centerButton, row, 1, 1, 2)
 
         self.layout.addStretch(1)
 
@@ -353,6 +354,7 @@ class MIPViewerWidget(object):
         pass
 
     def activateEnhacedVisualization(self, active):
+        self.crosshairCheckbox.setChecked(active)
         if active:
             self.__setContext__(self.currentContext)
         else:
@@ -445,7 +447,6 @@ class MIPViewerWidget(object):
 
         # Refresh windows to show changes
         SlicerUtil.refreshActiveWindows()
-
         self.__refreshUI__()
 
 
@@ -522,6 +523,7 @@ class MIPViewerWidget(object):
             SlicerUtil.changeConstrastWindow(1400, -500)
 
         self.executeCurrentSettings()
+        self.__refreshUI__()
 
     def __resliceNode__(self, sliceNode, plane, operation):
         """ Apply a reslicing operation in the specified window

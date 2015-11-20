@@ -356,8 +356,17 @@ class SlicerUtil:
         return None
 
     @staticmethod
-    def getIcon(iconName):
-        return qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, iconName))
+    def getIcon(iconName, isSystemIcon=False):
+        """ Build a new QIcon from the common CIP icons library or from the Slicer system icons
+        :param iconName: name of the file (ex: previous.png)
+        :param isSystemIcon: True if the icon belongs to the Slicer library. The available files can be found in the
+        folder "/Users/Jorge/Projects/BWH/Slicer/Libs/MRML/Widgets/Resources/Icons".
+        isSystemIcon=False for CIP icons (in "SlicerCIP/Scripted/CIP_Common/CIP/ui/Resources/Icons/")
+        :return: QIcon object
+        """
+        if not isSystemIcon:
+            return qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, iconName))
+        return qt.QIcon(":/Icons/" + iconName)
 
     @staticmethod
     def changeLayout(layoutNumber):

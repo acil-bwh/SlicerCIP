@@ -63,9 +63,9 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
         self.mainAreaLayout = qt.QVBoxLayout(mainAreaCollapsibleButton)
 
         # self.viewer = MIPViewerWidget(mainAreaCollapsibleButton)
-        self.viewer = MIPViewerWidget(mainAreaCollapsibleButton, MIPViewerWidget.CONTEXT_VASCULATURE)
+        self.viewer = MIPViewerWidget(mainAreaCollapsibleButton, MIPViewerWidget.CONTEXT_UNKNOWN)
         self.viewer.setup()
-        self.viewer.activateEnhacedVisualization(True)
+        # self.viewer.activateEnhacedVisualization(True)
         self.layout.addStretch(1)
 
 
