@@ -381,7 +381,7 @@ class SlicerUtil:
         layoutManager.setLayout(layoutNumber)
 
     @staticmethod
-    def changeConstrastWindow(window, level):
+    def changeContrastWindow(window, level):
         """ Adjust the window contrast level in the range min-max.
         Note: it takes the first visible node in 2D windows
         :param window: size of the window
@@ -447,6 +447,18 @@ class SlicerUtil:
         lm = slicer.app.layoutManager()
         for sliceView in lm.sliceViewNames():
             lm.sliceWidget(sliceView).sliceLogic().FitSliceToAll()
+
+    @staticmethod
+    def displayForegroundVolume(volumeNodeId, opacity=1.0):
+        """ Display a scalar or a labelmap in all the 2D windows as Foreground with an optional opacity
+        :param volumeNodeId: scalar node or labelmap id
+        :param opacity: 0.0-1.0 value
+        """
+        compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
+        for compNode in compNodes.itervalues():
+            compNode.SetForegroundVolumeID(volumeNodeId)
+            compNode.SetForegroundOpacity(opacity)
+
 
         # @staticmethod
     # def gitUpdateCIP():

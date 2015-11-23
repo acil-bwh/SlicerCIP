@@ -22,7 +22,7 @@ self.btnGoToPreviousStructure.text = " Previous slice"
 self.btnGoToPreviousStructure.toolTip = "Go to the previous slice that contains the selected label" 
 #self.btnGoToPreviousStructure.setIcon(qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, "previous.png")))
 self.btnGoToPreviousStructure.setIcon(SlicerUtil.getIcon("previous.png"))
-# To Reuse one of the system icons: self.singleSlideViewButton.setIcon(qt.QIcon(":/Icons/LayoutOneUpRedSliceView.png"))
+# To Reuse one of the system icons: self.singleSlideViewButton.setIcon(SlicerUtil.getIcon("LayoutOneUpRedSliceView.png", isSystemIcon=True))
 self.btnGoToPreviousStructure.setIconSize(qt.QSize(24,24))
 self.btnGoToPreviousStructure.setFixedWidth(150)        
 self.btnGoToPreviousStructure.iconAlignment = 0x0001    # Align the icon to the right. See http://qt-project.org/doc/qt-4.8/qt.html#AlignmentFlag-enum for a complete list
@@ -116,3 +116,9 @@ self.timer.setInterval(150)
 self.timer.timeout.connect(self.myFunction)		# Function without params
 self.timer.start()
 self.timer.stop()
+
+######################################################
+# Frames with borders
+frame.setFrameStyle(0x0002 | 0x0010)   # See all the combinations here: http://doc.qt.io/qt-4.8/qframe.html#setFrameStyle
+frame.lineWidth = 2
+frame.setStyleSheet("background-color:#EEEEEE; margin-bottom: 10px")     

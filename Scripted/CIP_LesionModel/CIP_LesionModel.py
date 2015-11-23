@@ -84,7 +84,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # Timer for dynamic zooming
         self.timer = qt.QTimer()
         self.timer.setInterval(150)
-        self.timer.timeout.connect(self.updateFOV)
+        self.timer.timeout.connect(self.__updateFOV__)
         # self.selectedMainFeaturesKeys = set()
         # self.selectedFeatureKeys = set()
         # self.analysisResults = dict()
@@ -142,14 +142,24 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
     @property
     def __evaluateSegmentationModeOn__(self):
-        return self.evaluateSegmentationCheckbox.checked
+        """ True when the user is reviewing the results of a previous segmentation
+        :return: boolean
+        """
+        return self.evaluateSegmentationCheckbox.isChecked()
 
     @property
-    def __printTiming__(self):
-        return self.saveTimeCostCheckbox.checked == 2
+    def __printTimeCost__(self):
+        """ Save the time cost for the analysis operations
+        :return: boolean
+        """
+        return self.saveTimeCostCheckbox.isChecked()
 
     @property
     def lesionType(self):
+        """ Unknown, Nodule or Tumor. This information will be saved in the GeometryTopologyData that
+        stores the position of the seeds
+        :return: text of the type
+        """
         return self.lesionTypeRadioButtonGroup.checkedButton().text
 
     def setup(self):
@@ -184,32 +194,30 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
         self.mainAreaLayout.addRow("Select an input volume", self.inputVolumeSelector)
 
-        # mipWidgetFrame = qt.QFrame()
-        # mipWidgetFrame.setLayout(qt.QVBoxLayout())
-        # self.mipViewer = MIPViewerWidget(mipWidgetFrame, MIPViewerWidget.CONTEXT_NODULES)
-        # self.mipViewer.setup()
-        # self.mainAreaLayout.addRow(mipWidgetFrame)
+        # MIP frame
+        self.enhanceVisualizationCheckbox = qt.QCheckBox("Enhance visualization")
+        self.enhanceVisualizationCheckbox.setStyleSheet("margin: 10px 0; font-weight: bold")
+        self.mainAreaLayout.addWidget(self.enhanceVisualizationCheckbox)
+        self.mipFrame = qt.QFrame()
+        self.mipFrame.setFrameStyle(0x0002 | 0x0010)
+        self.mipFrame.lineWidth = 2
+        self.mipFrame.visible = False
+        self.mipFrame.setStyleSheet("background-color: #EEEEEE")
+        self.mainAreaLayout.addRow(self.mipFrame)
+        self.mipLayout = qt.QVBoxLayout(self.mipFrame)
+        self.mipViewer = MIPViewerWidget(self.mipFrame, MIPViewerWidget.CONTEXT_VASCULATURE)
+        self.mipViewer.setup()
 
-        # # Whole lung labelmap selector
-        # self.labelMapSelector = slicer.qMRMLNodeComboBox()
-        # self.labelMapSelector.nodeTypes = ("vtkMRMLLabelMapVolumeNode", "")
-        # self.labelMapSelector.selectNodeUponCreation = False
-        # self.labelMapSelector.addEnabled = False
-        # self.labelMapSelector.noneEnabled = True
-        # self.labelMapSelector.removeEnabled = False
-        # self.labelMapSelector.showHidden = False
-        # self.labelMapSelector.showChildNodeTypes = False
-        # self.labelMapSelector.setMRMLScene(slicer.mrmlScene)
-        # self.labelMapSelector.toolTip = "Select a labelmap if you want to run Parenchymal Volume analysis"
-        # self.mainAreaLayout.addRow("Select a labelmap", self.labelMapSelector)
-
+        label = qt.QLabel("Add seeds")
+        label.setStyleSheet("margin-top:10px")
         self.addFiducialButton = ctk.ctkPushButton()
         self.addFiducialButton.text = "Add new seed"
-        self.addFiducialButton.setFixedWidth(100)
-        self.addFiducialButton.setIcon(qt.QIcon("{0}/plus.png".format(SlicerUtil.CIP_ICON_DIR)))
+        # self.addFiducialButton.setFixedWidth(100)
+        self.addFiducialButton.setIcon(SlicerUtil.getIcon("WelcomeFiducialWithArrow-Original.png"))
         self.addFiducialButton.setIconSize(qt.QSize(16, 16))
         self.addFiducialButton.checkable = True
         self.addFiducialButton.enabled = False
+        # self.addFiducialButton.setStyleSheet("margin-top:10px; height:30px; width:115px; padding-top:5px")
         self.addFiducialButton.setFixedSize(qt.QSize(115, 30))
         self.mainAreaLayout.addRow("Add seeds: ", self.addFiducialButton)
 
@@ -282,28 +290,75 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.mainAreaLayout.addRow(label, self.distanceLevelSlider)
 
         # Different radius selection
+        self.spheresButtonGroup = qt.QButtonGroup()
+        self.spheresButtonGroup.setExclusive(False)
+        self.showSpheresButtonGroup = qt.QButtonGroup()
+
+        fixedSizePolicy = qt.QSizePolicy()
+        fixedSizePolicy.setHorizontalPolicy(0)
+
         self.radiusFrame = qt.QFrame()
+        sp_id = 0
         self.radiusFrameLayout = qt.QGridLayout(self.radiusFrame)
         self.noduleCheckbox = qt.QCheckBox()
         self.noduleCheckbox.setText("Nodule")
+        self.noduleCheckbox.setSizePolicy(fixedSizePolicy)
         self.noduleCheckbox.setChecked(True)
+        self.spheresButtonGroup.addButton(self.noduleCheckbox, sp_id)
         self.radiusFrameLayout.addWidget(self.noduleCheckbox, 0, 0)
+        showSphereCheckbox = qt.QRadioButton("(Show just nodule)")
+        showSphereCheckbox.setChecked(True)
+        showSphereCheckbox.setVisible(False)
+        self.radiusFrameLayout.addWidget(showSphereCheckbox, 0, 1)
+        self.showSpheresButtonGroup.addButton(showSphereCheckbox, sp_id)
+
         self.r15Checkbox = qt.QCheckBox()
+        sp_id = 15
         self.r15Checkbox.setText("15 mm sphere")
+        self.r15Checkbox.setSizePolicy(fixedSizePolicy)
+        self.spheresButtonGroup.addButton(self.r15Checkbox, sp_id)
         self.radiusFrameLayout.addWidget(self.r15Checkbox, 1, 0)
+        showSphereCheckbox = qt.QRadioButton("Show")
+        showSphereCheckbox.setVisible(False)
+        self.radiusFrameLayout.addWidget(showSphereCheckbox, 1, 1)
+        self.showSpheresButtonGroup.addButton(showSphereCheckbox, sp_id)
+
         self.r20Checkbox = qt.QCheckBox()
+        sp_id = 20
         self.r20Checkbox.setText("20 mm sphere")
+        self.r20Checkbox.setSizePolicy(fixedSizePolicy)
+        self.spheresButtonGroup.addButton(self.r20Checkbox, sp_id)
         self.radiusFrameLayout.addWidget(self.r20Checkbox, 2, 0)
-        self.rOtherCheckbox = qt.QCheckBox()
+        showSphereCheckbox = qt.QRadioButton("Show")
+        showSphereCheckbox.setVisible(False)
+        self.radiusFrameLayout.addWidget(showSphereCheckbox, 2, 1)
+        self.showSpheresButtonGroup.addButton(showSphereCheckbox, sp_id)
+
         self.r25Checkbox = qt.QCheckBox()
+        sp_id = 25
         self.r25Checkbox.setText("25 mm sphere")
+        self.spheresButtonGroup.addButton(self.r25Checkbox, sp_id)
         self.radiusFrameLayout.addWidget(self.r25Checkbox, 3, 0)
-        self.rOtherCheckbox.setText("Other (mm sphere)")
+        showSphereCheckbox = qt.QRadioButton("Show")
+        showSphereCheckbox.setVisible(False)
+        self.radiusFrameLayout.addWidget(showSphereCheckbox, 3, 1, 1)
+        self.showSpheresButtonGroup.addButton(showSphereCheckbox, sp_id)
+
+        self.rOtherCheckbox = qt.QCheckBox()
+        sp_id = 1
+        self.rOtherCheckbox.setText("Other (mm sphere radius)")
+        self.rOtherCheckbox.setSizePolicy(fixedSizePolicy)
+        self.spheresButtonGroup.addButton(self.rOtherCheckbox, sp_id)
         self.radiusFrameLayout.addWidget(self.rOtherCheckbox, 4, 0)
         self.otherRadiusTextbox = qt.QLineEdit()
-        # self.otherRadiusTextbox.setFixedWidth(80)
+        self.otherRadiusTextbox.setMaximumWidth(50)
         self.radiusFrameLayout.addWidget(self.otherRadiusTextbox, 4, 1)
-        self.mainAreaLayout.addRow("Select the structures to analyze:", self.radiusFrame)
+        showSphereCheckbox = qt.QRadioButton("Show")
+        showSphereCheckbox.setVisible(False)
+        self.radiusFrameLayout.addWidget(showSphereCheckbox, 4, 2)
+        self.showSpheresButtonGroup.addButton(showSphereCheckbox, sp_id)
+
+        self.mainAreaLayout.addRow("Structures to analyze:", self.radiusFrame)
 
         ## FEATURES SELECTION
         # used to map feature class to a list of auto-generated feature checkbox widgets
@@ -420,14 +475,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         ######################
         # Connections
-        self.applySegmentationButton.connect('clicked()', self.__onApplySegmentationButtonClicked__)
-        self.addFiducialButton.connect('clicked(bool)', self.__onAddFiducialButtonClicked__)
-
         self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onInputVolumeChanged__)
-        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__)
-        # self.distanceLevelSlider.connect('valueChanged(int)', self.onDistanceSliderChanged)
+        self.addFiducialButton.connect('clicked(bool)', self.__onAddFiducialButtonClicked__)
+        self.enhanceVisualizationCheckbox.connect("stateChanged(int)", self.__onEnhanceVisualizationCheckChanged__)
+        self.applySegmentationButton.connect('clicked()', self.__onApplySegmentationButtonClicked__)
         self.distanceLevelSlider.connect('sliderReleased()', self.checkAndRefreshModels)
-
+        self.showSpheresButtonGroup.connect("buttonClicked(int)", self.__onShowSphereCheckboxClicked__)
         # runAnalysisButton.connect("clicked()", self.__onRunAnalysisButtonClicked__)
         self.runAnalysisButton.connect('clicked()', self.__onAnalyzeButtonClicked__)
 
@@ -437,10 +490,14 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.loadSeedsButton.connect("clicked()", self.loadSeedsFromXML)
         self.saveTimeCostCheckbox.connect("stateChanged(int)", self.__onSaveTimeCostCheckboxClicked__)
 
+        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__)
+
         self.refreshUI()
 
 
     def refreshUI(self):
+        """ Confiugre the GUI elements based on the current configuration
+        """
         if self.inputVolumeSelector.currentNodeID != "":
             self.addFiducialButton.enabled = True
             self.addFiducialButton.toolTip = "Click and add a new seed in the volume"
@@ -476,17 +533,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
 
 
-    def __removeFiducialsFrames__(self):
-        """ Remove all the possible fiducial frames that can remain obsolete (for example after closing a scene)
-        """
-        while len(self.fiducialsContainerFrame.children()) > 1:
-            self.fiducialsContainerFrame.children()[1].hide()
-            self.fiducialsContainerFrame.children()[1].delete()
 
     def setAddSeedsMode(self, enabled):
         """ When enabled, the cursor will be enabled to add new fiducials that will be used for the segmentation
-        :param enabled:
-        :return:
+        :param enabled: boolean
         """
         applicationLogic = slicer.app.applicationLogic()
         if enabled:
@@ -509,7 +559,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def addFiducialRow(self, fiducialsNode):
         """ Add a new row in the fiducials checkboxes section
         :param fiducialsNode:
-        :return:
         """
         if self.semaphoreOpen:  # To avoid the problem of duplicated events
             frame = qt.QFrame()
@@ -534,21 +583,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             # Avoid duplicated events for this fiducial node
             self.semaphoreOpen = False
 
-    def __validateInputVolumeSelection__(self):
-        """ Check there is a valid input and/or output volume selected. Otherwise show a warning message
-        :return: True if the validations are passed or False otherwise
-        """
-        inputVolumeId = self.inputVolumeSelector.currentNodeID
-        if inputVolumeId == '':
-            qt.QMessageBox.warning(slicer.util.mainWindow(), 'Warning', 'Please select an input volume')
-            return False
-        # if checkOutput:
-        #     outputVolumeId = self.outputVolumeSelector.currentNodeID
-        #     if outputVolumeId == '':
-        #         qt.QMessageBox.warning(slicer.util.mainWindow(), 'Warning', 'Please select an output labelmap volume or create a new one')
-        #         return False
 
-        return True
 
     def checkAndRefreshModels(self, forceRefresh=False):
         """ Refresh the GUI if the slider value has changed since the last time"""
@@ -561,16 +596,22 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             # Refresh visible windows
             SlicerUtil.refreshActiveWindows()
 
-    def activateCurrentLabelmap(self):
-        """ Display the right labelmap for the current background node if it exists"""
-        # Set the current labelmap active
-        selectionNode = slicer.app.applicationLogic().GetSelectionNode()
-        selectionNode.SetReferenceActiveVolumeID(self.inputVolumeSelector.currentNodeID)
+    def runNoduleSegmentation(self):
+        """ Run the nodule segmentation through a CLI
+        """
+        if self.__validateInputVolumeSelection__():
+            result = self.logic.callNoduleSegmentationCLI(self.inputVolumeSelector.currentNodeID,
+                                                          self.__onCLISegmentationFinished__)
+            self.progressBar.setCommandLineModuleNode(result)
+            self.progressBar.visible = True
 
-        selectionNode.SetReferenceActiveLabelVolumeID(self.logic.currentLabelmap.GetID())
-        slicer.app.applicationLogic().PropagateVolumeSelection(0)
+            # Calculate meshgrid in parallel
+            # self.logic.buildMeshgrid(self.inputVolumeSelector.currentNode())
 
     def runAnalysis(self):
+        """ Compute all the features that are currently selected, for the nodule and/or for
+        the surrounding spheres
+        """
         # build list of features and feature classes based on what is checked by the user
         self.selectedMainFeaturesKeys = set()
         self.selectedFeatureKeys = set()
@@ -679,7 +720,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """
         keyName = "{0}__r{1}".format(self.inputVolumeSelector.currentNode().GetName(), radius)
         t1 = time.time()
-        labelmapArray = self.logic.getSphereLabelMap(radius)
+        labelmapArray = self.logic.getSphereLabelMapArray(radius)
         getSphereTime = time.time() - t1
         if self.logic.printTiming:
             print("Time elapsed to get a sphere labelmap of radius {0}: {1} seconds".format(radius, getSphereTime))
@@ -707,6 +748,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 print (self.analysisResultsTiming[keyName])
 
     def forceSaveReport(self):
+        """ If basic report does not exist, it is created "on the fly"
+        """
         keyName = self.inputVolumeSelector.currentNode().GetName()
         self.analysisResults = dict()
         self.analysisResults[keyName] = collections.OrderedDict()
@@ -728,6 +771,109 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.__saveSubReport__(keyName)
         if showConfirmation:
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+
+    def saveCurrentSeedsToXML(self):
+        """ Save the current selected seed to a GeometryTopologyData object that will be
+        stored in the Results folder of the module, with the preffix _seedEvaluation.xml
+        """
+        dirPath = os.path.join(SlicerUtil.getModuleFolder(self.moduleName), "Results")
+        Util.create_directory(dirPath)
+        filePath = os.path.join(dirPath, self.logic.currentVolume.GetName() + "_seedEvaluation.xml")
+        geom = GeometryTopologyData()
+        geom.coordinate_system = GeometryTopologyData.LPS
+        fidNode = self.logic.getCurrentFiducialsNode()
+        for i in range(fidNode.GetNumberOfMarkups()):
+            if fidNode.GetNthFiducialVisibility(i):
+                coords = [0,0,0]
+                fidNode.GetNthFiducialPosition(i, coords)
+                coords = Util.ras_to_lps(coords)
+                descr = None
+                if self.lesionTypeRadioButtonGroup.checkedId() == 1:
+                    descr = "Nodule"
+                elif self.lesionTypeRadioButtonGroup.checkedId() == 2:
+                    descr = "Tumor"
+                geom.add_point(Point(0, 86, 0, coords, descr))
+
+        geom.to_xml_file(filePath)
+        qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+
+    def loadSeedsFromXML(self):
+        """ Load all the seeds from a GeometryTopologyData object that is expected to be
+        in Results folder of the module
+        """
+        if self.logic.currentVolume is None:
+            self.logic.setActiveVolume(SlicerUtil.getFirstScalarNode().GetID())
+        dirPath = os.path.join(SlicerUtil.getModuleFolder(self.moduleName), "Results")
+        filePath = os.path.join(dirPath, self.logic.currentVolume.GetName() + "_seedEvaluation.xml")
+        geom = GeometryTopologyData.from_xml_file(filePath)
+        fidNode = self.logic.getCurrentFiducialsNode()
+        for point in geom.points:
+            position = Util.lps_to_ras(point.coordinate)
+            index = fidNode.AddFiducial(*position)
+
+        coords = Util.lps_to_ras(geom.points[0].coordinate)
+        SlicerUtil.jumpToSeed(coords)
+
+        self.timer.start()
+
+    def reset(self):
+        """ Reset the GUI
+        """
+        # Clean fiducials area
+        self.__removeFiducialsFrames__()
+        if self.logic.currentVolume is not None:
+            fidNode = self.logic.getFiducialsListNode(self.logic.currentVolume.GetID())
+            if fidNode is not None:
+                slicer.mrmlScene.RemoveNode(fidNode)
+        if self.logic.currentLabelmap is not None:
+            slicer.mrmlScene.RemoveNode(self.logic.currentLabelmap)
+        if self.logic.currentModelNode is not None:
+            slicer.mrmlScene.RemoveNode(self.logic.currentModelNode)
+        if self.logic.cliOutputScalarNode is not None:
+            slicer.mrmlScene.RemoveNode(self.logic.cliOutputScalarNode)
+        del(self.logic)
+        self.logic = CIP_LesionModelLogic()
+        self.logic.printTiming = self.__printTimeCost__
+
+
+    ############
+    # Private methods
+    ############
+    def __activateCurrentLabelmap__(self):
+        """ Display the right labelmap for the current background node if it exists"""
+        # Set the current labelmap active
+        selectionNode = slicer.app.applicationLogic().GetSelectionNode()
+        selectionNode.SetReferenceActiveVolumeID(self.inputVolumeSelector.currentNodeID)
+
+        selectionNode.SetReferenceActiveLabelVolumeID(self.logic.currentLabelmap.GetID())
+        slicer.app.applicationLogic().PropagateVolumeSelection(0)
+
+
+    def __validateInputVolumeSelection__(self):
+        """ Check there is a valid input and/or output volume selected. Otherwise show a warning message
+        :return: True if the validations are passed or False otherwise
+        """
+        inputVolumeId = self.inputVolumeSelector.currentNodeID
+        if inputVolumeId == '':
+            qt.QMessageBox.warning(slicer.util.mainWindow(), 'Warning', 'Please select an input volume')
+            return False
+        return True
+
+    def __showSphere__(self, buttonId):
+        if buttonId == 0:
+            buttonId = self.otherRadiusTextbox.text
+        lm = self.logic.getSphereLabelMap(buttonId)
+        if lm is not None:
+            SlicerUtil.displayForegroundVolume(lm.GetID(), 0.5)
+
+
+
+    def __removeFiducialsFrames__(self):
+        """ Remove all the possible fiducial frames that can remain obsolete (for example after closing a scene)
+        """
+        while len(self.fiducialsContainerFrame.children()) > 1:
+            self.fiducialsContainerFrame.children()[1].hide()
+            self.fiducialsContainerFrame.children()[1].delete()
 
     def __saveSubReport__(self, keyName):
         """ Save a report in Case Reports Widget for this case and a concrete radius
@@ -770,49 +916,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         d[keyName]["LesionType"] = self.lesionType
         d[keyName]["Seeds_LPS"] = coordsList.__str__()
 
-
-
-    def saveCurrentSeedsToXML(self):
-        dirPath = os.path.join(SlicerUtil.getModuleFolder(self.moduleName), "Results")
-        Util.create_directory(dirPath)
-        filePath = os.path.join(dirPath, self.logic.currentVolume.GetName() + "_seedEvaluation.xml")
-        geom = GeometryTopologyData()
-        geom.coordinate_system = GeometryTopologyData.LPS
-        fidNode = self.logic.getCurrentFiducialsNode()
-        for i in range(fidNode.GetNumberOfMarkups()):
-            if fidNode.GetNthFiducialVisibility(i):
-                coords = [0,0,0]
-                fidNode.GetNthFiducialPosition(i, coords)
-                coords = Util.ras_to_lps(coords)
-                descr = None
-                if self.lesionTypeRadioButtonGroup.checkedId() == 1:
-                    descr = "Nodule"
-                elif self.lesionTypeRadioButtonGroup.checkedId() == 2:
-                    descr = "Tumor"
-                geom.add_point(Point(0, 86, 0, coords, descr))
-
-        geom.to_xml_file(filePath)
-        qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
-
-    def loadSeedsFromXML(self):
-        if self.logic.currentVolume is None:
-            self.logic.setActiveVolume(SlicerUtil.getFirstScalarNode().GetID())
-        dirPath = os.path.join(SlicerUtil.getModuleFolder(self.moduleName), "Results")
-        filePath = os.path.join(dirPath, self.logic.currentVolume.GetName() + "_seedEvaluation.xml")
-        geom = GeometryTopologyData.from_xml_file(filePath)
-        fidNode = self.logic.getCurrentFiducialsNode()
-        for point in geom.points:
-            position = Util.lps_to_ras(point.coordinate)
-            index = fidNode.AddFiducial(*position)
-
-        coords = Util.lps_to_ras(geom.points[0].coordinate)
-        SlicerUtil.jumpToSeed(coords)
-
-        self.timer.start()
-
-
-    def updateFOV(self):
-        sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
+    def __updateFOV__(self):
+        """ Dynamic zoom to the center of the current view in all the 2D windows
+        :return:
+        """
+        sliceNodes = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
         sliceNode = sliceNodes["Red"]
         fov = sliceNode.GetFieldOfView()
         if fov[0] > 45:
@@ -827,25 +935,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         else:
             self.timer.stop()
 
-    def reset(self):
-        # Clean fiducials area
-        self.__removeFiducialsFrames__()
-        if self.logic.currentVolume is not None:
-            fidNode = self.logic.getFiducialsListNode(self.logic.currentVolume.GetID())
-            if fidNode is not None:
-                slicer.mrmlScene.RemoveNode(fidNode)
-        if self.logic.currentLabelmap is not None:
-            slicer.mrmlScene.RemoveNode(self.logic.currentLabelmap)
-        if self.logic.currentModelNode is not None:
-            slicer.mrmlScene.RemoveNode(self.logic.currentModelNode)
-        if self.logic.cliOutputScalarNode is not None:
-            slicer.mrmlScene.RemoveNode(self.logic.cliOutputScalarNode)
-        del(self.logic)
-        self.logic = CIP_LesionModelLogic()
-        self.logic.printTiming = self.__printTiming__
-
     ############
     # Events
+    ############
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
         if self.inputVolumeSelector.currentNodeID != '':
@@ -879,6 +971,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def __onPreVolumeLoad__(self, volume):
         self.reset()
 
+    def __onEnhanceVisualizationCheckChanged__(self, state):
+        active = state == 2
+        self.mipFrame.visible = active
+        self.mipViewer.activateEnhacedVisualization(active)
+
+
     def __onAddFiducialButtonClicked__(self, checked):
         """ Click the add fiducial button so that we set the cursor in fiducial mode
         :param checked:
@@ -892,14 +990,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.setAddSeedsMode(checked)
 
     def __onApplySegmentationButtonClicked__(self):
-        if self.__validateInputVolumeSelection__():
-            result = self.logic.callNoduleSegmentationCLI(self.inputVolumeSelector.currentNodeID,
-                                                          self.__onCLISegmentationFinished__)
-            self.progressBar.setCommandLineModuleNode(result)
-            self.progressBar.visible = True
-
-            # Calculate meshgrid in parallel
-            # self.logic.buildMeshgrid(self.inputVolumeSelector.currentNode())
+        self.runNoduleSegmentation()
 
     def __onFiducialsNodeModified__(self, nodeID, event):
         """ The active fiducials node has been modified because we added or removed a fiducial
@@ -931,7 +1022,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         :return:
         """
         self.distanceLevelSlider.value = self.logic.defaultThreshold  # default
-        self.activateCurrentLabelmap()
+        self.__activateCurrentLabelmap__()
 
         range = self.logic.cliOutputScalarNode.GetImageData().GetScalarRange()
 
@@ -944,6 +1035,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Start the timer that will refresh all the visualization nodes
         # self.timer.start(500)
+
+    def __onShowSphereCheckboxClicked__(self, buttonId):
+        self.__showSphere__(buttonId)
 
     def __onSaveSegmentationResultsClicked__(self):
         self.saveCurrentSeedsToXML()
@@ -1147,7 +1241,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             slicer.mrmlScene.AddNode(self.cliOutputScalarNode)
 
         parameters = {}
-        print("DEBUG: Calling CLI...")
+        print("Calling CLI...")
         parameters["inputImage"] = inputVolumeID
         parameters["outputLevelSet"] = self.cliOutputScalarNode
         parameters["seedsFiducials"] = self.getFiducialsListNode(inputVolumeID)
@@ -1164,6 +1258,74 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
 
         return result
 
+    def updateModels(self, newThreshold):
+        """ Modify the threshold for the current volume (update the models)
+        :param newThreshold: new threshold (all the voxels below this threshold will be considered nodule)
+        """
+        print("DEBUG: updating models with threshold={0}....".format(newThreshold))
+        self.thresholdFilter.ThresholdByUpper(newThreshold)
+        self.thresholdFilter.Update()
+        self.marchingCubesFilter.SetValue(0, newThreshold)
+        self.marchingCubesFilter.Update()
+        self.currentLabelmapArray = slicer.util.array(self.currentLabelmap.GetName())
+        # Invalidate distances (the nodule is going to change)
+        self.__invalidateDistances__()
+        # Refresh 3D view
+        viewNode = slicer.util.getNode('vtkMRMLViewNode*')
+        viewNode.Modified()
+
+    def getCurrentDistanceMap(self):
+        """ Calculate the distance map to the centroid for the current labelmap volume.
+        To that end, we have to calculate first the centroid.
+        Please note the results could be cached
+        :return:
+        """
+        if self.currentDistanceMap is None:
+            centroid = Util.centroid(self.currentLabelmapArray)
+            # Calculate the distance map for the specified origin
+            # Get the dimensions of the volume in ZYX coords
+            dims = Util.vtk_numpy_coordinate(self.currentVolume.GetImageData().GetDimensions())
+            # Speed map (all ones because the growth will be constant).
+            # The dimensions are reversed because we want the format in ZYX coordinates
+            input = np.ones(dims, np.int32)
+            sitkImage = sitk.GetImageFromArray(input)
+            sitkImage.SetSpacing(self.currentVolume.GetSpacing())
+            fastMarchingFilter = sitk.FastMarchingImageFilter()
+            fastMarchingFilter.SetStoppingValue(self.MAX_TUMOR_RADIUS)
+            # Reverse the coordinate of the centroid
+            seeds = [Util.numpy_itk_coordinate(centroid)]
+            fastMarchingFilter.SetTrialPoints(seeds)
+            output = fastMarchingFilter.Execute(sitkImage)
+            self.currentDistanceMap = sitk.GetArrayFromImage(output)
+
+    def getSphereLabelMapArray(self, radius):
+        """ Get a labelmap numpy array that contains a sphere centered in the nodule centroid, with radius "radius" and that
+        EXCLUDES the nodule itself.
+        If the results are not cached, this method creates the volume and calculates the labelmap
+        :param radius: radius of the sphere
+        :return: labelmap array for a sphere of this radius
+        """
+        # If the shere was already calculated, return the results
+        if self.spheresLabelmaps.has_key(radius):
+            return self.spheresLabelmaps[radius]
+        # Init with the current segmented nodule labelmap
+        # Mask with the voxels that are inside the radius of the sphere
+        array = self.currentDistanceMap <= radius
+        # Exclude the nodule
+        array[self.currentLabelmapArray == 1] = 0
+        # Cache the result
+        self.spheresLabelmaps[radius] = array
+        # Create a mrml labelmap node for sphere visualization purposes (this step could be skipped)
+        self.__createLabelmapSphereVolume__(array, radius)
+        return array
+
+    def getSphereLabelMap(self, radius):
+        return slicer.util.getNode("{0}_r{1}".format(self.currentVolume.GetName(), radius))
+
+
+    ################
+    # PRIVATE METHODS
+    ################
     def __onNoduleSegmentationCLIStateUpdated__(self, caller, event):
         """ Event triggered when the CLI status changes
         :param caller:
@@ -1233,75 +1395,12 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             threeDView = threeDWidget.threeDView()
             threeDView.resetFocalPoint()
 
-    ##########
-    # Calculations
     def __invalidateDistances__(self):
         """ Invalidate the current nodule centroid, distance maps, etc.
         """
         self.currentDistanceMap = None
         self.currentCentroid = None
         self.spheresLabelmaps = dict()
-
-    def updateModels(self, newThreshold):
-        """ Modify the threshold for the current volume (update the models)
-        :param newThreshold: new threshold (all the voxels below this threshold will be considered nodule)
-        """
-        print("DEBUG: updating models with threshold={0}....".format(newThreshold))
-        self.thresholdFilter.ThresholdByUpper(newThreshold)
-        self.thresholdFilter.Update()
-        self.marchingCubesFilter.SetValue(0, newThreshold)
-        self.marchingCubesFilter.Update()
-        self.currentLabelmapArray = slicer.util.array(self.currentLabelmap.GetName())
-        # Invalidate distances (the nodule is going to change)
-        self.__invalidateDistances__()
-        # Refresh 3D view
-        viewNode = slicer.util.getNode('vtkMRMLViewNode*')
-        viewNode.Modified()
-
-    def getCurrentDistanceMap(self):
-        """ Calculate the distance map to the centroid for the current labelmap volume.
-        To that end, we have to calculate first the centroid.
-        Please note the results could be cached
-        :return:
-        """
-        if self.currentDistanceMap is None:
-            centroid = Util.centroid(self.currentLabelmapArray)
-            # Calculate the distance map for the specified origin
-            # Get the dimensions of the volume in ZYX coords
-            dims = Util.vtk_numpy_coordinate(self.currentVolume.GetImageData().GetDimensions())
-            # Speed map (all ones because the growth will be constant).
-            # The dimensions are reversed because we want the format in ZYX coordinates
-            input = np.ones(dims, np.int32)
-            sitkImage = sitk.GetImageFromArray(input)
-            sitkImage.SetSpacing(self.currentVolume.GetSpacing())
-            fastMarchingFilter = sitk.FastMarchingImageFilter()
-            fastMarchingFilter.SetStoppingValue(self.MAX_TUMOR_RADIUS)
-            # Reverse the coordinate of the centroid
-            seeds = [Util.numpy_itk_coordinate(centroid)]
-            fastMarchingFilter.SetTrialPoints(seeds)
-            output = fastMarchingFilter.Execute(sitkImage)
-            self.currentDistanceMap = sitk.GetArrayFromImage(output)
-
-    def getSphereLabelMap(self, radius):
-        """ Get a labelmap numpy array that contains a sphere centered in the nodule centroid, with radius "radius" and that
-        EXCLUDES the nodule itself.
-        If the results are not cached, this method creates the volume and calculates the labelmap
-        :param radius: radius of the sphere
-        :return: labelmap array for a sphere of this radius
-        """
-        # If the shere was already calculated, return the results
-        if self.spheresLabelmaps.has_key(radius):
-            return self.spheresLabelmaps[radius]
-        # Init with the current segmented nodule labelmap
-        # Mask with the voxels that are inside the radius of the sphere
-        array = self.currentDistanceMap <= radius
-        # Exclude the nodule
-        array[self.currentLabelmapArray == 1] = 0
-        # Cache the result
-        self.spheresLabelmaps[radius] = array
-        # Create a mrml labelmap node for sphere visualization purposes (this step could be skipped)
-        self.__createLabelmapSphereVolume__(array, radius)
-        return array
 
     def __createLabelmapSphereVolume__(self, array, radius):
         """ Create a Labelmap volume cloning the current global labelmap with the ROI sphere for visualization purposes
@@ -1313,6 +1412,10 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         arr = slicer.util.array(node.GetName())
         arr[:] = array
         node.GetImageData().Modified()
+        # Set a different colormap for visualization purposes
+        colorNode = slicer.util.getFirstNodeByClassByName("vtkMRMLColorTableNode", "HotToColdRainbow")
+        displayNode = node.GetDisplayNode()
+        displayNode.SetAndObserveColorNodeID(colorNode.GetID())
         return node
 
 

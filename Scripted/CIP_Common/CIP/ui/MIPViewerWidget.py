@@ -258,9 +258,12 @@ class MIPViewerWidget(object):
         self.crosshairCheckbox.setText("Crosshair cursor")
         self.crosshairCheckbox.toolTip = "Activate/Desactivate the crosshair cursor for a better visualization"
         self.crosshairCheckbox.setStyleSheet("margin-top:10px")
+
+        # Center button
         self.centerButton = qt.QPushButton()
         self.centerButton.setText("Center volumes")
         self.centerButton.setFixedSize(100, 40)
+        self.centerButton.setStyleSheet("margin-top:10px")
 
 
         if self.fullModeOn:
@@ -366,6 +369,16 @@ class MIPViewerWidget(object):
         """ Based on the current GUI settings, configure the viewer.
         It also forces some GUI decisions for incompatible settings (example: comparing operations in a 3x3 layout)
         """
+        # Active volumes
+        compNode = slicer.mrmlScene.GetNodeByID("vtkMRMLSliceCompositeNodeRed")
+        backgroundVolumeID = compNode.GetBackgroundVolumeID()
+        if backgroundVolumeID is None:
+            # No volumes are active. Nothing to do
+            return
+        labelmapVolumeID = compNode.GetLabelVolumeID()
+        foregroundVolumeID = compNode.GetForegroundVolumeID()
+
+
         # Unlink all the controls (the link will be done manually)
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
         for compNode in compNodes.itervalues():
@@ -428,11 +441,7 @@ class MIPViewerWidget(object):
                 sliceNode.SetOrientationToCoronal()
                 self.__resliceNode__(sliceNode,  self.PLANE_CORONAL, self.currentOperation)
 
-        # Active volumes
-        compNode = slicer.mrmlScene.GetNodeByID("vtkMRMLSliceCompositeNodeRed")
-        labelmapVolumeID = compNode.GetLabelVolumeID()
-        foregroundVolumeID = compNode.GetForegroundVolumeID()
-        backgroundVolumeID = compNode.GetBackgroundVolumeID()
+
         # Make sure that the same volume is displayed in all 2D windows
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
         for compNode in compNodes.itervalues():
@@ -513,14 +522,14 @@ class MIPViewerWidget(object):
             self.currentPlane = self.PLANE_AXIAL
             self.currentOperation = self.OPERATION_MIP
             self.setCurrentSpacingInMm(self.currentOperation, 20)
-            SlicerUtil.changeConstrastWindow(1400, -500)
+            SlicerUtil.changeContrastWindow(1400, -500)
         elif context == self.CONTEXT_EMPHYSEMA:
             # MinIP, Axial, Side by side
             self.currentLayout = self.LAYOUT_SIDE_BY_SIDE
             self.currentPlane = self.PLANE_AXIAL
             self.currentOperation = self.OPERATION_MinIP
             self.setCurrentSpacingInMm(self.currentOperation, 5)
-            SlicerUtil.changeConstrastWindow(1400, -500)
+            SlicerUtil.changeContrastWindow(1400, -500)
 
         self.executeCurrentSettings()
         self.__refreshUI__()
