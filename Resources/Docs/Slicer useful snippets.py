@@ -245,6 +245,9 @@ pos = [0,0,0]
 activeNode = markupsLogic.GetActiveListID()
 activeNode.GetNthFiducialPosition(0, pos) ==> it stores in pos the RAS coordinates
 
+# Position the 2D windows in a fiducial:
+logic.JumpSlicesToNthPointInMarkup(fiducialsNode.GetID(), 0, True)
+
 
 ####################################################################################
 # Set the cursor to draw fiducials

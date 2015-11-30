@@ -135,21 +135,19 @@ class SlicerUtil:
         first fiducial we will come back to the regular state
         """
         applicationLogic = slicer.app.applicationLogic()
-        selectionNode = applicationLogic.GetSelectionNode()
-        selectionNode.SetReferenceActivePlaceNodeClassName(fiducialClass)
+        # selectionNode = applicationLogic.GetSelectionNode()
+        # selectionNode.SetReferenceActivePlaceNodeClassName(fiducialClass)
         interactionNode = applicationLogic.GetInteractionNode()
         if isFiducialsMode:
-            # Mouse cursor --> fiducials
-            interactionNode.SetCurrentInteractionMode(1)
-            # Persistence depending on if we to keep fiducials (or just one)
-            interactionNode.SetPlaceModePersistence(keepFiducialsModeOn)
+            if keepFiducialsModeOn:
+                interactionNode.SwitchToPersistentPlaceMode()
+            else:
+                interactionNode.SwitchToSinglePlaceMode()
         else:
-            # Regular cursor
-            interactionNode.SetCurrentInteractionMode(2)
-            interactionNode.SetPlaceModePersistence(False)
+            interactionNode.SwitchToViewTransformMode()
 
     @staticmethod
-    def setFiducialsMode(isFiducialsMode, keepFiducialsModeOn=False):
+    def setFiducialsCursorMode(isFiducialsMode, keepFiducialsModeOn=False):
         """ Activate fiducials mode.
         When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
         keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
@@ -158,10 +156,11 @@ class SlicerUtil:
         :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
         first fiducial we will come back to the regular state
         """
+        print("paso por fiducials: ", isFiducialsMode)
         SlicerUtil.__setMarkupsMode__(isFiducialsMode, "vtkMRMLMarkupsFiducialNode", keepFiducialsModeOn)
 
     @staticmethod
-    def setCrosshair(isActive):
+    def setCrosshairCursor(isActive):
         """Turn on or off the crosshair and enable navigation mode
         by manipulating the scene's singleton crosshair node.
         :param isActive: enable / disable crosshair (boolean value)

@@ -323,7 +323,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         if self.inputVolumeSelector.currentNodeID != "":
             self.logic.setActiveVolume(self.inputVolumeSelector.currentNodeID, self.__onFiducialModified__, self.__onFiducialAdded__)
             self.logic.setActiveFiducialListNode(self.currentStentType, self.segmentTypesRadioButtonGroup.checkedId())
-            SlicerUtil.setFiducialsMode(True, keepFiducialsModeOn=True)
+            SlicerUtil.setFiducialsCursorMode(True, keepFiducialsModeOn=True)
 
         self.__refreshUI__()
 
@@ -479,7 +479,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             # TODO: ask the user (all the structures will be reset)
             self.logic.setActiveVolume(node.GetID(), self.__onFiducialModified__, self.__onFiducialAdded__)
             SlicerUtil.setActiveVolumeId(node.GetID())
-            SlicerUtil.setFiducialsMode(True, keepFiducialsModeOn=True)
+            SlicerUtil.setFiducialsCursorMode(True, keepFiducialsModeOn=True)
             self.logic.setActiveFiducialListNode(self.currentStentType, self.segmentTypesRadioButtonGroup.checkedId())
             self.stentTypesRadioButtonGroup.buttons()[0].setChecked(True)
         self.__refreshUI__()
@@ -508,7 +508,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         :param button:
         :return:
         """
-        SlicerUtil.setFiducialsMode(True, keepFiducialsModeOn=True)
+        SlicerUtil.setFiducialsCursorMode(True, keepFiducialsModeOn=True)
         self.logic.setActiveFiducialListNode(self.currentStentType, self.segmentTypesRadioButtonGroup.checkedId())
 
     def __onRunSegmentationButton__(self):
@@ -710,7 +710,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
             self.drawTrachea()
             self.drawYStent()
 
-            SlicerUtil.setFiducialsMode(False)
+            SlicerUtil.setFiducialsCursorMode(False)
 
             # Align the model with the segmented labelmap applying a transformation
             transformMatrix = vtk.vtkMatrix4x4()

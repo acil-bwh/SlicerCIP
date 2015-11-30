@@ -357,6 +357,9 @@ class MIPViewerWidget(object):
         pass
 
     def activateEnhacedVisualization(self, active):
+        """ Set on/off the enhanced visualization for the current context
+        :param active: boolean
+        """
         self.crosshairCheckbox.setChecked(active)
         if active:
             self.__setContext__(self.currentContext)
@@ -478,12 +481,18 @@ class MIPViewerWidget(object):
             compNode.SetLinkedControl(False)
         SlicerUtil.changeLayout(self.originalLayout)
 
-        # Remove all possible reslicing
+        # Remove all possible reslicing and set default planes for default 2D windows
         nodes = slicer.util.getNodes("vtkMRMLSliceNode*")
         for node in nodes.itervalues():
             self.__resliceNode__(node, self.currentPlane, self.OPERATION_NONE)
-
+            if node.GetID() == "vtkMRMLSliceNodeRed":
+                node.SetOrientationToAxial()
+            elif node.GetID() == "vtkMRMLSliceNodeYellow":
+                node.SetOrientationToSagittal()
+            elif node.GetID() == "vtkMRMLSliceNodeGreen":
+                node.SetOrientationToCoronal()
         self.currentLayout = self.LAYOUT_DEFAULT
+
 
     #####
     # PRIVATE METHODS
@@ -506,7 +515,7 @@ class MIPViewerWidget(object):
             for elem in self.spacingSliderItems[self.OPERATION_MinIP]:
                 elem.visible = True
 
-        SlicerUtil.setCrosshair(self.crosshairCheckbox.isChecked())
+        SlicerUtil.setCrosshairCursor(self.crosshairCheckbox.isChecked())
 
     def __setContext__(self, context):
         """ Configure the widget for a particular context. Fix operation, plane, layout and optionally number of slices
@@ -532,7 +541,6 @@ class MIPViewerWidget(object):
             SlicerUtil.changeContrastWindow(1400, -500)
 
         self.executeCurrentSettings()
-        self.__refreshUI__()
 
     def __resliceNode__(self, sliceNode, plane, operation):
         """ Apply a reslicing operation in the specified window
@@ -687,7 +695,7 @@ class MIPViewerWidget(object):
         self.executeCurrentSettings()
 
     def __onCrosshairCheckChanged__(self, checkedState):
-        SlicerUtil.setCrosshair(checkedState==2)
+        SlicerUtil.setCrosshairCursor(self.crosshairCheckbox.isChecked())
 
     def __onCenterButtonClicked__(self):
         SlicerUtil.centerAllVolumes()

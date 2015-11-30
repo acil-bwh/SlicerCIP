@@ -279,7 +279,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         # if len(self.observers) == 0:
         #     self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__))
         #     self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__))
-        SlicerUtil.setFiducialsMode(True, True)
+        SlicerUtil.setFiducialsCursorMode(True, True)
 
         if self.volumeSelector.currentNodeId != "":
             SlicerUtil.setActiveVolumeId(self.volumeSelector.currentNodeId)
@@ -290,7 +290,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
         try:
             self.blockNodeEvents = True
-            SlicerUtil.setFiducialsMode(False)
+            SlicerUtil.setFiducialsCursorMode(False)
             # for observer in self.observers:
             #     slicer.mrmlScene.RemoveObserver(observer)
             #     self.observers.remove(observer)
@@ -343,7 +343,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             self.logic.removeMarkupsAndNode(self.currentVolumeLoaded)
         if newVolumeNode is not None:
             SlicerUtil.setActiveVolumeId(newVolumeNode.GetID())
-            SlicerUtil.setFiducialsMode(True, True)
+            SlicerUtil.setFiducialsCursorMode(True, True)
 
         self.currentVolumeLoaded = newVolumeNode
         self.updateState()
