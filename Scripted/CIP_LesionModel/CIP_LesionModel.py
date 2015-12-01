@@ -81,6 +81,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.logic = CIP_LesionModelLogic()
         self.__featureClasses__ = None
         self.__storedColumnNames__ = None
+        self.__analyzedSpheres__ = set()
         # Timer for dynamic zooming
         self.timer = qt.QTimer()
         self.timer.setInterval(150)
@@ -236,7 +237,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.loadSeedsButton.text = "Load seeds from XML"
         self.loadSeedsButton.toolTip = "Load the current seeds and lesion type for batch analysis in a XML file"
         self.loadSeedsButton.setIcon(qt.QIcon("{0}/Load.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.loadSeedsButton.setIconSize(qt.QSize(16,16))
+        self.loadSeedsButton.setIconSize(qt.QSize(16, 16))
         # self.loadSeedsButton.setMaximumWidth(150)
         self.loadSeedsButton.setStyleSheet("margin: 10px 0 10px 5px; height: 30px")
         # self.loadSeedsButton.setVisible(False)
@@ -252,8 +253,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.mainAreaLayout.addWidget(self.saveSeedsButton, 4, 2, 1, 2)
 
         # Type of nodule
-        # noduleTypeFrame = qt.QFrame()
-        # noduleTypeLayout  = qt.QHBoxLayout(noduleTypeFrame)
         self.lesionTypeLabel = qt.QLabel("Lesion type:")
         self.lesionTypeLabel.setStyleSheet("margin:5px 0 0 5px")
         self.mainAreaLayout.addWidget(self.lesionTypeLabel, 5, 0)
@@ -268,14 +267,22 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         button = qt.QRadioButton("Tumor")
         self.lesionTypeRadioButtonGroup.addButton(button, 2)
         self.mainAreaLayout.addWidget(button, 5, 3)
-        # label = qt.QLabel("Lesion type:")
-        # label.setStyleSheet("margin-top:5px")
-        # self.mainAreaLayout.addRow(label, noduleTypeFrame)
 
-        # Example button with some common properties
-        # label = qt.QLabel("Segment the nodule")
-        # label.setStyleSheet("margin-left: 5px")
-        # self.mainAreaLayout.addWidget(label, 7, 0)
+        # Maximum radius
+        label = qt.QLabel("Maximum radius (mm)")
+        label.setStyleSheet("margin: 10px 0 0 5px")
+        self.mainAreaLayout.addWidget(label, 6, 0)
+
+        self.maximumRadiusSpinbox = qt.QSpinBox()
+        self.maximumRadiusSpinbox.minimum = 0
+        self.maximumRadiusSpinbox.setStyleSheet("margin-top:5px")
+        self.maximumRadiusSpinbox.setFixedWidth(40)
+        # Default value: 30
+        radius = SlicerUtil.settingGetOrSetDefault(self.moduleName, "maximumRadius", 30)
+        self.maximumRadiusSpinbox.value = int(radius)
+        self.maximumRadiusSpinbox.toolTip = "Maximum radius for the tumor. Recommended: 30 mm for humans and 3 mm for small animals"
+        self.mainAreaLayout.addWidget(self.maximumRadiusSpinbox, 6, 1)
+
         self.applySegmentationButton = qt.QPushButton()
         self.applySegmentationButton.text = "Segment nodule"
         self.applySegmentationButton.toolTip = "Run the segmentation algorithm"
@@ -285,8 +292,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             "font-weight:bold; font-size:12px; color: white; background-color:#274EE2; margin-top:10px;")
         self.applySegmentationButton.setFixedHeight(40)
         self.mainAreaLayout.addWidget(self.applySegmentationButton, 7, 1, 1, 2)
-
-        ## TODO: add spinbox
 
         # CLI progress bar
         self.progressBar = slicer.qSlicerCLIProgressBar()
@@ -302,6 +307,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.distanceLevelSlider.minimum = -50  # Ad-hoc value
         self.distanceLevelSlider.maximum = 50
         self.distanceLevelSlider.setStyleSheet("margin-top:10px;padding-top:20px")
+        self.distanceLevelSlider.setToolTip("Move the slider for a fine tuning segmentation")
         self.mainAreaLayout.addWidget(self.distanceLevelSlider, 9, 1, 1, 3)
 
 
@@ -373,8 +379,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Different radius selection
         self.structuresLabel = qt.QLabel("Structures to analyze:")
-        self.structuresLabel.setStyleSheet("margin-left: 5px")
-        self.mainAreaLayout.addWidget(self.structuresLabel, 10, 0)
+        self.structuresLabel.setStyleSheet("margin-top: 5px")
+        self.featuresLayout.addWidget(self.structuresLabel)
 
         self.spheresButtonGroup = qt.QButtonGroup()
         self.spheresButtonGroup.setExclusive(False)
@@ -394,7 +400,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.radiusFrameLayout.addWidget(self.noduleCheckbox, 0, 0)
         showSphereCheckbox = qt.QRadioButton("(Show just nodule)")
         showSphereCheckbox.setChecked(True)
-        showSphereCheckbox.setVisible(False)
+        # showSphereCheckbox.setVisible(False)
         self.radiusFrameLayout.addWidget(showSphereCheckbox, 0, 1)
         self.showSpheresButtonGroup.addButton(showSphereCheckbox, sp_id)
 
@@ -405,7 +411,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.spheresButtonGroup.addButton(self.r15Checkbox, sp_id)
         self.radiusFrameLayout.addWidget(self.r15Checkbox, 1, 0)
         showSphereCheckbox = qt.QRadioButton("Show")
-        showSphereCheckbox.setVisible(False)
+        # showSphereCheckbox.setVisible(False)
         self.radiusFrameLayout.addWidget(showSphereCheckbox, 1, 1)
         self.showSpheresButtonGroup.addButton(showSphereCheckbox, sp_id)
 
@@ -416,7 +422,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.spheresButtonGroup.addButton(self.r20Checkbox, sp_id)
         self.radiusFrameLayout.addWidget(self.r20Checkbox, 2, 0)
         showSphereCheckbox = qt.QRadioButton("Show")
-        showSphereCheckbox.setVisible(False)
+        # showSphereCheckbox.setVisible(False)
         self.radiusFrameLayout.addWidget(showSphereCheckbox, 2, 1)
         self.showSpheresButtonGroup.addButton(showSphereCheckbox, sp_id)
 
@@ -426,12 +432,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.spheresButtonGroup.addButton(self.r25Checkbox, sp_id)
         self.radiusFrameLayout.addWidget(self.r25Checkbox, 3, 0)
         showSphereCheckbox = qt.QRadioButton("Show")
-        showSphereCheckbox.setVisible(False)
+        # showSphereCheckbox.setVisible(False)
         self.radiusFrameLayout.addWidget(showSphereCheckbox, 3, 1, 1)
         self.showSpheresButtonGroup.addButton(showSphereCheckbox, sp_id)
 
         self.rOtherCheckbox = qt.QCheckBox()
-        sp_id = 1
+        sp_id = -2
         self.rOtherCheckbox.setText("Other (mm sphere radius)")
         self.rOtherCheckbox.setSizePolicy(fixedSizePolicy)
         self.spheresButtonGroup.addButton(self.rOtherCheckbox, sp_id)
@@ -440,11 +446,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.otherRadiusTextbox.setMaximumWidth(50)
         self.radiusFrameLayout.addWidget(self.otherRadiusTextbox, 4, 1)
         showSphereCheckbox = qt.QRadioButton("Show")
-        showSphereCheckbox.setVisible(False)
+        # showSphereCheckbox.setVisible(False)
         self.radiusFrameLayout.addWidget(showSphereCheckbox, 4, 2)
         self.showSpheresButtonGroup.addButton(showSphereCheckbox, sp_id)
 
-        self.featuresLayout.addRow(self.structuresLabel, self.radiusFrame)
+        self.featuresLayout.addWidget(self.radiusFrame)
 
 
 
@@ -544,6 +550,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.selectThresholdLabel.visible = self.distanceLevelSlider.visible = \
             self.featuresSelectionCollapsibleButton.visible =  self.logic.cliOutputScalarNode is not None
 
+        # Show spheres buttons just visible for the analyzed spheres
         #self.progressBar.visible = self.distanceLevelSlider.enabled
         self.saveSeedsButton.visible = self.loadSeedsButton.visible = self.__evaluateSegmentationModeOn__
         self.reportsWidget.showSaveButton(self.__evaluateSegmentationModeOn__)
@@ -613,14 +620,16 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             # Refresh visible windows
             SlicerUtil.refreshActiveWindows()
 
-    def runNoduleSegmentation(self, maximumRadius):
+    def runNoduleSegmentation(self):
         """ Run the nodule segmentation through a CLI
         """
+        maximumRadius = self.maximumRadiusSpinbox.value
         if self.__validateInputVolumeSelection__():
             result = self.logic.callNoduleSegmentationCLI(self.inputVolumeSelector.currentNodeID, maximumRadius,
                                                           self.__onCLISegmentationFinished__)
             self.progressBar.setCommandLineModuleNode(result)
             self.progressBar.visible = True
+            SlicerUtil.setSetting(self.moduleName, "maximumRadius", maximumRadius)
 
             # Calculate meshgrid in parallel
             # self.logic.buildMeshgrid(self.inputVolumeSelector.currentNode())
@@ -634,6 +643,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.selectedFeatureKeys = set()
         self.analysisResults = dict()
         self.analysisResultsTiming = dict()
+        self.__analyzedSpheres__ = set()
 
         for featureClass in self.featureWidgets:
             for widget in self.featureWidgets[featureClass]:
@@ -693,6 +703,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                     print("Elapsed time for the nodule analysis (TOTAL={0} seconds:".format(t2 - t1))
                     print(self.analysisResultsTiming[keyName])
 
+
+
             if self.r15Checkbox.checked or self.r20Checkbox.checked or self.r25Checkbox.checked \
                     or (self.rOtherCheckbox.checked and self.otherRadiusTextbox.text != ""):
                 if "Parenchymal Volume" in self.selectedMainFeaturesKeys:
@@ -709,13 +721,17 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                     print("Time to get the current distance map: {0} seconds".format(time.time() - t1))
                 if self.r15Checkbox.checked:
                     self.runAnalysisSphere(15, labelmapWholeVolumeArray)
+                    self.__analyzedSpheres__.add(15)
                 if self.r20Checkbox.checked:
                     self.runAnalysisSphere(20, labelmapWholeVolumeArray)
+                    self.__analyzedSpheres__.add(20)
                 if self.r25Checkbox.checked:
                     self.runAnalysisSphere(25, labelmapWholeVolumeArray)
+                    self.__analyzedSpheres__.add(25)
                 if self.rOtherCheckbox.checked:
                     r = int(self.otherRadiusTextbox.text)
                     self.runAnalysisSphere(r, labelmapWholeVolumeArray)
+                    self.__analyzedSpheres__.add(r)
 
             t = time.time() - start
             if self.logic.printTiming:
@@ -878,10 +894,15 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
     def __showSphere__(self, buttonId):
         if buttonId == 0:
+            # Just nodule. No Spheres
+            SlicerUtil.displayForegroundVolume(None)
+            return
+
+        if buttonId == -2:
             buttonId = self.otherRadiusTextbox.text
         lm = self.logic.getSphereLabelMap(buttonId)
-        if lm is not None:
-            SlicerUtil.displayForegroundVolume(lm.GetID(), 0.5)
+        # if lm is not None:
+        SlicerUtil.displayForegroundVolume(lm.GetID(), 0.5)
 
 
 
@@ -1009,7 +1030,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.setAddSeedsMode(checked)
 
     def __onApplySegmentationButtonClicked__(self):
-        self.runNoduleSegmentation(30)
+        self.runNoduleSegmentation()
 
 
     def __onFiducialsNodeModified__(self, nodeID, event):
@@ -1017,7 +1038,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         :param nodeID: Current node id
         :param event:
         """
-        # print("DEBUG: Fiducials node modified.", nodeID)
+        print("DEBUG: Fiducials node modified.", nodeID)
         self.addFiducialRow(nodeID)
         self.refreshUI()
 

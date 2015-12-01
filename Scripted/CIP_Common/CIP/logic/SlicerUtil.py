@@ -156,7 +156,6 @@ class SlicerUtil:
         :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
         first fiducial we will come back to the regular state
         """
-        print("paso por fiducials: ", isFiducialsMode)
         SlicerUtil.__setMarkupsMode__(isFiducialsMode, "vtkMRMLMarkupsFiducialNode", keepFiducialsModeOn)
 
     @staticmethod
