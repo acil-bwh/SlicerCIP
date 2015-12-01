@@ -181,10 +181,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
         self.mainAreaLayout = qt.QGridLayout(collapsibleButton)
 
+        row = 0
+
         # Main volume selector
         label = qt.QLabel("Input volume")
         label.setStyleSheet("margin-left:5px")
-        self.mainAreaLayout.addWidget(label, 0, 0)
+        self.mainAreaLayout.addWidget(label, row, 0)
         self.inputVolumeSelector = slicer.qMRMLNodeComboBox()
         self.inputVolumeSelector.nodeTypes = ("vtkMRMLScalarVolumeNode", "")
         self.inputVolumeSelector.selectNodeUponCreation = True
@@ -196,25 +198,28 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.inputVolumeSelector.showChildNodeTypes = False
         self.inputVolumeSelector.setMRMLScene(slicer.mrmlScene)
         # self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
-        self.mainAreaLayout.addWidget(self.inputVolumeSelector, 0, 1, 1, 3)
+        self.mainAreaLayout.addWidget(self.inputVolumeSelector, row, 1, 1, 3)
 
         # MIP frame
+        row += 1
         self.enhanceVisualizationCheckbox = qt.QCheckBox("Enhance visualization\n(MIP)")
         self.enhanceVisualizationCheckbox.setStyleSheet("margin: 10px 0 10px 8px; font-weight: bold;")
-        self.mainAreaLayout.addWidget(self.enhanceVisualizationCheckbox, 1, 0)
+        self.mainAreaLayout.addWidget(self.enhanceVisualizationCheckbox, row, 0)
         self.mipFrame = qt.QFrame()
         self.mipFrame.setFrameStyle(0x0002 | 0x0010)
         self.mipFrame.lineWidth = 2
         self.mipFrame.visible = False
         self.mipFrame.setStyleSheet("background-color: #EEEEEE")
-        self.mainAreaLayout.addWidget(self.mipFrame, 1, 1, 1, 3)
+        self.mainAreaLayout.addWidget(self.mipFrame, row, 1, 1, 3)
         self.mipLayout = qt.QVBoxLayout(self.mipFrame)
         self.mipViewer = MIPViewerWidget(self.mipFrame, MIPViewerWidget.CONTEXT_VASCULATURE)
         self.mipViewer.setup()
 
+        # Add seeds
+        row += 1
         label = qt.QLabel("Added seeds:")
         label.setStyleSheet("margin: 10px 0 0 5px")
-        self.mainAreaLayout.addWidget(label, 2, 0)
+        self.mainAreaLayout.addWidget(label, row, 0)
         self.addFiducialButton = ctk.ctkPushButton()
         self.addFiducialButton.text = "Add new seed"
         self.addFiducialButton.toolTip = "Click in the button and add a new seed in the volume. " \
@@ -224,15 +229,16 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.addFiducialButton.checkable = True
         # self.addFiducialButton.enabled = False
         self.addFiducialButton.setFixedSize(qt.QSize(115, 30))
-
-        self.mainAreaLayout.addWidget(self.addFiducialButton, 2, 1, 1, 3)
+        self.mainAreaLayout.addWidget(self.addFiducialButton, row, 1, 1, 3)
 
         # Container for the fiducials
+        row += 1
         self.fiducialsContainerFrame = qt.QFrame()
         self.fiducialsContainerFrame.setLayout(qt.QVBoxLayout())
-        self.mainAreaLayout.addWidget(self.fiducialsContainerFrame, 3, 0, 1, 4)
+        self.mainAreaLayout.addWidget(self.fiducialsContainerFrame, row, 0, 1, 4)
 
         # Load / save seeds button
+        row += 1
         self.loadSeedsButton = qt.QPushButton()
         self.loadSeedsButton.text = "Load seeds from XML"
         self.loadSeedsButton.toolTip = "Load the current seeds and lesion type for batch analysis in a XML file"
@@ -241,7 +247,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # self.loadSeedsButton.setMaximumWidth(150)
         self.loadSeedsButton.setStyleSheet("margin: 10px 0 10px 5px; height: 30px")
         # self.loadSeedsButton.setVisible(False)
-        self.mainAreaLayout.addWidget(self.loadSeedsButton, 4, 0, 1, 2)
+        self.mainAreaLayout.addWidget(self.loadSeedsButton, row, 0, 1, 2)
 
         self.saveSeedsButton = qt.QPushButton()
         self.saveSeedsButton.text = "Save to XML"
@@ -250,39 +256,48 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.saveSeedsButton.setIconSize(qt.QSize(16, 16))
         self.saveSeedsButton.setStyleSheet("margin: 10px 0; height: 30px")
         # self.saveSeedsButton.setMaximumWidth(150)
-        self.mainAreaLayout.addWidget(self.saveSeedsButton, 4, 2, 1, 2)
+        self.mainAreaLayout.addWidget(self.saveSeedsButton, row, 2, 1, 2)
+
+        # Operation mode (human, small animal)
+        row += 1
+        label = qt.QLabel("Operation mode:")
+        label.setStyleSheet("margin-left:5px")
+
 
         # Type of nodule
+        row += 1
         self.lesionTypeLabel = qt.QLabel("Lesion type:")
         self.lesionTypeLabel.setStyleSheet("margin:5px 0 0 5px")
-        self.mainAreaLayout.addWidget(self.lesionTypeLabel, 5, 0)
+        self.mainAreaLayout.addWidget(self.lesionTypeLabel, row, 0)
         self.lesionTypeRadioButtonGroup = qt.QButtonGroup()
         button = qt.QRadioButton("Unknown")
         button.setChecked(True)
         self.lesionTypeRadioButtonGroup.addButton(button, 0)
-        self.mainAreaLayout.addWidget(button, 5, 1)
+        self.mainAreaLayout.addWidget(button, row, 1)
         button = qt.QRadioButton("Nodule")
         self.lesionTypeRadioButtonGroup.addButton(button, 1)
-        self.mainAreaLayout.addWidget(button, 5, 2)
+        self.mainAreaLayout.addWidget(button, row, 2)
         button = qt.QRadioButton("Tumor")
         self.lesionTypeRadioButtonGroup.addButton(button, 2)
-        self.mainAreaLayout.addWidget(button, 5, 3)
+        self.mainAreaLayout.addWidget(button, row, 3)
 
         # Maximum radius
+        row += 1
         label = qt.QLabel("Maximum radius (mm)")
         label.setStyleSheet("margin: 10px 0 0 5px")
-        self.mainAreaLayout.addWidget(label, 6, 0)
+        self.mainAreaLayout.addWidget(label, row, 0)
 
         self.maximumRadiusSpinbox = qt.QSpinBox()
         self.maximumRadiusSpinbox.minimum = 0
         self.maximumRadiusSpinbox.setStyleSheet("margin-top:5px")
-        self.maximumRadiusSpinbox.setFixedWidth(40)
+        # self.maximumRadiusSpinbox.setFixedWidth(40)
         # Default value: 30
         radius = SlicerUtil.settingGetOrSetDefault(self.moduleName, "maximumRadius", 30)
         self.maximumRadiusSpinbox.value = int(radius)
         self.maximumRadiusSpinbox.toolTip = "Maximum radius for the tumor. Recommended: 30 mm for humans and 3 mm for small animals"
-        self.mainAreaLayout.addWidget(self.maximumRadiusSpinbox, 6, 1)
+        self.mainAreaLayout.addWidget(self.maximumRadiusSpinbox, row, 1)
 
+        row += 1
         self.applySegmentationButton = qt.QPushButton()
         self.applySegmentationButton.text = "Segment nodule"
         self.applySegmentationButton.toolTip = "Run the segmentation algorithm"
@@ -291,24 +306,26 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.applySegmentationButton.setStyleSheet(
             "font-weight:bold; font-size:12px; color: white; background-color:#274EE2; margin-top:10px;")
         self.applySegmentationButton.setFixedHeight(40)
-        self.mainAreaLayout.addWidget(self.applySegmentationButton, 7, 1, 1, 2)
+        self.mainAreaLayout.addWidget(self.applySegmentationButton, row, 1, 1, 2)
 
         # CLI progress bar
+        row += 1
         self.progressBar = slicer.qSlicerCLIProgressBar()
         self.progressBar.visible = False
-        self.mainAreaLayout.addWidget(self.progressBar, 8, 1, 1, 2)
+        self.mainAreaLayout.addWidget(self.progressBar, row, 1, 1, 2)
 
         # Threshold
+        row += 1
         self.selectThresholdLabel = qt.QLabel("Select a threshold:")
         self.selectThresholdLabel.setStyleSheet("margin: 10px 0 0 5px")
-        self.mainAreaLayout.addWidget(self.selectThresholdLabel, 9, 0)
+        self.mainAreaLayout.addWidget(self.selectThresholdLabel, row, 0)
         self.distanceLevelSlider = qt.QSlider()
         self.distanceLevelSlider.orientation = 1  # Horizontal
         self.distanceLevelSlider.minimum = -50  # Ad-hoc value
         self.distanceLevelSlider.maximum = 50
         self.distanceLevelSlider.setStyleSheet("margin-top:10px;padding-top:20px")
         self.distanceLevelSlider.setToolTip("Move the slider for a fine tuning segmentation")
-        self.mainAreaLayout.addWidget(self.distanceLevelSlider, 9, 1, 1, 3)
+        self.mainAreaLayout.addWidget(self.distanceLevelSlider, row, 1, 1, 3)
 
 
 
@@ -1012,9 +1029,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         active = self.enhanceVisualizationCheckbox.isChecked()
         self.mipFrame.visible = active
         self.mipViewer.activateEnhacedVisualization(active)
-        # if not active:
-        #     # Reset layout. Force the cursor state because it changes to seeds mode for some unexplained reason!
-        #     SlicerUtil.setFiducialsCursorMode(False)
+        if not active:
+            # Reset layout. Force the cursor state because it changes to seeds mode for some unexplained reason!
+            SlicerUtil.setFiducialsCursorMode(False)
 
 
     def __onAddFiducialButtonClicked__(self, checked):

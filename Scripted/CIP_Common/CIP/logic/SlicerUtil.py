@@ -374,7 +374,6 @@ class SlicerUtil:
         applicationLogic = slicer.app.applicationLogic()
         interactionNode = applicationLogic.GetInteractionNode()
         interactionNode.Reset()
-        interactionNode.SwitchToPersistentPlaceMode()
         layoutManager = slicer.app.layoutManager()
         layoutManager.setLayout(layoutNumber)
 
