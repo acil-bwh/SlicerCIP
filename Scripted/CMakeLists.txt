@@ -11,7 +11,7 @@ set(modules
   CIP_Common
   CIP_BodyComposition
   CIP_GetImage
-  PicasaSnap
+  #PicasaSnap
   )
 
 foreach (module ${modules})
