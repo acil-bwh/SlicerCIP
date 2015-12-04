@@ -1,5 +1,5 @@
 import os, sys
-from __main__ import vtk, qt, ctk, slicer
+import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import collections
 import itertools
@@ -8,20 +8,19 @@ import time
 import SimpleITK as sitk
 
 from FeatureWidgetHelperLib import FeatureExtractionLogic
-
 # Add the CIP common library to the path if it has not been loaded yet
-try:
-    from CIP.logic.SlicerUtil import SlicerUtil
-except Exception as ex:
-    currentpath = os.path.dirname(os.path.realpath(__file__))
-    # We assume that CIP_Common is in the development structure
-    path = os.path.normpath(currentpath + '/../CIP_Common')
-    if not os.path.exists(path):
-        # We assume that CIP is a subfolder (Slicer behaviour)
-        path = os.path.normpath(currentpath + '/CIP')
-    sys.path.append(path)
-    print("The following path was manually added to the PythonPath in CIP_LesionModel: " + path)
-    from CIP.logic.SlicerUtil import SlicerUtil
+# try:
+from CIP.logic.SlicerUtil import SlicerUtil
+# except Exception as ex:
+#     currentpath = os.path.dirname(os.path.realpath(__file__))
+#     # We assume that CIP_Common is in the development structure
+#     path = os.path.normpath(currentpath + '/../CIP_Common')
+#     if not os.path.exists(path):
+#         # We assume that CIP is a subfolder (Slicer behaviour)
+#         path = os.path.normpath(currentpath + '/CIP')
+#     sys.path.append(path)
+#     print("The following path was manually added to the PythonPath in CIP_LesionModel: " + path)
+#     from CIP.logic.SlicerUtil import SlicerUtil
 
 from CIP.logic import Util
 from CIP.logic import GeometryTopologyData, Point
@@ -86,15 +85,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.timer = qt.QTimer()
         self.timer.setInterval(150)
         self.timer.timeout.connect(self.__updateFOV__)
-
-        self.spheresDict = {}
-        self.spheresDict[0] = (15, 20, 25)  # Humans
-        self.spheresDict[1] = (1.5, 2, 2.5)  # Mouse
-
-        # self.selectedMainFeaturesKeys = set()
-        # self.selectedFeatureKeys = set()
-        # self.analysisResults = dict()
-        # self.analysisResultsTiming = dict()
 
     @property
     def storedColumnNames(self):
@@ -428,7 +418,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Go over all the possible radius
         r = 1
-        for rad in itertools.chain.from_iterable(self.spheresDict.values()):
+        for rad in itertools.chain.from_iterable(self.logic.spheresDict.values()):
             sp_id = int(rad*10)    # Multiply by 10 to avoid decimals
             sphereCheckBox = qt.QCheckBox()
             sphereCheckBox.setText("{0} mm radius".format(rad))
@@ -589,8 +579,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.featuresSelectionCollapsibleButton.visible =  self.logic.cliOutputScalarNode is not None
 
         # Show spheres buttons just visible for the analyzed spheres
-        for mode in self.spheresDict.iterkeys():
-            for rad in self.spheresDict[mode]:
+        for mode in self.logic.spheresDict.iterkeys():
+            for rad in self.logic.spheresDict[mode]:
                 visible = self.workingMode == mode
                 self.spheresButtonGroup.button(rad*10).setVisible(visible)
                 # "Show sphere" radio buttons just visible if the analysis was already performed
@@ -753,7 +743,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
             # Check in any sphere has been selected for the analysis, because otherwise it's not necessary to calculate the distance map
             anySphereChecked = False
-            for r in self.spheresDict[self.workingMode]:
+            for r in self.logic.spheresDict[self.workingMode]:
                 if self.spheresButtonGroup.button(r*10).isChecked():
                     anySphereChecked = True
                     break
@@ -775,7 +765,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 self.logic.getCurrentDistanceMap()
                 if self.logic.printTiming:
                     print("Time to get the current distance map: {0} seconds".format(time.time() - t1))
-                for r in self.spheresDict[self.workingMode]:
+                for r in self.logic.spheresDict[self.workingMode]:
                     if self.spheresButtonGroup.button(r*10).isChecked():
                         self.runAnalysisSphere(r, labelmapWholeVolumeArray)
                         self.__analyzedSpheres__.add(r)
@@ -1114,7 +1104,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         :param nodeID: Current node id
         :param event:
         """
-        print("DEBUG: Fiducials node modified.", nodeID)
+        # print("DEBUG: Fiducials node modified.", nodeID)
         self.addFiducialRow(nodeID)
         self.refreshUI()
 
@@ -1226,6 +1216,10 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.currentDistanceMap = None  # Current distance map from the specified origin
         self.currentCentroid = None  # Centroid of the nodule
         self.spheresLabelmaps = dict()  # Labelmap of spheres for a particular radius
+
+        self.spheresDict = dict()
+        self.spheresDict[0] = (15, 20, 25)  # Humans
+        self.spheresDict[1] = (1.5, 2, 2.5)  # Mouse
 
         self.printTiming = SlicerUtil.IsDevelopment
 

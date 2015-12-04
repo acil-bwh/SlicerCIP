@@ -456,10 +456,6 @@ class SlicerUtil:
             compNode.SetForegroundVolumeID(volumeNodeId)
             compNode.SetForegroundOpacity(opacity)
 
-
-    @staticmethod
-    def test():
-        print("DEBUG: probando a tope")
         # @staticmethod
     # def gitUpdateCIP():
     #     if Util.AUTO_UPDATE_DISABLED:

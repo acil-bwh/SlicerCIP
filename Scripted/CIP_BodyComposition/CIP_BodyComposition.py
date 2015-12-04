@@ -10,7 +10,7 @@ import time
 
 import numpy as np
 
-from __main__ import qt, vtk, ctk, slicer
+import qt, vtk, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 
 
@@ -42,7 +42,7 @@ class CIP_BodyComposition(ScriptedLoadableModule):
         """Constructor for main class"""
         self.parent = parent
         self.parent.title = "Body Composition"
-        self.parent.categories = ["Chest Imaging Platform.Modules"]
+        self.parent.categories = SlicerUtil.CIP_ModulesCategory
         self.parent.dependencies = ["CIP_Common"]
         self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory",
                                     "Brigham and Women's Hospital"]

@@ -11,6 +11,11 @@ set(modules
   CIP_Common
   CIP_BodyComposition
   CIP_GetImage
+  CIP_LesionModel
+  CIP_MIPViewer
+  CIP_PAARatio
+  CIP_ParenchymaSubtypeTraining
+  CIP_TracheaStentPlanning
   #PicasaSnap
   )
 
