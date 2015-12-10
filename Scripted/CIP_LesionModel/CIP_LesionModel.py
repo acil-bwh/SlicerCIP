@@ -64,15 +64,15 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """Widget constructor (existing module)"""
         ScriptedLoadableModuleWidget.__init__(self, parent)
         self.moduleName = "CIP_LesionModel"
-        # from functools import partial
-        # def onNodeAdded(self, caller, eventId, callData):
-        #   """Node added to the Slicer scene"""
-        #   if callData.GetClassName() == 'vtkMRMLMarkupsFiducialNode':
-        #     self.onNewFiducialAdded(callData)
-        #
-        # self.onNodeAdded = partial(onNodeAdded, self)
-        # self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
-        # slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
+        from functools import partial
+        def onNodeAdded(self, caller, eventId, callData):
+            """Node added to the Slicer scene"""
+            if callData.GetClassName() == 'vtkMRMLScalarVolumeNode':
+                self.__onVolumeAddedToScene__(callData)
+
+        self.onNodeAdded = partial(onNodeAdded, self)
+        self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
+        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
 
         self.__initVars__()
 
@@ -164,58 +164,70 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         ScriptedLoadableModuleWidget.setup(self)
         self.workingMode = 0   #Humans
 
-        self.semaphoreOpen = False
+        self.semaphoreOpen = False      # To prevent duplicate events
         # self.timer = qt.QTimer()
         # self.timer.timeout.connect(self.checkAndRefreshModels)
         self.lastRefreshValue = -5000  # Just a value out of range
 
         #######################
-        # Main area
+        # Case selector area
         collapsibleButton = ctk.ctkCollapsibleButton()
-        collapsibleButton.text = "Main parameters"
+        collapsibleButton.text = "Case selector"
         self.layout.addWidget(collapsibleButton)
         # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
-        self.mainAreaLayout = qt.QGridLayout(collapsibleButton)
+        self.caseSelectorLayout = qt.QGridLayout(collapsibleButton)
 
         row = 0
 
         # Main volume selector
-        label = qt.QLabel("Input volume")
-        label.setStyleSheet("margin-left:5px")
-        self.mainAreaLayout.addWidget(label, row, 0)
+        self.inputVolumeLabel = qt.QLabel("Input volume")
+        self.inputVolumeLabel.setStyleSheet("margin-left:5px")
+        self.caseSelectorLayout.addWidget(self.inputVolumeLabel, row, 0)
+
         self.inputVolumeSelector = slicer.qMRMLNodeComboBox()
         self.inputVolumeSelector.nodeTypes = ("vtkMRMLScalarVolumeNode", "")
         self.inputVolumeSelector.selectNodeUponCreation = True
         self.inputVolumeSelector.autoFillBackground = True
         self.inputVolumeSelector.addEnabled = False
-        self.inputVolumeSelector.noneEnabled = False
+        self.inputVolumeSelector.noneEnabled = True
         self.inputVolumeSelector.removeEnabled = False
         self.inputVolumeSelector.showHidden = False
         self.inputVolumeSelector.showChildNodeTypes = False
         self.inputVolumeSelector.setMRMLScene(slicer.mrmlScene)
         # self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
-        self.mainAreaLayout.addWidget(self.inputVolumeSelector, row, 1, 1, 3)
+        self.caseSelectorLayout.addWidget(self.inputVolumeSelector, row, 1, 1, 3)
 
         # MIP frame
         row += 1
-        self.enhanceVisualizationCheckbox = qt.QCheckBox("Enhance visualization\n(MIP)")
+        self.enhanceVisualizationCheckbox = qt.QCheckBox("Enhance visualization (MIP)")
         self.enhanceVisualizationCheckbox.setStyleSheet("margin: 10px 0 10px 8px; font-weight: bold;")
-        self.mainAreaLayout.addWidget(self.enhanceVisualizationCheckbox, row, 0)
+        self.caseSelectorLayout.addWidget(self.enhanceVisualizationCheckbox, row, 0, 1, 4)
+
+        row += 1
         self.mipFrame = qt.QFrame()
         self.mipFrame.setFrameStyle(0x0002 | 0x0010)
         self.mipFrame.lineWidth = 2
         self.mipFrame.visible = False
         self.mipFrame.setStyleSheet("background-color: #EEEEEE")
-        self.mainAreaLayout.addWidget(self.mipFrame, row, 1, 1, 3)
+        self.caseSelectorLayout.addWidget(self.mipFrame, row, 0, 1, 4)
+
         self.mipLayout = qt.QVBoxLayout(self.mipFrame)
         self.mipViewer = MIPViewerWidget(self.mipFrame, MIPViewerWidget.CONTEXT_VASCULATURE)
         self.mipViewer.setup()
 
+        #######################
+        # Nodule segmentation area
+        collapsibleButton = ctk.ctkCollapsibleButton()
+        collapsibleButton.text = "Nodule segmentation"
+        self.layout.addWidget(collapsibleButton)
+        # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
+        self.noduleSegmentationLayout = qt.QGridLayout(collapsibleButton)
+
         # Add seeds
         row += 1
-        label = qt.QLabel("Added seeds:")
-        label.setStyleSheet("margin: 10px 0 0 5px")
-        self.mainAreaLayout.addWidget(label, row, 0)
+        self.labelAddedSeeds = qt.QLabel("Added seeds:")
+        self.labelAddedSeeds.setStyleSheet("margin: 10px 0 0 5px")
+        self.noduleSegmentationLayout.addWidget(self.labelAddedSeeds, row, 0)
         self.addFiducialButton = ctk.ctkPushButton()
         self.addFiducialButton.text = "Add new seed"
         self.addFiducialButton.toolTip = "Click in the button and add a new seed in the volume. " \
@@ -225,13 +237,13 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.addFiducialButton.checkable = True
         # self.addFiducialButton.enabled = False
         self.addFiducialButton.setFixedSize(qt.QSize(115, 30))
-        self.mainAreaLayout.addWidget(self.addFiducialButton, row, 1, 1, 3)
+        self.noduleSegmentationLayout.addWidget(self.addFiducialButton, row, 1, 1, 3)
 
         # Container for the fiducials
         row += 1
         self.fiducialsContainerFrame = qt.QFrame()
         self.fiducialsContainerFrame.setLayout(qt.QVBoxLayout())
-        self.mainAreaLayout.addWidget(self.fiducialsContainerFrame, row, 0, 1, 4)
+        self.noduleSegmentationLayout.addWidget(self.fiducialsContainerFrame, row, 0, 1, 4)
 
         # Load / save seeds button
         row += 1
@@ -243,7 +255,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # self.loadSeedsButton.setMaximumWidth(150)
         self.loadSeedsButton.setStyleSheet("margin: 10px 0 10px 5px; height: 30px")
         # self.loadSeedsButton.setVisible(False)
-        self.mainAreaLayout.addWidget(self.loadSeedsButton, row, 0, 1, 2)
+        self.noduleSegmentationLayout.addWidget(self.loadSeedsButton, row, 0, 1, 2)
 
         self.saveSeedsButton = qt.QPushButton()
         self.saveSeedsButton.text = "Save to XML"
@@ -252,45 +264,45 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.saveSeedsButton.setIconSize(qt.QSize(16, 16))
         self.saveSeedsButton.setStyleSheet("margin: 10px 0; height: 30px")
         # self.saveSeedsButton.setMaximumWidth(150)
-        self.mainAreaLayout.addWidget(self.saveSeedsButton, row, 2, 1, 2)
+        self.noduleSegmentationLayout.addWidget(self.saveSeedsButton, row, 2, 1, 2)
 
         # Operation mode (human, small animal)
-        row += 1
-        label = qt.QLabel("Operation mode:")
-        label.setStyleSheet("margin-left:5px")
+        # row += 1
+        # label = qt.QLabel("Operation mode:")
+        # label.setStyleSheet("margin-left:5px")
 
         # Type of nodule
         row += 1
         self.lesionTypeLabel = qt.QLabel("Lesion type:")
         self.lesionTypeLabel.setStyleSheet("margin:5px 0 0 5px")
-        self.mainAreaLayout.addWidget(self.lesionTypeLabel, row, 0)
+        self.noduleSegmentationLayout.addWidget(self.lesionTypeLabel, row, 0)
         self.lesionTypeRadioButtonGroup = qt.QButtonGroup()
         button = qt.QRadioButton("Unknown")
         button.setChecked(True)
         self.lesionTypeRadioButtonGroup.addButton(button, 0)
-        self.mainAreaLayout.addWidget(button, row, 1)
+        self.noduleSegmentationLayout.addWidget(button, row, 1)
         button = qt.QRadioButton("Nodule")
         self.lesionTypeRadioButtonGroup.addButton(button, 1)
-        self.mainAreaLayout.addWidget(button, row, 2)
+        self.noduleSegmentationLayout.addWidget(button, row, 2)
         button = qt.QRadioButton("Tumor")
         self.lesionTypeRadioButtonGroup.addButton(button, 2)
-        self.mainAreaLayout.addWidget(button, row, 3)
+        self.noduleSegmentationLayout.addWidget(button, row, 3)
 
         # Maximum radius
         row += 1
-        label = qt.QLabel("Maximum lesion radius (mm)")
-        label.setStyleSheet("margin: 10px 0 0 5px")
-        self.mainAreaLayout.addWidget(label, row, 0, 1, 2)
+        self.labelMaxRad = qt.QLabel("Maximum lesion radius (mm)")
+        self.labelMaxRad.setStyleSheet("margin: 20px 0 0 5px")
+        self.noduleSegmentationLayout.addWidget(self.labelMaxRad, row, 0)
 
         self.maximumRadiusSpinbox = qt.QSpinBox()
         self.maximumRadiusSpinbox.minimum = 0
-        self.maximumRadiusSpinbox.setStyleSheet("margin-top:5px")
+        self.maximumRadiusSpinbox.setStyleSheet("margin-top: 15px")
         # self.maximumRadiusSpinbox.setFixedWidth(40)
         # Default value: 30
         radius = SlicerUtil.settingGetOrSetDefault(self.moduleName, "maximumRadius", 30)
         self.maximumRadiusSpinbox.value = int(radius)
         self.maximumRadiusSpinbox.toolTip = "Maximum radius for the tumor. Recommended: 30 mm for humans and 3 mm for small animals"
-        self.mainAreaLayout.addWidget(self.maximumRadiusSpinbox, row, 2)
+        self.noduleSegmentationLayout.addWidget(self.maximumRadiusSpinbox, row, 1)
 
         row += 1
         self.segmentButton = qt.QPushButton()
@@ -301,55 +313,70 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.segmentButton.setStyleSheet(
             "font-weight:bold; font-size:12px; color: white; background-color:#274EE2; margin-top:10px;")
         self.segmentButton.setFixedHeight(40)
-        self.mainAreaLayout.addWidget(self.segmentButton, row, 1, 1, 2)
+        self.noduleSegmentationLayout.addWidget(self.segmentButton, row, 1, 1, 2)
 
         # CLI progress bar
         row += 1
         self.progressBar = slicer.qSlicerCLIProgressBar()
         self.progressBar.visible = False
-        self.mainAreaLayout.addWidget(self.progressBar, row, 1, 1, 2)
+        self.noduleSegmentationLayout.addWidget(self.progressBar, row, 1, 1, 2)
 
         # Threshold
         row += 1
         self.selectThresholdLabel = qt.QLabel("Select a threshold:")
         self.selectThresholdLabel.setStyleSheet("margin: 10px 0 0 5px")
-        self.mainAreaLayout.addWidget(self.selectThresholdLabel, row, 0)
+        self.selectThresholdLabel.setToolTip("Move the slider for a fine tuning segmentation")
+        self.noduleSegmentationLayout.addWidget(self.selectThresholdLabel, row, 0)
         self.distanceLevelSlider = qt.QSlider()
         self.distanceLevelSlider.orientation = 1  # Horizontal
         self.distanceLevelSlider.minimum = -50  # Ad-hoc value
         self.distanceLevelSlider.maximum = 50
         self.distanceLevelSlider.setStyleSheet("margin-top:10px;padding-top:20px")
         self.distanceLevelSlider.setToolTip("Move the slider for a fine tuning segmentation")
-        self.mainAreaLayout.addWidget(self.distanceLevelSlider, row, 1, 1, 3)
+        self.noduleSegmentationLayout.addWidget(self.distanceLevelSlider, row, 1, 1, 3)
 
-
-
-        ## FEATURES SELECTION
+        #####
+        ## RADIOMICS SECTION
         # used to map feature class to a list of auto-generated feature checkbox widgets
         self.featureWidgets = collections.OrderedDict()
         for key in self.featureClasses.keys():
             self.featureWidgets[key] = list()
 
-        self.featuresSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
-        self.featuresSelectionCollapsibleButton.text = "Features Selection"
-        self.layout.addWidget(self.featuresSelectionCollapsibleButton)
-        self.featuresLayout = qt.QFormLayout(self.featuresSelectionCollapsibleButton)
+        self.radiomicsCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.radiomicsCollapsibleButton.text = "Radiomics"
+        self.layout.addWidget(self.radiomicsCollapsibleButton)
+        self.radiomicsLayout = qt.QFormLayout(self.radiomicsCollapsibleButton)
+
+        self.noduleLabelmapLabel = qt.QLabel("Nodule labelmap")
+        self.noduleLabelmapLabel.setStyleSheet("margin: 10px 0")
+        self.noduleLabelmapSelector = slicer.qMRMLNodeComboBox()
+        self.noduleLabelmapSelector.setStyleSheet("margin: 10px 0")
+        self.noduleLabelmapSelector.nodeTypes = ("vtkMRMLLabelMapVolumeNode", "")
+        self.noduleLabelmapSelector.selectNodeUponCreation = False
+        self.noduleLabelmapSelector.addEnabled = False
+        self.noduleLabelmapSelector.noneEnabled = True
+        self.noduleLabelmapSelector.removeEnabled = False
+        self.noduleLabelmapSelector.showHidden = False
+        self.noduleLabelmapSelector.showChildNodeTypes = False
+        self.noduleLabelmapSelector.setMRMLScene(slicer.mrmlScene)
+        self.noduleLabelmapSelector.toolTip = "Labelmap with the segmented nodule"
+        self.radiomicsLayout.addRow(self.noduleLabelmapLabel, self.noduleLabelmapSelector)
 
         # auto-generate QTabWidget Tabs and QCheckBoxes (subclassed in FeatureWidgetHelperLib)
         self.tabsFeatureClasses = FeatureWidgetHelperLib.CheckableTabsWidget()
-        self.featuresLayout.addRow(self.tabsFeatureClasses)
+        self.radiomicsLayout.addRow(self.tabsFeatureClasses)
 
-        # Labelmap selector (just for parenchymal volune analysis
-        self.labelMapSelector = slicer.qMRMLNodeComboBox()
-        self.labelMapSelector.nodeTypes = ("vtkMRMLLabelMapVolumeNode", "")
-        self.labelMapSelector.selectNodeUponCreation = False
-        self.labelMapSelector.addEnabled = False
-        self.labelMapSelector.noneEnabled = True
-        self.labelMapSelector.removeEnabled = False
-        self.labelMapSelector.showHidden = False
-        self.labelMapSelector.showChildNodeTypes = False
-        self.labelMapSelector.setMRMLScene(slicer.mrmlScene)
-        self.labelMapSelector.toolTip = "Select a labelmap if you want to run Parenchymal Volume analysis"
+        # Labelmap selector (just for parenchymal volume analysis)
+        self.parenchymaLabelmapSelector = slicer.qMRMLNodeComboBox()
+        self.parenchymaLabelmapSelector.nodeTypes = ("vtkMRMLLabelMapVolumeNode", "")
+        self.parenchymaLabelmapSelector.selectNodeUponCreation = False
+        self.parenchymaLabelmapSelector.addEnabled = False
+        self.parenchymaLabelmapSelector.noneEnabled = True
+        self.parenchymaLabelmapSelector.removeEnabled = False
+        self.parenchymaLabelmapSelector.showHidden = False
+        self.parenchymaLabelmapSelector.showChildNodeTypes = False
+        self.parenchymaLabelmapSelector.setMRMLScene(slicer.mrmlScene)
+        self.parenchymaLabelmapSelector.toolTip = "Select a labelmap if you want to run Parenchymal Volume analysis"
         # self.mainAreaLayout.addRow("Select a labelmap", self.labelMapSelector)
 
         # Features
@@ -365,7 +392,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             if featureClass == "Parenchymal Volume":
                 label = qt.QLabel("Select a labelmap")
                 tabFeatureClass.layout().addWidget(label, 0, 0)
-                tabFeatureClass.layout().addWidget(self.labelMapSelector, 0, 1, 1, 2)
+                tabFeatureClass.layout().addWidget(self.parenchymaLabelmapSelector, 0, 1, 1, 2)
                 gridLayoutCoordinates = ((row, col) for col in range(gridWidth) for row in range(1, gridHeight + 1))
             else:
                 gridLayoutCoordinates = ((row, col) for col in range(gridWidth) for row in range(gridHeight))
@@ -391,8 +418,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Different radius selection
         self.structuresLabel = qt.QLabel("Structures to analyze:")
-        self.structuresLabel.setStyleSheet("margin-top: 5px")
-        self.featuresLayout.addWidget(self.structuresLabel)
+        self.structuresLabel.setStyleSheet("margin-top: 10px")
+        self.radiomicsLayout.addRow(self.structuresLabel, None)
+
 
         self.spheresButtonGroup = qt.QButtonGroup()
         self.spheresButtonGroup.setExclusive(False)
@@ -404,16 +432,16 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # SPHERES
         self.sphereRadiusFrame = qt.QFrame()
         sp_id = 0
-        self.radiusFrameLayout = qt.QGridLayout(self.sphereRadiusFrame)
+        self.sphereRadiusFrameLayout = qt.QGridLayout(self.sphereRadiusFrame)
         self.noduleCheckbox = qt.QCheckBox()
         self.noduleCheckbox.setText("Nodule")
         self.noduleCheckbox.setSizePolicy(fixedSizePolicy)
         self.noduleCheckbox.setChecked(True)
         self.spheresButtonGroup.addButton(self.noduleCheckbox, sp_id)
-        self.radiusFrameLayout.addWidget(self.noduleCheckbox, 0, 0)
+        self.sphereRadiusFrameLayout.addWidget(self.noduleCheckbox, 0, 0)
         showSphereRadioButton = qt.QRadioButton("(Show just nodule)")
         showSphereRadioButton.setChecked(True)
-        self.radiusFrameLayout.addWidget(showSphereRadioButton, 0, 1)
+        self.sphereRadiusFrameLayout.addWidget(showSphereRadioButton, 0, 1)
         self.showSpheresButtonGroup.addButton(showSphereRadioButton, sp_id)
 
         # Go over all the possible radius
@@ -424,80 +452,55 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             sphereCheckBox.setText("{0} mm radius".format(rad))
             sphereCheckBox.setSizePolicy(fixedSizePolicy)
             self.spheresButtonGroup.addButton(sphereCheckBox, sp_id)
-            self.radiusFrameLayout.addWidget(sphereCheckBox, r, 0)
+            self.sphereRadiusFrameLayout.addWidget(sphereCheckBox, r, 0)
             showSphereRadioButton = qt.QRadioButton("Show")
             # showSphereCheckbox.setVisible(False)
-            self.radiusFrameLayout.addWidget(showSphereRadioButton, r, 1)
+            self.sphereRadiusFrameLayout.addWidget(showSphereRadioButton, r, 1)
             self.showSpheresButtonGroup.addButton(showSphereRadioButton, sp_id)
             r += 1
-
-
-        # self.r15Checkbox = qt.QCheckBox()
-        # sp_id = 15
-        # self.r15Checkbox.setText("15 mm sphere")
-        # self.r15Checkbox.setSizePolicy(fixedSizePolicy)
-        # self.spheresButtonGroup.addButton(self.r15Checkbox, sp_id)
-        # self.radiusFrameLayout.addWidget(self.r15Checkbox, 1, 0)
-        # showSphereCheckbox = qt.QRadioButton("Show")
-        # # showSphereCheckbox.setVisible(False)
-        # self.radiusFrameLayout.addWidget(showSphereCheckbox, 1, 1)
-        # self.showSpheresButtonGroup.addButton(showSphereCheckbox, sp_id)
-        #
-        # self.r20Checkbox = qt.QCheckBox()
-        # sp_id = 20
-        # self.r20Checkbox.setText("20 mm sphere")
-        # self.r20Checkbox.setSizePolicy(fixedSizePolicy)
-        # self.spheresButtonGroup.addButton(self.r20Checkbox, sp_id)
-        # self.radiusFrameLayout.addWidget(self.r20Checkbox, 2, 0)
-        # showSphereCheckbox = qt.QRadioButton("Show")
-        # # showSphereCheckbox.setVisible(False)
-        # self.radiusFrameLayout.addWidget(showSphereCheckbox, 2, 1)
-        # self.showSpheresButtonGroup.addButton(showSphereCheckbox, sp_id)
-        #
-        # self.r25Checkbox = qt.QCheckBox()
-        # sp_id = 25
-        # self.r25Checkbox.setText("25 mm sphere")
-        # self.spheresButtonGroup.addButton(self.r25Checkbox, sp_id)
-        # self.radiusFrameLayout.addWidget(self.r25Checkbox, 3, 0)
-        # showSphereCheckbox = qt.QRadioButton("Show")
-        # # showSphereCheckbox.setVisible(False)
-        # self.radiusFrameLayout.addWidget(showSphereCheckbox, 3, 1, 1)
-        # self.showSpheresButtonGroup.addButton(showSphereCheckbox, sp_id)
 
         self.otherRadiusCheckbox = qt.QCheckBox()
         sp_id = -2
         self.otherRadiusCheckbox.setText("Other (mm sphere radius)")
         self.otherRadiusCheckbox.setSizePolicy(fixedSizePolicy)
         self.spheresButtonGroup.addButton(self.otherRadiusCheckbox, sp_id)
-        self.radiusFrameLayout.addWidget(self.otherRadiusCheckbox, r, 0)
+        self.sphereRadiusFrameLayout.addWidget(self.otherRadiusCheckbox, r, 0)
         self.otherRadiusTextbox = qt.QLineEdit()
         self.otherRadiusTextbox.setMaximumWidth(50)
-        self.radiusFrameLayout.addWidget(self.otherRadiusTextbox, r, 1)
+        self.sphereRadiusFrameLayout.addWidget(self.otherRadiusTextbox, r, 1)
         self.otherRadiusShowSphereRadioButton = qt.QRadioButton("Show")
         # showSphereCheckbox.setVisible(False)
-        self.radiusFrameLayout.addWidget(self.otherRadiusShowSphereRadioButton, r, 2)
+        self.sphereRadiusFrameLayout.addWidget(self.otherRadiusShowSphereRadioButton, r, 2)
         self.showSpheresButtonGroup.addButton(self.otherRadiusShowSphereRadioButton, sp_id)
 
-        self.featuresLayout.addWidget(self.sphereRadiusFrame)
-
-
-
-        # Feature Buttons Frame and Layout
-        self.featureButtonsFrame = qt.QFrame(self.featuresSelectionCollapsibleButton)
-        self.featureButtonsFrame.setLayout(qt.QHBoxLayout())
-        self.featuresLayout.addRow(self.featureButtonsFrame)
-
+        r +=1
         # HeterogeneityCAD Apply Button
-        self.runAnalysisButton = qt.QPushButton("Analyze!", self.featureButtonsFrame)
+        self.runAnalysisButton = qt.QPushButton("Analyze!")
         self.runAnalysisButton.toolTip = "Run all the checked analysis"
         self.runAnalysisButton.setIcon(qt.QIcon("{0}/analyze.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.runAnalysisButton.setIconSize(qt.QSize(24, 24))
+        self.runAnalysisButton.setFixedWidth(150)
         self.runAnalysisButton.setStyleSheet("font-weight:bold; font-size:12px; color: white; background-color:#274EE2")
-        self.featureButtonsFrame.layout().addWidget(self.runAnalysisButton)
+        # self.reportsFrame.layout().addWidget(self.runAnalysisButton)
+        self.sphereRadiusFrameLayout.addWidget(self.runAnalysisButton, r, 0)
+
+        self.radiomicsLayout.addWidget(self.sphereRadiusFrame)
+
+        collapsibleButton = ctk.ctkCollapsibleButton()
+        collapsibleButton.text = "Results"
+        self.layout.addWidget(collapsibleButton)
+        self.reportsLayout = qt.QHBoxLayout(collapsibleButton)
+        # Frame to store the ReportsViewer
+        # self.reportsFrame = qt.QFrame(self.radiomicsCollapsibleButton)
+        # self.reportsFrame.setLayout(qt.QHBoxLayout())
+        # self.radiomicsLayout.addRow(self.reportsLayout)
+
+
 
         # Reports widget
         self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
-                                               parentWidget=self.featureButtonsFrame)
+                                               parentWidget=self.reportsLayout)
+                                               # parentWidget=self.reportsFrame)
         self.reportsWidget.setup()
         self.reportsWidget.showWarnigMessages(False)
 
@@ -536,10 +539,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         ######################
         # Connections
         self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onInputVolumeChanged__)
+        self.noduleLabelmapSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onNoduleLabelmapChanged__)
         self.addFiducialButton.connect('clicked(bool)', self.__onAddFiducialButtonClicked__)
         self.enhanceVisualizationCheckbox.connect("stateChanged(int)", self.__onEnhanceVisualizationCheckChanged__)
         self.segmentButton.connect('clicked()', self.__onSegmentButtonClicked__)
         self.distanceLevelSlider.connect('sliderReleased()', self.checkAndRefreshModels)
+
         self.showSpheresButtonGroup.connect("buttonClicked(int)", self.__onShowSphereCheckboxClicked__)
         # runAnalysisButton.connect("clicked()", self.__onRunAnalysisButtonClicked__)
         self.runAnalysisButton.connect('clicked()', self.__onAnalyzeButtonClicked__)
@@ -551,6 +556,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.saveTimeCostCheckbox.connect("stateChanged(int)", self.__onSaveTimeCostCheckboxClicked__)
 
         slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__)
+
 
         self.refreshUI()
 
@@ -575,8 +581,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.segmentButton.setVisible(False)
 
         # Level slider and Features Selection section active after running the segmentation algorithm
-        self.selectThresholdLabel.visible = self.distanceLevelSlider.visible = \
-            self.featuresSelectionCollapsibleButton.visible =  self.logic.cliOutputScalarNode is not None
+        self.selectThresholdLabel.visible = self.distanceLevelSlider.visible = self.logic.cliOutputScalarNode is not None
 
         # Show spheres buttons just visible for the analyzed spheres
         for mode in self.logic.spheresDict.iterkeys():
@@ -703,7 +708,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             qt.QMessageBox.information(slicer.util.mainWindow(), "Select a feature",
                                        "Please select at least one feature from the menu to calculate")
             return
-        if "Parenchymal Volume" in self.selectedMainFeaturesKeys and self.labelMapSelector.currentNode() is None:
+        if "Parenchymal Volume" in self.selectedMainFeaturesKeys and self.parenchymaLabelmapSelector.currentNode() is None:
             qt.QMessageBox.warning(slicer.util.mainWindow(), "Select a labelmap",
                                    "Please select a segmented emphysema labelmap in the Parenchymal Volume tab")
             return
@@ -756,7 +761,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 if "Parenchymal Volume" in self.selectedMainFeaturesKeys:
                     # If the parenchymal volume analysis is required, we need the numpy array represeting the whole
                     # emphysema segmentation labelmap
-                    labelmapWholeVolumeArray = slicer.util.array(self.labelMapSelector.currentNode().GetName())
+                    labelmapWholeVolumeArray = slicer.util.array(self.parenchymaLabelmapSelector.currentNode().GetName())
                 else:
                     labelmapWholeVolumeArray = None
 
@@ -1054,6 +1059,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         self.refreshUI()
 
+
+    def __onVolumeAddedToScene__(self, scalarNode):
+        if self.inputVolumeSelector.currentNode() is None:
+            self.inputVolumeSelector.setCurrentNode(scalarNode)
+
     def __onInputVolumeChanged__(self, node):
         """ Input volume selector changed
         :param node: selected node
@@ -1068,6 +1078,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         #     # Stop checking if there is no selected node
         #     self.timer.stop()
 
+        self.refreshUI()
+
+    def __onNoduleLabelmapChanged__(self, node):
+        self.logic.currentLabelmap = node
         self.refreshUI()
 
     def __onPreVolumeLoad__(self, volume):
@@ -1149,7 +1163,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 break
         SlicerUtil.jumpToSeed(coords)
         self.segmentButton.setEnabled(False)
-        self.refreshUI()
+        # self.refreshUI()
+        self.noduleLabelmapSelector.setCurrentNode(self.logic.currentLabelmap)
 
         # Start the timer that will refresh all the visualization nodes
         # self.timer.start(500)
@@ -1456,12 +1471,14 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         :param event:
         :return:
         """
+        self.caller = caller
         if caller.IsA('vtkMRMLCommandLineModuleNode') \
                 and not self.invokedCLI:  # Semaphore to avoid duplicated events
-            if caller.GetStatusString() == "Completed":
+            if caller.GetStatus() == caller.Completed:
                 self.invokedCLI = True
                 self.__processNoduleSegmentationCLIResults__()
-            elif caller.GetStatusString() == "Completed with errors":
+            # elif caller.GetStatusString() == "Completed with errors":
+            elif caller.GetStatus() == caller.CompletedWithErrors:
                 # TODO: print current parameters with caller.GetParameterDefault()
                 raise Exception("The Nodule Segmentation CLI failed")
 
