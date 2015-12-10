@@ -649,6 +649,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
             # Avoid duplicated events for this fiducial node
             self.semaphoreOpen = False
+            self.refreshUI()
 
 
 
@@ -1162,7 +1163,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 fidNode.GetNthFiducialPosition(i, coords)
                 break
         SlicerUtil.jumpToSeed(coords)
-        self.segmentButton.setEnabled(False)
+        self.segmentButton.setEnabled(True)
         # self.refreshUI()
         self.noduleLabelmapSelector.setCurrentNode(self.logic.currentLabelmap)
 
