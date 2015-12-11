@@ -64,7 +64,8 @@ qSlicerAirwayInspectorModule::~qSlicerAirwayInspectorModule()
 QString qSlicerAirwayInspectorModule::helpText()const
 {
   QString help = QString(
-    "The AirwayInspector Module loads and adjusts display parameters of volume data.<br>"
+    "The AirwayInspector Module detects airway walls and computes their parameters.<br>"
+    "To analyze an airway select a volume, point your mouse in the center or an aiway in the Red slice view and press 'a' key.<br>"
     "<a href=\"%1/Documentation/%2.%3/Modules/AirwayInspector\">"
     "%1/Documentation/%2.%3/Modules/AirwayInspector</a><br>");
   return help.arg(this->slicerWikiUrl()).arg(Slicer_VERSION_MAJOR).arg(Slicer_VERSION_MINOR);
@@ -107,7 +108,7 @@ QIcon qSlicerAirwayInspectorModule::icon()const
 //-----------------------------------------------------------------------------
 QStringList qSlicerAirwayInspectorModule::categories() const
 {
-  return QStringList() << "";
+  return QStringList() << "COPD";
 }
 
 //-----------------------------------------------------------------------------

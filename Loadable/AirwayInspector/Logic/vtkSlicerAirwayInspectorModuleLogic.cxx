@@ -84,6 +84,7 @@ vtkMRMLAirwayNode* vtkSlicerAirwayInspectorModuleLogic::AddAirwayNode(char *volu
 
     airwayNode->SetVolumeNodeID(volumeNodeID);
     airwayNode->SetXYZ(x, y, z);
+    airwayNode->SetCenterXYZ(x, y, z);
     this->GetMRMLScene()->AddNode(airwayNode);
 
     airwayNode->Delete();
@@ -126,7 +127,7 @@ vtkImageData* vtkSlicerAirwayInspectorModuleLogic::CreateAirwaySlice(vtkMRMLAirw
   this->Reslicer->ComputeAxesOn();
 
   // In RAS
-  node->GetXYZ(p);
+  node->GetCenterXYZ(p);
 
   vtkMatrix4x4 *rasToIJK = vtkMatrix4x4::New();
   volumeNode->GetRASToIJKMatrix(rasToIJK);
@@ -166,7 +167,7 @@ vtkImageData* vtkSlicerAirwayInspectorModuleLogic::CreateAirwaySlice(vtkMRMLAirw
 }
 
 ////////////////////////////
-void vtkSlicerAirwayInspectorModuleLogic::ComputeAirwayWall(vtkImageData* sliceImage, vtkMRMLAirwayNode *node)
+void vtkSlicerAirwayInspectorModuleLogic::ComputeAirwayWall(vtkImageData* sliceImage, vtkMRMLAirwayNode *node, int method)
 {
   vtkMRMLScalarVolumeNode *volumeNode = vtkMRMLScalarVolumeNode::SafeDownCast(
     this->GetMRMLScene()->GetNodeByID(node->GetVolumeNodeID()));
@@ -175,7 +176,7 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeAirwayWall(vtkImageData* sliceI
     return;
     }
 
-  this->WallSolver->SetMethod(node->GetMethod());
+  this->WallSolver->SetMethod(method);
   this->WallSolver->SetDelta(0.1);
   this->WallSolver->SetWallThreshold(node->GetThreshold());
 
@@ -184,45 +185,76 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeAirwayWall(vtkImageData* sliceI
   if (this->WallSolver->GetMethod() == 0)
   {
     methodTag = "FWHM";
-  } else if (this->WallSolver->GetMethod() == 1)
+  }
+  else if (this->WallSolver->GetMethod() == 1)
   {
-    methodTag = "ZC";
-  } else if (this->WallSolver->GetMethod() == 2)
+    methodTag = "Zero Crossing";
+  }
+  else if (this->WallSolver->GetMethod() == 2)
   {
-    methodTag = "PC";
+    methodTag = "PC-Single Kernel";
+  }
+  else if (this->WallSolver->GetMethod() == 3)
+  {
+    methodTag = "PC-Multiple Kernels";
   }
 
+  vtkDoubleArray *mean = node->GetMean(method);
+  if (!mean)
+    {
+    mean = vtkDoubleArray::New();
+    node->SetMean(method, mean);
+    }
+  vtkDoubleArray *std = node->GetStd(method);
+  if (!std)
+    {
+    std = vtkDoubleArray::New();
+    node->SetStd(method, std);
+    }
+  vtkDoubleArray *min = node->GetMin(method);
+  if (!min)
+    {
+    min = vtkDoubleArray::New();
+    node->SetMin(method, min);
+    }
+  vtkDoubleArray *max = node->GetMax(method);
+  if (!max)
+    {
+    max = vtkDoubleArray::New();
+    node->SetMax(method, max);
+    }
+
   std::stringstream name;
-  name << "airwaymetrics-" << methodTag.c_str() << "-mean";
-  node->GetMean()->SetName(name.str().c_str());
+  name << "airwaymetrics-" << method << "-mean";
+  mean->SetName(name.str().c_str());
 
   name.clear();
-  name << "airwaymetrics-" << methodTag.c_str() << "-std";
-  node->GetStd()->SetName(name.str().c_str());
+  name << "airwaymetrics-" << method << "-std";
+  std->SetName(name.str().c_str());
 
   name.clear();
-  name << "airwaymetrics-" << methodTag.c_str() << "-min";
-  node->GetMin()->SetName(name.str().c_str());
+  name << "airwaymetrics-" << method << "-min";
+  min->SetName(name.str().c_str());
 
   name.clear();
-  name << "airwaymetrics-" << methodTag.c_str() << "-max";
-  node->GetMax()->SetName(name.str().c_str());
+  name << "airwaymetrics-" << method << "-max";
+  max->SetName(name.str().c_str());
 
   name.clear();
-  name << "airwaymetrics-" << methodTag.c_str() << "-ellips";
+  name << "airwaymetrics-" << method << "-ellips";
   node->GetEllipse()->SetName(name.str().c_str());
 
   int nc = this->WallSolver->GetNumberOfQuantities();
   int np = 1;
 
-  node->GetMean()->SetNumberOfComponents(nc);
-  node->GetMean()->SetNumberOfTuples(np);
-  node->GetStd()->SetNumberOfComponents(nc);
-  node->GetStd()->SetNumberOfTuples(np);
-  node->GetMin()->SetNumberOfComponents(nc);
-  node->GetMin()->SetNumberOfTuples(np);
-  node->GetMax()->SetNumberOfComponents(nc);
-  node->GetMax()->SetNumberOfTuples(np);
+  mean->SetNumberOfComponents(nc);
+  mean->SetNumberOfTuples(np);
+  std->SetNumberOfComponents(nc);
+  std->SetNumberOfTuples(np);
+  min->SetNumberOfComponents(nc);
+  min->SetNumberOfTuples(np);
+  max->SetNumberOfComponents(nc);
+  max->SetNumberOfTuples(np);
   node->GetEllipse()->SetNumberOfComponents(6);
   node->GetEllipse()->SetNumberOfTuples(np);
 
@@ -290,10 +322,10 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeAirwayWall(vtkImageData* sliceI
    // Collect results and assign them to polydata
    for (int c = 0; c < this->WallSolver->GetNumberOfQuantities();c++)
    {
-     node->GetMean()->SetComponent(0,c,this->WallSolver->GetStatsMean()->GetComponent(2*c,0));
-     node->GetStd()->SetComponent(0,c,this->WallSolver->GetStatsMean()->GetComponent((2*c)+1,0));
-     node->GetMin()->SetComponent(0,c,this->WallSolver->GetStatsMinMax()->GetComponent(2*c,0));
-     node->GetMax()->SetComponent(0,c,this->WallSolver->GetStatsMinMax()->GetComponent((2*c)+1,0));
+     mean->SetComponent(0,c,this->WallSolver->GetStatsMean()->GetComponent(2*c,0));
+     std->SetComponent(0,c,this->WallSolver->GetStatsMean()->GetComponent((2*c)+1,0));
+     min->SetComponent(0,c,this->WallSolver->GetStatsMinMax()->GetComponent(2*c,0));
+     max->SetComponent(0,c,this->WallSolver->GetStatsMinMax()->GetComponent((2*c)+1,0));
    }
 
    double resolution = node->GetResolution();
@@ -538,7 +570,7 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeCenter(vtkMRMLAirwayNode* node)
 
   if (flag)
     {
-    node->SetXYZ(wcp);
+    node->SetCenterXYZ(wcp);
     }
 
   inputImage->SetSpacing(unitsp);

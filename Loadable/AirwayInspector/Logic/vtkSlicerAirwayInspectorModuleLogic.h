@@ -34,7 +34,7 @@ public:
 
   vtkImageData* CreateAirwaySlice(vtkMRMLAirwayNode *node);
 
-  void ComputeAirwayWall(vtkImageData* slice, vtkMRMLAirwayNode *node);
+  void ComputeAirwayWall(vtkImageData* slice, vtkMRMLAirwayNode *node, int method);
 
   void  AddEllipsesToImage(vtkImageData *sliceRGBImage,
                            vtkMRMLAirwayNode *node,

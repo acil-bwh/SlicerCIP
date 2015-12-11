@@ -46,16 +46,15 @@ vtkMRMLAirwayNode::vtkMRMLAirwayNode()
   XYZ[0] = 0;
   XYZ[1] = 0;
   XYZ[2] = 0;
+  CenterXYZ[0] = 0;
+  CenterXYZ[1] = 0;
+  CenterXYZ[2] = 0;
   XAxis[0] = 0;
   XAxis[1] = 0;
   XAxis[2] = 0;
   Threshold = -850;
   VolumeNodeID = 0;
 
-  this->Mean = vtkDoubleArray::New();
-  this->Std = vtkDoubleArray::New();
-  this->Min = vtkDoubleArray::New();
-  this->Max = vtkDoubleArray::New();
   this->Ellipse = vtkDoubleArray::New();
 
   this->EllipseInside = vtkEllipseFitting::New();
@@ -91,10 +90,24 @@ vtkMRMLAirwayNode::~vtkMRMLAirwayNode()
     delete [] this->VolumeNodeID;
     this->VolumeNodeID = NULL;
     }
-  this->Mean->Delete();
-  this->Std->Delete();
-  this->Min->Delete();
-  this->Max->Delete();
+  std::map<int, vtkDoubleArray*>::iterator it;
+  for (it=this->Mean.begin(); it != this->Mean.end(); it++)
+    {
+    it->second->Delete();
+    }
+  for (it=this->Std.begin(); it != this->Std.end(); it++)
+    {
+    it->second->Delete();
+    }
+  for (it=this->Min.begin(); it != this->Min.end(); it++)
+    {
+    it->second->Delete();
+    }
+  for (it=this->Max.begin(); it != this->Max.end(); it++)
+    {
+    it->second->Delete();
+    }
+
   this->Ellipse->Delete();
   this->EllipseInside->Delete();
   this->EllipseOutside->Delete();
@@ -112,6 +125,9 @@ void vtkMRMLAirwayNode::WriteXML(ostream& of, int nIndent)
   of << indent << " xyz=\"" << this->XYZ[0] << " "
                             << this->XYZ[1] << " "
                             << this->XYZ[2] << "\"";
+  of << indent << " centerxyz=\"" << this->CenterXYZ[0] << " "
+                            << this->CenterXYZ[1] << " "
+                            << this->CenterXYZ[2] << "\"";
   of << indent << " xaxis=\"" << this->XAxis[0] << " "
                             << this->XAxis[1] << " "
                             << this->XAxis[2] << "\"";
@@ -133,13 +149,11 @@ void vtkMRMLAirwayNode::WriteXML(ostream& of, int nIndent)
   of << indent << " segmentPercentage=\"" << this->SegmentPercentage << "\"";
   of << indent << " resolution=\"" << this->Resolution << "\"";
   of << indent << " reconstruction=\"" << this->Reconstruction << "\"";
-  of << indent << " airwayImagePrefix=\"" << this->AirwayImagePrefix << "\"";
+  if (this->AirwayImagePrefix)
+    {
+    of << indent << " airwayImagePrefix=\"" << this->AirwayImagePrefix << "\"";
+    }
   of << indent << " saveAirwayImage=\"" << this->SaveAirwayImage << "\"";
-
-  of << indent << " min=\"" << this->Min << "\"";
-  of << indent << " max=\"" << this->Max << "\"";
-  of << indent << " mean=\"" << this->Mean << "\"";
-  of << indent << " mstd=\"" << this->Std << "\"";
 }
 
 //----------------------------------------------------------------------------
@@ -163,6 +177,14 @@ void vtkMRMLAirwayNode::ReadXMLAttributes(const char** atts)
       ss >> XYZ[0];
       ss >> XYZ[1];
       ss >> XYZ[2];
+      }
+    if (!strcmp(attName, "centerxyz"))
+      {
+      std::stringstream ss;
+      ss << attValue;
+      ss >> CenterXYZ[0];
+      ss >> CenterXYZ[1];
+      ss >> CenterXYZ[2];
       }
     else if (!strcmp(attName, "xaxis"))
       {
@@ -305,6 +327,7 @@ void vtkMRMLAirwayNode::Copy(vtkMRMLNode *anode)
 
   this->SetVolumeNodeID(node->GetVolumeNodeID());
   this->SetXYZ(node->GetXYZ());
+  this->SetCenterXYZ(node->GetCenterXYZ());
   this->SetXAxis(node->GetXAxis());
   this->SetYAxis(node->GetYAxis());
   this->SetZAxis(node->GetZAxis());
@@ -320,11 +343,6 @@ void vtkMRMLAirwayNode::Copy(vtkMRMLNode *anode)
   this->SetReconstruction(node->GetReconstruction());
   this->SetAirwayImagePrefix(node->GetAirwayImagePrefix());
   this->SetSaveAirwayImage(node->GetSaveAirwayImage());
-
-  this->Min->DeepCopy(node->GetMin());
-  this->Max->DeepCopy(node->GetMax());
-  this->Mean->DeepCopy(node->GetMean());
-  this->Std->DeepCopy(node->GetStd());
 }
 
 //----------------------------------------------------------------------------
@@ -334,6 +352,7 @@ void vtkMRMLAirwayNode::PrintSelf(ostream& os, vtkIndent indent)
 
   os << indent << "VolumeNodeID: " << this->VolumeNodeID << "\n";
   os << indent << "XYZ: " << this->XYZ << "\n";
+  os << indent << "CenterXYZ: " << this->CenterXYZ << "\n";
   os << indent << "XAxis: " << this->XAxis << "\n";
   os << indent << "YAxis: " << this->YAxis << "\n";
   os << indent << "ZAxis: " << this->ZAxis << "\n";
@@ -349,10 +368,58 @@ void vtkMRMLAirwayNode::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "Reconstruction: " << this->Reconstruction << "\n";
   os << indent << "AirwayImagePrefix: " << this->AirwayImagePrefix << "\n";
   os << indent << "SaveAirwayImage: " << this->SaveAirwayImage << "\n";
-  os << indent << "Min: " << this->Min << "\n";
-  os << indent << "Max: " << this->Max << "\n";
-  os << indent << "Mean: " << this->Mean << "\n";
-  os << indent << "Std: " << this->Std << "\n";
+  //os << indent << "Min: " << this->Min << "\n";
+  //os << indent << "Max: " << this->Max << "\n";
+  //os << indent << "Mean: " << this->Mean << "\n";
+  //os << indent << "Std: " << this->Std << "\n";
+}
+
+vtkDoubleArray*
+vtkMRMLAirwayNode::GetMean(int methodName)
+{
+  std::map<int, vtkDoubleArray*>::iterator it =
+    this->Mean.find(methodName);
+  return (it == this->Mean.end()) ? 0 : it->second;
+}
+vtkDoubleArray*
+vtkMRMLAirwayNode::GetStd(int methodName)
+{
+  std::map<int, vtkDoubleArray*>::iterator it =
+    this->Std.find(methodName);
+  return (it == this->Std.end()) ? 0 : it->second;
+}
+vtkDoubleArray*
+vtkMRMLAirwayNode::GetMin(int methodName)
+{
+  std::map<int, vtkDoubleArray*>::iterator it =
+    this->Min.find(methodName);
+  return (it == this->Min.end()) ? 0 : it->second;
+}
+vtkDoubleArray*
+vtkMRMLAirwayNode::GetMax(int methodName)
+{
+  std::map<int, vtkDoubleArray*>::iterator it =
+    this->Max.find(methodName);
+  return (it == this->Max.end()) ? 0 : it->second;
+}
+
+void vtkMRMLAirwayNode::SetMean(int methodName, vtkDoubleArray* values)
+{
+  this->Mean[methodName] = values;
+}
+
+void vtkMRMLAirwayNode::SetStd(int methodName, vtkDoubleArray* values)
+{
+  this->Std[methodName] = values;
+}
+
+void vtkMRMLAirwayNode::SetMin(int methodName, vtkDoubleArray* values)
+{
+  this->Min[methodName] = values;
+}
+void vtkMRMLAirwayNode::SetMax(int methodName, vtkDoubleArray* values)
+{
+  this->Max[methodName] = values;
 }
 
 //---------------------------------------------------------------------------

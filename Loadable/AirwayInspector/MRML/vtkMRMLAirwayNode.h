@@ -74,9 +74,14 @@ public:
   vtkGetStringMacro(VolumeNodeID);
 
   ///
-  /// Get/Set for Point
+  /// Get/Set for user picked point
   vtkSetVector3Macro(XYZ,double);
   vtkGetVectorMacro(XYZ,double,3);
+
+  ///
+  /// Get/Set for computed center
+  vtkSetVector3Macro(CenterXYZ,double);
+  vtkGetVectorMacro(CenterXYZ,double,3);
 
   ///
   /// Get/Set for orientation
@@ -179,10 +184,16 @@ public:
   vtkGetObjectMacro(OuterContour, vtkPolyData);
   vtkSetObjectMacro(OuterContour, vtkPolyData);
 
-  vtkGetObjectMacro(Mean, vtkDoubleArray);
-  vtkGetObjectMacro(Std, vtkDoubleArray);
-  vtkGetObjectMacro(Min, vtkDoubleArray);
-  vtkGetObjectMacro(Max, vtkDoubleArray);
+  vtkDoubleArray* GetMean(int methodName);
+  vtkDoubleArray* GetStd(int methodName);
+  vtkDoubleArray* GetMin(int methodName);
+  vtkDoubleArray* GetMax(int methodName);
+
+  void SetMean(int methodName, vtkDoubleArray* values);
+  void SetStd(int methodName, vtkDoubleArray* values);
+  void SetMin(int methodName, vtkDoubleArray* values);
+  void SetMax(int methodName, vtkDoubleArray* values);
+
   vtkGetObjectMacro(Ellipse, vtkDoubleArray);
   vtkGetObjectMacro(EllipseInside, vtkEllipseFitting);
   vtkGetObjectMacro(EllipseOutside, vtkEllipseFitting);
@@ -200,6 +211,7 @@ protected:
 private:
   /// Data
   double XYZ[3];
+  double CenterXYZ[3];
   double XAxis[3];
   double YAxis[3];
   double ZAxis[3];
@@ -222,10 +234,10 @@ private:
   vtkImageData *AirwayImage;
   vtkPolyData  *InnerContour;
   vtkPolyData  *OuterContour;
-  vtkDoubleArray *Mean;
-  vtkDoubleArray *Std;
-  vtkDoubleArray *Min;
-  vtkDoubleArray *Max;
+  std::map<int, vtkDoubleArray*> Mean;
+  std::map<int, vtkDoubleArray*> Std;
+  std::map<int, vtkDoubleArray*> Min;
+  std::map<int, vtkDoubleArray*> Max;
   vtkDoubleArray *Ellipse;
 
   vtkEllipseFitting *EllipseInside;

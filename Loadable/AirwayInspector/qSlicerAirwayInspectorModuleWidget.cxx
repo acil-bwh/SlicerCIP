@@ -300,7 +300,7 @@ void qSlicerAirwayInspectorModuleWidget::onInteractorEvent(vtkRenderWindowIntera
       vtkMRMLAirwayNode *airwayNode =
         logic->AddAirwayNode(d->InputVolumeComboBox->currentNode()->GetID(), x,y,z);
 
-      this->updateMRMLFromWidget(airwayNode);
+      //this->updateMRMLFromWidget(airwayNode);
 
       logic->CreateAirwaySlice(airwayNode);
 
@@ -453,7 +453,14 @@ void qSlicerAirwayInspectorModuleWidget::analyzeSelected()
     {
     this->updateMRMLFromWidget(airwayNode);
 
-    airwayLogic->ComputeAirwayWall(airwayNode->GetAirwayImage(), airwayNode);
+    if (d->ComputeAllMethodsCheckBox->isChecked())
+      {
+      for (int method=0; method < 4; method++)
+        {
+        airwayLogic->ComputeAirwayWall(airwayNode->GetAirwayImage(), airwayNode, method);
+        }
+      }
+    airwayLogic->ComputeAirwayWall(airwayNode->GetAirwayImage(), airwayNode, airwayNode->GetMethod());
     }
 
   this->updateReport(airwayNode);
@@ -485,7 +492,15 @@ void qSlicerAirwayInspectorModuleWidget::analyzeAll()
 
     this->updateMRMLFromWidget(airwayNode);
 
-    airwayLogic->ComputeAirwayWall(airwayNode->GetAirwayImage(), airwayNode);
+    if (d->ComputeAllMethodsCheckBox->isChecked())
+      {
+      for (int method=0; method < 4; method++)
+        {
+        airwayLogic->ComputeAirwayWall(airwayNode->GetAirwayImage(), airwayNode, method);
+        }
+      }
+
+    airwayLogic->ComputeAirwayWall(airwayNode->GetAirwayImage(), airwayNode, airwayNode->GetMethod());
 
     if (d->WriteAirwaysCheckBox->isChecked())
       {
@@ -495,6 +510,8 @@ void qSlicerAirwayInspectorModuleWidget::analyzeAll()
 
   vtkMRMLAirwayNode* airwayNode = vtkMRMLAirwayNode::SafeDownCast(
     d->AirwayComboBox->currentNode());
+
+  airwayLogic->ComputeAirwayWall(airwayNode->GetAirwayImage(), airwayNode, airwayNode->GetMethod());
 
   this->updateReport(airwayNode);
 
@@ -515,17 +532,21 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
 
 	int numCols = 4;
 
-  if (airwayNode->GetMin()->GetNumberOfTuples() == 0 ||
-      airwayNode->GetMax()->GetNumberOfTuples() == 0 ||
-      airwayNode->GetMean()->GetNumberOfTuples() == 0 ||
-      airwayNode->GetStd()->GetNumberOfTuples() == 0)
+  if (airwayNode->GetMin(airwayNode->GetMethod()) == 0 ||
+      airwayNode->GetMax(airwayNode->GetMethod()) == 0 ||
+      airwayNode->GetMean(airwayNode->GetMethod()) == 0 ||
+      airwayNode->GetStd(airwayNode->GetMethod()) == 0 ||
+      airwayNode->GetMin(airwayNode->GetMethod())->GetNumberOfTuples() == 0 ||
+      airwayNode->GetMax(airwayNode->GetMethod())->GetNumberOfTuples() == 0 ||
+      airwayNode->GetMean(airwayNode->GetMethod())->GetNumberOfTuples() == 0 ||
+      airwayNode->GetStd(airwayNode->GetMethod())->GetNumberOfTuples() == 0)
   {
     return;
   }
-  int numRows = airwayNode->GetMin()->GetNumberOfComponents();
-  numRows = numRows < airwayNode->GetMax()->GetNumberOfComponents() ? numRows : airwayNode->GetMax()->GetNumberOfComponents();
-  numRows = numRows < airwayNode->GetMean()->GetNumberOfComponents() ? numRows : airwayNode->GetMean()->GetNumberOfComponents();
-  numRows = numRows < airwayNode->GetStd()->GetNumberOfComponents() ? numRows : airwayNode->GetStd()->GetNumberOfComponents();
+  int numRows = airwayNode->GetMin(airwayNode->GetMethod())->GetNumberOfComponents();
+  numRows = numRows < airwayNode->GetMax(airwayNode->GetMethod())->GetNumberOfComponents() ? numRows : airwayNode->GetMax(airwayNode->GetMethod())->GetNumberOfComponents();
+  numRows = numRows < airwayNode->GetMean(airwayNode->GetMethod())->GetNumberOfComponents() ? numRows : airwayNode->GetMean(airwayNode->GetMethod())->GetNumberOfComponents();
+  numRows = numRows < airwayNode->GetStd(airwayNode->GetMethod())->GetNumberOfComponents() ? numRows : airwayNode->GetStd(airwayNode->GetMethod())->GetNumberOfComponents();
 
   d->ReportTable->setRowCount(numRows);
   d->ReportTable->setVerticalHeaderLabels(QString("Inner Radius (mm);Outer Radius (mm);Wall Thickness (mm);" \
@@ -537,19 +558,19 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
   for (int i=0; i<numRows; i++)
     {
     QTableWidgetItem *minItem = new QTableWidgetItem();
-    minItem->setData(0, airwayNode->GetMin()->GetValue(i));
+    minItem->setData(0, airwayNode->GetMin(airwayNode->GetMethod())->GetValue(i));
 	  d->ReportTable->setItem(i,0,minItem);
 
     QTableWidgetItem *maxItem = new QTableWidgetItem();
-    maxItem->setData(0, airwayNode->GetMax()->GetValue(i));
+    maxItem->setData(0, airwayNode->GetMax(airwayNode->GetMethod())->GetValue(i));
 	  d->ReportTable->setItem(i,1,maxItem);
 
     QTableWidgetItem *meanItem = new QTableWidgetItem();
-    meanItem->setData(0, airwayNode->GetMean()->GetValue(i));
+    meanItem->setData(0, airwayNode->GetMean(airwayNode->GetMethod())->GetValue(i));
 	  d->ReportTable->setItem(i,2,meanItem);
 
     QTableWidgetItem *stdItem = new QTableWidgetItem();
-    stdItem->setData(0, airwayNode->GetStd()->GetValue(i));
+    stdItem->setData(0, airwayNode->GetStd(airwayNode->GetMethod())->GetValue(i));
 	  d->ReportTable->setItem(i,3,stdItem);
     }
 
@@ -740,11 +761,24 @@ void qSlicerAirwayInspectorModuleWidget::writeCSV()
   for (int i=0; i<nodes.size(); i++)
     {
     vtkMRMLAirwayNode* node = vtkMRMLAirwayNode::SafeDownCast(nodes[i]);
-    ofs << node->GetName() << "," << node->GetMethod() << ","
-        << node->GetMean()->GetValue(0) << ","
-        << node->GetStd()->GetValue(0) << ","
-        << node->GetMin()->GetValue(0) << ","
-        << node->GetMax()->GetValue(0) << "\n";
+    std::map<int, vtkDoubleArray*>::iterator it;
+    for (int method=0; method < 4; method++)
+      {
+      if (node->GetMean(method))
+        {
+        ofs << node->GetName() << "," << node->GetMethod();
+        int numVals = node->GetMean(node->GetMethod())->GetNumberOfComponents();
+        for (int n=0; n<numVals; n++)
+          {
+          ofs << ","
+              << node->GetMean(node->GetMethod())->GetValue(n) << ","
+              << node->GetStd(node->GetMethod())->GetValue(n) << ","
+              << node->GetMin(node->GetMethod())->GetValue(n) << ","
+              << node->GetMax(node->GetMethod())->GetValue(n);
+          }
+        ofs << "\n";
+        }
+      }
     }
   ofs.flush();
   ofs.close();
