@@ -104,6 +104,7 @@ vtkImageData* vtkSlicerAirwayInspectorModuleLogic::CreateAirwaySlice(vtkMRMLAirw
 
   vtkImageData *inputImage = volumeNode->GetImageData();
 
+  node->SetCenterXYZ(node->GetXYZ());
   if (node->GetComputeCenter())
     {
     this->ComputeCenter(node);

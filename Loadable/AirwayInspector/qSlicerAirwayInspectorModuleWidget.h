@@ -72,7 +72,7 @@ protected:
   void updateReport(vtkMRMLAirwayNode* airwayNode);
   void updateViewer(vtkMRMLAirwayNode* airwayNode);
   void createColorImage(vtkImageData *image, vtkImageData *colorImage);
-  void saveAirwayImage(vtkMRMLAirwayNode* airwayNode);
+  void saveAirwayImage(vtkMRMLAirwayNode* airwayNode, char *filename = 0, vtkImageData *img = 0);
   void updateWidgetFromMRML(vtkMRMLAirwayNode* airwayNode);
   void updateMRMLFromWidget(vtkMRMLAirwayNode* airwayNode);
   void updateAirwaySlice();
@@ -93,6 +93,11 @@ protected:
   std::map<vtkRenderWindowInteractor*, vtkMRMLSliceNode*>   interactors;
   vtkSmartPointer<vtkCallbackCommand>       interactorCallBackCommand;
   vtkSmartPointer<vtkRenderer> Renderer;
+
+  bool isUpdating;
+
+  QStringList statsLabels;
+  QStringList valuesLabels;
 
 private:
   Q_DECLARE_PRIVATE(qSlicerAirwayInspectorModuleWidget);

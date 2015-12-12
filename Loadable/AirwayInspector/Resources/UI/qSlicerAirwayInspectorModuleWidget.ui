@@ -104,6 +104,9 @@
         <property name="text">
          <string/>
         </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
        </widget>
       </item>
       <item row="3" column="0">
@@ -117,6 +120,9 @@
        <widget class="QCheckBox" name="ComputeCenterCheckBox">
         <property name="text">
          <string/>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
@@ -138,7 +144,7 @@
     </widget>
    </item>
    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout"/>
+    <layout class="QHBoxLayout" name="horizontalLayout"/>
    </item>
    <item>
     <widget class="ctkCollapsibleButton" name="reportCollapsibleButton" native="true">
@@ -319,16 +325,15 @@
        <widget class="QLineEdit" name="FilePrefixLineEdit"/>
       </item>
       <item row="8" column="0">
-        <widget class="QPushButton" name="WriteCSVFileButton">
-          <property name="text">
-            <string>Write CSV File</string>
-          </property>
-        </widget>
+       <widget class="QPushButton" name="WriteCSVFileButton">
+        <property name="text">
+         <string>Write CSV File</string>
+        </property>
+       </widget>
       </item>
       <item row="8" column="1">
-       <widget class="ctkPathLineEdit" name="CSVFilePathEdit"/>
+       <widget class="ctkPathLineEdit" name="CSVFilePathEdit" native="true"/>
       </item>
-      
      </layout>
     </widget>
    </item>

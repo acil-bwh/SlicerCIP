@@ -81,6 +81,8 @@ qSlicerAirwayInspectorModuleWidget::qSlicerAirwayInspectorModuleWidget(QWidget* 
 
   this->Renderer =
     vtkSmartPointer<vtkRenderer>::New();
+
+  this->isUpdating = false;
 }
 
 //-----------------------------------------------------------------------------
@@ -95,22 +97,25 @@ void qSlicerAirwayInspectorModuleWidget::setup()
   Q_D(qSlicerAirwayInspectorModuleWidget);
   d->setupUi(this);
 
+  statsLabels = QString("Mean;Std;Min;Max").split(";");
+  valuesLabels = QString("Inner Radius (mm);Outer Radius (mm);Wall Thickness (mm);" \
+          "Wall Intensity (HU);Peak WI (HU);Inner WI (HU);Outer WI (HU);WA%;Pi (mm);" \
+           "sqrt(WA) (mm);Ai (mm^2);Ao (mm^2);Vessel Intensity (HU);RL Inner Diam (mm);" \
+           "RL Outer Diam (mm);AP Inner Diam (mm);AP Outer Diam (mm);Lumen I (HU);Parenchyma I (HU);Energy;Power").split(";");
+
   d->ThresholdSpinBox->setRange(-1000, -300);
   d->ThresholdSpinBox->setValue(-850);
   // VTK/Qt
   d->qvtkWidget = new QVTKWidget;
   d->qvtkWidget->GetRenderWindow()->AddRenderer(this->Renderer);
-  d->qvtkWidget->setFixedSize(200,200);
+  d->qvtkWidget->setFixedSize(256,256);
   d->horizontalLayout->addWidget(d->qvtkWidget);
 
   d->ReportTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
   d->ReportTable->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
-  d->ReportTable->setColumnCount(4);
-	d->ReportTable->setHorizontalHeaderLabels(QString("Min;Max;Mean;Std").split(";"));
-  d->ReportTable->setVerticalHeaderLabels(QString("Inner Radius (mm);Outer Radius (mm);Wall Thickness (mm);" \
-          "Wall Intensity (HU);Peak WI (HU);Inner WI (HU);Outer WI (HU);WA%;Pi (mm);" \
-           "sqrt(WA) (mm);Ai (mm^2);Ao (mm^2);Vessel Intensity (HU);RL Inner Diam (mm);" \
-           "RL Outer Diam (mm);AP Inner Diam (mm);AP Outer Diam (mm);Lumen I (HU);Parenchyma I (HU);Energy;Power").split(";"));
+  d->ReportTable->setColumnCount(this->statsLabels.size());
+  d->ReportTable->setVerticalHeaderLabels(this->valuesLabels);
+	d->ReportTable->setHorizontalHeaderLabels(this->statsLabels);
 
   //d->ReportTable
 
@@ -300,7 +305,7 @@ void qSlicerAirwayInspectorModuleWidget::onInteractorEvent(vtkRenderWindowIntera
       vtkMRMLAirwayNode *airwayNode =
         logic->AddAirwayNode(d->InputVolumeComboBox->currentNode()->GetID(), x,y,z);
 
-      //this->updateMRMLFromWidget(airwayNode);
+      this->updateMRMLFromWidget(airwayNode);
 
       logic->CreateAirwaySlice(airwayNode);
 
@@ -413,6 +418,12 @@ void qSlicerAirwayInspectorModuleWidget::onMethodChanged(int)
 //-----------------------------------------------------------------------------
 void qSlicerAirwayInspectorModuleWidget::updateWidgetFromMRML(vtkMRMLAirwayNode* airwayNode)
 {
+  if (this->isUpdating)
+    {
+    return;
+    }
+  this->isUpdating = true;
+
   Q_D(qSlicerAirwayInspectorModuleWidget);
 
   if (airwayNode)
@@ -423,11 +434,18 @@ void qSlicerAirwayInspectorModuleWidget::updateWidgetFromMRML(vtkMRMLAirwayNode*
     d->MethodComboBox->setCurrentIndex(airwayNode->GetMethod());
     d->ReformatCheckBox->setChecked(airwayNode->GetReformat());
     }
+  this->isUpdating = false;
 }
 
 //-----------------------------------------------------------------------------
 void qSlicerAirwayInspectorModuleWidget::updateMRMLFromWidget(vtkMRMLAirwayNode* airwayNode)
 {
+  if (this->isUpdating)
+    {
+    return;
+    }
+  this->isUpdating = true;
+
   Q_D(qSlicerAirwayInspectorModuleWidget);
 
   if (airwayNode)
@@ -438,6 +456,7 @@ void qSlicerAirwayInspectorModuleWidget::updateMRMLFromWidget(vtkMRMLAirwayNode*
     airwayNode->SetMethod(d->MethodComboBox->currentIndex());
     airwayNode->SetReformat(d->ReformatCheckBox->isChecked());
     }
+  this->isUpdating = false;
 }
 
 //-----------------------------------------------------------------------------
@@ -524,13 +543,14 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
   Q_D(qSlicerAirwayInspectorModuleWidget);
   if (airwayNode == 0)
     {
+    d->ReportTable->clear();
     return;
     }
 
   // report the results
   d->ReportTable->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
 
-	int numCols = 4;
+	int numCols = this->statsLabels.size();
 
   if (airwayNode->GetMin(airwayNode->GetMethod()) == 0 ||
       airwayNode->GetMax(airwayNode->GetMethod()) == 0 ||
@@ -549,10 +569,8 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
   numRows = numRows < airwayNode->GetStd(airwayNode->GetMethod())->GetNumberOfComponents() ? numRows : airwayNode->GetStd(airwayNode->GetMethod())->GetNumberOfComponents();
 
   d->ReportTable->setRowCount(numRows);
-  d->ReportTable->setVerticalHeaderLabels(QString("Inner Radius (mm);Outer Radius (mm);Wall Thickness (mm);" \
-          "Wall Intensity (HU);Peak WI (HU);Inner WI (HU);Outer WI (HU);WA%;Pi (mm);" \
-           "sqrt(WA) (mm);Ai (mm^2);Ao (mm^2);Vessel Intensity (HU);RL Inner Diam (mm);" \
-           "RL Outer Diam (mm);AP Inner Diam (mm);AP Outer Diam (mm);Lumen I (HU);Parenchyma I (HU);Energy;Power").split(";"));
+  d->ReportTable->setVerticalHeaderLabels(this->valuesLabels);
+	d->ReportTable->setHorizontalHeaderLabels(this->statsLabels);
 
 	//Add Table items here
   for (int i=0; i<numRows; i++)
@@ -594,9 +612,14 @@ void qSlicerAirwayInspectorModuleWidget::updateViewer(vtkMRMLAirwayNode* airwayN
 {
   Q_D(qSlicerAirwayInspectorModuleWidget);
 
+  this->Renderer->RemoveAllViewProps();
+
   vtkSlicerAirwayInspectorModuleLogic *logic = vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
+
   if (!logic || !airwayNode || !airwayNode->GetAirwayImage())
     {
+    this->Renderer->Render();
+    d->qvtkWidget->GetRenderWindow()->Render();
     return;
     }
 
@@ -615,11 +638,12 @@ void qSlicerAirwayInspectorModuleWidget::updateViewer(vtkMRMLAirwayNode* airwayN
   flip->SetFilteredAxis(1);
   flip->Update();
 
-  this->Renderer->RemoveAllViewProps();
-
   vtkSmartPointer<vtkImageMapper> imageMapper = vtkSmartPointer<vtkImageMapper>::New();
 
   imageMapper->SetInputData(flip->GetOutput());
+
+  // DEBUG:
+  //this->saveAirwayImage(airwayNode, "C:\\tmp\\flip.png", flip->GetOutput());
 
   imageMapper->SetColorWindow(256);
   imageMapper->SetColorLevel(128);
@@ -706,12 +730,14 @@ void qSlicerAirwayInspectorModuleWidget::createColorImage(vtkImageData *image,
   vtkImageData *rgbImage=rgbFilter->GetOutput();
 
   colorImage->DeepCopy(rgbImage);
+  colorImage->SetOrigin(image->GetOrigin());
+  colorImage->SetSpacing(image->GetSpacing());
 
   lut->Delete();
   rgbFilter->Delete();
 }
 
-void qSlicerAirwayInspectorModuleWidget::saveAirwayImage(vtkMRMLAirwayNode* airwayNode)
+void qSlicerAirwayInspectorModuleWidget::saveAirwayImage(vtkMRMLAirwayNode* airwayNode, char *name, vtkImageData *img)
 {
   Q_D(qSlicerAirwayInspectorModuleWidget);
   if (airwayNode == 0 || airwayNode->GetAirwayImage() == 0 ||
@@ -720,22 +746,44 @@ void qSlicerAirwayInspectorModuleWidget::saveAirwayImage(vtkMRMLAirwayNode* airw
     return;
     }
 
-   char fileName[10*256];
-   vtkPNGWriter *writer = vtkPNGWriter::New();
+  char fileName[10*256];
+  vtkPNGWriter *writer = vtkPNGWriter::New();
+  if (name)
+  {
+  sprintf(fileName,"%s", name);
+  }
+  else
+   {
    sprintf(fileName,"%s/%s_%s.png", d->OutputDirectoryButton->directory().toStdString().c_str(),
                                     d->FilePrefixLineEdit->text().toStdString().c_str(), airwayNode->GetName());
+   }
 
-   vtkImageCast *imgCast = vtkImageCast::New();
-   imgCast->SetInputData(airwayNode->GetAirwayImage());
-   imgCast->SetOutputScalarTypeToUnsignedChar();
-   writer->SetInputData(imgCast->GetOutput());
-   writer->SetFileName(fileName);
+  if (img == 0)
+  {
+  img = airwayNode->GetAirwayImage();
+  }
 
-   imgCast->Update();
-   writer->Write();
+  vtkImageData *colorImage = vtkImageData::New();
 
-   imgCast->Delete();
-   writer->Delete();
+  this->createColorImage(img, colorImage);
+
+  vtkImageFlip *flip = vtkImageFlip::New();
+  flip->SetInputData(colorImage);
+  flip->SetFilteredAxis(1);
+  flip->Update();
+
+  vtkImageCast *imgCast = vtkImageCast::New();
+  imgCast->SetInputData(flip->GetOutput());
+  imgCast->SetOutputScalarTypeToUnsignedChar();
+  writer->SetInputData(imgCast->GetOutput());
+  writer->SetFileName(fileName);
+
+  imgCast->Update();
+  writer->Write();
+
+  colorImage->Delete();
+  imgCast->Delete();
+  writer->Delete();
  }
 
 //-----------------------------------------------------------------------------
@@ -755,6 +803,18 @@ void qSlicerAirwayInspectorModuleWidget::writeCSV()
     return;
     }
 
+  // header
+  ofs << "airway_id, method";
+  for (int n=0; n<this->valuesLabels.size(); n++)
+    {
+    std::string valueLabel = this->valuesLabels.at(n).toStdString();
+    for (int m=0; m<this->statsLabels.size(); m++)
+      {
+      ofs << "," << valueLabel << "_" << this->statsLabels.at(m).toStdString();
+      }
+    }
+  ofs << "\n";
+
   std::vector<vtkMRMLNode *> nodes;
   this->mrmlScene()->GetNodesByClass("vtkMRMLAirwayNode", nodes);
 
@@ -768,6 +828,11 @@ void qSlicerAirwayInspectorModuleWidget::writeCSV()
         {
         ofs << node->GetName() << "," << node->GetMethod();
         int numVals = node->GetMean(node->GetMethod())->GetNumberOfComponents();
+        if (numVals != this->valuesLabels.size())
+          {
+          std::cerr << "Incorrect number of computed components. Table is misformed\n";
+          return;
+          }
         for (int n=0; n<numVals; n++)
           {
           ofs << ","
