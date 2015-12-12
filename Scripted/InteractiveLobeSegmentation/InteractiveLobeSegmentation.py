@@ -978,8 +978,9 @@ class InteractiveLobeSegmentationLogic:
     self.delayDisplay('Running the algorithm')
     slicer.cli.run( slicer.modules.segmentlunglobes,None,parameters,wait_for_completion=True )
     selectionNode = slicer.app.applicationLogic().GetSelectionNode()
-    selectionNode.SetReferenceActiveVolumeID(outputVolume.GetID())
-    slicer.app.applicationLogic().PropagateVolumeSelection(0)
+    selectionNode.SetReferenceActiveLabelVolumeID(outputVolume.GetID())
+    outputVolume.SetName(labelVolume.GetName().replace("_partialLungLabelMap","_iteractiveLobeSegmenation"))
+    slicer.app.applicationLogic().PropagateLabelVolumeSelection(0)
     return True
 
 class InteractiveLobeSegmentationTest(unittest.TestCase):
