@@ -108,7 +108,7 @@ QIcon qSlicerAirwayInspectorModule::icon()const
 //-----------------------------------------------------------------------------
 QStringList qSlicerAirwayInspectorModule::categories() const
 {
-  return QStringList() << "COPD";
+  return QStringList() << "Chest Imaging Platform";
 }
 
 //-----------------------------------------------------------------------------
