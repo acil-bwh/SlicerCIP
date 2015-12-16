@@ -51,6 +51,10 @@ class SlicerUtil:
         if (os.sys.platform == "win32"):
             path = path.replace("/", "\\")
         return path
+
+    @staticmethod
+    def getDataFolder(moduleName):
+        return os.path.join(os.path.expanduser('~'), "SlicerCIP_Data", moduleName, "Results")
  
     @staticmethod
     def setSetting(moduleName, settingName, settingValue):

@@ -86,7 +86,7 @@ newvol = vl.CloneVolume(slicer.mrmlScene, node, "myNode")
 # NODE SELECTOR (FILTERED BY LABEL MAPS)
 self.volumeSelector = slicer.qMRMLNodeComboBox()
 self.volumeSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
-#self.volumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", "1" )  deprecated. use new labelmap type
+#self.volumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", "1" )  deprecated. use new vtkMRMLLabelMapVolumeNode type
 
 self.volumeSelector.selectNodeUponCreation = False
 self.volumeSelector.addEnabled = False
@@ -106,7 +106,7 @@ selectedNode = self.volumeSelector.currentNode()
 selectionNode = slicer.app.applicationLogic().GetSelectionNode()
 selectionNode.SetReferenceActiveVolumeID( self.master.GetID() )
 selectionNode.SetReferenceActiveLabelVolumeID( merge.GetID() )
-self.applicationLogic.PropagateVolumeSelection(0)     
+slicer.app.applicationLogic().PropagateVolumeSelection(0)
 # IMPORTANT: the layer is the type of node (background, foreground, labelmap). We can use a particular method like appLogic.PropagateForegroundVolumeSelection()
 
 NOTE: selectionNode can be used not only for volumes, but also for fiducials, ROIs, etc.

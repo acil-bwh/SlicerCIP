@@ -30,7 +30,7 @@ except Exception as ex:
     from CIP.logic.SlicerUtil import SlicerUtil
 
 from CIP.logic import Util
-from logic import BodyCompositionParameters
+from CIP_BodyComposition_logic import BodyCompositionParameters
 from CIP.ui import CaseReportsWidget
 import CIP.ui as CIPUI
 
@@ -112,7 +112,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
 
         # Create the appropiate color maps for each type of segmentation
-        self.__createColorNodes__()
+        self.__loadColormapNode__()
 
         self.iconsPath = SlicerUtil.CIP_ICON_DIR  # Imported from CIP library
 
@@ -350,42 +350,53 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.editorWidget.volumes.collapsed = collapsed
         self.editorWidget.editLabelMapsFrame.collapsed = collapsed
 
-    def __createColorNodes__(self):
-        """Create a color map from the main params structure (if it does not exist yet)"""
-        colorNodes = slicer.mrmlScene.GetNodesByName("BodyCompositionColorMap")
-        if colorNodes.GetNumberOfItems() == 0:
-            # Create the blank structure
-            storageNode = slicer.mrmlScene.CreateNodeByClass('vtkMRMLColorTableStorageNode')
-            colorTableNode = slicer.mrmlScene.CreateNodeByClass('vtkMRMLColorTableNode')
-            slicer.mrmlScene.AddNode(colorTableNode)
-            slicer.mrmlScene.AddNode(storageNode)
-            colorTableNode.SetName("BodyCompositionColorMap")
-            colorTableNode.AddAndObserveStorageNodeID(storageNode.GetID())
-            storageNode.SetFileName(
-                "{0}/{1}".format(SlicerUtil.CIP_RESOURCES_DIR, "BodyCompositionColorMap.ctbl"))  # Blank file
-            storageNode.ReadData(colorTableNode)
+    # def __createColorNodes__(self):
+    #     """Create a color map from the main params structure (if it does not exist yet)"""
+    #     colorNodes = slicer.mrmlScene.GetNodesByName("BodyCompositionColorMap")
+    #     if colorNodes.GetNumberOfItems() == 0:
+    #         # Create the blank structure
+    #         storageNode = slicer.mrmlScene.CreateNodeByClass('vtkMRMLColorTableStorageNode')
+    #         colorTableNode = slicer.mrmlScene.CreateNodeByClass('vtkMRMLColorTableNode')
+    #         slicer.mrmlScene.AddNode(colorTableNode)
+    #         slicer.mrmlScene.AddNode(storageNode)
+    #         colorTableNode.SetName("BodyCompositionColorMap")
+    #         colorTableNode.AddAndObserveStorageNodeID(storageNode.GetID())
+    #         storageNode.SetFileName(
+    #             "{0}/{1}".format(SlicerUtil.CIP_RESOURCES_DIR, "BodyCompositionColorMap.ctbl"))  # Blank file
+    #         storageNode.ReadData(colorTableNode)
+    #
+    #         # Reserve all the possible combinations (11111111 11111111 = 65535)
+    #         #             colorTableNode.SetNumberOfColors(65535)
+    #         #
+    #         #             # Set colors where it is required
+    #         #             for item in self.logic.getAllowedCombinations():
+    #         #                 code = self.logic.getIntCodeItem(item)
+    #         #                 r = self.logic.getRedItem(item)
+    #         #                 g = self.logic.getGreenItem(item)
+    #         #                 b = self.logic.getBlueItem(item)
+    #         #                 chestRegLabel = self.logic.getRegionStringCodeItem(item)
+    #         #                 chestTypeLabel = self.logic.getTypeStringCodeItem(item)
+    #         #                 label = "{0}-{1}".format(chestRegLabel, chestTypeLabel)
+    #         #                 colorTableNode.SetColor(code, label, r, g, b)
+    #         #
+    #         #             # Special case: Undefined label will have no opacity
+    #         #             colorTableNode.SetOpacity(0,0)
+    #
+    #         self.colorTableNode = colorTableNode
+    #     else:
+    #         # Node already exists (just in development mode)
+    #         self.colorTableNode = slicer.util.getNode("BodyCompositionColorMap")
 
-            # Reserve all the possible combinations (11111111 11111111 = 65535)
-            #             colorTableNode.SetNumberOfColors(65535)
-            #
-            #             # Set colors where it is required
-            #             for item in self.logic.getAllowedCombinations():
-            #                 code = self.logic.getIntCodeItem(item)
-            #                 r = self.logic.getRedItem(item)
-            #                 g = self.logic.getGreenItem(item)
-            #                 b = self.logic.getBlueItem(item)
-            #                 chestRegLabel = self.logic.getRegionStringCodeItem(item)
-            #                 chestTypeLabel = self.logic.getTypeStringCodeItem(item)
-            #                 label = "{0}-{1}".format(chestRegLabel, chestTypeLabel)
-            #                 colorTableNode.SetColor(code, label, r, g, b)
-            #
-            #             # Special case: Undefined label will have no opacity
-            #             colorTableNode.SetOpacity(0,0)
+    def __loadColormapNode__(self):
+        """ Load the colormap node for the bodycomposition structures and set the value to the self.colorTableNode property
+        """
+        self.colorTableNode = slicer.util.getNode("CIP_BodyComposition_ColorMap*")
+        if self.colorTableNode is None:
+            # Load the node from disk
+            p = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Resources/CIP_BodyComposition_ColorMap.ctbl")
+            self.colorTableNode = slicer.modules.colors.logic().LoadColorFile(p)
 
-            self.colorTableNode = colorTableNode
-        else:
-            # Node already exists (just in development mode)
-            self.colorTableNode = slicer.util.getNode("BodyCompositionColorMap")
+
 
     def checkMasterAndLabelMapNodes(self, forceSlicesReload=False):
         """Set an appropiate MasterNode LabelMapNode to the Editor.
@@ -398,7 +409,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
         # if self.disableEvents: return     # To avoid infinite loops
 
-        self.__createColorNodes__()  # Recreate color map node when neccesary (for example if the user closed the scene)
+        self.__loadColormapNode__()  # Recreate color map node when neccesary (for example if the user closed the scene)
         # if SlicerUtil.IsDevelopment: print ("DEBUG: Entering checkMasterAndLabelMapNodes")
 
         if self.editorWidget.masterVolume:
@@ -816,7 +827,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         sliceK = transformationMatrix.MultiplyPoint([0, 0, rasSliceOffset, 1])[2]
 
         slices = self.getCurrentSlicesForCurrentLabel()
-        if slices == None:
+        if slices is None:
             # If the label is not present (or there is none selected) take all the slices with any label
             allLabels = self.labelMapSlices[self.getCurrentLabelMapNode().GetID()]
             if len(allLabels) == 0:
