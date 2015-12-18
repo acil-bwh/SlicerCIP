@@ -250,7 +250,7 @@ class SlicerUtil:
         return resultVolume
 
     @staticmethod
-    def cloneVolume(volumeNode, copyVolumeName, mrmlScene=None, cloneImageData=True):
+    def cloneVolume(volumeNode, copyVolumeName, mrmlScene=None, cloneImageData=True, addToScene=True):
         """ Clone a scalar node or a labelmap and add it to the scene.
         If no scene is passed, slicer.mrmlScene will be used.
         This method was implemented following the same guidelines as in slicer.modules.volumes.logic().CloneVolume(),
@@ -259,6 +259,7 @@ class SlicerUtil:
         :param copyVolumeName: desired name of the labelmap (with a suffix if a node with that name already exists in the scene)
         :param mrmlScene: slicer.mrmlScene by default
         :param cloneImageData: clone also the vtkImageData node
+        :param addToScene: add the cloned volume to the scene (default: True)
         :return: cloned volume
         """
         scene = slicer.mrmlScene if mrmlScene is None else mrmlScene
@@ -293,7 +294,8 @@ class SlicerUtil:
                 clonedVolume.SetAndObserveImageData(None)
 
         # Return result
-        scene.AddNode(clonedVolume)
+        if addToScene:
+            scene.AddNode(clonedVolume)
         return clonedVolume
 
 

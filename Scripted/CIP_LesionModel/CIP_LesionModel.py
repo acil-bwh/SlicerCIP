@@ -1478,7 +1478,6 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             if caller.GetStatus() == caller.Completed:
                 self.invokedCLI = True
                 self.__processNoduleSegmentationCLIResults__()
-            # elif caller.GetStatusString() == "Completed with errors":
             elif caller.GetStatus() == caller.CompletedWithErrors:
                 # TODO: print current parameters with caller.GetParameterDefault()
                 raise Exception("The Nodule Segmentation CLI failed")

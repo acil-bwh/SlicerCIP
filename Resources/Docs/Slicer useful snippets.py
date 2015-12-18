@@ -101,6 +101,7 @@ self.volumeSelectorFrame.layout().addWidget( self.volumeSelector )
 self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelected)
 ...
 selectedNode = self.volumeSelector.currentNode()
+self.volumeSelector.setCurrentNode(node) or setCurrentNodeID(volumeId)
 ####################################################################################
 # Select a volumnenode and a label map as the active nodes in Slicer through a selectionNode. Required for example for the Editor
 selectionNode = slicer.app.applicationLogic().GetSelectionNode()
