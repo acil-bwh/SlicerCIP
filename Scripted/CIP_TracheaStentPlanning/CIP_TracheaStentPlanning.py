@@ -285,7 +285,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
 
         ## Measurements
         self.measurementsFrame = qt.QFrame()
-        frameLayout = qt.QVBoxLayout(self.measurementsFrame)
+        frameLayout = qt.QGridLayout(self.measurementsFrame)
         self.measurementsTableViews = dict()
         for key in self.logic.getStentKeys():
             label = qt.QLabel("{0} measurements".format(key))
@@ -293,11 +293,22 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             self.measurementsTableViews[key] = qt.QTableView()
             self.measurementsTableViews[key].sortingEnabled = True
             self.measurementsTableViews[key].setFixedSize(285, 120)
+
             # FIXME: hide temporarily the T stent table because there is no implementation yet
             if key == self.logic.STENT_Y:
-                frameLayout.addWidget(label)
-                frameLayout.addWidget(label)
-                frameLayout.addWidget(self.measurementsTableViews[key])
+                frameLayout.addWidget(label, 0, 0)
+                frameLayout.addWidget(self.measurementsTableViews[key], 1, 0)
+        # Angles
+        self.anglesTableViews = dict()
+        for key in self.logic.getStentKeys():
+            self.anglesTableViews[key] = qt.QTableView()
+            self.anglesTableViews[key].sortingEnabled = True
+            self.anglesTableViews[key].setFixedSize(250, 100)
+
+            # FIXME: hide temporarily the T stent table because there is no implementation yet
+            if key == self.logic.STENT_Y:
+                frameLayout.addWidget(self.anglesTableViews[key], 1, 1)
+
 
         self.mainAreaLayout.addWidget(self.measurementsFrame, 9, 0, 1, 3)
         self.__initMeasurementsTables__()
@@ -407,7 +418,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             self.logic.updateCylindersPosition(self.currentStentType)
 
     def __initMeasurementsTables__(self):
-        """ Init the required structures for the tables of stent measurements (ratio and length)
+        """ Init the required structures for the tables of stent measurements (ratio and length) and angles
         """
         self.measurementsTableModels = dict()
         for key in self.logic.getStentKeys():
@@ -433,17 +444,55 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
                     item.setData(0, qt.Qt.DisplayRole)
                     item.setEditable(False)
                     self.measurementsTableModels[key].setItem(row, col, item)
-
-    def __refreshMeasurementsTables__(self):
+                    
+        ## Angles
+        self.anglesTableModels = dict()
         for key in self.logic.getStentKeys():
-            measures = self.logic.currentMeasurements[key]
-            model = self.measurementsTableModels[key]
-            for row in range(len(measures)):
-                for col in range(2):
-                    item = qt.QStandardItem()
-                    item.setData(measures[row][col], qt.Qt.DisplayRole)
-                    item.setEditable(False)
-                    model.setItem(row, col, item)
+            self.anglesTableModels[key] = qt.QStandardItemModel()
+            self.anglesTableViews[key].setModel(self.anglesTableModels[key])
+
+            # Horizontal header
+            # self.anglesTableModels[key].setHorizontalHeaderItem(0, qt.QStandardItem("Position"))
+            self.anglesTableModels[key].setHorizontalHeaderItem(0, qt.QStandardItem("Angle (degrees)"))
+
+            # Vertical header
+            if key == self.logic.STENT_Y:
+                self.anglesTableModels[key].setVerticalHeaderItem(0, qt.QStandardItem("Trachea-Left branch"))
+                self.anglesTableModels[key].setVerticalHeaderItem(1, qt.QStandardItem("Trachea-Right branch"))
+
+            # Reset all items
+            for row in range(2):
+                item = qt.QStandardItem()
+                item.setData(0, qt.Qt.DisplayRole)
+                item.setEditable(False)
+                self.anglesTableModels[key].setItem(row, 0, item)
+                    
+                    
+    def __refreshMeasurementsTables__(self):
+        """ Refresh the values in the measurements tables (GUI)
+        """
+        key = self.logic.currentStentType
+        # for key in self.logic.getStentKeys():
+        measures = self.logic.currentMeasurements[key]
+        model = self.measurementsTableModels[key]
+        for row in range(len(measures)):
+            for col in range(2):
+                item = qt.QStandardItem()
+                item.setData(measures[row][col], qt.Qt.DisplayRole)
+                item.setEditable(False)
+                model.setItem(row, col, item)
+
+        model2 = self.anglesTableModels[key]
+        item = qt.QStandardItem()
+        item.setData(self.logic.currentAngles[key][0], qt.Qt.DisplayRole)
+        item.setEditable(False)
+        model2.setItem(0, 0, item)
+
+        item = qt.QStandardItem()
+        item.setData(self.logic.currentAngles[key][1], qt.Qt.DisplayRole)
+        item.setEditable(False)
+        model2.setItem(1, 0, item)
+
 
     ############
     ##  Events
@@ -532,7 +581,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             self.fiducialTypesLayout.addWidget(rbitem)
         self.segmentTypesRadioButtonGroup.buttons()[0].setChecked(True)
 
-        self.__initMeasurementsTables__()
+        #self.__initMeasurementsTables__()
         self.logic.setActiveFiducialListNode(self.currentStentType, 0)
         self.logic.currentStentType = self.currentStentType
 
@@ -550,6 +599,9 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.isSegmentationExecuted = True
         self.__refreshMeasurementsTables__()
         self.__refreshUI__()
+        # Change to conventional layout if 3D view is not visible to show the 3D model
+        if not SlicerUtil.is3DViewVisible():
+            SlicerUtil.changeLayout(1)
 
     def __onApplyThreshold__(self, val):
         """ Fine tuning of the segmentation
@@ -635,6 +687,10 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         self.currentMeasurements = dict()
         for key in self.getStentKeys():
             self.currentMeasurements[key] = [(0, 0)] * 3
+        # Every stent will have 2 angles
+        self.currentAngles = dict()
+        for key in self.getStentKeys():
+            self.currentAngles[key] = (0, 0)
 
     def getStentKeys(self):
         return self.stentTypes.keys()
@@ -758,7 +814,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
             threeDWidget = layoutManager.threeDWidget(0)
             threeDView = threeDWidget.threeDView()
             threeDView.resetFocalPoint()
-        self.__refreshMeasurements__()
+        self.__calculateMeasurements__()
 
     def __segmentTracheaFromYStentPoints__(self):
         """ Run the Y trachea segmentation.
@@ -1008,7 +1064,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
 
         # self.currentCylindersModel[stentKey].GetDisplayNode().Modified()
         self.getMRML3DModel(stentKey).GetDisplayNode().Modified()
-        self.__refreshMeasurements__()
+        self.__calculateMeasurements__()
 
     def updateCylindersPosition(self, stentType):
         """ Refresh the 3D cylinders model
@@ -1044,23 +1100,52 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         # line_middle_right.Update()
 
         self.cylindersVtkAppendPolyDataFilter[stentType].Update()
-        self.__refreshMeasurements__()
+        self.__calculateMeasurements__()
 
-    def __refreshMeasurements__(self):
-        """ Save the current measures of radius and lenght of the current stent """
+    def __calculateMeasurements__(self):
+        """ Calculate the current measures of radius and length of the current stent.
+        Also calculate the required angles.
+        All the results will be stored in the variables self.currentMeasurements and self.currentMeasurementsAngles"""
         stentType = self.currentStentType
-        l = [0] * len(self.currentLines[stentType])
+        # One measurement per cylinder
+        measurements = [0] * len(self.currentLines[stentType])
+
         for i in range(len(self.currentLines[stentType])):
             segment = self.currentLines[stentType][i]
             p1 = segment.GetPoint1()
             p2 = segment.GetPoint2()
-            d = math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2 + (p1[2] - p2[2]) ** 2)
-            l[i] = (d, self.currentCylindersVtkFilters[stentType][i].GetRadius())
-        self.currentMeasurements[stentType] = l
+            # Calculate the distance of the 2 points in 3D (length of the cylinder)
+            distance = math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2 + (p1[2] - p2[2]) ** 2)
+            # Save the distance and the radius of the cylinder
+            measurements[i] = (distance, self.currentCylindersVtkFilters[stentType][i].GetRadius())
+        self.currentMeasurements[stentType] = measurements
 
-        # def printMessage(self, message):
-        #     print("This is your message: ", message)
-        #     return "I have printed this message: " + message
+        # Angles
+        if stentType == self.STENT_T:
+            raise NotImplementedError()
+        p_upper = np.array(self.currentLines[stentType][0].GetPoint1())
+        p_middle = np.array(self.currentLines[stentType][0].GetPoint2())
+        p_left = np.array(self.currentLines[stentType][1].GetPoint2())
+        p_right = np.array(self.currentLines[stentType][2].GetPoint2())
+
+        # v1 = (p_upper - p_middle) / np.linalg.norm(p_upper - p_middle)
+        # v_left =( p_left - p_middle ) / np.linalg.norm(p_left - p_middle)
+        # v_right = (p_right - p_middle) / np.linalg.norm(p_right - p_middle)
+        # alpha_left = 180 / np.pi * np.arccos( np.abs(np.dot(v_left, v1)) )
+        # alpha_right = 180 / np.pi * np.arccos( np.abs(np.dot(v_right, v1)) )
+        # self.currentAngles[stentType] = (alpha_left, alpha_right)
+
+        v1 = (p_middle - p_upper) / np.linalg.norm(p_upper - p_middle)
+        v_left =( p_left - p_middle ) / np.linalg.norm(p_left - p_middle)
+        v_right = (p_right - p_middle) / np.linalg.norm(p_right - p_middle)
+        alpha_left = 180 / np.pi * np.arccos(np.dot(v_left, v1))
+        alpha_right = 180 / np.pi * np.arccos(np.dot(v_right, v1))
+        self.currentAngles[stentType] = (alpha_left, alpha_right)
+
+
+
+
+
 
     def reset(self):
         """ Delete all the posible objects that have been used and init them back
