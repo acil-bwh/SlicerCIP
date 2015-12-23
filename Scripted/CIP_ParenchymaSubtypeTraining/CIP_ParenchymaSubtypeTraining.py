@@ -174,7 +174,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.mainLayout.addWidget(self.saveResultsButton, 4, 0)
 
         # Save results directory button
-        defaultPath = SlicerUtil.getDataFolder(self.moduleName)     # Assign a default path for the results
+        defaultPath = os.path.join(SlicerUtil.getSettingsDataFolder(self.moduleName), "Results")     # Assign a default path for the results
         path = SlicerUtil.settingGetOrSetDefault(self.moduleName, "SaveResultsDirectory", defaultPath)
         self.saveResultsDirectoryButton = ctk.ctkDirectoryButton()
         self.saveResultsDirectoryButton.directory = path

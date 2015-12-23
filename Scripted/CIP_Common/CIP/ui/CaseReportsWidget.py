@@ -3,7 +3,7 @@ import csv, os, time, pprint
 from __main__ import qt, ctk, slicer
 
 from CIP.logic import EventsTrigger
-from CIP.logic.SlicerUtil import *
+from CIP.logic.SlicerUtil import SlicerUtil
 
 class CaseReportsWidget(EventsTrigger):
     # Events triggered by the widget
@@ -152,13 +152,11 @@ class CaseReportsWidget(EventsTrigger):
 class CaseReportsLogic(object):
     def __init__(self, moduleName, columnNames, filePreffix):
         self.__moduleName__ = moduleName
-        p = os.path.dirname(slicer.util.getModule(moduleName).path)
-        if os.sys.platform == "win32":
-            p = p.replace("/", "\\")
+        p = SlicerUtil.getSettingsDataFolder(moduleName)
         if filePreffix != "":
-            self.__csvFilePath__ = os.path.join(p, "Resources", "{0}.{1}.storage.csv".format(filePreffix, moduleName))
+            self.__csvFilePath__ = os.path.join(p, "{0}.{1}.storage.csv".format(filePreffix, moduleName))
         else:
-            self.__csvFilePath__ = os.path.join(p, "Resources", moduleName + ".storage.csv")
+            self.__csvFilePath__ = os.path.join(p, moduleName + ".storage.csv")
         self.__columnNames__ = columnNames
         self.showWarningWhenIncompleteColumns = True
 

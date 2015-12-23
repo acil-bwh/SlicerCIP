@@ -5,7 +5,7 @@ Common functions that can be useful in any Slicer module development
 '''
 
 import os
-
+import os.path as path
 from __main__ import slicer, vtk, qt
 from . import Util
 
@@ -53,8 +53,22 @@ class SlicerUtil:
         return path
 
     @staticmethod
-    def getDataFolder(moduleName):
-        return os.path.join(os.path.expanduser('~'), "SlicerCIP_Data", moduleName, "Results")
+    def getSettingsDataFolder(moduleName):
+        """ Get the full path file where the settings of a module are going to be stored.
+        It creates the directory if it doesn't exist.
+        For instante, the root base dir in Mac is /Users/jonieva/.config/www.na-mic.org/CIP/ModuleName
+        :param moduleName: name of the module
+        :return: full path to the file
+        """
+        #return os.path.join(os.path.expanduser('~'), "SlicerCIP_Data", moduleName, "Results")
+        #p = path.join(path.dirname(slicer.app.slicerDefaultSettingsFilePath), "DataStore", "CIP", moduleName)
+        baseDir = os.path.dirname(slicer.app.slicerRevisionUserSettingsFilePath)
+        p = path.join(baseDir, "CIP", moduleName)
+
+        if not path.exists(p):
+            os.makedirs(p)
+            print ("Created path " + p)
+        return p
  
     @staticmethod
     def setSetting(moduleName, settingName, settingValue):
