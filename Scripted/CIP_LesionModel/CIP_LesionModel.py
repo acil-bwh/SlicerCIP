@@ -919,6 +919,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             slicer.mrmlScene.RemoveNode(self.logic.currentModelNode)
         if self.logic.cliOutputScalarNode is not None:
             slicer.mrmlScene.RemoveNode(self.logic.cliOutputScalarNode)
+
+        # Uncheck MIP
+        self.enhanceVisualizationCheckbox.setChecked(False)
+
         del(self.logic)
         self.logic = CIP_LesionModelLogic()
         self.logic.printTiming = self.__printTimeCost__
