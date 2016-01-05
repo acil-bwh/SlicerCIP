@@ -164,6 +164,10 @@ class MIPViewerWidget(object):
         self.coronalButton.setFixedSize(40, 40)
         self.coronalButton.setIcon(SlicerUtil.getIcon("coronal.png"))
         self.planesButtonGroup.addButton(self.coronalButton, self.PLANE_CORONAL)
+        # Null button (to uncheck all)
+        self.nullPlaneButton = qt.QPushButton()
+        self.nullPlaneButton.setCheckable(True)
+        self.planesButtonGroup.addButton(self.nullPlaneButton, -1)
         # Buttons labels
         self.axialButtonLabel = qt.QLabel("Axial")
         self.axialButtonLabel.setStyleSheet("margin-bottom: 10px")
@@ -204,6 +208,10 @@ class MIPViewerWidget(object):
         self.maxMinCompareViewButton.setFixedSize(40, 40)
         self.maxMinCompareViewButton.setIcon(qt.QIcon(":/Icons/LayoutFourUpView.png"))
         self.layoutsButtonGroup.addButton(self.maxMinCompareViewButton, self.LAYOUT_COMPARE)
+        # Null button (to uncheck all)
+        self.nullLayoutButton = qt.QPushButton()
+        self.nullLayoutButton.setCheckable(True)
+        self.layoutsButtonGroup.addButton(self.nullLayoutButton, -2)
         # Reset Button
         self.resetViewButton = qt.QPushButton()
         self.resetViewButton.toolTip = "Go back to the original layout"
@@ -527,20 +535,30 @@ class MIPViewerWidget(object):
 
         if context == self.CONTEXT_VASCULATURE:
             # MIP, Axial, Side by side
-            self.currentLayout = self.LAYOUT_SIDE_BY_SIDE
+            self.currentLayout = self.__getDefaultLayoutForContext__(context)
             self.currentPlane = self.PLANE_AXIAL
             self.currentOperation = self.OPERATION_MIP
             self.setCurrentSpacingInMm(self.currentOperation, 20)
             SlicerUtil.changeContrastWindow(1400, -500)
         elif context == self.CONTEXT_EMPHYSEMA:
             # MinIP, Axial, Side by side
-            self.currentLayout = self.LAYOUT_SIDE_BY_SIDE
+            self.currentLayout = self.__getDefaultLayoutForContext__(context)
             self.currentPlane = self.PLANE_AXIAL
             self.currentOperation = self.OPERATION_MinIP
             self.setCurrentSpacingInMm(self.currentOperation, 5)
             SlicerUtil.changeContrastWindow(1400, -500)
 
         self.executeCurrentSettings()
+
+    def __getDefaultLayoutForContext__(self, context):
+        """ Get the default layout for a concrete context.
+        :param context:
+        :return:
+        """
+        if context == self.CONTEXT_UNKNOWN:
+            return self.LAYOUT_DEFAULT
+        # Right now all the contexts have the same default layout (side by side)
+        return self.LAYOUT_SIDE_BY_SIDE
 
     def __resliceNode__(self, sliceNode, plane, operation):
         """ Apply a reslicing operation in the specified window
@@ -643,6 +661,9 @@ class MIPViewerWidget(object):
             # Default: Axial view
             self.currentLayout = self.LAYOUT_RED_ONLY
             self.singleSlideViewButton.setChecked(True)
+        if not self.fullModeOn:
+            # Activate the current default layout
+            self.currentLayout = self.__getDefaultLayoutForContext__(self.currentContext)
         self.executeCurrentSettings()
 
     def __onSingleSlideButtonClicked__(self):
@@ -667,6 +688,9 @@ class MIPViewerWidget(object):
         """ Switch to three over three in the selected operation and plane
         """
         self.currentLayout = self.LAYOUT_THREE_OVER_THREE
+        # Uncheck all the plane buttons
+        self.nullPlaneButton.setChecked(True)
+
         if self.currentOperation == self.OPERATION_MIP_MinIP:
             # Force a default operation (MIP) because 3x3 and MIP+MinIP is not a valid combination
             self.currentOperation = self.OPERATION_MIP

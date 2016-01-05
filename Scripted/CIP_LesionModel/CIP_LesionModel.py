@@ -194,6 +194,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.inputVolumeSelector.showHidden = False
         self.inputVolumeSelector.showChildNodeTypes = False
         self.inputVolumeSelector.setMRMLScene(slicer.mrmlScene)
+        self.inputVolumeSelector.sortFilterProxyModel().setFilterRegExp(self.logic.INPUTVOLUME_FILTER_REGEXPR)
         # self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
         self.caseSelectorLayout.addWidget(self.inputVolumeSelector, row, 1, 1, 3)
 
@@ -360,6 +361,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.noduleLabelmapSelector.showChildNodeTypes = False
         self.noduleLabelmapSelector.setMRMLScene(slicer.mrmlScene)
         self.noduleLabelmapSelector.toolTip = "Labelmap with the segmented nodule"
+        self.noduleLabelmapSelector.sortFilterProxyModel().setFilterRegExp(self.logic.LESION_LABELMAP_FILTER_REGEXPR)
         self.radiomicsLayout.addRow(self.noduleLabelmapLabel, self.noduleLabelmapSelector)
 
         # auto-generate QTabWidget Tabs and QCheckBoxes (subclassed in FeatureWidgetHelperLib)
@@ -486,21 +488,13 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         self.radiomicsLayout.addWidget(self.sphereRadiusFrame)
 
+        # Reports widget
         collapsibleButton = ctk.ctkCollapsibleButton()
-        collapsibleButton.text = "Results"
+        collapsibleButton.text = "Results of the analysis"
         self.layout.addWidget(collapsibleButton)
         self.reportsLayout = qt.QHBoxLayout(collapsibleButton)
-        # Frame to store the ReportsViewer
-        # self.reportsFrame = qt.QFrame(self.radiomicsCollapsibleButton)
-        # self.reportsFrame.setLayout(qt.QHBoxLayout())
-        # self.radiomicsLayout.addRow(self.reportsLayout)
-
-
-
-        # Reports widget
         self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
                                                parentWidget=self.reportsLayout)
-                                               # parentWidget=self.reportsFrame)
         self.reportsWidget.setup()
         self.reportsWidget.showWarnigMessages(False)
 
@@ -925,6 +919,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             slicer.mrmlScene.RemoveNode(self.logic.currentModelNode)
         if self.logic.cliOutputScalarNode is not None:
             slicer.mrmlScene.RemoveNode(self.logic.cliOutputScalarNode)
+
+        # Uncheck MIP
+        self.enhanceVisualizationCheckbox.setChecked(False)
+
         del(self.logic)
         self.logic = CIP_LesionModelLogic()
         self.logic.printTiming = self.__printTimeCost__
@@ -1239,6 +1237,33 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
 
         self.printTiming = SlicerUtil.IsDevelopment
 
+    @property
+    def __PREFIX_INPUTVOLUME__(self):
+        """ Prefix that will be used to name the "ghost" volumes that shouldn't be displayed
+        in the input volume selector
+        """
+        return "__segmentResults__"
+
+    @property
+    def INPUTVOLUME_FILTER_REGEXPR(self):
+        """ Regular expresion that will be used to filter the nodes that shouldn't show up in the
+        input volume selector
+        """
+        return "^(?!{0})(.)+$".format(self.__PREFIX_INPUTVOLUME__)
+
+    @property
+    def __SUFFIX__SEGMENTED_LABELMAP(self):
+        """ Suffix that will be used to rename the nodule segmented labelmaps that will show up in
+        the nodule labelmap volume selector
+        """
+        return "_lesion"
+
+    @property
+    def LESION_LABELMAP_FILTER_REGEXPR(self):
+        """ Regular expresion that will be used to filter the lesion labelmap nodes that should
+        show up in the labelmap volume selector
+        """
+        return "^(.)+{0}$".format(self.__SUFFIX__SEGMENTED_LABELMAP)
 
     @property
     def currentModelNode(self):
@@ -1283,9 +1308,11 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         markupsLogic.SetActiveListID(fiducialsNode)
 
         # Search for preexisting labelmap
-        labelmapName = self.currentVolume.GetName() + '_nodulelm'
+        #labelmapName = self.currentVolume.GetName() + '_nodulelm'
+        labelmapName = self.currentVolume.GetName() + self.__SUFFIX__SEGMENTED_LABELMAP
         self.currentLabelmap = slicer.util.getNode(labelmapName)
-        segmentedNodeName = self.currentVolume.GetID() + '_segmentedlm'
+        #segmentedNodeName = self.currentVolume.GetID() + '_segmentedlm'
+        segmentedNodeName = self.__PREFIX_INPUTVOLUME__ + self.currentVolume.GetID()
         self.cliOutputScalarNode = slicer.util.getNode(segmentedNodeName)
 
     def __createFiducialsListNode__(self, fiducialsNodeName, onModifiedCallback=None):
@@ -1374,7 +1401,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if self.cliOutputScalarNode is None:
             # Create the scalar node that will work as the CLI output
             self.cliOutputScalarNode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLScalarVolumeNode")
-            segmentedNodeName = self.currentVolume.GetID() + '_segmentedlm'
+            #segmentedNodeName = self.currentVolume.GetID() + '_segmentedlm'
+            segmentedNodeName = self.__PREFIX_INPUTVOLUME__ + self.currentVolume.GetID()
             self.cliOutputScalarNode.SetName(segmentedNodeName)
             slicer.mrmlScene.AddNode(self.cliOutputScalarNode)
 
@@ -1459,7 +1487,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         return array
 
     def getSphereLabelMap(self, radius):
-        print("DEBUG: get sphere lm ", radius)
+        if SlicerUtil.IsDevelopment:
+            print("DEBUG: get sphere lm ", radius)
         return slicer.util.getNode("{0}_r{1}".format(self.currentVolume.GetName(), radius))
 
 
@@ -1478,7 +1507,6 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             if caller.GetStatus() == caller.Completed:
                 self.invokedCLI = True
                 self.__processNoduleSegmentationCLIResults__()
-            # elif caller.GetStatusString() == "Completed with errors":
             elif caller.GetStatus() == caller.CompletedWithErrors:
                 # TODO: print current parameters with caller.GetParameterDefault()
                 raise Exception("The Nodule Segmentation CLI failed")
@@ -1497,7 +1525,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.thresholdFilter.SetInValue(1)  # Value of the segmented nodule
 
 
-        labelmapName = self.currentVolume.GetName() + '_nodulelm'
+        #labelmapName = self.currentVolume.GetName() + '_nodulelm'
+        labelmapName = self.currentVolume.GetName() + self.__SUFFIX__SEGMENTED_LABELMAP
         self.currentLabelmap = slicer.util.getNode(labelmapName)
         if self.currentLabelmap is None:
             # Create a labelmap with the same dimensions that the ct volume

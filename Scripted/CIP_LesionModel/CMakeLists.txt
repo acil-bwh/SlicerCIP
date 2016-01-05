@@ -6,14 +6,15 @@ set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
   FeatureExtractionLib/__init__
   FeatureExtractionLib/FirstOrderStatistics
+  FeatureExtractionLib/GeometricalMeasures
   FeatureExtractionLib/MorphologyStatistics
+  FeatureExtractionLib/ParenchymalVolume
+  FeatureExtractionLib/RenyiDimensions
   FeatureExtractionLib/TextureGLCM
   FeatureExtractionLib/TextureGLRL
-  FeatureExtractionLib/RenyiDimensions
-  FeatureExtractionLib/GeometricalMeasures
-  FeatureExtractionLib/ParenchymalVolume
   FeatureWidgetHelperLib/__init__
   FeatureWidgetHelperLib/FeatureDescriptionLabel
+  FeatureWidgetHelperLib/FeatureExtractionLogic
   FeatureWidgetHelperLib/FeatureWidgets
   )
 

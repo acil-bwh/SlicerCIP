@@ -4,10 +4,13 @@ set(MODULE_NAME CIP_BodyComposition)
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
-  logic/BodyCompositionParameters.py
+  CIP_BodyComposition_logic/__init__
+  CIP_BodyComposition_logic/BodyCompositionParameters.py
   )
 
 set(MODULE_PYTHON_RESOURCES
+  Resources/Icons/${MODULE_NAME}.png
+  Resources/CIP_BodyComposition_ColorMap.ctbl
   )
 
 #-----------------------------------------------------------------------------

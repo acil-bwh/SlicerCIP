@@ -10,7 +10,7 @@ set(modules
   #EmphysemaSubtypes
   CIP_Common
   CIP_BodyComposition
-  CIP_GetImage
+  # CIP_GetImage
   CIP_LesionModel
   CIP_MIPViewer
   CIP_PAARatio

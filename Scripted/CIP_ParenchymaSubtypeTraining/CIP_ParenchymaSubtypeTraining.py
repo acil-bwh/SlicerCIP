@@ -44,6 +44,9 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
+    @property
+    def moduleName(self):
+        return "CIP_ParenchymaSubtypeTraining"
 
     def __init__(self, parent):
         ScriptedLoadableModuleWidget.__init__(self, parent)
@@ -51,13 +54,14 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         from functools import partial
         def __onNodeAddedObserver__(self, caller, eventId, callData):
             """Node added to the Slicer scene"""
-            if callData.GetClassName() == 'vtkMRMLScalarVolumeNode':
+            if callData.GetClassName() == 'vtkMRMLScalarVolumeNode' \
+                    and slicer.util.mainWindow().moduleSelector().selectedModule == self.moduleName:
                 self.__onNewVolumeLoaded__(callData)
 
         self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
         self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
 
-        self.moduleName = "CIP_ParenchymaSubtypeTraining"
+
 
 
     def setup(self):
@@ -170,8 +174,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.mainLayout.addWidget(self.saveResultsButton, 4, 0)
 
         # Save results directory button
-        # Assign a default path for the results
-        defaultPath = os.path.join(SlicerUtil.getModuleFolder(self.moduleName), "Results")
+        defaultPath = os.path.join(SlicerUtil.getSettingsDataFolder(self.moduleName), "Results")     # Assign a default path for the results
         path = SlicerUtil.settingGetOrSetDefault(self.moduleName, "SaveResultsDirectory", defaultPath)
         self.saveResultsDirectoryButton = ctk.ctkDirectoryButton()
         self.saveResultsDirectoryButton.directory = path

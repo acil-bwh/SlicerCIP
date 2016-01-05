@@ -5,7 +5,7 @@ Common functions that can be useful in any Slicer module development
 '''
 
 import os
-
+import os.path as path
 from __main__ import slicer, vtk, qt
 from . import Util
 
@@ -51,6 +51,24 @@ class SlicerUtil:
         if (os.sys.platform == "win32"):
             path = path.replace("/", "\\")
         return path
+
+    @staticmethod
+    def getSettingsDataFolder(moduleName):
+        """ Get the full path file where the settings of a module are going to be stored.
+        It creates the directory if it doesn't exist.
+        For instante, the root base dir in Mac is /Users/jonieva/.config/www.na-mic.org/CIP/ModuleName
+        :param moduleName: name of the module
+        :return: full path to the file
+        """
+        #return os.path.join(os.path.expanduser('~'), "SlicerCIP_Data", moduleName, "Results")
+        #p = path.join(path.dirname(slicer.app.slicerDefaultSettingsFilePath), "DataStore", "CIP", moduleName)
+        baseDir = os.path.dirname(slicer.app.slicerRevisionUserSettingsFilePath)
+        p = path.join(baseDir, "CIP", moduleName)
+
+        if not path.exists(p):
+            os.makedirs(p)
+            print ("Created path " + p)
+        return p
  
     @staticmethod
     def setSetting(moduleName, settingName, settingValue):
@@ -246,7 +264,7 @@ class SlicerUtil:
         return resultVolume
 
     @staticmethod
-    def cloneVolume(volumeNode, copyVolumeName, mrmlScene=None, cloneImageData=True):
+    def cloneVolume(volumeNode, copyVolumeName, mrmlScene=None, cloneImageData=True, addToScene=True):
         """ Clone a scalar node or a labelmap and add it to the scene.
         If no scene is passed, slicer.mrmlScene will be used.
         This method was implemented following the same guidelines as in slicer.modules.volumes.logic().CloneVolume(),
@@ -255,6 +273,7 @@ class SlicerUtil:
         :param copyVolumeName: desired name of the labelmap (with a suffix if a node with that name already exists in the scene)
         :param mrmlScene: slicer.mrmlScene by default
         :param cloneImageData: clone also the vtkImageData node
+        :param addToScene: add the cloned volume to the scene (default: True)
         :return: cloned volume
         """
         scene = slicer.mrmlScene if mrmlScene is None else mrmlScene
@@ -289,7 +308,8 @@ class SlicerUtil:
                 clonedVolume.SetAndObserveImageData(None)
 
         # Return result
-        scene.AddNode(clonedVolume)
+        if addToScene:
+            scene.AddNode(clonedVolume)
         return clonedVolume
 
 

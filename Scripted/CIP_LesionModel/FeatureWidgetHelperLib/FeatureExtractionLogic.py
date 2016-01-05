@@ -92,8 +92,6 @@ class FeatureExtractionLogic:
         self.checkStopProcess()
 
         ########
-        # Manage feature classes for Heterogeneity feature calculations and consolidate into self.FeatureVector
-        # TODO: create a parent class for all feature classes
         # self.__analysisResultsDict__ = collections.OrderedDict()
         # self.__analysisTimingDict__ = collections.OrderedDict()
         self.__analysisResultsDict__ = resultsStorage
@@ -162,7 +160,6 @@ class FeatureExtractionLogic:
                 self.__analysisResultsDict__.update(results)
 
         # Geometrical Measures
-        # TODO: progress bar does not update to Geometrical Measures while calculating (create separate thread?)
         if "Geometrical Measures" in self.featureCategoriesKeys:
             self.updateProgressBar(progressBarDesc, "Geometrical Measures", len(self.__analysisResultsDict__))
             self.geometricalMeasures = FeatureExtractionLib.GeometricalMeasures(self.volumeNode.GetSpacing(), self.matrix, self.matrixCoordinates, self.targetVoxels, self.featureKeys)

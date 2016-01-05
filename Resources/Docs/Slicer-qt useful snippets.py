@@ -46,9 +46,9 @@ qt.QMessageBox.information(slicer.util.mainWindow(), 'OK!', 'The test was ok. Re
 # It can be warning, critical...
 
 # Show a dialog with Yes/No question:
-if qt.QMessageBox.question(slicer.util.mainWindow(), "Create directory?",
-                "The directory '{0}' does not exist. Do you want to create it?".format(d),
-                                       qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
+if qt.QMessageBox.question(slicer.util.mainWindow(), "Reset volume?",
+                    "All the elements for the current volume ({0}) will be removed. Are you sure?".format(currentVolumeName),
+                    qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
 
 #####################################################
 # Radio Button Group with key-value
