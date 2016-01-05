@@ -28,6 +28,7 @@
 
 #include <vtkCallbackCommand.h>
 #include <vtkSmartPointer.h>
+#include <vtkWeakPointer.h>
 
 class qSlicerAirwayInspectorModuleWidgetPrivate;
 class vtkImageData;
@@ -36,6 +37,7 @@ class vtkRenderWindowInteractor;
 class vtkRenderer;
 class vtkMRMLSliceNode;
 class vtkMRMLAirwayNode;
+class vtkMRMLScalarVolumeDisplayNode;
 
 #include <map>
 
@@ -86,6 +88,7 @@ protected slots:
   void onThresholdChanged(double);
   void onToggled(bool);
   void onMethodChanged(int);
+  void onWindowLevelChanged();
 
 protected:
   QScopedPointer<qSlicerAirwayInspectorModuleWidgetPrivate> d_ptr;
@@ -93,7 +96,7 @@ protected:
   std::map<vtkRenderWindowInteractor*, vtkMRMLSliceNode*>   interactors;
   vtkSmartPointer<vtkCallbackCommand>       interactorCallBackCommand;
   vtkSmartPointer<vtkRenderer> Renderer;
-
+  vtkWeakPointer<vtkMRMLScalarVolumeDisplayNode> VolumeDisplayNode;
   bool isUpdating;
 
   QStringList statsLabels;

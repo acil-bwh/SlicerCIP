@@ -283,47 +283,6 @@
         </property>
        </widget>
       </item>
-      <item row="5" column="0">
-       <widget class="QLabel" name="WriteAirwaysLabel">
-        <property name="text">
-         <string>Write Airway Images To Disk</string>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="1">
-       <widget class="QCheckBox" name="WriteAirwaysCheckBox">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="0">
-       <widget class="QLabel" name="OutputDirectoryLabel">
-        <property name="text">
-         <string>Output Directory</string>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="1">
-       <widget class="ctkDirectoryButton" name="OutputDirectoryButton" native="true">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="0">
-       <widget class="QLabel" name="FilePrefixLabel">
-        <property name="text">
-         <string>File Prefix</string>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="1">
-       <widget class="QLineEdit" name="FilePrefixLineEdit"/>
-      </item>
       <item row="8" column="0">
        <widget class="QPushButton" name="WriteCSVFileButton">
         <property name="text">
@@ -350,6 +309,88 @@
       </widget>
      </item>
     </layout>
+   </item>
+
+   <item>
+    <widget class="ctkCollapsibleButton" name="outputCollapsibleButton" native="true">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="text" stdset="0">
+      <string>Output Images</string>
+     </property>
+     <property name="collapsed" stdset="0">
+      <bool>true</bool>
+     </property>
+     <property name="collapsedHeight" stdset="0">
+      <number>0</number>
+     </property>
+     <layout class="QFormLayout" name="reportFormLayout">
+      <property name="fieldGrowthPolicy">
+       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+      </property>
+      <property name="verticalSpacing">
+       <number>12</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="WriteAirwaysLabel">
+        <property name="text">
+         <string>Write Airway Images To Disk</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QCheckBox" name="WriteAirwaysCheckBox">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="OutputDirectoryLabel">
+        <property name="text">
+         <string>Output Directory</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="ctkDirectoryButton" name="OutputDirectoryButton" native="true">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="FilePrefixLabel">
+        <property name="text">
+         <string>File Prefix</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="FilePrefixLineEdit"/>
+      </item>
+      <item row="3" column="0">
+       <widget class="QPushButton" name="WriteCSVFileButton">
+        <property name="text">
+         <string>Write CSV File</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="ctkPathLineEdit" name="CSVFilePathEdit" native="true"/>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayoutTemp"/>

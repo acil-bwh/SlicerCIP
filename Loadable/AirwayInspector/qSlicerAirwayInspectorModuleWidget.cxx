@@ -49,6 +49,7 @@
 
 #include "vtkMRMLScene.h"
 #include "vtkMRMLScalarVolumeNode.h"
+#include "vtkMRMLScalarVolumeDisplayNode.h"
 #include "vtkMRMLAirwayNode.h"
 #include "vtkMRMLSliceNode.h"
 
@@ -83,6 +84,7 @@ qSlicerAirwayInspectorModuleWidget::qSlicerAirwayInspectorModuleWidget(QWidget* 
     vtkSmartPointer<vtkRenderer>::New();
 
   this->isUpdating = false;
+  this->VolumeDisplayNode = 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -347,7 +349,17 @@ void qSlicerAirwayInspectorModuleWidget::setMRMLVolumeNode(vtkMRMLNode* mrmlNode
   vtkSlicerAirwayInspectorModuleLogic *airwayLogic = vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
   if (airwayLogic && volumeNode)
     {
-    /// TODO: do we need to do anything here?
+    vtkMRMLScalarVolumeDisplayNode *dnode = vtkMRMLScalarVolumeDisplayNode::SafeDownCast(volumeNode->GetDisplayNode());
+    vtkMRMLAirwayNode* airwayNode = vtkMRMLAirwayNode::SafeDownCast(
+                                                d->AirwayComboBox->currentNode());
+
+    // each time the node is modified, the qt widgets are updated
+    this->qvtkReconnect(this->VolumeDisplayNode, dnode, vtkCommand::ModifiedEvent,
+                      this, SLOT(onWindowLevelChanged()));
+
+    this->VolumeDisplayNode = dnode;
+
+    this->updateViewer(airwayNode);
     }
 }
 
@@ -395,6 +407,15 @@ void qSlicerAirwayInspectorModuleWidget::updateAirwaySlice()
     }
 
   return;
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerAirwayInspectorModuleWidget::onWindowLevelChanged()
+{
+  Q_D(qSlicerAirwayInspectorModuleWidget);
+
+  vtkMRMLAirwayNode *airwayNode = vtkMRMLAirwayNode::SafeDownCast(d->AirwayComboBox->currentNode());
+  this->updateViewer(airwayNode);
 }
 
 //-----------------------------------------------------------------------------
@@ -645,8 +666,26 @@ void qSlicerAirwayInspectorModuleWidget::updateViewer(vtkMRMLAirwayNode* airwayN
   // DEBUG:
   //this->saveAirwayImage(airwayNode, "C:\\tmp\\flip.png", flip->GetOutput());
 
-  imageMapper->SetColorWindow(256);
-  imageMapper->SetColorLevel(128);
+  // get windowlevel from the input volume
+  double colorWindow = 256;
+  double colorLevel = 128;
+  vtkMRMLVolumeNode *vnode = vtkMRMLVolumeNode::SafeDownCast(
+    this->mrmlScene()->GetNodeByID(airwayNode->GetVolumeNodeID()));
+  if (vnode)
+    {
+    double *range = vnode->GetImageData()->GetScalarRange();
+    vtkMRMLScalarVolumeDisplayNode *dnode = vtkMRMLScalarVolumeDisplayNode::SafeDownCast(vnode->GetDisplayNode());
+    if (dnode)
+      {
+      colorWindow = dnode->GetWindow();
+      colorLevel = dnode->GetLevel();
+      double scale = 256/(range[1] - range[0]);
+      colorLevel = scale*(colorLevel - range[0]);
+      colorWindow = scale * colorWindow;
+      }
+    }
+  imageMapper->SetColorWindow(colorWindow);
+  imageMapper->SetColorLevel(colorLevel);
 
   vtkSmartPointer<vtkActor2D> imageActor = vtkSmartPointer<vtkActor2D>::New();
   imageActor->SetMapper(imageMapper);
