@@ -433,7 +433,12 @@ void qSlicerAirwayInspectorModuleWidget::onToggled(bool)
 //-----------------------------------------------------------------------------
 void qSlicerAirwayInspectorModuleWidget::onMethodChanged(int)
 {
+  Q_D(qSlicerAirwayInspectorModuleWidget);
+
+  vtkMRMLAirwayNode *airwayNode = vtkMRMLAirwayNode::SafeDownCast(d->AirwayComboBox->currentNode());
+
   this->updateAirwaySlice();
+  this->updateReport(airwayNode);
 }
 
 //-----------------------------------------------------------------------------
@@ -865,8 +870,8 @@ void qSlicerAirwayInspectorModuleWidget::writeCSV()
       {
       if (node->GetMean(method))
         {
-        ofs << node->GetName() << "," << node->GetMethod();
-        int numVals = node->GetMean(node->GetMethod())->GetNumberOfComponents();
+        ofs << node->GetName() << "," << method;
+        int numVals = node->GetMean(method)->GetNumberOfComponents();
         if (numVals != this->valuesLabels.size())
           {
           std::cerr << "Incorrect number of computed components. Table is misformed\n";
@@ -875,10 +880,10 @@ void qSlicerAirwayInspectorModuleWidget::writeCSV()
         for (int n=0; n<numVals; n++)
           {
           ofs << ","
-              << node->GetMean(node->GetMethod())->GetValue(n) << ","
-              << node->GetStd(node->GetMethod())->GetValue(n) << ","
-              << node->GetMin(node->GetMethod())->GetValue(n) << ","
-              << node->GetMax(node->GetMethod())->GetValue(n);
+              << node->GetMean(method)->GetValue(n) << ","
+              << node->GetStd(method)->GetValue(n) << ","
+              << node->GetMin(method)->GetValue(n) << ","
+              << node->GetMax(method)->GetValue(n);
           }
         ofs << "\n";
         }
