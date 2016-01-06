@@ -42,6 +42,9 @@
 #include "vtkPNGWriter.h"
 #include "vtkImageFlip.h"
 #include "vtkImageCast.h"
+#include "vtkReflectionFilter.h"
+#include "vtkTransformPolyDataFilter.h"
+#include "vtkTransform.h"
 
 #include "qpainter.h"
 #include "qmainwindow.h"
@@ -150,6 +153,12 @@ void qSlicerAirwayInspectorModuleWidget::setup()
 
   QObject::connect(d->MethodComboBox, SIGNAL(currentIndexChanged(int)),
                    this, SLOT(onMethodChanged(int)));
+
+  QObject::connect(d->ShowEllipsesCheckBox, SIGNAL(toggled(bool)),
+                   this, SLOT(onDrawCahnged(bool)));
+
+  QObject::connect(d->ShowPolylineCheckBox, SIGNAL(toggled(bool)),
+                   this, SLOT(onDrawCahnged(bool)));
 }
 
 //-----------------------------------------------------------------------------
@@ -410,6 +419,15 @@ void qSlicerAirwayInspectorModuleWidget::updateAirwaySlice()
 }
 
 //-----------------------------------------------------------------------------
+void qSlicerAirwayInspectorModuleWidget::onDrawCahnged(bool)
+{
+  Q_D(qSlicerAirwayInspectorModuleWidget);
+
+  vtkMRMLAirwayNode *airwayNode = vtkMRMLAirwayNode::SafeDownCast(d->AirwayComboBox->currentNode());
+  this->updateViewer(airwayNode);
+}
+
+//-----------------------------------------------------------------------------
 void qSlicerAirwayInspectorModuleWidget::onWindowLevelChanged()
 {
   Q_D(qSlicerAirwayInspectorModuleWidget);
@@ -657,7 +675,14 @@ void qSlicerAirwayInspectorModuleWidget::updateViewer(vtkMRMLAirwayNode* airwayN
 
   this->createColorImage(image, colorImage);
 
-  logic->AddEllipsesToImage(colorImage, airwayNode, viewImage);
+  if (d->ShowEllipsesCheckBox->isChecked())
+    {
+    logic->AddEllipsesToImage(colorImage, airwayNode, viewImage);
+    }
+  else
+    {
+    viewImage->DeepCopy(colorImage);
+    }
 
   vtkImageFlip *flip = vtkImageFlip::New();
   flip->SetInputData(viewImage);
@@ -699,26 +724,38 @@ void qSlicerAirwayInspectorModuleWidget::updateViewer(vtkMRMLAirwayNode* airwayN
   this->Renderer->AddActor2D(imageActor);
 
   // add ellipse polydata
-  if (airwayNode->GetEllipseInside() && airwayNode->GetEllipseInside()->GetInput())
+  if (d->ShowPolylineCheckBox->isChecked())
     {
-    vtkPolyData *poly = vtkPolyData::SafeDownCast(airwayNode->GetEllipseInside()->GetInput());
-    vtkSmartPointer<vtkPolyDataMapper2D> polyMapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
-    vtkSmartPointer<vtkActor2D> polyActor = vtkSmartPointer<vtkActor2D>::New();
-    polyMapper->SetInputData(poly);
-    polyActor->SetMapper(polyMapper);
-    polyActor->GetProperty()->SetColor(1, 0.5, 0.05);
-    this->Renderer->AddActor2D(polyActor);
-    }
+    int *ext = viewImage->GetExtent();
+    if (airwayNode->GetEllipseInside(airwayNode->GetMethod()) && airwayNode->GetEllipseInside(airwayNode->GetMethod())->GetInput())
+      {
+      vtkPolyData *poly = vtkPolyData::SafeDownCast(airwayNode->GetEllipseInside(airwayNode->GetMethod())->GetInput());
+      vtkPolyData *polyFlipped = vtkPolyData::New();
+      polyFlipped->DeepCopy(poly);
+      this->flipPolyData(polyFlipped, (ext[3]-ext[2]));
 
-  if (airwayNode->GetEllipseOutside() && airwayNode->GetEllipseOutside()->GetInput())
-    {
-    vtkPolyData *poly = vtkPolyData::SafeDownCast(airwayNode->GetEllipseOutside()->GetInput());
-    vtkSmartPointer<vtkPolyDataMapper2D> polyMapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
-    vtkSmartPointer<vtkActor2D> polyActor = vtkSmartPointer<vtkActor2D>::New();
-    polyMapper->SetInputData(poly);
-    polyActor->SetMapper(polyMapper);
-    this->Renderer->AddActor2D(polyActor);
-    polyActor->GetProperty()->SetColor(0.99, 0.99, 0.05);
+      vtkSmartPointer<vtkPolyDataMapper2D> polyMapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
+      vtkSmartPointer<vtkActor2D> polyActor = vtkSmartPointer<vtkActor2D>::New();
+      polyMapper->SetInputData(polyFlipped);
+      polyActor->SetMapper(polyMapper);
+      polyActor->GetProperty()->SetColor(1, 0.5, 0.05);
+      this->Renderer->AddActor2D(polyActor);
+      }
+
+    if (airwayNode->GetEllipseOutside(airwayNode->GetMethod()) && airwayNode->GetEllipseOutside(airwayNode->GetMethod())->GetInput())
+      {
+      vtkPolyData *poly = vtkPolyData::SafeDownCast(airwayNode->GetEllipseOutside(airwayNode->GetMethod())->GetInput());
+      vtkPolyData *polyFlipped = vtkPolyData::New();
+      polyFlipped->DeepCopy(poly);
+      this->flipPolyData(polyFlipped, (ext[3]-ext[2]));
+
+      vtkSmartPointer<vtkPolyDataMapper2D> polyMapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
+      vtkSmartPointer<vtkActor2D> polyActor = vtkSmartPointer<vtkActor2D>::New();
+      polyMapper->SetInputData(polyFlipped);
+      polyActor->SetMapper(polyMapper);
+      polyActor->GetProperty()->SetColor(0.99, 0.99, 0.05);
+      this->Renderer->AddActor2D(polyActor);
+      }
     }
 
   this->Renderer->Render();
@@ -749,6 +786,21 @@ void qSlicerAirwayInspectorModuleWidget::updateViewer(vtkMRMLAirwayNode* airwayN
     ***/
 }
 
+void qSlicerAirwayInspectorModuleWidget::flipPolyData(vtkPolyData *poly, double shift)
+{
+  vtkIdType numPts = poly->GetNumberOfPoints();
+  double point[3];
+  vtkPoints *points = vtkPoints::New();
+  for (vtkIdType i = 0; i < numPts; i++)
+    {
+    poly->GetPoint(i, point);
+    point[1] = -point[1] + shift;
+    points->InsertNextPoint(point);
+    }
+  poly->SetPoints(points);
+  points->Delete();
+}
+
 void qSlicerAirwayInspectorModuleWidget::createColorImage(vtkImageData *image,
                                                            vtkImageData *colorImage)
 {
@@ -765,7 +817,7 @@ void qSlicerAirwayInspectorModuleWidget::createColorImage(vtkImageData *image,
   lut->SetValueRange(0,1);
   //lut->SetTableRange(-150,1500);
   lut->SetTableRange(range[0], range[1]);
-  lut->SetTableRange(-1000, -500);
+  //lut->SetTableRange(-1000, -500);
   lut->Build();
   rgbFilter->SetLookupTable(lut);
 

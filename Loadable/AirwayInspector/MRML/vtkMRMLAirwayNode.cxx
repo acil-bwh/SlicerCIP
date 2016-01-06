@@ -57,9 +57,6 @@ vtkMRMLAirwayNode::vtkMRMLAirwayNode()
 
   this->Ellipse = vtkDoubleArray::New();
 
-  this->EllipseInside = vtkEllipseFitting::New();
-  this->EllipseOutside = vtkEllipseFitting::New();
-
   AirwayImage = 0;
   InnerContour = 0;
   OuterContour = 0;
@@ -108,9 +105,17 @@ vtkMRMLAirwayNode::~vtkMRMLAirwayNode()
     it->second->Delete();
     }
 
+  std::map<int, vtkEllipseFitting*>::iterator it1;
+  for (it1=this->EllipseInside.begin(); it1 != this->EllipseInside.end(); it1++)
+    {
+    it1->second->Delete();
+    }
+  for (it1=this->EllipseOutside.begin(); it1 != this->EllipseOutside.end(); it1++)
+    {
+    it1->second->Delete();
+    }
+
   this->Ellipse->Delete();
-  this->EllipseInside->Delete();
-  this->EllipseOutside->Delete();
 }
 
 //----------------------------------------------------------------------------
@@ -372,6 +377,32 @@ void vtkMRMLAirwayNode::PrintSelf(ostream& os, vtkIndent indent)
   //os << indent << "Max: " << this->Max << "\n";
   //os << indent << "Mean: " << this->Mean << "\n";
   //os << indent << "Std: " << this->Std << "\n";
+}
+
+void vtkMRMLAirwayNode::SetEllipseInside(int methodName, vtkEllipseFitting* value)
+{
+  this->EllipseInside[methodName] = value;
+}
+
+void vtkMRMLAirwayNode::SetEllipseOutside(int methodName, vtkEllipseFitting* value)
+{
+  this->EllipseOutside[methodName] = value;
+}
+
+vtkEllipseFitting*
+vtkMRMLAirwayNode::GetEllipseInside(int methodName)
+{
+  std::map<int, vtkEllipseFitting*>::iterator it =
+    this->EllipseInside.find(methodName);
+  return (it == this->EllipseInside.end()) ? 0 : it->second;
+}
+
+vtkEllipseFitting*
+vtkMRMLAirwayNode::GetEllipseOutside(int methodName)
+{
+  std::map<int, vtkEllipseFitting*>::iterator it =
+    this->EllipseOutside.find(methodName);
+  return (it == this->EllipseOutside.end()) ? 0 : it->second;
 }
 
 vtkDoubleArray*

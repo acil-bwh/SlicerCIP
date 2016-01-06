@@ -195,8 +195,11 @@ public:
   void SetMax(int methodName, vtkDoubleArray* values);
 
   vtkGetObjectMacro(Ellipse, vtkDoubleArray);
-  vtkGetObjectMacro(EllipseInside, vtkEllipseFitting);
-  vtkGetObjectMacro(EllipseOutside, vtkEllipseFitting);
+
+  vtkEllipseFitting* GetEllipseInside(int methodName);
+  vtkEllipseFitting* GetEllipseOutside(int methodName);
+  void SetEllipseOutside(int methodName,vtkEllipseFitting* value);
+  void SetEllipseInside(int methodName,vtkEllipseFitting* value);
 
   enum AxisMode { HESSIAN, POLYDATA, VECTOR};
   enum ReconstructionMode {SMOOTH, SHARP};
@@ -240,8 +243,8 @@ private:
   std::map<int, vtkDoubleArray*> Max;
   vtkDoubleArray *Ellipse;
 
-  vtkEllipseFitting *EllipseInside;
-  vtkEllipseFitting *EllipseOutside;
+  std::map<int, vtkEllipseFitting*> EllipseInside;
+  std::map<int, vtkEllipseFitting*> EllipseOutside;
 };
 
 #endif

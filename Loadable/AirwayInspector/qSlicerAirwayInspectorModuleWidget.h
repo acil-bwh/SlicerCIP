@@ -38,6 +38,7 @@ class vtkRenderer;
 class vtkMRMLSliceNode;
 class vtkMRMLAirwayNode;
 class vtkMRMLScalarVolumeDisplayNode;
+class vtkPolyData;
 
 #include <map>
 
@@ -78,6 +79,7 @@ protected:
   void updateWidgetFromMRML(vtkMRMLAirwayNode* airwayNode);
   void updateMRMLFromWidget(vtkMRMLAirwayNode* airwayNode);
   void updateAirwaySlice();
+  void flipPolyData(vtkPolyData *poly, double shift);
 
 protected slots:
   void setMRMLVolumeNode(vtkMRMLNode*);
@@ -87,6 +89,7 @@ protected slots:
   void writeCSV();
   void onThresholdChanged(double);
   void onToggled(bool);
+  void onDrawCahnged(bool);
   void onMethodChanged(int);
   void onWindowLevelChanged();
 

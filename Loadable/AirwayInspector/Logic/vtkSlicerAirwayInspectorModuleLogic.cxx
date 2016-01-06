@@ -200,6 +200,20 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeAirwayWall(vtkImageData* sliceI
     methodTag = "PC-Multiple Kernels";
   }
 
+  vtkEllipseFitting* ellipseInside = node->GetEllipseInside(method);
+  if (!ellipseInside)
+    {
+    ellipseInside = vtkEllipseFitting::New();
+    node->SetEllipseInside(method, ellipseInside);
+    }
+
+  vtkEllipseFitting* ellipseOutside = node->GetEllipseOutside(method);
+  if (!ellipseOutside)
+    {
+    ellipseOutside = vtkEllipseFitting::New();
+    node->SetEllipseOutside(method, ellipseOutside);
+    }
+
   vtkDoubleArray *mean = node->GetMean(method);
   if (!mean)
     {
@@ -309,14 +323,14 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeAirwayWall(vtkImageData* sliceI
    //cout<<"Ellipse fitting 1: "<<this->WallSolver->GetInnerContour()->GetNumberOfPoints()<<endl;
    if (this->WallSolver->GetInnerContour()->GetNumberOfPoints() >= 3)
    {
-     node->GetEllipseInside()->SetInputData(this->WallSolver->GetInnerContour());
-     node->GetEllipseInside()->Update();
+     ellipseInside->SetInputData(this->WallSolver->GetInnerContour());
+     ellipseInside->Update();
    }
    //cout<<"Ellipse fitting 2: "<<this->WallSolver->GetOuterContour()->GetNumberOfPoints()<<endl;
     if (this->WallSolver->GetOuterContour()->GetNumberOfPoints() >= 3)
     {
-      node->GetEllipseOutside()->SetInputData(this->WallSolver->GetOuterContour());
-      node->GetEllipseOutside()->Update();
+      ellipseOutside->SetInputData(this->WallSolver->GetOuterContour());
+      ellipseOutside->Update();
     }
    //cout<<"Done ellipse fitting"<<endl;
 
@@ -331,12 +345,12 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeAirwayWall(vtkImageData* sliceI
 
    double resolution = node->GetResolution();
 
-   node->GetEllipse()->SetComponent(0,0,node->GetEllipseInside()->GetMinorAxisLength()*resolution);
-   node->GetEllipse()->SetComponent(0,1,node->GetEllipseInside()->GetMajorAxisLength()*resolution);
-   node->GetEllipse()->SetComponent(0,2,node->GetEllipseInside()->GetAngle());
-   node->GetEllipse()->SetComponent(0,3,node->GetEllipseOutside()->GetMinorAxisLength()*resolution);
-   node->GetEllipse()->SetComponent(0,4,node->GetEllipseOutside()->GetMajorAxisLength()*resolution);
-   node->GetEllipse()->SetComponent(0,5,node->GetEllipseOutside()->GetAngle());
+   node->GetEllipse()->SetComponent(0,0,ellipseInside->GetMinorAxisLength()*resolution);
+   node->GetEllipse()->SetComponent(0,1,ellipseInside->GetMajorAxisLength()*resolution);
+   node->GetEllipse()->SetComponent(0,2,ellipseInside->GetAngle());
+   node->GetEllipse()->SetComponent(0,3,ellipseOutside->GetMinorAxisLength()*resolution);
+   node->GetEllipse()->SetComponent(0,4,ellipseOutside->GetMajorAxisLength()*resolution);
+   node->GetEllipse()->SetComponent(0,5,ellipseOutside->GetAngle());
 
   return;
 }
@@ -383,19 +397,19 @@ void vtkSlicerAirwayInspectorModuleLogic::AddEllipsesToImage(vtkImageData *slice
   rgbImage->DeepCopy(sliceRGBImage);
 
   //Set Image voxels based on ellipse information
-  if (node->GetEllipseInside() && node->GetEllipseOutside())
+  if (node->GetEllipseInside(node->GetMethod()) && node->GetEllipseOutside(node->GetMethod()))
     {
     double sp[3];
     rgbImage->GetSpacing(sp);
     int npoints=128;
 
     vtkEllipseFitting *arr[2];
-    arr[0]=node->GetEllipseInside();
-    arr[1]=node->GetEllipseOutside();
+    arr[0]=node->GetEllipseInside(node->GetMethod());
+    arr[1]=node->GetEllipseOutside(node->GetMethod());
     vtkEllipseFitting *eFit;
 
-    float centerX = (node->GetEllipseInside()->GetCenter()[0] + node->GetEllipseOutside()->GetCenter()[0])/2.0;
-    float centerY = (node->GetEllipseInside()->GetCenter()[1] + node->GetEllipseOutside()->GetCenter()[1])/2.0;
+    float centerX = (node->GetEllipseInside(node->GetMethod())->GetCenter()[0] + node->GetEllipseOutside(node->GetMethod())->GetCenter()[0])/2.0;
+    float centerY = (node->GetEllipseInside(node->GetMethod())->GetCenter()[1] + node->GetEllipseOutside(node->GetMethod())->GetCenter()[1])/2.0;
 
     int colorChannel[2];
     colorChannel[0]=0;
