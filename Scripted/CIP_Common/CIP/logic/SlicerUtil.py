@@ -396,6 +396,9 @@ class SlicerUtil:
         interactionNode.Reset()
         layoutManager = slicer.app.layoutManager()
         layoutManager.setLayout(layoutNumber)
+        # Call this function to force the refresh of properties like the field of view of the sliceNodes
+        slicer.app.processEvents()
+
 
     @staticmethod
     def changeContrastWindow(window, level):
