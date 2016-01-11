@@ -74,10 +74,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
         slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
 
+        # Default working mode: humans
+        self.workingMode = CIP_LesionModelLogic.WORKING_MODE_HUMAN
         self.__initVars__()
 
     def __initVars__(self):
-        self.logic = CIP_LesionModelLogic()
+        self.logic = CIP_LesionModelLogic(self.workingMode)
         self.__featureClasses__ = None
         self.__storedColumnNames__ = None
         self.__analyzedSpheres__ = set()
@@ -162,7 +164,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """This is called one time when the module GUI is initialized
         """
         ScriptedLoadableModuleWidget.setup(self)
-        self.workingMode = 0   #Humans
 
         self.semaphoreOpen = False      # To prevent duplicate events
         # self.timer = qt.QTimer()
@@ -883,7 +884,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 geom.add_point(Point(0, 86, 0, coords, descr))
 
         geom.to_xml_file(filePath)
-        qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+        qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully in ' + filePath)
 
     def loadSeedsFromXML(self):
         """ Load all the seeds from a GeometryTopologyData object that is expected to be
@@ -922,8 +923,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Uncheck MIP
         self.enhanceVisualizationCheckbox.setChecked(False)
-
-        del(self.logic)
+        # Free resources
+        del self.logic
+        # Recreate logic
         self.logic = CIP_LesionModelLogic()
         self.logic.printTiming = self.__printTimeCost__
         self.__analyzedSpheres__.clear()
@@ -1214,8 +1216,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 #############################
 class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     MAX_TUMOR_RADIUS = 30
+    WORKING_MODE_HUMAN = 0
+    WORKING_MODE_SMALL_ANIMAL = 1
 
-    def __init__(self):
+    def __init__(self, workingMode=WORKING_MODE_HUMAN):
         self.currentVolume = None  # Current active volume
         self.__currentVolumeArray__ = None  # Numpy array that represents the current volume
         self.currentLabelmap = None  # Current label map that contains the nodule segmentation for the current threshold (same size as the volume)
@@ -1225,15 +1229,21 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.currentModelNodeId = None  # 3D model volume id
         self.defaultThreshold = 0  # Default threshold for the map distance used in the nodule segmentation
         self.onCLISegmentationFinishedCallback = None
+        self.invokedCLI = False  # Semaphore to avoid duplicated events
 
         # self.origin = None                  # Current origin (centroid of the nodule)
         self.currentDistanceMap = None  # Current distance map from the specified origin
         self.currentCentroid = None  # Centroid of the nodule
         self.spheresLabelmaps = dict()  # Labelmap of spheres for a particular radius
 
+        # Different sphere sizes depending on the case
+        self.workingMode = workingMode
         self.spheresDict = dict()
-        self.spheresDict[0] = (15, 20, 25)  # Humans
-        self.spheresDict[1] = (1.5, 2, 2.5)  # Mouse
+        self.spheresDict[self.WORKING_MODE_HUMAN] = (15, 20, 25)  # Humans
+        self.spheresDict[self.WORKING_MODE_SMALL_ANIMAL] = (1.5, 2, 2.5)  # Mouse
+
+        self.thresholdFilter = None
+        self.marchingCubesFilter = None
 
         self.printTiming = SlicerUtil.IsDevelopment
 
@@ -1351,12 +1361,11 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         """ Get the current fiducialsListNode for the specified volume, and creates it in case
         it doesn't exist yet.
         :param volumeId: fiducials list will be connected to this volume
+        :param onModifiedCallback: function to call when the fiducial is modified (optional)
         :return: the fiducials node or None if something fails
         """
         if volumeId == "":
             return None
-
-        markupsLogic = slicer.modules.markups.logic()
 
         # Check if the node already exists
         fiducialsNodeName = volumeId + '_fiducialsNode'
@@ -1517,24 +1526,25 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         It also creates a numpy array associated with the labelmap (currentLabelmapArray)
         """
         print("DEBUG: processing results from process Nodule CLI...")
-        # Create vtk filters
-        self.thresholdFilter = vtk.vtkImageThreshold()
+        if self.thresholdFilter is None:
+            # Create vtk filters
+            self.thresholdFilter = vtk.vtkImageThreshold()
+        # The cliOutputScalarNode is new, so we have to set all the values again
         self.thresholdFilter.SetInputData(self.cliOutputScalarNode.GetImageData())
         self.thresholdFilter.SetReplaceOut(True)
         self.thresholdFilter.SetOutValue(0)  # Value of the background
         self.thresholdFilter.SetInValue(1)  # Value of the segmented nodule
 
-
-        #labelmapName = self.currentVolume.GetName() + '_nodulelm'
         labelmapName = self.currentVolume.GetName() + self.__SUFFIX__SEGMENTED_LABELMAP
         self.currentLabelmap = slicer.util.getNode(labelmapName)
         if self.currentLabelmap is None:
             # Create a labelmap with the same dimensions that the ct volume
             self.currentLabelmap = SlicerUtil.getLabelmapFromScalar(self.cliOutputScalarNode, labelmapName)
+            self.currentLabelmap.SetImageDataConnection(self.thresholdFilter.GetOutputPort())
 
-        self.currentLabelmap.SetImageDataConnection(self.thresholdFilter.GetOutputPort())
-        self.marchingCubesFilter = vtk.vtkMarchingCubes()
-        # self.marchingCubesFilter.SetInputConnection(self.thresholdFilter.GetOutputPort())
+        if self.marchingCubesFilter is None:
+            self.marchingCubesFilter = vtk.vtkMarchingCubes()
+        # The cliOutputScalarNode is new, so we have to set all the values again
         self.marchingCubesFilter.SetInputData(self.cliOutputScalarNode.GetImageData())
         self.marchingCubesFilter.SetValue(0, self.defaultThreshold)
 
@@ -1546,6 +1556,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             self.currentModelNodeId = currentModelNode.GetID()
             # Create a DisplayNode and associate it to the model, in order that transformations can work properly
             displayNode = slicer.vtkMRMLModelDisplayNode()
+            displayNode.SetColor((0.255, 0.737, 0.851))
             slicer.mrmlScene.AddNode(displayNode)
             currentModelNode.AddAndObserveDisplayNodeID(displayNode.GetID())
 

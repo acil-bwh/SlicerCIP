@@ -219,6 +219,22 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
         self.switchToRedView()
 
+        #####
+        # Case navigator
+        if SlicerUtil.isSlicerACILLoaded():
+            caseNavigatorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
+            caseNavigatorAreaCollapsibleButton.text = "Case navigator"
+            self.layout.addWidget(caseNavigatorAreaCollapsibleButton, 0x0020)
+            # caseNavigatorLayout = qt.QVBoxLayout(caseNavigatorAreaCollapsibleButton)
+
+            # Add a case list navigator
+            from ACIL.ui import CaseNavigatorWidget
+            self.caseNavigatorWidget = CaseNavigatorWidget(self.moduleName, caseNavigatorAreaCollapsibleButton)
+            self.caseNavigatorWidget.setup()
+
+        self.layout.addStretch()
+
+
         # Connections
         self.observers = []
         self.__addSceneObservables__()

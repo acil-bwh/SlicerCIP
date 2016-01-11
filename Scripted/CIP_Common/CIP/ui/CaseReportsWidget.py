@@ -150,6 +150,9 @@ class CaseReportsWidget(EventsTrigger):
 #############################
 ##
 class CaseReportsLogic(object):
+    DBTYPE_SQLITE = 0
+
+
     def __init__(self, moduleName, columnNames, filePreffix):
         self.__moduleName__ = moduleName
         p = SlicerUtil.getSettingsDataFolder(moduleName)
@@ -159,6 +162,12 @@ class CaseReportsLogic(object):
             self.__csvFilePath__ = os.path.join(p, moduleName + ".storage.csv")
         self.__columnNames__ = columnNames
         self.showWarningWhenIncompleteColumns = True
+
+        self.db = None
+
+    def createDB(self, dbType):
+        if dbType == self.DBTYPE_SQLITE:
+            self.db = vtk.vtkSQLiteDatabase()
 
     @property
     def TIMESTAMP_COLUMN_NAME(self):
