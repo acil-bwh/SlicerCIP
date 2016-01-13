@@ -495,7 +495,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.layout.addWidget(collapsibleButton)
         self.reportsLayout = qt.QHBoxLayout(collapsibleButton)
         self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
-                                               parentWidget=self.reportsLayout)
+                                               parentWidget=collapsibleButton)
         self.reportsWidget.setup()
         self.reportsWidget.showWarnigMessages(False)
 
