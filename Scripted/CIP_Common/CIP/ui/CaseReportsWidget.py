@@ -333,7 +333,7 @@ class CaseReportsWindow(qt.QWidget):
         self.mainLayout.addWidget(self.exportButton)
 
         self.removeButton = ctk.ctkPushButton()
-        self.removeButton.text = "Clean cache"
+        self.removeButton.text = "Clean"
         self.removeButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.removeButton.setIconSize(qt.QSize(24,24))
         self.removeButton.setFixedWidth(150)
