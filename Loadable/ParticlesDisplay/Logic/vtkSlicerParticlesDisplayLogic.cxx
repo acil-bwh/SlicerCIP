@@ -132,8 +132,8 @@ vtkMRMLParticlesNode* vtkSlicerParticlesDisplayLogic::AddParticlesNode (const ch
   storageNode->SetFileName(filename);
   if (storageNode->ReadData(particlesNode) != 0)
     {
-    const itksys_stl::string fname(filename);
-    itksys_stl::string name = itksys::SystemTools::GetFilenameWithoutExtension(fname);
+    const std::string fname(filename);
+    std::string name = itksys::SystemTools::GetFilenameWithoutExtension(fname);
     std::string uname( this->GetMRMLScene()->GetUniqueNameByString(name.c_str()));
     particlesNode->SetName(uname.c_str());
 
