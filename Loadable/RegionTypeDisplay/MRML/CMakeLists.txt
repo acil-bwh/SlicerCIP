@@ -12,8 +12,6 @@ set(${KIT}_SRCS
   vtkMRML${MODULE_NAME}Node.h
   vtkMRML${MODULE_NAME}DisplayNode.cxx
   vtkMRML${MODULE_NAME}DisplayNode.h
-  vtkMRMLChestRTColorTableNode.cxx
-  vtkMRMLChestRTColorTableNode.h
   )
 
 #SET_SOURCE_FILES_PROPERTIES(
