@@ -28,6 +28,7 @@
 #include "ui_qSlicerRegionTypeModuleWidget.h"
 
 #include <vtkSlicerRegionTypeLogic.h>
+#include <vtkMRMLColorTableNode.h>
 #include <vtkMRMLScene.h>
 #include <vtkMRMLSelectionNode.h>
 #include <vtkMRMLRegionTypeNode.h>
@@ -35,7 +36,6 @@
 #include <vtkMRMLLabelMapVolumeNode.h>
 #include <vtkMRMLStorageNode.h>
 #include <vtkMRMLLabelMapVolumeDisplayNode.h>
-#include <vtkMRMLChestRTColorTableNode.h>
 
 #include <vtkMRMLVolumeNode.h>
 
@@ -44,6 +44,7 @@
 #include <vtkMatrix4x4.h>
 #include <vtkSmartPointer.h>
 #include <vtkImageData.h>
+#include <vtkLookupTable.h>
 #include <vtkNew.h>
 #include <vtkImageThreshold.h>
 
@@ -351,16 +352,22 @@ void qSlicerRegionTypeModuleWidget::updateRegionTypeNode(vtkMRMLLabelMapVolumeNo
     displayNode->CopyWithScene(scalarVolume->GetDisplayNode());
 		scene->AddNode( displayNode );
 
-		vtkMRMLChestRTColorTableNode* colorTableNode = vtkMRMLChestRTColorTableNode::New();
-		colorTableNode->SetTypeToChestRTLabels();
-		scene->AddNode( colorTableNode );
+    // Create custom color rable
+    vtkNew<vtkMRMLColorTableNode> colorNode;
+    colorNode->SetTypeToUser();
+    colorNode->SetName(scene->GenerateUniqueName("ChestRTColorTable").c_str());
+    colorNode->SetDescription("A legacy colour table that contains some anatomical mapping for a Chest LabelMap");
+    int size = 256;
+    colorNode->SetNumberOfColors(size);
+    colorNode->GetLookupTable()->SetTableRange(0, size);
+    colorNode->NamesInitialisedOn();
+    scene->AddNode(colorNode.GetPointer());
 
- 		displayNode->SetAndObserveColorNodeID( colorTableNode->GetID() );
+    displayNode->SetAndObserveColorNodeID( colorNode->GetID() );
 
     this->regionTypeNode->SetAndObserveDisplayNodeID( displayNode->GetID() );
 
 		displayNode->Delete();
-		colorTableNode->Delete();
 
     //this->regionTypeNode->GetImageData()->Modified();
     this->regionTypeNode->UpdateAvailableRegionsAndTypes();
