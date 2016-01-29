@@ -168,8 +168,8 @@ vtkMRMLAirwayNode* vtkSlicerAirwayModuleLogic::AddAirway (const char* filename)
   storageNode->SetFileName(filename);
   if (storageNode->ReadData(airwayNode) != 0)
     {
-    const itksys_stl::string fname(filename);
-    itksys_stl::string name = itksys::SystemTools::GetFilenameWithoutExtension(fname);
+    const std::string fname(filename);
+    std::string name = itksys::SystemTools::GetFilenameWithoutExtension(fname);
     std::string uname( this->GetMRMLScene()->GetUniqueNameByString(name.c_str()));
     airwayNode->SetName(uname.c_str());
    
