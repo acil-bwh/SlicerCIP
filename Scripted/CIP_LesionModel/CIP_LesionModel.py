@@ -86,7 +86,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # Timer for dynamic zooming
         self.timer = qt.QTimer()
         self.timer.setInterval(150)
-        self.timer.timeout.connect(self.__updateFOV__)
+        self.timer.timeout.connect(self.zoomToSeed)
 
     @property
     def storedColumnNames(self):
@@ -172,11 +172,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         #######################
         # Case selector area
-        collapsibleButton = ctk.ctkCollapsibleButton()
-        collapsibleButton.text = "Case selector"
-        self.layout.addWidget(collapsibleButton)
+        self.caseSeletorCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.caseSeletorCollapsibleButton.text = "Case selector"
+        self.layout.addWidget(self.caseSeletorCollapsibleButton)
         # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
-        self.caseSelectorLayout = qt.QGridLayout(collapsibleButton)
+        self.caseSelectorLayout = qt.QGridLayout(self.caseSeletorCollapsibleButton)
 
         row = 0
 
@@ -219,11 +219,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         #######################
         # Nodule segmentation area
-        collapsibleButton = ctk.ctkCollapsibleButton()
-        collapsibleButton.text = "Nodule segmentation"
-        self.layout.addWidget(collapsibleButton)
+        self.noduleSegmentationCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.noduleSegmentationCollapsibleButton.text = "Nodule segmentation"
+        self.layout.addWidget(self.noduleSegmentationCollapsibleButton)
         # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
-        self.noduleSegmentationLayout = qt.QGridLayout(collapsibleButton)
+        self.noduleSegmentationLayout = qt.QGridLayout(self.noduleSegmentationCollapsibleButton)
 
         # Add seeds
         row += 1
@@ -490,12 +490,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.radiomicsLayout.addWidget(self.sphereRadiusFrame)
 
         # Reports widget
-        collapsibleButton = ctk.ctkCollapsibleButton()
-        collapsibleButton.text = "Results of the analysis"
-        self.layout.addWidget(collapsibleButton)
-        self.reportsLayout = qt.QHBoxLayout(collapsibleButton)
+        self.analysisResultsCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.analysisResultsCollapsibleButton.text = "Results of the analysis"
+        self.layout.addWidget(self.analysisResultsCollapsibleButton)
+        self.reportsLayout = qt.QHBoxLayout(self.analysisResultsCollapsibleButton)
         self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
-                                               parentWidget=collapsibleButton)
+                                               parentWidget=self.analysisResultsCollapsibleButton)
         self.reportsWidget.setup()
         self.reportsWidget.showWarnigMessages(False)
 
@@ -515,12 +515,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         #######################
         # Advanced parameters area
-        collapsibleButton = ctk.ctkCollapsibleButton()
-        collapsibleButton.text = "Advanced parameters"
-        collapsibleButton.collapsed = True
-        self.layout.addWidget(collapsibleButton)
+        self.advancedParametersCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.advancedParametersCollapsibleButton.text = "Advanced parameters"
+        self.advancedParametersCollapsibleButton.collapsed = True
+        self.layout.addWidget(self.advancedParametersCollapsibleButton)
         # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
-        self.advancedParametersLayout = qt.QFormLayout(collapsibleButton)
+        self.advancedParametersLayout = qt.QFormLayout(self.advancedParametersCollapsibleButton)
         self.evaluateSegmentationCheckbox = qt.QCheckBox()
         self.evaluateSegmentationCheckbox.setText("Enable saving seeds mode for batch processing")
         self.advancedParametersLayout.addWidget(self.evaluateSegmentationCheckbox)
@@ -559,13 +559,16 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def refreshUI(self):
         """ Confiugre the GUI elements based on the current configuration
         """
-        if self.inputVolumeSelector.currentNodeID != "":
-            self.addFiducialButton.enabled = True
-            self.addFiducialButton.toolTip = "Click and add a new seed in the volume"
-        else:
-            self.addFiducialButton.enabled = False
-            self.addFiducialButton.toolTip = "Select a volume before adding any seed"
+        # Show fiducials panel just if there is a main volume loaded
+        if self.inputVolumeSelector.currentNodeID == "":
+            #self.addFiducialButton.enabled = False
+            #self.addFiducialButton.toolTip = "Select a volume before adding any seed"
+            self.noduleSegmentationCollapsibleButton.visible = self.radiomicsCollapsibleButton.visible = False
             self.__removeFiducialsFrames__()
+        else:
+            self.noduleSegmentationCollapsibleButton.visible = True
+            #self.addFiducialButton.enabled = True
+            #self.addFiducialButton.toolTip = "Click and add a new seed in the volume"
 
 
         # Apply segmentation button allowed only if there is at least one seed
@@ -575,8 +578,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         else:
             self.segmentButton.setVisible(False)
 
-        # Level slider and Features Selection section active after running the segmentation algorithm
-        self.selectThresholdLabel.visible = self.distanceLevelSlider.visible = self.logic.cliOutputScalarNode is not None
+        # Level slider, Features Selection and radiomics section active after running the segmentation algorithm
+        self.selectThresholdLabel.visible = self.distanceLevelSlider.visible = \
+            self.radiomicsCollapsibleButton.visible = self.logic.cliOutputScalarNode is not None
 
         # Show spheres buttons just visible for the analyzed spheres
         for mode in self.logic.spheresDict.iterkeys():
@@ -905,6 +909,25 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         self.timer.start()
 
+    def zoomToSeed(self):
+        """ Dynamic zoom to the center of the current view in all the 2D windows
+        :return:
+        """
+        sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+        fov = sliceNode.GetFieldOfView()
+        if fov[0] > 45:
+            sliceNode.SetFieldOfView(fov[0] * 0.90,
+                                     fov[1] * 0.90, fov[2])
+            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
+            sliceNode.SetFieldOfView(fov[0] * 0.90,
+                                     fov[1] * 0.90, fov[2])
+            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeGreen')
+            sliceNode.SetFieldOfView(fov[0] * 0.90,
+                                     fov[1] * 0.90, fov[2])
+        else:
+            self.timer.stop()
+
+
     def reset(self):
         """ Reset the GUI
         """
@@ -1025,23 +1048,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         d[keyName]["LesionType"] = self.lesionType
         d[keyName]["Seeds_LPS"] = coordsList.__str__()
 
-    def __updateFOV__(self):
-        """ Dynamic zoom to the center of the current view in all the 2D windows
-        :return:
-        """
-        sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
-        fov = sliceNode.GetFieldOfView()
-        if fov[0] > 45:
-            sliceNode.SetFieldOfView(fov[0] * 0.90,
-                                     fov[1] * 0.90, fov[2])
-            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
-            sliceNode.SetFieldOfView(fov[0] * 0.90,
-                                     fov[1] * 0.90, fov[2])
-            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeGreen')
-            sliceNode.SetFieldOfView(fov[0] * 0.90,
-                                     fov[1] * 0.90, fov[2])
-        else:
-            self.timer.stop()
 
     ############
     # Events
@@ -1166,6 +1172,13 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.segmentButton.setEnabled(True)
         # self.refreshUI()
         self.noduleLabelmapSelector.setCurrentNode(self.logic.currentLabelmap)
+
+        # Change the layout to a regular 3D view (without MIP)
+        self.enhanceVisualizationCheckbox.setChecked(False)
+        SlicerUtil.changeLayout(1)
+
+        # TODO: Zoom to seed with the right zoom value
+        #self.zoomToSeed()
 
         # Start the timer that will refresh all the visualization nodes
         # self.timer.start(500)
