@@ -1,51 +1,25 @@
 #-----------------------------------------------------------------------------
 set(MODULE_NAME CIP_Common)
+# Get all the cip_python files
+get_filename_component(SOURCE_PYTHON_PATH ${CMAKE_BINARY_DIR}/../CIP-build/cip_python ABSOLUTE)
+set (DESTINATION_PYTHON_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CIP/logic")
+file(COPY ${SOURCE_PYTHON_PATH} DESTINATION ${DESTINATION_PYTHON_PATH})
 
-#-----------------------------------------------------------------------------
-set(MODULE_PYTHON_SCRIPTS
-  ${MODULE_NAME}.py
-  CIP/__init__.py
-  CIP/logic/__init__.py
-  CIP/logic/EventsTrigger.py
-  CIP/logic/geometry_topology_data.py
-  CIP/logic/SlicerUtil.py
-  CIP/logic/StructuresParameters.py
-  CIP/logic/SubtypingParameters.py
-  CIP/logic/Util.py
-  CIP/ui/__init__.py
-  CIP/ui/AutoUpdateWidget.py
-  CIP/ui/CaseReportsWidget.py
-  CIP/ui/CIP_EditBox.py
-  CIP/ui/CIP_EditorWidget.py
-  CIP/ui/LoadSaveDataWidget.py
-  CIP/ui/MIPViewerWidget.py
-  )
+# Add all the python files under the current source directory (original+cip_python)
+file(GLOB_RECURSE PYTHON_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.py" )
+# Change to relative paths to adapt it to the slicerMacroBuildScriptedModule format
+foreach(f ${PYTHON_FILES})
+ file(RELATIVE_PATH RELATIVE_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR} ${f})
+ list(APPEND MODULE_PYTHON_SCRIPTS ${RELATIVE_FILE_PATH})
+endforeach()
+# Do the same thing for the Resources
+file (GLOB_RECURSE MODULE_PYTHON_RESOURCES_FULL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CIP/ui/Resources/*")
+foreach(f ${MODULE_PYTHON_RESOURCES_FULL_PATH})
+  file(RELATIVE_PATH RELATIVE_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR} ${f})
+  list(APPEND MODULE_PYTHON_RESOURCES ${RELATIVE_FILE_PATH})
+endforeach()
 
-set(MODULE_PYTHON_RESOURCES
-  CIP/ui/Resources/Icons/1415667870_kview.png
-  CIP/ui/Resources/Icons/ACIL.png
-  CIP/ui/Resources/Icons/ACIL_Blank.png
-  CIP/ui/Resources/Icons/Load.png
-  CIP/ui/Resources/Icons/Reload.png
-  CIP/ui/Resources/Icons/Save.png
-  CIP/ui/Resources/Icons/SaveAll.png
-  CIP/ui/Resources/Icons/WelcomeFiducialWithArrow-Original.png
-  CIP/ui/Resources/Icons/analyze.png
-  CIP/ui/Resources/Icons/axial.png
-  CIP/ui/Resources/Icons/coronal.png
-  CIP/ui/Resources/Icons/delete.png
-  CIP/ui/Resources/Icons/export-csv.png
-  CIP/ui/Resources/Icons/move_down.png
-  CIP/ui/Resources/Icons/move_up.png
-  CIP/ui/Resources/Icons/next.png
-  CIP/ui/Resources/Icons/open_file.png
-  CIP/ui/Resources/Icons/plus.png
-  CIP/ui/Resources/Icons/previous.png
-  CIP/ui/Resources/Icons/recycle.png
-  CIP/ui/Resources/Icons/ruler.png
-  CIP/ui/Resources/Icons/rulers.png
-  CIP/ui/Resources/Icons/sagittal.png
-  )
+#message("****************")
 
 #-----------------------------------------------------------------------------
 slicerMacroBuildScriptedModule(
@@ -66,4 +40,3 @@ slicerMacroBuildScriptedModule(
   # Additional build-time testing
   #add_subdirectory(Testing)
 #endif()
-

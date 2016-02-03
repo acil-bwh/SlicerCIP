@@ -1,5 +1,5 @@
 sys.path.append("/Users/jonieva/Projects/SlicerCIP/Scripted/CIP_Common/")
-from CIP.logic import geometry_topology_data as gtd
+from CIP.logic.cip_python.utils import geometry_topology_data as gtd
 from CIP.logic import Util
 
 import os

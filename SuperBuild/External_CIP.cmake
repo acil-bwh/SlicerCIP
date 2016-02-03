@@ -25,9 +25,10 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
   ExternalProject_Add(${proj}
     ${${proj}_EP_ARGS}
     GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
-    GIT_TAG develop # Develop
-    #DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
+    GIT_TAG develop # Develop    
     SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
+    #DOWNLOAD_COMMAND ""
+    #SOURCE_DIR "../CIP"
     BINARY_DIR ${proj}-build
     CMAKE_CACHE_ARGS
       -DCIP_SUPERBUILD:BOOL=OFF
@@ -59,6 +60,8 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DCMAKE_C_FLAGS:STRING=${ep_common_c_flags}
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DBUILD_TESTING:BOOL=OFF
+      -DBUILD_CIP_PYTHON:BOOL=ON
+      -DCIP_WRAPCHESTCONVENTIONS:BOOL=OFF
     #CONFIGURE_COMMAND ${CMAKE_COMMAND}
     #-E echo
     #  "This CONFIGURE_COMMAND is just here as a placeholder."
@@ -78,3 +81,4 @@ else()
 endif()
 
 mark_as_superbuild(${proj}_DIR:PATH)
+

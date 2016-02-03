@@ -6,7 +6,7 @@ from lxml import etree
 # this_dir = os.path.dirname(os.path.realpath(__file__))
 # path = os.path.normpath(this_dir + '/../..')
 # sys.path.append(path)
-from CIP.logic.geometry_topology_data import *
+from CIP.logic.cip_python.utils.geometry_topology_data import *
 
 
 this_dir = os.path.dirname(os.path.realpath(__file__))     # Directory where this file is contained

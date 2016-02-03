@@ -23,9 +23,8 @@ from CIP.logic.SlicerUtil import SlicerUtil
 #     from CIP.logic.SlicerUtil import SlicerUtil
 
 from CIP.logic import Util
-from CIP.logic import GeometryTopologyData, Point
 from CIP.ui import CaseReportsWidget, MIPViewerWidget
-
+from CIP.logic.cip_python.utils import geometry_topology_data as gtd
 
 import FeatureWidgetHelperLib
 import FeatureExtractionLib

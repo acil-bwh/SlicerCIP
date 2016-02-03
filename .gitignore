@@ -12,5 +12,6 @@ install_manifest.txt
 
 *.csv
 
+Scripted/CIP_Common/CIP/logic/cip_python
 Scripted/CIP_ParenchymaSubtypeTraining/Results
 Scripted/CIP_LesionModel/Results

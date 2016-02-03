@@ -18,7 +18,7 @@ except Exception as ex:
     from CIP.logic.SlicerUtil import SlicerUtil
 
 from CIP.logic import SubtypingParameters, Util
-from CIP.logic import geometry_topology_data as GTD
+from CIP.logic.cip_python.utils import geometry_topology_data as GTD
 
 #
 # CIP_ParenchymaSubtypeTraining
