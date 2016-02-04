@@ -6,6 +6,7 @@ import itertools
 import numpy as np
 import time
 import SimpleITK as sitk
+import logging
 
 from FeatureWidgetHelperLib import FeatureExtractionLogic
 # Add the CIP common library to the path if it has not been loaded yet
@@ -30,9 +31,9 @@ from CIP.ui import CaseReportsWidget, MIPViewerWidget
 import FeatureWidgetHelperLib
 import FeatureExtractionLib
 
-#
+#############################
 # CIP_LesionModel
-#
+#############################
 class CIP_LesionModel(ScriptedLoadableModule):
     """Uses ScriptedLoadableModule base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
@@ -51,10 +52,9 @@ class CIP_LesionModel(ScriptedLoadableModule):
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 
-#
+#############################
 # CIP_LesionModelWidget
-#
-
+#############################
 class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
@@ -163,8 +163,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def setup(self):
         """This is called one time when the module GUI is initialized
         """
-        ScriptedLoadableModuleWidget.setup(self)
-
         self.semaphoreOpen = False      # To prevent duplicate events
         # self.timer = qt.QTimer()
         # self.timer.timeout.connect(self.checkAndRefreshModels)
@@ -179,7 +177,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.caseSelectorLayout = qt.QGridLayout(self.caseSeletorCollapsibleButton)
 
         row = 0
-
         # Main volume selector
         self.inputVolumeLabel = qt.QLabel("Input volume")
         self.inputVolumeLabel.setStyleSheet("margin-left:5px")
@@ -226,7 +223,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.noduleSegmentationLayout = qt.QGridLayout(self.noduleSegmentationCollapsibleButton)
 
         # Add seeds
-        row += 1
+        row = 0
         self.labelAddedSeeds = qt.QLabel("Added seeds:")
         self.labelAddedSeeds.setStyleSheet("margin: 10px 0 0 5px")
         self.noduleSegmentationLayout.addWidget(self.labelAddedSeeds, row, 0)
@@ -506,7 +503,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             caseNavigatorCollapsibleButton = ctk.ctkCollapsibleButton()
             caseNavigatorCollapsibleButton.text = "Case navigator (advanced)"
             self.layout.addWidget(caseNavigatorCollapsibleButton)
-            caseNavigatorAreaLayout = qt.QHBoxLayout(caseNavigatorCollapsibleButton)
+            # caseNavigatorAreaLayout = qt.QHBoxLayout(caseNavigatorCollapsibleButton)
 
             from ACIL.ui import CaseNavigatorWidget
             self.caseNavigatorWidget = CaseNavigatorWidget("CIP_LesionModel", caseNavigatorCollapsibleButton)
@@ -561,15 +558,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """
         # Show fiducials panel just if there is a main volume loaded
         if self.inputVolumeSelector.currentNodeID == "":
-            #self.addFiducialButton.enabled = False
-            #self.addFiducialButton.toolTip = "Select a volume before adding any seed"
             self.noduleSegmentationCollapsibleButton.visible = self.radiomicsCollapsibleButton.visible = False
             self.__removeFiducialsFrames__()
         else:
             self.noduleSegmentationCollapsibleButton.visible = True
-            #self.addFiducialButton.enabled = True
-            #self.addFiducialButton.toolTip = "Click and add a new seed in the volume"
-
 
         # Apply segmentation button allowed only if there is at least one seed
         if self.inputVolumeSelector.currentNodeID != "" and \
@@ -927,7 +919,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         else:
             self.timer.stop()
 
-
     def reset(self):
         """ Reset the GUI
         """
@@ -1219,9 +1210,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     # def updateFeatureClassParameterDict(self, intValue, featureClassWidget):
     #     featureClassName = featureClassWidget.getName()
     #     self.featureClassParametersDict[featureClassName].update(featureClassWidget.getParameterDict())
-
-
-
 
 
 #############################
@@ -1614,13 +1602,9 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         return node
 
 
+#############################
+# CIP_LesionModel
 class CIP_LesionModelTest(ScriptedLoadableModuleTest):
-    """
-    This is the test case for your scripted module.
-    Uses ScriptedLoadableModuleTest base class, available at:
-    https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
-    """
-
     def setUp(self):
         """ Do whatever is needed to reset the state - typically a scene clear will be enough.
         """
@@ -1630,18 +1614,31 @@ class CIP_LesionModelTest(ScriptedLoadableModuleTest):
         """Run as few or as many tests as needed here.
         """
         self.setUp()
-        self.test_CIP_LesionModel_PrintMessage()
+        self.test_CIP_LesionModel()
 
-    def test_CIP_LesionModel_PrintMessage(self):
-        self.delayDisplay("Starting the test")
-        # logic = CIP_LesionModelLogic()
-        # myMessage = "Print this test message in console"
-        # logging.info("Starting the test with this message: " + myMessage)
-        # expectedMessage = "I have printed this message: " + myMessage
-        # logging.info("The expected message would be: " + expectedMessage)
-        # responseMessage = logic.printMessage(myMessage)
-        # logging.info("The response message was: " + responseMessage)
-        # self.assertTrue(responseMessage == expectedMessage)
+    def test_CIP_LesionModel(self):
+        self.fail("Test not implemented!")
+        # self.delayDisplay("Starting the test")
+        #
+        # # first, get some data
+        # #
+        # import urllib
+        # downloads = (
+        #     ('http://slicer.kitware.com/midas3/download?items=5767', 'FA.nrrd', slicer.util.loadVolume),
+        #     )
+        #
+        # for url,name,loader in downloads:
+        #   filePath = slicer.app.temporaryPath + '/' + name
+        #   if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
+        #     logging.info('Requesting download %s from %s...\n' % (name, url))
+        #     urllib.urlretrieve(url, filePath)
+        #   if loader:
+        #     logging.info('Loading %s...' % (name,))
+        #     loader(filePath)
+        # self.delayDisplay('Finished with download and loading')
+        #
+        # volumeNode = slicer.util.getNode(pattern="FA")
+        #
+        # self.assertIsNotNone(volumeNode )
         # self.delayDisplay('Test passed!')
-        # t = unittest.TestCase()
-        self.fail("Test not implemented yet")
+        # # self.assertTrue(True)

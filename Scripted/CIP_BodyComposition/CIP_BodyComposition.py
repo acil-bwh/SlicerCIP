@@ -1447,3 +1447,19 @@ class StatsWrapper(object):
         self.Mean = Mean
         self.StdDev = StdDev
         self.ExtraCode = ExtraCode
+
+
+class CIP_BodyCompositionTest(ScriptedLoadableModuleTest):
+    def setUp(self):
+        """ Do whatever is needed to reset the state - typically a scene clear will be enough.
+        """
+        slicer.mrmlScene.Clear(0)
+
+    def runTest(self):
+        """Run as few or as many tests as needed here.
+        """
+        self.setUp()
+        self.test_CIP_BodyComposition()
+
+    def test_CIP_BodyComposition(self):
+        self.fail("Test not implemented!")

@@ -873,12 +873,6 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
 
 
 class CIP_PAARatioTest(ScriptedLoadableModuleTest):
-    """
-    This is the test case for your scripted module.
-    Uses ScriptedLoadableModuleTest base class, available at:
-    https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
-    """
-
     def setUp(self):
         """ Do whatever is needed to reset the state - typically a scene clear will be enough.
         """
@@ -888,18 +882,19 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
         """Run as few or as many tests as needed here.
         """
         self.setUp()
-        self.test_CIP_PAARatio_PrintMessage()
+        self.test_CIP_PAARatio()
 
-    def test_CIP_PAARatio_PrintMessage(self):
-        self.delayDisplay("Starting the test")
-        logic = CIP_PAARatioLogic()
-        # Load a volume (TODO: get it from Slicer Data Store)
-        volume = slicer.util.loadVolume('/Volumes/Mac500/Data/tempdata/10002K_INSP_STD_BWH_COPD.nhdr', returnNode=True)
-        self.assertTrue(volume[0])  # The volume loaded correctly
-        volumeId = volume[1].GetID()
-        logic.createDefaultRulers(volumeId)
-        # Make sure a ruler was created
-        ruler = logic.getRulerNodeForVolumeAndStructure(volumeId, logic.AORTA, createIfNotExist=False)
-        self.assertFalse(ruler[0] is None)
-        self.delayDisplay('Test passed!')
+    def test_CIP_PAARatio(self):
+        self.fail("Test not implemented!")
+        # self.delayDisplay("Starting the test")
+        # logic = CIP_PAARatioLogic()
+        # # Load a volume (TODO: get it from Slicer Data Store)
+        # volume = slicer.util.loadVolume('/Volumes/Mac500/Data/tempdata/10002K_INSP_STD_BWH_COPD.nhdr', returnNode=True)
+        # self.assertTrue(volume[0])  # The volume loaded correctly
+        # volumeId = volume[1].GetID()
+        # logic.createDefaultRulers(volumeId)
+        # # Make sure a ruler was created
+        # ruler = logic.getRulerNodeForVolumeAndStructure(volumeId, logic.AORTA, createIfNotExist=False)
+        # self.assertFalse(ruler[0] is None)
+        # self.delayDisplay('Test passed!')
 
