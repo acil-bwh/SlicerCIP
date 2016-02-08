@@ -112,6 +112,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         # self.mainAreaLayout.addWidget(self.label2, 1, 0)
 
         self.placeDefaultRulersButton = ctk.ctkPushButton()
+        self.placeDefaultRulersButton.name = "placeDefaultRulersButton"
         self.placeDefaultRulersButton.text = "Place default rulers"
         # self.placeDefaultRulersSliceButton.toolTip = "Navigate to the best estimated slice to place the rulers"
         self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/next.png".format(SlicerUtil.CIP_ICON_DIR)))
@@ -134,15 +135,19 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         # self.groupboxLayout.addWidget(btn)
 
         btn = qt.QRadioButton("Both")
+        btn.name = "paaButton"
         btn.checked = True
+
         self.structuresButtonGroup.addButton(btn, 0)
         self.groupboxLayout.addWidget(btn)
 
         btn = qt.QRadioButton("Pulmonary Arterial")
+        btn.name = "paRadioButton"
         self.structuresButtonGroup.addButton(btn, 1)
         self.groupboxLayout.addWidget(btn)
 
         btn = qt.QRadioButton("Aorta")
+        btn.name = "aortaRadioButton"
         self.structuresButtonGroup.addButton(btn, 2)
         self.groupboxLayout.addWidget(btn)
 
@@ -155,6 +160,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
         self.placeRulersButton = ctk.ctkPushButton()
         self.placeRulersButton.text = "Place ruler/s"
+        self.placeRulersButton.name = "placeRulersButton"
         self.placeRulersButton.toolTip = "Place the ruler/s for the selected structure/s in the current slice"
         self.placeRulersButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.placeRulersButton.setIconSize(qt.QSize(20,20))
@@ -201,6 +207,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.textboxesLayout.addRow("Aorta (mm):  ", self.aortaTextBox)
 
         self.ratioTextBox = qt.QLineEdit()
+        self.ratioTextBox.name = "ratioTextBox"
         self.ratioTextBox.setReadOnly(True)
         self.textboxesLayout.addRow("Ratio PA/A: ", self.ratioTextBox)
 
@@ -431,7 +438,12 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
                     self.ratioTextBox.setText(str(ratio))
                     if ratio > 1:
                         # Switch colors ("alarm")
-                        self.ratioTextBox.setStyleSheet(" QLineEdit { background-color: rgb(255, 0, 0); color: white}");
+                        st = " QLineEdit {{ background-color: rgb({0}, {1}, {2}); color: white }}". \
+                                                        format(int(self.logic.defaultWarningColor[0]*255),
+                                                                int(self.logic.defaultWarningColor[1]*255),
+                                                                int(self.logic.defaultWarningColor[2]*255))
+                        print "Current stylesheet:", st
+                        self.ratioTextBox.setStyleSheet(st)
                         self.logic.changeColor(volumeId, self.logic.defaultWarningColor)
                 except Exception:
                     Util.print_last_exception()
@@ -449,7 +461,10 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         :return:
         """
         layoutManager = slicer.app.layoutManager()
-        layoutManager.setLayout(6)
+        # Test the layout manager is not none in case the module is initialized without a main window
+        # This happens for example in automatic tests
+        if layoutManager is not None:
+            layoutManager.setLayout(6)
 
     def __addSceneObservables__(self):
         self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__))
@@ -581,14 +596,14 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
     BOTH = 3
     SLICEFACTOR = 0.6
 
-    # Default XY coordinates for Aorta and PA (the Z will be stimated depending on the number of slices)
+    # Default XY coordinates for Aorta and PA (the Z will be estimated depending on the number of slices)
     defaultAorta1 = [220, 170, 0]
     defaultAorta2 = [275, 175, 0]
     defaultPA1 = [280, 175, 0]
     defaultPA2 = [320, 190, 0]
 
-    defaultColor = [0.5, 0.5, 1]
-    defaultWarningColor = [1, 0, 0]
+    defaultColor = [0.5, 0.5, 1.0]
+    defaultWarningColor = [1.0, 0.0, 0.0]
 
     def __init__(self):
         self.currentVolumesLoaded = set()
@@ -685,8 +700,13 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
             n = node.GetNthDisplayNode(i)
             if n:
                 n.SetColor(color)
-        # Refresh UI to repaint both rulers. Is this the best way? Who knows...
-        slicer.app.layoutManager().sliceWidget("Red").sliceView().mrmlSliceNode().Modified()
+
+        layoutManager = slicer.app.layoutManager()
+        # Test the layout manager is not none in case the module is initialized without a main window
+        # This happens for example in automatic tests
+        if layoutManager is not None:
+            # Refresh UI to repaint both rulers. Is this the best way? Who knows...
+            layoutManager.sliceWidget("Red").sliceView().mrmlSliceNode().Modified()
 
     def changeColor(self, volumeId, color):
         """ Change the color for all the rulers in this volume
@@ -885,16 +905,74 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
         self.test_CIP_PAARatio()
 
     def test_CIP_PAARatio(self):
-        self.fail("Test not implemented!")
-        # self.delayDisplay("Starting the test")
-        # logic = CIP_PAARatioLogic()
-        # # Load a volume (TODO: get it from Slicer Data Store)
-        # volume = slicer.util.loadVolume('/Volumes/Mac500/Data/tempdata/10002K_INSP_STD_BWH_COPD.nhdr', returnNode=True)
-        # self.assertTrue(volume[0])  # The volume loaded correctly
-        # volumeId = volume[1].GetID()
-        # logic.createDefaultRulers(volumeId)
-        # # Make sure a ruler was created
-        # ruler = logic.getRulerNodeForVolumeAndStructure(volumeId, logic.AORTA, createIfNotExist=False)
-        # self.assertFalse(ruler[0] is None)
-        # self.delayDisplay('Test passed!')
+        self.delayDisplay("Starting the test")
+
+        # Load the volume
+        import urllib
+        url = "http://www.slicer.org/slicerWiki/images/3/31/CT-chest.nrrd"
+        name = url.split("/")[-1]
+        filePath = os.path.join(slicer.app.temporaryPath, name)
+        if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
+            logging.info('Requesting download %s from %s...\n' % (name, url))
+            filePath = urllib.urlretrieve(url, filePath)
+        (loaded, volume) = slicer.util.loadVolume(filePath, returnNode=True)
+        self.assertTrue(loaded)
+
+        # Get the widget
+        widget = slicer.modules.cip_paaratio.widgetRepresentation()
+        # Get the logic
+        logic = widget.self().logic
+
+        # Actions
+        button = slicer.util.findChildren(widget=widget, name='placeDefaultRulersButton')[0]
+        # Place default rulers
+        button.click()
+        # Get rulers
+        aorta = logic.getRulerNodeForVolumeAndStructure(volume.GetID(), logic.AORTA, createIfNotExist=False)[0]
+        pa = logic.getRulerNodeForVolumeAndStructure(volume.GetID(), logic.PA, createIfNotExist=False)[0]
+        # Make sure that rulers are in default color
+        color = aorta.GetNthDisplayNode(0).GetColor()
+        for i in range(3):
+            self.assertEqual(color[i], logic.defaultColor[i])
+
+        coordsAorta1 = [0,0,0]
+        coordsPa1 = [0,0,0]
+        aorta.GetPosition1(coordsAorta1)
+        pa.GetPosition1(coordsPa1)
+        # Aorta ruler should be on the left
+        self.assertTrue(coordsAorta1[0] > coordsPa1[0])
+        # Aorta and PA should be in the same slice
+        self.assertTrue(coordsAorta1[2] == coordsPa1[2])
+
+        # Change Slice of the Aorta
+        layoutManager = slicer.app.layoutManager()
+        redWidget = layoutManager.sliceWidget('Red')
+        style = redWidget.interactorStyle()
+        style.MoveSlice(1)
+        # Click in the radio button
+        button = slicer.util.findChildren(widget=widget, name='aortaRadioButton')[0]
+        button.click()
+        # click in the place ruler button
+        button = slicer.util.findChildren(widget=widget, name='placeRulersButton')[0]
+        button.click()
+        # Make sure that the slice of the ruler has changed
+        aorta.GetPosition1(coordsAorta1)
+        self.assertTrue(coordsAorta1[2] != coordsPa1[2])
+
+        # Force PAA ratio > 1
+        coordsAorta2 = [0,0,0]
+        coordsPa2 = [0,0,0]
+        aorta.GetPosition2(coordsAorta2)
+        pa.GetPosition2(coordsPa2)
+        currentRatio = pa.GetDistanceMeasurement() / aorta.GetDistanceMeasurement()
+        # Calculate how much do we have to increase the position of the pa marker
+        delta = 1 - currentRatio + 0.2
+        pa.SetPosition2(coordsPa2[0] + coordsPa2[0]*delta, coordsPa2[1], coordsPa2[2])
+
+        # Make sure that rulers are red now
+        color = aorta.GetNthDisplayNode(0).GetColor()
+        for i in range(3):
+            self.assertEqual(color[i], logic.defaultWarningColor[i])
+
+        self.delayDisplay('Test passed!')
 
