@@ -24,6 +24,13 @@ from CIP.logic import Util
 from CIP.ui import CaseReportsWidget
 
 
+# class CIP_PAARatio(ScriptedLoadableModule):
+#     def __init__(self, parent):
+#         ScriptedLoadableModule.__init__(self, parent)
+#         self.parent.title = "PAA Ratio"
+#         self.parent.categories = "CIP"
+#         self.parent.dependencies = ["CIP_Common"]
+
 #
 # CIP_PAARatio
 #
@@ -115,7 +122,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.placeDefaultRulersButton.name = "placeDefaultRulersButton"
         self.placeDefaultRulersButton.text = "Place default rulers"
         # self.placeDefaultRulersSliceButton.toolTip = "Navigate to the best estimated slice to place the rulers"
-        self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/next.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.placeDefaultRulersButton.setIconSize(qt.QSize(20, 20))
         self.placeDefaultRulersButton.setStyleSheet("font-weight: bold;")
         # self.placeDefaultRulersButton.setFixedWidth(140)
@@ -442,7 +449,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
                                                         format(int(self.logic.defaultWarningColor[0]*255),
                                                                 int(self.logic.defaultWarningColor[1]*255),
                                                                 int(self.logic.defaultWarningColor[2]*255))
-                        print "Current stylesheet:", st
                         self.ratioTextBox.setStyleSheet(st)
                         self.logic.changeColor(volumeId, self.logic.defaultWarningColor)
                 except Exception:
@@ -905,21 +911,35 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
         self.test_CIP_PAARatio()
 
     def test_CIP_PAARatio(self):
-        self.delayDisplay("Starting the test")
+        self.assertIsNotNone(slicer.modules.cip_paaratio)
 
-        # Load the volume
-        import urllib
-        url = "http://www.slicer.org/slicerWiki/images/3/31/CT-chest.nrrd"
-        name = url.split("/")[-1]
-        filePath = os.path.join(slicer.app.temporaryPath, name)
-        if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-            logging.info('Requesting download %s from %s...\n' % (name, url))
-            filePath = urllib.urlretrieve(url, filePath)
-        (loaded, volume) = slicer.util.loadVolume(filePath, returnNode=True)
-        self.assertTrue(loaded)
-
+        # self.delayDisplay("Starting the test")
         # Get the widget
         widget = slicer.modules.cip_paaratio.widgetRepresentation()
+        volume = None
+        try:
+            # Try first with case navigator (not necessarily included!)
+            button = slicer.util.findChildren(widget, "downloadSingleCaseButton")[0]
+            caseIdTxt = slicer.util.findChildren(widget, "singleCaseIdTxt")[0]
+            studyButton = slicer.util.findChildren(widget, "studyIdButton_COPDGene")[0]
+            studyButton.click()
+            caseId = "11488P_INSP_STD_HAR_COPD"
+            caseIdTxt.setText(caseId)
+            button.click()
+            volume = slicer.util.getNode(caseId)
+        except:
+            # Load the volume from a Slicer generic testing cases url
+            import urllib
+            url = "http://www.slicer.org/slicerWiki/images/3/31/CT-chest.nrrd"
+            name = url.split("/")[-1]
+            filePath = os.path.join(slicer.app.temporaryPath, name)
+            if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
+                logging.info('Requesting download %s from %s...\n' % (name, url))
+                filePath = urllib.urlretrieve(url, filePath)
+            (loaded, volume) = slicer.util.loadVolume(filePath, returnNode=True)
+
+        self.assertFalse(volume is None)
+
         # Get the logic
         logic = widget.self().logic
 
