@@ -100,8 +100,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
         self.volumeSelector = slicer.qMRMLNodeComboBox()
         self.volumeSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
-        # DEPRECATED. Now there is a new vtkMRMLLabelMapNode
-        #self.volumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", "0" )  # No labelmaps
+        self.volumeSelector.name = "paa_volumeSelector"
         self.volumeSelector.selectNodeUponCreation = True
         self.volumeSelector.autoFillBackground = True
         self.volumeSelector.addEnabled = True
@@ -251,7 +250,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
         # Connections
         self.observers = []
-        self.__addSceneObservables__()
 
         self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelectorChanged)
         self.placeDefaultRulersButton.connect('clicked()', self.oPlaceDefaultRulersClicked)
@@ -270,17 +268,22 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         #     self.volumeSelector.setCurrentNodeID(activeVolumeId)
         #     if activeVolumeId not in self.logic.currentVolumesLoaded:
         #         self.placeDefaultRulers(activeVolumeId)
-        volumeId = self.volumeSelector.currentNodeId
+        # Start listening to scene events
+        self.__addSceneObservables__()
+
+        volumeId = self.volumeSelector.currentNodeID
         if volumeId:
             SlicerUtil.setActiveVolumeId(volumeId)
 
+
     def exit(self):
         """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
-        pass
+        # Stop listening to Scene events
+        self.__removeSceneObservables()
 
     def cleanup(self):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
-        pass
+        self.__removeSceneObservables()
 
 
     def jumpToTemptativeSlice(self, volumeId):
@@ -329,7 +332,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
     def placeRuler(self):
         """ Place one or the two rulers in the current visible slice in Red node
         """
-        volumeId = self.volumeSelector.currentNodeId
+        volumeId = self.volumeSelector.currentNodeID
         if volumeId == '':
             self.showUnselectedVolumeWarningMessage()
             return
@@ -369,7 +372,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         :param offset: +1 or -1
         :return:
         """
-        volumeId = self.volumeSelector.currentNodeId
+        volumeId = self.volumeSelector.currentNodeID
 
         if volumeId == '':
             self.showUnselectedVolumeWarningMessage()
@@ -393,7 +396,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         """ Remove all the rulers related to the current volume node
         :return:
         """
-        self.logic.removeRulers(self.volumeSelector.currentNodeId)
+        self.logic.removeRulers(self.volumeSelector.currentNodeID)
         self.refreshTextboxes(reset=True)
 
 
@@ -420,7 +423,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.ratioTextBox.setText("0")
         self.ratioTextBox.setStyleSheet(" QLineEdit { background-color: white; color: black}");
 
-        volumeId = self.volumeSelector.currentNodeId
+        volumeId = self.volumeSelector.currentNodeID
         if volumeId not in self.logic.currentVolumesLoaded:
             return
 
@@ -429,9 +432,9 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         aorta = None
         pa = None
         if not reset:
-            rulerAorta, newAorta = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeId,
+            rulerAorta, newAorta = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeID,
                                         self.logic.AORTA, createIfNotExist=False)
-            rulerPA, newPA = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeId,
+            rulerPA, newPA = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeID,
                                         self.logic.PA, createIfNotExist=False)
             if rulerAorta:
                 aorta = rulerAorta.GetDistanceMeasurement()
@@ -489,12 +492,15 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         #     # New node. Load default rulers
         #     if node.GetID() not in self.logic.currentVolumesLoaded:
         #         self.placeDefaultRulers(node.GetID())
+        logging.info("Volume selector node changed: {0}".format(
+            '(None)' if node is None else node.GetName()
+        ))
         self.refreshTextboxes()
 
     def onStructureClicked(self, button):
-        fiducialsNode = self.getFiducialsNode(self.volumeSelector.currentNodeId)
+        fiducialsNode = self.getFiducialsNode(self.volumeSelector.currentNodeID)
         if fiducialsNode is not None:
-            self.__addRuler__(button.text, self.volumeSelector.currentNodeId)
+            self.__addRuler__(button.text, self.volumeSelector.currentNodeID)
 
             markupsLogic = slicer.modules.markups.logic()
             markupsLogic.SetActiveListID(fiducialsNode)
@@ -507,7 +513,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             interactionNode.SwitchToSinglePlaceMode()
 
     def oPlaceDefaultRulersClicked(self):
-        volumeId = self.volumeSelector.currentNodeId
+        volumeId = self.volumeSelector.currentNodeID
         if volumeId == '':
             self.showUnselectedVolumeWarningMessage()
             return
@@ -529,14 +535,14 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Remove rulers',
             'Are you sure you want to remove all the rulers from this volume?',
             qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
-            self.logic.removeRulers(self.volumeSelector.currentNodeId)
+            self.logic.removeRulers(self.volumeSelector.currentNodeID)
             self.refreshTextboxes()
 
     def onSaveReport(self):
         """ Save the current values in a persistent csv file
         :return:
         """
-        volumeId = self.volumeSelector.currentNodeId
+        volumeId = self.volumeSelector.currentNodeID
         if volumeId:
             caseName = slicer.mrmlScene.GetNodeByID(volumeId).GetName()
             coords = [0, 0, 0, 0]
@@ -913,11 +919,11 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
     def test_CIP_PAARatio(self):
         self.assertIsNotNone(slicer.modules.cip_paaratio)
 
-        # self.delayDisplay("Starting the test")
         # Get the widget
         widget = slicer.modules.cip_paaratio.widgetRepresentation()
         volume = None
         try:
+            logging.info("Trying to use the case navigator to download the case")
             # Try first with case navigator (not necessarily included!)
             button = slicer.util.findChildren(widget, "downloadSingleCaseButton")[0]
             caseIdTxt = slicer.util.findChildren(widget, "singleCaseIdTxt")[0]
@@ -927,7 +933,8 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
             caseIdTxt.setText(caseId)
             button.click()
             volume = slicer.util.getNode(caseId)
-        except:
+        except Exception as ex:
+            logging.info("Case Navigator failed ({0}). Downloading web case...".format(ex.message))
             # Load the volume from a Slicer generic testing cases url
             import urllib
             url = "http://www.slicer.org/slicerWiki/images/3/31/CT-chest.nrrd"
@@ -944,9 +951,13 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
         logic = widget.self().logic
 
         # Actions
+        # Make sure that the right volume is selected
+        volumeSelector = slicer.util.findChildren(widget=widget, name='paa_volumeSelector')[0]
+        volumeSelector.setCurrentNode(volume)
         button = slicer.util.findChildren(widget=widget, name='placeDefaultRulersButton')[0]
         # Place default rulers
         button.click()
+        logging.info("Default rulers placed...OK")
         # Get rulers
         aorta = logic.getRulerNodeForVolumeAndStructure(volume.GetID(), logic.AORTA, createIfNotExist=False)[0]
         pa = logic.getRulerNodeForVolumeAndStructure(volume.GetID(), logic.PA, createIfNotExist=False)[0]
@@ -954,7 +965,8 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
         color = aorta.GetNthDisplayNode(0).GetColor()
         for i in range(3):
             self.assertEqual(color[i], logic.defaultColor[i])
-
+        logging.info("Default color...OK")
+        # Check that the rulers are properly positioned
         coordsAorta1 = [0,0,0]
         coordsPa1 = [0,0,0]
         aorta.GetPosition1(coordsAorta1)
@@ -963,8 +975,9 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
         self.assertTrue(coordsAorta1[0] > coordsPa1[0])
         # Aorta and PA should be in the same slice
         self.assertTrue(coordsAorta1[2] == coordsPa1[2])
+        logging.info("Default position...OK")
 
-        # Change Slice of the Aorta
+        # Change Slice of the Aorta ruler
         layoutManager = slicer.app.layoutManager()
         redWidget = layoutManager.sliceWidget('Red')
         style = redWidget.interactorStyle()
@@ -978,6 +991,7 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
         # Make sure that the slice of the ruler has changed
         aorta.GetPosition1(coordsAorta1)
         self.assertTrue(coordsAorta1[2] != coordsPa1[2])
+        logging.info("Position changed...OK")
 
         # Force PAA ratio > 1
         coordsAorta2 = [0,0,0]
@@ -993,6 +1007,6 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
         color = aorta.GetNthDisplayNode(0).GetColor()
         for i in range(3):
             self.assertEqual(color[i], logic.defaultWarningColor[i])
-
+        logging.info("Red color...OK")
         self.delayDisplay('Test passed!')
 
