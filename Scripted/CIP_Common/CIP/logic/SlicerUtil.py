@@ -581,8 +581,38 @@ class SlicerUtil:
         interator.SetShiftKey(0)
         interator.SetControlKey(0)
 
-
-
+    @staticmethod
+    def downloadVolumeForTests(widget, downloadWhenCached=True):
+        import logging
+        volume = None
+        try:
+            logging.info("Trying to use the case navigator to download the case...")
+            # Try first with case navigator (not necessarily included!)
+            downloadButton = slicer.util.findChildren(widget, "downloadSingleCaseButton")[0]
+            caseIdTxt = slicer.util.findChildren(widget, "singleCaseIdTxt")[0]
+            studyButton = slicer.util.findChildren(widget, "studyIdButton_COPDGene")[0]
+            studyButton.click()
+            caseId = "11488P_INSP_STD_HAR_COPD"
+            caseIdTxt.setText(caseId)
+            if downloadWhenCached:
+                # Disable cache to always force the download
+                cbCache = slicer.util.findChildren(widget, "cbCacheMode")[0]
+                cbCache.setChecked(False)
+            downloadButton.click()
+            volume = slicer.util.getNode(caseId)
+        except Exception as ex:
+            logging.info("Case Navigator failed ({0}). Downloading web case...".format(ex.message))
+            # Load the volume from a Slicer generic testing cases url
+            import urllib
+            url = "http://www.slicer.org/slicerWiki/images/3/31/CT-chest.nrrd"
+            name = url.split("/")[-1]
+            filePath = os.path.join(slicer.app.temporaryPath, name)
+            if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
+                logging.info('Requesting download %s from %s...\n' % (name, url))
+                filePath = urllib.urlretrieve(url, filePath)
+            logging.debug("Loading volume in {0}...".format(filePath))
+            (loaded, volume) = slicer.util.loadVolume(filePath, returnNode=True)
+        return volume
 
 
         # @staticmethod

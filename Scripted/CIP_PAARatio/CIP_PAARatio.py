@@ -921,38 +921,19 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
 
         # Get the widget
         widget = slicer.modules.cip_paaratio.widgetRepresentation()
-        volume = None
-        try:
-            logging.info("Trying to use the case navigator to download the case")
-            # Try first with case navigator (not necessarily included!)
-            button = slicer.util.findChildren(widget, "downloadSingleCaseButton")[0]
-            caseIdTxt = slicer.util.findChildren(widget, "singleCaseIdTxt")[0]
-            studyButton = slicer.util.findChildren(widget, "studyIdButton_COPDGene")[0]
-            studyButton.click()
-            caseId = "11488P_INSP_STD_HAR_COPD"
-            caseIdTxt.setText(caseId)
-            button.click()
-            volume = slicer.util.getNode(caseId)
-        except Exception as ex:
-            logging.info("Case Navigator failed ({0}). Downloading web case...".format(ex.message))
-            # Load the volume from a Slicer generic testing cases url
-            import urllib
-            url = "http://www.slicer.org/slicerWiki/images/3/31/CT-chest.nrrd"
-            name = url.split("/")[-1]
-            filePath = os.path.join(slicer.app.temporaryPath, name)
-            if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-                logging.info('Requesting download %s from %s...\n' % (name, url))
-                filePath = urllib.urlretrieve(url, filePath)
-            (loaded, volume) = slicer.util.loadVolume(filePath, returnNode=True)
+        volume = SlicerUtil.downloadVolumeForTests(widget)
 
         self.assertFalse(volume is None)
 
         # Get the logic
+        logging.info("Getting logic...")
         logic = widget.self().logic
+        logging.info("Logic = {0}".format(logic))
 
         # Actions
         # Make sure that the right volume is selected
         volumeSelector = slicer.util.findChildren(widget=widget, name='paa_volumeSelector')[0]
+        logging.info("Volume selector: {0}".format(volumeSelector))
         volumeSelector.setCurrentNode(volume)
         button = slicer.util.findChildren(widget=widget, name='placeDefaultRulersButton')[0]
         # Place default rulers
