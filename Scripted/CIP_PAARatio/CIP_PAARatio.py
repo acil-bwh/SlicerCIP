@@ -905,6 +905,11 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
 
 
 class CIP_PAARatioTest(ScriptedLoadableModuleTest):
+    @classmethod
+    def setUpClass(cls):
+        """ Executed once for all the tests """
+        slicer.util.selectModule('CIP_PAARatio')
+
     def setUp(self):
         """ Do whatever is needed to reset the state - typically a scene clear will be enough.
         """

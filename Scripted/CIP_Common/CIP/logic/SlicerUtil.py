@@ -412,6 +412,10 @@ class SlicerUtil:
         # Call this function to force the refresh of properties like the field of view of the sliceNodes
         slicer.app.processEvents()
 
+    @staticmethod
+    def changeLayoutToAxial():
+        SlicerUtil.changeLayout(6)
+
 
     @staticmethod
     def changeContrastWindow(window, level):
