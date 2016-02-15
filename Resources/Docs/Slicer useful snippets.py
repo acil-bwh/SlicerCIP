@@ -286,6 +286,8 @@ def onMarkupAdded(self, markupListNode, event):
     # Change the label of the last added node
     markupListNode.SetNthMarkupLabel(n-1, label)
 
+# NOTE: see some very useful event handling here: https://github.com/pieper/LandmarkRegistration/blob/master/RegistrationLib/Landmarks.py#L77-L115
+
 
 ####################################################################################
 # XYZ --> RAS (in a ROI). Extracted from SlicerLongitudinalPETCTModuleViewHelper in LongitudinalPETCT Module. There are another useful functions there

@@ -6,9 +6,9 @@ Common functions that can be useful in any Slicer module development
 
 import os
 import os.path as path
+import logging
 from __main__ import slicer, vtk, qt
 from . import Util
-
 
 class SlicerUtil:
     # Constants    
@@ -21,7 +21,7 @@ class SlicerUtil:
     CIP_MODULE_ROOT_DIR = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + '/../..')
     #CIP_GIT_REPO_FOLDER = os.path.realpath(CIP_MODULE_ROOT_DIR + '/../CIP-Repo')
     CIP_DEFAULT_GIT_REPO_FOLDER = os.path.join(slicer.app.temporaryPath, 'CIP-Repo')
-    CIP_GIT_REMOTE_URL = "https://acilgeneric:bwhacil2015@github.com/acil-bwh/ACILSlicer.git"
+    #CIP_GIT_REMOTE_URL = "https://acilgeneric:PASSWORD@github.com/acil-bwh/ACILSlicer.git"
     CIP_LIBRARY_ROOT_DIR = os.path.join(CIP_MODULE_ROOT_DIR, 'CIP')
 
     CIP_RESOURCES_DIR = os.path.join(CIP_LIBRARY_ROOT_DIR, 'ui', 'Resources')
@@ -545,7 +545,8 @@ class SlicerUtil:
         for toolbar in slicer.util.mainWindow().findChildren('QToolBar'):
           toolbar.setVisible(show)
 
-    def clickAndDrag(self,widget,button='Left',start=(10,10),end=(10,40),steps=20,modifiers=[]):
+    @staticmethod
+    def clickAndDrag(widget,button='Left',start=(10,10),end=(10,40),steps=20,modifiers=[]):
         """ Borrowed from https://github.com/Slicer/Slicer/edit/master/Applications/SlicerApp/Testing/Python/RSNAVisTutorial.py#L262
         Send synthetic mouse events to the specified widget (qMRMLSliceWidget or qMRMLThreeDView)
         button : "Left", "Middle", "Right", or "None"
@@ -586,36 +587,37 @@ class SlicerUtil:
         interator.SetControlKey(0)
 
     @staticmethod
-    def downloadVolumeForTests(widget, downloadWhenCached=True):
-        import logging
+    def downloadVolumeForTests(widget, downloadWhenCached=True, forceExternalDownload=False):
         volume = None
-        try:
-            logging.info("Trying to use the case navigator to download the case...")
-            # Try first with case navigator (not necessarily included!)
-            downloadButton = slicer.util.findChildren(widget, "downloadSingleCaseButton")[0]
-            caseIdTxt = slicer.util.findChildren(widget, "singleCaseIdTxt")[0]
-            studyButton = slicer.util.findChildren(widget, "studyIdButton_COPDGene")[0]
-            studyButton.click()
-            caseId = "11488P_INSP_STD_HAR_COPD"
-            caseIdTxt.setText(caseId)
-            if downloadWhenCached:
-                # Disable cache to always force the download
-                cbCache = slicer.util.findChildren(widget, "cbCacheMode")[0]
-                cbCache.setChecked(False)
-            downloadButton.click()
-            volume = slicer.util.getNode(caseId)
-        except Exception as ex:
-            logging.info("Case Navigator failed ({0}). Downloading web case...".format(ex.message))
+        if not forceExternalDownload:
+            try:
+                logging.info("Trying to use the case navigator to download the case...")
+                # Try first with case navigator (not necessarily included!)
+                downloadButton = slicer.util.findChildren(widget, "downloadSingleCaseButton")[0]
+                caseIdTxt = slicer.util.findChildren(widget, "singleCaseIdTxt")[0]
+                studyButton = slicer.util.findChildren(widget, "studyIdButton_COPDGene")[0]
+                studyButton.click()
+                caseId = "11488P_INSP_STD_HAR_COPD"
+                caseIdTxt.setText(caseId)
+                if downloadWhenCached:
+                    # Disable cache to always force the download
+                    cbCache = slicer.util.findChildren(widget, "cbCacheMode")[0]
+                    cbCache.setChecked(False)
+                downloadButton.click()
+                volume = slicer.util.getNode(caseId)
+            except Exception as ex:
+                logging.info("Case Navigator failed ({0}). Downloading web case...".format(ex.message))
+        if volume is None:
             # Load the volume from a Slicer generic testing cases url
             import urllib
             url = "http://www.slicer.org/slicerWiki/images/3/31/CT-chest.nrrd"
             name = url.split("/")[-1]
-            filePath = os.path.join(slicer.app.temporaryPath, name)
-            if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
+            localFilePath = os.path.join(slicer.app.temporaryPath, name)
+            if not os.path.exists(localFilePath) or os.stat(localFilePath).st_size == 0:
                 logging.info('Requesting download %s from %s...\n' % (name, url))
-                filePath = urllib.urlretrieve(url, filePath)
-            logging.debug("Loading volume in {0}...".format(filePath))
-            (loaded, volume) = slicer.util.loadVolume(filePath, returnNode=True)
+                urllib.urlretrieve(url, localFilePath)
+            logging.debug("Loading volume in {0}...".format(localFilePath))
+            (loaded, volume) = slicer.util.loadVolume(localFilePath, returnNode=True)
         return volume
 
 
