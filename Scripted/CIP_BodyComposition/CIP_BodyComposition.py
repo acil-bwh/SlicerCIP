@@ -60,6 +60,16 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         return os.path.basename(__file__).replace(".py", "")
         # return "CIP_BodyComposition"
 
+    __preventDialogs__ = False
+    # @property
+    # def preventDialogs(self):
+    #     return self.__preventDialogs__
+    #
+    # @preventDialogs.setter
+    # def preventDialogs(self, value):
+    #     print ("Instance: ", self)
+    #     self.__preventDialogs__ = value
+
     def __init__(self, parent):
         """Widget constructor (existing module)"""
         ScriptedLoadableModuleWidget.__init__(self, parent)
@@ -78,7 +88,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
             """Node added to the Slicer scene"""
             if callData.GetClassName() == 'vtkMRMLScalarVolumeNode':
                 if SlicerUtil.IsDevelopment:
-                    print ("DEBUG: New node node added to scene: {0}".format(callData.GetName()))
+                    logging.debug ("DEBUG: New node node added to scene: {0}".format(callData.GetName()))
                 self.checkMasterAndLabelMapNodes()
 
         self.onNodeAdded = partial(onNodeAdded, self)
@@ -101,7 +111,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     def setup(self):
         """Init the widget """
         ScriptedLoadableModuleWidget.setup(self)
-
         self.logic = CIP_BodyCompositionLogic()
         self.lastAnalysisResults = None
 
@@ -133,21 +142,23 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
 
         # Chest regions combo box
-        self.cbRegion = qt.QComboBox(self.structuresCollapsibleButton)
+        self.regionComboBox = qt.QComboBox(self.structuresCollapsibleButton)
+        self.regionComboBox.objectName = "regionComboBox"
         index = 0
         for key, item in self.logic.getRegionTypes().iteritems():
-            self.cbRegion.addItem(item[1])  # Add label description
-            self.cbRegion.setItemData(index, key)  # Add string code
+            self.regionComboBox.addItem(item[1])  # Add label description
+            self.regionComboBox.setItemData(index, key)  # Add string code
             index += 1
         self.labelRegion = qt.QLabel("Select the region type")
         self.structuresLayout.addWidget(self.labelRegion, 0, 0)
-        self.structuresLayout.addWidget(self.cbRegion, 0, 1)
+        self.structuresLayout.addWidget(self.regionComboBox, 0, 1)
 
         # Chest type combo box
-        self.cbType = qt.QComboBox(self.structuresCollapsibleButton)
+        self.typeComboBox = qt.QComboBox(self.structuresCollapsibleButton)
+        self.typeComboBox.objectName = "typeComboBox"
         self.labelType = qt.QLabel("Select the tissue type")
         self.structuresLayout.addWidget(self.labelType, 1, 0)
-        self.structuresLayout.addWidget(self.cbType, 1, 1)
+        self.structuresLayout.addWidget(self.typeComboBox, 1, 1)
 
         self.structuresLayout.setColumnMinimumWidth(2, 250)
 
@@ -197,13 +208,14 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
             self.structuresLayout.addWidget(self.saveLabelmapButton, 1, 2)
 
         # Analysis button
-        self.btnAnalysis = ctk.ctkPushButton()
-        self.btnAnalysis.text = "Start analysis"
-        self.btnAnalysis.toolTip = "Calculate the main statistics for each structure in the volume"
-        self.btnAnalysis.setStyleSheet("font-weight:bold; font-size:14px")
-        self.btnAnalysis.setIcon(qt.QIcon("{0}/1415667870_kview.png".format(self.iconsPath)))
-        self.btnAnalysis.setIconSize(qt.QSize(24, 24))
-        self.structuresLayout.addWidget(self.btnAnalysis, 3, 2)
+        self.analysisButton = ctk.ctkPushButton()
+        self.analysisButton.text = "Start analysis"
+        self.analysisButton.objectName = "analysisButton"
+        self.analysisButton.toolTip = "Calculate the main statistics for each structure in the volume"
+        self.analysisButton.setStyleSheet("font-weight:bold; font-size:14px")
+        self.analysisButton.setIcon(qt.QIcon("{0}/1415667870_kview.png".format(self.iconsPath)))
+        self.analysisButton.setIconSize(qt.QSize(24, 24))
+        self.structuresLayout.addWidget(self.analysisButton, 3, 2)
 
         # Statistics table
         self.statisticsCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -222,7 +234,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         # Start analysis button (duplicated)
         self.btnAnalysis2 = ctk.ctkPushButton()
         self.btnAnalysis2.text = "Start analysis"
-        self.btnAnalysis.toolTip = "Calculate the main statistics for each structure in the volume"
+        self.analysisButton.toolTip = "Calculate the main statistics for each structure in the volume"
         self.btnAnalysis2.setStyleSheet("font-weight:bold; font-size:14px")
         self.btnAnalysis2.setIcon(qt.QIcon("{0}/1415667870_kview.png".format(self.iconsPath)))
         self.btnAnalysis2.setIconSize(qt.QSize(24, 24))
@@ -285,6 +297,8 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         # uw = CIPUI.AutoUpdateWidget(parent=self.parent, autoUpdate=autoUpdate)
         # uw.addAutoUpdateCheckObserver(self.onAutoUpdateStateChanged)
 
+        SlicerUtil.changeLayoutToAxial()
+
         # Load the correct values for the types combo box
         self.__loadTypesComboBox__(self.logic.getRegionStringCodeItem(self.logic.getAllowedCombinations()[0]))
 
@@ -292,19 +306,21 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.checkMasterAndLabelMapNodes()
 
         # Connections
-        # Recall: we are not connecting here cbType because its items will be loaded dynamically in "__loadTypesComboBox__" method
-        self.cbRegion.connect("currentIndexChanged (int)", self.onCbRegionCurrentIndexChanged)
+        # Recall: we are not connecting here typeComboBox because its items will be loaded dynamically in "__loadTypesComboBox__" method
+        self.regionComboBox.connect("currentIndexChanged (int)", self.onCbRegionCurrentIndexChanged)
         # Listen for new nodes
         self.nodeObserver = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
         self.btnRefresh2.connect("clicked()", self.onBtnSyncLabelmapClicked)
         # self.btnRefresh.connect("clicked()", self.onBtnRefreshClicked)
         self.saveLabelmapButton.connect("clicked()", self.__onSaveLabelmapClicked__)
-        self.btnAnalysis.connect("clicked()", self.onBtnAnalysisClicked)
+        self.analysisButton.connect("clicked()", self.onBtnAnalysisClicked)
         self.btnAnalysis2.connect("clicked()", self.onBtnAnalysisClicked)
         self.btnGoToNextStructure.connect("clicked()", self.onBtnNextClicked)
         self.btnGoToPreviousStructure.connect("clicked()", self.onBtnPrevClicked)
         self.btnExport.connect("clicked()", self.onBtnExportClicked)
         self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
+
+        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__)
 
         self.refreshGUI()
 
@@ -526,17 +542,17 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
     def __loadTypesComboBox__(self, regionCode):
         """Load the combobox with allowed types for a selected region"""
-        self.cbType.disconnect("currentIndexChanged (int)", self.onCbTypeCurrentIndexChanged)
-        self.cbType.clear()
+        self.typeComboBox.disconnect("currentIndexChanged (int)", self.onCbTypeCurrentIndexChanged)
+        self.typeComboBox.clear()
         index = 0
 
         for ctype in filter(lambda combination: self.logic.getRegionStringCodeItem(combination) == regionCode,
                             self.logic.getAllowedCombinations()):
-            self.cbType.addItem(self.logic.getTypeStringDescriptionItem(ctype))  # Add label description
-            self.cbType.setItemData(index, self.logic.getTypeStringCodeItem(ctype))  # Add string code
+            self.typeComboBox.addItem(self.logic.getTypeStringDescriptionItem(ctype))  # Add label description
+            self.typeComboBox.setItemData(index, self.logic.getTypeStringCodeItem(ctype))  # Add string code
             index += 1
 
-        self.cbType.connect("currentIndexChanged (int)", self.onCbTypeCurrentIndexChanged)
+        self.typeComboBox.connect("currentIndexChanged (int)", self.onCbTypeCurrentIndexChanged)
         self.__setStructureProperties__()
 
     def __setStructureProperties__(self):
@@ -546,8 +562,8 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         if not masterNode:
             return
 
-        region = self.cbRegion.itemData(self.cbRegion.currentIndex)
-        ctype = self.cbType.itemData(self.cbType.currentIndex)
+        region = self.regionComboBox.itemData(self.regionComboBox.currentIndex)
+        ctype = self.typeComboBox.itemData(self.typeComboBox.currentIndex)
         label = '{0}-{1}'.format(region, ctype)
 
         # Get the color id for this value
@@ -577,9 +593,9 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
     def refreshGUI(self):
         """Enable/disable or show/hide GUI components depending on the state of the module"""
-        self.cbRegion.enabled = self.cbType.enabled = self.getCurrentGrayscaleNode()
-        self.btnAnalysis.enabled = self.btnAnalysis2.enabled = self.btnGoToNextStructure.enabled = \
-            self.btnGoToPreviousStructure.enabled =  self.reportsWidget.saveValuesButton.enabled = \
+        self.regionComboBox.enabled = self.typeComboBox.enabled = self.getCurrentGrayscaleNode()
+        self.analysisButton.enabled = self.btnAnalysis2.enabled = self.btnGoToNextStructure.enabled = \
+            self.btnGoToPreviousStructure.enabled =  self.reportsWidget.saveButton.enabled = \
             (self.getCurrentGrayscaleNode() and self.getCurrentLabelMapNode())
 
         self.tableView.visible = False
@@ -807,8 +823,8 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         """Get an array with the list of slices where the current label is present in the current labelmap.
         Return None in case there is any problem or the label is not present"""
         try:
-            region = self.cbRegion.itemData(self.cbRegion.currentIndex)
-            ctype = self.cbType.itemData(self.cbType.currentIndex)
+            region = self.regionComboBox.itemData(self.regionComboBox.currentIndex)
+            ctype = self.typeComboBox.itemData(self.typeComboBox.currentIndex)
             item = self.logic.getItem(region, ctype)
             labelCode = self.logic.getIntCodeItem(item)
 
@@ -906,6 +922,10 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                 f.write(export)
                 f.close()
 
+    def preventDialogs(self, prevent=True):
+        print("Setting prevent dialogs in Instance: ", self)
+        self.__preventDialogs__ = prevent
+
     def cleanup(self):
         self.editorWidget.helper.masterSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onMasterNodeSelect)
 
@@ -937,7 +957,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     def onCbRegionCurrentIndexChanged(self, index):
         """Event when Region combobox is changed"""
         # Load just the allowed types
-        self.__loadTypesComboBox__(self.cbRegion.itemData(index))
+        self.__loadTypesComboBox__(self.regionComboBox.itemData(index))
 
     def onCbTypeCurrentIndexChanged(self, index):
         """Event when Type combobox is changed"""
@@ -1043,7 +1063,18 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                 median=stat.Median,
                 numSlices=stat.NumSlices
             )
-        qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+        print("Looking prevent: ", self)
+        if not self.__preventDialogs__:
+            qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+
+    def __onSceneClosed__(self, arg1, arg2):
+        """ Scene closed. Reset currently loaded volumes
+        :param arg1:
+        :param arg2:
+        :return:
+        """
+        # Reset the region/type comboboxes to be adjusted properly with the next volume
+        self.regionComboBox.currentIndex = 0
 
 
 #
@@ -1450,10 +1481,25 @@ class StatsWrapper(object):
 
 
 class CIP_BodyCompositionTest(ScriptedLoadableModuleTest):
+    @classmethod
+    def setUpClass(cls):
+        """ Executed once for all the tests """
+        slicer.util.selectModule('CIP_BodyComposition')
+
     def setUp(self):
-        """ Do whatever is needed to reset the state - typically a scene clear will be enough.
-        """
+        """ Run before every test """
         slicer.mrmlScene.Clear(0)
+        # Layout should be axial by default
+        lm = slicer.app.layoutManager()
+        self.assertTrue(lm.layout == 6)
+        
+        # Get the main objects
+        self.widget = slicer.modules.cip_bodycomposition.widgetRepresentation()
+        self.widgetClass = self.widget.self()
+        self.logic = self.widgetClass.logic
+
+        # Prevent dialogs
+        self.widgetClass.preventDialogs(True)
 
     def runTest(self):
         """Run as few or as many tests as needed here.
@@ -1462,4 +1508,78 @@ class CIP_BodyCompositionTest(ScriptedLoadableModuleTest):
         self.test_CIP_BodyComposition()
 
     def test_CIP_BodyComposition(self):
-        self.fail("Test not implemented!")
+        # Load a sample volume
+        volume = SlicerUtil.downloadVolumeForTests(widget=self.widget, tryUsingACILNavigator=False)
+        self.assertFalse(volume is None)
+        
+        # Actions
+        # Make sure that the right volumes are selected
+        editorMasterVolumeSelector = slicer.util.findChildren(widget=self.widget, name='MasterVolumeNodeSelector')[0]
+        currentNode = editorMasterVolumeSelector.currentNode()
+        self.assertFalse(currentNode is None)
+
+        labelmapVolumeSelector = slicer.util.findChildren(widget=self.widget, name='MergeVolumeNodeSelector')[0]
+        currentLabelmapNode = labelmapVolumeSelector.currentNode()
+        self.assertTrue(currentNode.GetName() + self.widgetClass.labelmapNodeNameExtension == currentLabelmapNode.GetName(),
+            "Expected: {0}; Real: {1}".format(currentNode.GetName() + self.widgetClass.labelmapNodeNameExtension, currentLabelmapNode.GetName()))
+
+        # Check that the window contrast level changes
+        # Select a region / type (left / pectoralis major)
+        regionComboBox = slicer.util.findChildren(widget=self.widget, name='regionComboBox')[0]
+        typeComboBox = slicer.util.findChildren(widget=self.widget, name='typeComboBox')[0]
+        regionComboBox.currentIndex = 1
+
+        expectedWindowRange = self.logic.getWindowRange(regionComboBox.itemData(1), typeComboBox.itemData(0))
+        displayNode = currentNode.GetDisplayNode()
+        window = displayNode.GetWindow()
+        level = displayNode.GetLevel()
+        self.assertTrue(window == expectedWindowRange[0] and level==expectedWindowRange[1],
+                        "Unexpected window level range. Current range: {0}-{1}. Expected: {2}-{3}".format(
+                            window, level, expectedWindowRange[0], expectedWindowRange[1]))
+
+        # Draw a big rectangle so that we are sure that we label something
+        # Click the Rectangle Effect in the Editor
+        rectangleEffectButton = slicer.util.findChildren(widget=self.widget, name='RectangleEffectToolButton')[0]
+        rectangleEffectButton.click()
+        redWidget = slicer.app.layoutManager().sliceWidget('Red')
+
+        # Check that the labelmap node does not contain data
+        a = slicer.util.array(currentLabelmapNode.GetID())
+        self.assertTrue(a.max() == 0, "Labelmap should be empty")
+        # Paint
+        l = slicer.ScriptedLoadableModule.ScriptedLoadableModuleLogic()
+        l.clickAndDrag(redWidget, start=(30,500), end=(330, 330))
+        # Check that the labelmap node does contain data
+        self.assertTrue(a.max() > 0, "Labelmap should not be empty")
+        # Undo the results
+        # IMPORTANT. This will not work using "Reload and test" button. There must be something
+        # in the Editor initialization that prevents the "Undo/Redo" buttons working after Reloading
+        undoButton = slicer.util.findChildren(widget=self.widget, name='PreviousCheckPointToolButton')[0]
+        undoButton.click()
+        # Check that the labelmap node does not contain data
+        self.assertTrue(a.max() == 0, "Labelmap should be empty")
+
+        # Paint again
+        l.clickAndDrag(redWidget, start=(30, 500), end=(330, 330))
+
+        # Run Analysis
+        analysisButton = slicer.util.findChildren(widget=self.widget, name='analysisButton')[0]
+        analysisButton.click()
+        # Save the results
+        saveResultsButton = slicer.util.findChildren(widget=self.widget, name='reportSaveButton')[0]
+        saveResultsButton.click()
+        # Open the report
+        openReportButton = slicer.util.findChildren(widget=self.widget, name='reportOpenButton')[0]
+        openReportButton.click()
+        # Export the results
+        filePath = os.path.join(slicer.app.temporaryPath, "bodyCompositionReport.csv")
+        logging.info("Saving report in " + filePath)
+        self.assertTrue(self.widgetClass.reportsWidget.logic.exportCSV(filePath))
+
+        # Close the reports window
+        #reportWindow = slicer.util.findChildren(name='caseReportsWindow')[0]
+        #reportWindow.hide()
+        self.delayDisplay('Test passed!')
+
+    def tearDown(self):
+        self.widgetClass.preventDialogs(False)

@@ -926,7 +926,7 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
 
         # Get the widget
         widget = slicer.modules.cip_paaratio.widgetRepresentation()
-        volume = SlicerUtil.downloadVolumeForTests(widget)
+        volume = SlicerUtil.downloadVolumeForTests(widget=widget)
 
         self.assertFalse(volume is None)
 

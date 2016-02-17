@@ -116,8 +116,8 @@ class LoadSaveDataWidget(object):
 #         self.cbFileType.setItemData(0, "My key")    
 # #         index=0
 # #         for key, item in self.logic.regionTypes.iteritems():
-# #             self.cbRegion.addItem(item[1])    # Add label description
-# #             self.cbRegion.setItemData(index, key)     # Add string code
+# #             self.regionComboBox.addItem(item[1])    # Add label description
+# #             self.regionComboBox.setItemData(index, key)     # Add string code
 # #             index += 1
 #         aditionalParamsLayout.addRow("Select the file type    ", self.cbFileType)
          

@@ -546,50 +546,17 @@ class SlicerUtil:
           toolbar.setVisible(show)
 
     @staticmethod
-    def clickAndDrag(widget,button='Left',start=(10,10),end=(10,40),steps=20,modifiers=[]):
-        """ Borrowed from https://github.com/Slicer/Slicer/edit/master/Applications/SlicerApp/Testing/Python/RSNAVisTutorial.py#L262
-        Send synthetic mouse events to the specified widget (qMRMLSliceWidget or qMRMLThreeDView)
-        button : "Left", "Middle", "Right", or "None"
-        start, end : window coordinates for action
-        steps : number of steps to move in
-        modifiers : list containing zero or more of "Shift" or "Control"
+    def downloadVolumeForTests(downloadWhenCached=False, tryUsingACILNavigator=True, widget=None):
+        """ Download a sample volume for testing purposes.
+        The first option will be to use the ACIL caseNavigatorWidget (unless tryUsingACILNavigator==False).
+        Otherwise, it will download the CT chest scan in http://www.slicer.org/slicerWiki/images/3/31/CT-chest.nrrd
+        @param downloadWhenCached: download the case even if it's been previously downloaded
+        @param tryUsingACILNavigator: try to use case the ACIL case navigator as the primary source for data
+        @param widget: Parent widget where the navigator could be included
+        @return: loaded volume
         """
-        style = widget.interactorStyle()
-        interator = style.GetInteractor()
-        if button == 'Left':
-          down = style.OnLeftButtonDown
-          up = style.OnLeftButtonUp
-        elif button == 'Right':
-          down = style.OnRightButtonDown
-          up = style.OnRightButtonUp
-        elif button == 'Middle':
-          down = style.OnMiddleButtonDown
-          up = style.OnMiddleButtonUp
-        elif button == 'None' or not button:
-          down = lambda : None
-          up = lambda : None
-        else:
-          raise Exception("Bad button - should be Left or Right, not %s" % button)
-        if 'Shift' in modifiers:
-          interator.SetShiftKey(1)
-        if 'Control' in modifiers:
-          interator.SetControlKey(1)
-        interator.SetEventPosition(*start)
-        down()
-        for step in xrange(steps):
-          frac = float(step)/steps
-          x = int(start[0] + frac*(end[0]-start[0]))
-          y = int(start[1] + frac*(end[1]-start[1]))
-          interator.SetEventPosition(x,y)
-          style.OnMouseMove()
-        up()
-        interator.SetShiftKey(0)
-        interator.SetControlKey(0)
-
-    @staticmethod
-    def downloadVolumeForTests(widget, downloadWhenCached=True, forceExternalDownload=False):
         volume = None
-        if not forceExternalDownload:
+        if tryUsingACILNavigator and SlicerUtil.isSlicerACILLoaded():
             try:
                 logging.info("Trying to use the case navigator to download the case...")
                 # Try first with case navigator (not necessarily included!)
@@ -613,13 +580,12 @@ class SlicerUtil:
             url = "http://www.slicer.org/slicerWiki/images/3/31/CT-chest.nrrd"
             name = url.split("/")[-1]
             localFilePath = os.path.join(slicer.app.temporaryPath, name)
-            if not os.path.exists(localFilePath) or os.stat(localFilePath).st_size == 0:
+            if not os.path.exists(localFilePath) or os.stat(localFilePath).st_size == 0 or downloadWhenCached:
                 logging.info('Requesting download %s from %s...\n' % (name, url))
                 urllib.urlretrieve(url, localFilePath)
             logging.debug("Loading volume in {0}...".format(localFilePath))
             (loaded, volume) = slicer.util.loadVolume(localFilePath, returnNode=True)
         return volume
-
 
         # @staticmethod
     # def gitUpdateCIP():
