@@ -1513,19 +1513,19 @@ class CIP_BodyCompositionTest(ScriptedLoadableModuleTest):
         
         # Actions
         # Make sure that the right volumes are selected
-        editorMasterVolumeSelector = slicer.util.findChildren(widget=self.widget, name='MasterVolumeNodeSelector')[0]
+        editorMasterVolumeSelector = SlicerUtil.findChildren(widget=self.widget, name='MasterVolumeNodeSelector')[0]
         currentNode = editorMasterVolumeSelector.currentNode()
         self.assertFalse(currentNode is None)
 
-        labelmapVolumeSelector = slicer.util.findChildren(widget=self.widget, name='MergeVolumeNodeSelector')[0]
+        labelmapVolumeSelector = SlicerUtil.findChildren(widget=self.widget, name='MergeVolumeNodeSelector')[0]
         currentLabelmapNode = labelmapVolumeSelector.currentNode()
         self.assertTrue(currentNode.GetName() + self.widgetClass.labelmapNodeNameExtension == currentLabelmapNode.GetName(),
             "Expected: {0}; Real: {1}".format(currentNode.GetName() + self.widgetClass.labelmapNodeNameExtension, currentLabelmapNode.GetName()))
 
         # Check that the window contrast level changes
         # Select a region / type (left / pectoralis major)
-        regionComboBox = slicer.util.findChildren(widget=self.widget, name='regionComboBox')[0]
-        typeComboBox = slicer.util.findChildren(widget=self.widget, name='typeComboBox')[0]
+        regionComboBox = SlicerUtil.findChildren(widget=self.widget, name='regionComboBox')[0]
+        typeComboBox = SlicerUtil.findChildren(widget=self.widget, name='typeComboBox')[0]
         regionComboBox.currentIndex = 1
 
         expectedWindowRange = self.logic.getWindowRange(regionComboBox.itemData(1), typeComboBox.itemData(0))
@@ -1538,7 +1538,7 @@ class CIP_BodyCompositionTest(ScriptedLoadableModuleTest):
 
         # Draw a big rectangle so that we are sure that we label something
         # Click the Rectangle Effect in the Editor
-        rectangleEffectButton = slicer.util.findChildren(widget=self.widget, name='RectangleEffectToolButton')[0]
+        rectangleEffectButton = SlicerUtil.findChildren(widget=self.widget, name='RectangleEffectToolButton')[0]
         rectangleEffectButton.click()
         redWidget = slicer.app.layoutManager().sliceWidget('Red')
 
@@ -1554,7 +1554,7 @@ class CIP_BodyCompositionTest(ScriptedLoadableModuleTest):
         # TODO: Undo labeling
         # IMPORTANT. This will not work using "Reload and test" button. There must be something
         # in the Editor initialization that prevents the "Undo/Redo" buttons working after Reloading
-        #undoButton = slicer.util.findChildren(widget=self.widget, name='PreviousCheckPointToolButton')[0]
+        #undoButton = SlicerUtil.findChildren(widget=self.widget, name='PreviousCheckPointToolButton')[0]
         #undoButton.click()
         # Check that the labelmap node does not contain data
         #self.assertTrue(a.max() == 0, "Labelmap should be empty. Undo mechanism didn't work")
@@ -1563,13 +1563,13 @@ class CIP_BodyCompositionTest(ScriptedLoadableModuleTest):
         # l.clickAndDrag(redWidget, start=(30, 500), end=(330, 330))
 
         # Run Analysis
-        analysisButton = slicer.util.findChildren(widget=self.widget, name='analysisButton')[0]
+        analysisButton = SlicerUtil.findChildren(widget=self.widget, name='analysisButton')[0]
         analysisButton.click()
         # Save the results
-        saveResultsButton = slicer.util.findChildren(widget=self.widget, name='reportSaveButton')[0]
+        saveResultsButton = SlicerUtil.findChildren(widget=self.widget, name='reportSaveButton')[0]
         saveResultsButton.click()
         # Open the report
-        openReportButton = slicer.util.findChildren(widget=self.widget, name='reportOpenButton')[0]
+        openReportButton = SlicerUtil.findChildren(widget=self.widget, name='reportOpenButton')[0]
         openReportButton.click()
         # Export the results
         filePath = os.path.join(slicer.app.temporaryPath, "bodyCompositionReport.csv")
@@ -1577,7 +1577,7 @@ class CIP_BodyCompositionTest(ScriptedLoadableModuleTest):
         self.assertTrue(self.widgetClass.reportsWidget.logic.exportCSV(filePath))
 
         # Close the reports window
-        #reportWindow = slicer.util.findChildren(name='caseReportsWindow')[0]
+        #reportWindow = SlicerUtil.findChildren(name='caseReportsWindow')[0]
         #reportWindow.hide()
         self.delayDisplay('Test passed!')
 

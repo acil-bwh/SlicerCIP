@@ -10,6 +10,7 @@ import logging
 from __main__ import slicer, vtk, qt
 from . import Util
 
+
 class SlicerUtil:
     # Constants    
     try:
@@ -17,16 +18,15 @@ class SlicerUtil:
     except:
         IsDevelopment = False
 
-
     CIP_MODULE_ROOT_DIR = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + '/../..')
-    #CIP_GIT_REPO_FOLDER = os.path.realpath(CIP_MODULE_ROOT_DIR + '/../CIP-Repo')
+    # CIP_GIT_REPO_FOLDER = os.path.realpath(CIP_MODULE_ROOT_DIR + '/../CIP-Repo')
     CIP_DEFAULT_GIT_REPO_FOLDER = os.path.join(slicer.app.temporaryPath, 'CIP-Repo')
-    #CIP_GIT_REMOTE_URL = "https://acilgeneric:PASSWORD@github.com/acil-bwh/ACILSlicer.git"
+    # CIP_GIT_REMOTE_URL = "https://acilgeneric:PASSWORD@github.com/acil-bwh/ACILSlicer.git"
     CIP_LIBRARY_ROOT_DIR = os.path.join(CIP_MODULE_ROOT_DIR, 'CIP')
 
     CIP_RESOURCES_DIR = os.path.join(CIP_LIBRARY_ROOT_DIR, 'ui', 'Resources')
     CIP_ICON_DIR = os.path.join(CIP_RESOURCES_DIR, 'Icons')
-        
+
     ACIL_AcknowledgementText = """This work is funded by the National Heart, Lung, And Blood Institute of the National Institutes of Health under Award Number R01HL116931. 
         The content is solely the responsibility of the authors and does not necessarily represent the official views of the National Institutes of Health."""
 
@@ -43,10 +43,9 @@ class SlicerUtil:
     ALIGNMENT_VERTICAL_BOTTOM = 0x0040
     ALIGNMENT_VERTICAL_CENTER = 0x0080
 
-
     @staticmethod
     def getModuleFolder(moduleName):
-        '''Get the folder where a python scripted module is physically stored''' 
+        '''Get the folder where a python scripted module is physically stored'''
         path = os.path.dirname(slicer.util.getModule(moduleName).path)
         if (os.sys.platform == "win32"):
             path = path.replace("/", "\\")
@@ -60,8 +59,8 @@ class SlicerUtil:
         :param moduleName: name of the module
         :return: full path to the file
         """
-        #return os.path.join(os.path.expanduser('~'), "SlicerCIP_Data", moduleName, "Results")
-        #p = path.join(path.dirname(slicer.app.slicerDefaultSettingsFilePath), "DataStore", "CIP", moduleName)
+        # return os.path.join(os.path.expanduser('~'), "SlicerCIP_Data", moduleName, "Results")
+        # p = path.join(path.dirname(slicer.app.slicerDefaultSettingsFilePath), "DataStore", "CIP", moduleName)
         baseDir = os.path.dirname(slicer.app.slicerRevisionUserSettingsFilePath)
         p = path.join(baseDir, "CIP", moduleName)
 
@@ -69,25 +68,24 @@ class SlicerUtil:
             os.makedirs(p)
             print ("Created path " + p)
         return p
- 
+
     @staticmethod
     def setSetting(moduleName, settingName, settingValue):
         '''Set the value of a setting in Slicer'''
-        settingPath = "%s/%s" % (moduleName, settingName)     
+        settingPath = "%s/%s" % (moduleName, settingName)
         slicer.app.settings().setValue(settingPath, settingValue)
-     
- 
+
     @staticmethod
     def settingGetOrSetDefault(moduleName, settingName, settingDefaultValue=None):
         '''Try to find the value of a setting in Slicer and, if it does not exist, set it to the settingDefaultValue (optional)'''
         settingPath = "%s/%s" % (moduleName, settingName)
         setting = slicer.app.settings().value(settingPath)
         if setting is not None:
-            return setting    # The setting was already initialized
-        
+            return setting  # The setting was already initialized
+
         if settingDefaultValue is not None:
             slicer.app.settings().setValue(settingPath, settingDefaultValue)
-                
+
         return settingDefaultValue
 
     @staticmethod
@@ -96,9 +94,7 @@ class SlicerUtil:
         """
         return "http://midas.chestimagingplatform.org/download/item/"
 
-
-
-    @staticmethod     
+    @staticmethod
     def createNewFiducial(x, y, z, radX, radY, radZ, scalarNode):
         '''Create a new fiducial (ROI) that will be visible in the scalar node passed.
         Parameters: 
@@ -112,8 +108,8 @@ class SlicerUtil:
         displayNodeID = scalarNode.GetDisplayNode().GetID()
         fiducial.AddAndObserveDisplayNodeID(displayNodeID)
         # Get fiducial (Point)
-        #f = slicer.mrmlScene.CreateNodeByClass('vtkMRMLMarkupsFiducialNode')
-        #f.GetMarkupPointVector(0,0) --> returns a vtkVector3d with the coordinates for the
+        # f = slicer.mrmlScene.CreateNodeByClass('vtkMRMLMarkupsFiducialNode')
+        # f.GetMarkupPointVector(0,0) --> returns a vtkVector3d with the coordinates for the
         # first node where the fidual is displayed (param 0) and the number of markup (param1)
 
     @staticmethod
@@ -147,7 +143,6 @@ class SlicerUtil:
             # Create root annotations node
             rootHierarchyNode = slicer.modules.annotations.logic().GetActiveHierarchyNode()
         return rootHierarchyNode
-
 
     @staticmethod
     def __setMarkupsMode__(isFiducialsMode, fiducialClass, keepFiducialsModeOn):
@@ -206,7 +201,6 @@ class SlicerUtil:
         """
         SlicerUtil.__setMarkupsMode__(isRulersMode, "vtkMRMLAnnotationRulerNode", keepFiducialsModeOn)
 
-
     @staticmethod
     def setActiveVolumeId(volumeId, labelmapId=None):
         selectionNode = slicer.app.applicationLogic().GetSelectionNode()
@@ -243,8 +237,8 @@ class SlicerUtil:
         # Get the position of the origin in the small volume in the big one
         origin = Util.ras_to_ijk(bigVolume, smallVolume.GetOrigin())
         # Create a copy of the big volume to have the same spacial information
-        #vlogic = slicer.modules.volumes.logic()
-        #resultVolume = vlogic.CloneVolume(bigVolume, smallVolume.GetName() + "_extended")
+        # vlogic = slicer.modules.volumes.logic()
+        # resultVolume = vlogic.CloneVolume(bigVolume, smallVolume.GetName() + "_extended")
         resultVolume = Util.cloneVolume(bigVolume, smallVolume.GetName() + "_extended")
 
         # Get the numpy arrays to operate with them
@@ -265,7 +259,7 @@ class SlicerUtil:
         z0 = int(origin[2])
         z1 = z0 + nps.shape[0]
         # Copy values
-        npb[z0:z1, y0:y1, x0:x1] = nps[:,:,:]
+        npb[z0:z1, y0:y1, x0:x1] = nps[:, :, :]
         # Refresh values in mrml
         resultVolume.GetImageData().Modified()
         # Return the result volume
@@ -298,7 +292,7 @@ class SlicerUtil:
         clonedVolume = slicer.mrmlScene.CreateNodeByClass(volumeNode.GetClassName())
         clonedVolume.CopyWithScene(volumeNode)
 
-        #clonedVolume.SetName(scene.GetUniqueNameByString(copyVolumeName))
+        # clonedVolume.SetName(scene.GetUniqueNameByString(copyVolumeName))
         clonedVolume.SetName(copyVolumeName)
         if displayNodeCopy is not None:
             clonedVolume.SetAndObserveDisplayNodeID(displayNodeCopy.GetID())
@@ -319,7 +313,6 @@ class SlicerUtil:
         if addToScene:
             scene.AddNode(clonedVolume)
         return clonedVolume
-
 
     @staticmethod
     def getLabelmapFromScalar(vtkMRMLScalarVolumeNode, nodeName=""):
@@ -415,7 +408,6 @@ class SlicerUtil:
     @staticmethod
     def changeLayoutToAxial():
         SlicerUtil.changeLayout(6)
-
 
     @staticmethod
     def changeContrastWindow(window, level):
@@ -528,7 +520,7 @@ class SlicerUtil:
             # default to using the full window
             widget = slicer.util.mainWindow()
             # reset the type so that the node is set correctly
-            #type = slicer.qMRMLScreenShotDialog.FullLayout
+            # type = slicer.qMRMLScreenShotDialog.FullLayout
 
         # grab and convert to vtk image data
         qpixMap = qt.QPixmap().grabWidget(widget)
@@ -543,7 +535,7 @@ class SlicerUtil:
         @param show:
         """
         for toolbar in slicer.util.mainWindow().findChildren('QToolBar'):
-          toolbar.setVisible(show)
+            toolbar.setVisible(show)
 
     @staticmethod
     def downloadVolumeForTests(downloadWhenCached=False, tryUsingACILNavigator=True, widget=None):
@@ -587,61 +579,127 @@ class SlicerUtil:
             (loaded, volume) = slicer.util.loadVolume(localFilePath, returnNode=True)
         return volume
 
-        # @staticmethod
-    # def gitUpdateCIP():
-    #     if Util.AUTO_UPDATE_DISABLED:
-    #         print("CIP auto update is disabled")
-    #         return False
-    #
-    #     #try:
-    #     update = Util.__gitUpdate__()
-    #     if update:
-    #         # Copy the directory under CIP_GIT_REPO with this module name
-    #         #srcPath = "%s/%s" %    (Util.CIP_GIT_REPO_FOLDER, moduleName)
-    #         srcPath = Util.CIP_DEFAULT_GIT_REPO_FOLDER
-    #         print('src: ', srcPath)
-    #         #destPath = os.path.join(Util.CIP_LIBRARY_ROOT_DIR, moduleName)
-    #         destPath = os.path.realpath(SlicerUtil.CIP_MODULE_ROOT_DIR + '/..')
-    #         print('dest: ', destPath)
-    #         # First rename the folder to a temp name, as a backup
-    #         backupPath = destPath + "_TMP"
-    #         os.rename(destPath, backupPath)
-    #         # Copy the folder
-    #         shutil.copytree(srcPath, destPath)
-    #         # Remove the temp folder
-    #         shutil.rmtree(backupPath)
-    #
-    #     return update
-#         except Exception as ex:
-#             print (ex.message())
-#             return False
+    ### Methods to find widgets that should be merged into Base/Python/slicer/Util.py at some point (Pull Request made)
+    @staticmethod
+    def findChildren(widget=None, name="", text="", title="", className=""):
+        """ Return a list of child widgets that meet all the given criteria.
+        If no criteria are given, the function will return all the child widgets.
+        The function applies an "and" filter, instead of the previous "or" behavior
+        (see http://slicer-devel.65872.n3.nabble.com/Changing-the-behavior-of-slicer-util-findChildren-td4036266.html
+        for additional info)
+        :param widget: parent widget where the widgets will be searched
+        :param name: name attribute of the widget
+        :param text: text attribute of the widget
+        :param title: title attribute of the widget
+        :param className: className() attribute of the widget
+        :return: list with all the widgets that meet all the given criteria.
+        """
+        # TODO: figure out why the native QWidget.findChildren method does not seem to work from PythonQt
+        import slicer, fnmatch
+        if not widget:
+            widget = slicer.util.mainWindow()
+        if not widget:
+            return []
+        children = []
+        parents = [widget]
+        while parents:
+            p = parents.pop()
+            # sometimes, p is null, f.e. when using --python-script or --python-code
+            if not p:
+                break
+            if not hasattr(p, 'children'):
+                continue
+            parents += p.children()
+            matched_filter_criteria = True
+            if name and hasattr(p, 'name'):
+                matched_filter_criteria &= fnmatch.fnmatchcase(p.name, name)
+            if text and hasattr(p, 'text'):
+                matched_filter_criteria &= fnmatch.fnmatchcase(p.text, text)
+            if title and hasattr(p, 'title'):
+                matched_filter_criteria &= fnmatch.fnmatchcase(p.title, title)
+            if className and hasattr(p, 'className'):
+                matched_filter_criteria &= fnmatch.fnmatchcase(p.className(), className)
 
-    # @staticmethod
-    # def __gitUpdate__():
-    #     '''Gets the last version of the CIP git repository.
-    #     In case it does not exist, it creates it from scratch
-    #     Returns true if there was any update in the repository'''
-    #     from git import Repo
-    #
-    #     if os.path.exists(Util.CIP_DEFAULT_GIT_REPO_FOLDER):
-    #         # Check for updates
-    #         repo = Repo(Util.CIP_DEFAULT_GIT_REPO_FOLDER)
-    #         #remote = repo.remotes.pop()
-    #         remote = repo.remotes.origin
-    #         prevCommit = repo.head.commit.hexsha
-    #         status = remote.fetch().pop()
-    #         if status and status.commit.hexsha != prevCommit:
-    #             remote.pull()
-    #             return True
-    #
-    #         return False
-    #
-    #     else:
-    #         # Create the new repository
-    #         os.makedirs(Util.CIP_DEFAULT_GIT_REPO_FOLDER)
-    #         os.chmod(Util.CIP_DEFAULT_GIT_REPO_FOLDER, 0777)
-    #         #repo = Repo(Util.CIP_GIT_REPO_FOLDER)
-    #         Repo.clone_from(Util.CIP_GIT_REMOTE_URL, Util.CIP_DEFAULT_GIT_REPO_FOLDER)
-    #         print ("Created folder %s (first time update)" % Util.CIP_DEFAULT_GIT_REPO_FOLDER)
-    #         # Always update the first time
-    #         return True
+            if matched_filter_criteria:
+                children.append(p)
+        return children
+
+    @staticmethod
+    def findChild(widget=None, name="", text="", title="", className=""):
+        """ Return a single child widget that meet all the given criteria.
+        If there is more than one widget that matches the conditions, an Exception is raised.
+        If there is no widget that matches the conditions, the method returns None.
+        :param widget: parent widget where the widgets will be searched
+        :param name: name attribute of the widget
+        :param text: text attribute of the widget
+        :param title: title attribute of the widget
+        :param className: className() attribute of the widget
+        :return: single widget that meet all the given criteria (or None otherwise)
+        """
+        results = SlicerUtil.findChildren(widget, name, text, title, className)
+        if len(results) == 0:
+            return None
+        if len(results) > 1:
+            raise Exception("There is more than one widget that matches the given conditions")
+        return results[0]
+
+
+
+        # @staticmethod
+        # def gitUpdateCIP():
+        #     if Util.AUTO_UPDATE_DISABLED:
+        #         print("CIP auto update is disabled")
+        #         return False
+        #
+        #     #try:
+        #     update = Util.__gitUpdate__()
+        #     if update:
+        #         # Copy the directory under CIP_GIT_REPO with this module name
+        #         #srcPath = "%s/%s" %    (Util.CIP_GIT_REPO_FOLDER, moduleName)
+        #         srcPath = Util.CIP_DEFAULT_GIT_REPO_FOLDER
+        #         print('src: ', srcPath)
+        #         #destPath = os.path.join(Util.CIP_LIBRARY_ROOT_DIR, moduleName)
+        #         destPath = os.path.realpath(SlicerUtil.CIP_MODULE_ROOT_DIR + '/..')
+        #         print('dest: ', destPath)
+        #         # First rename the folder to a temp name, as a backup
+        #         backupPath = destPath + "_TMP"
+        #         os.rename(destPath, backupPath)
+        #         # Copy the folder
+        #         shutil.copytree(srcPath, destPath)
+        #         # Remove the temp folder
+        #         shutil.rmtree(backupPath)
+        #
+        #     return update
+        #         except Exception as ex:
+        #             print (ex.message())
+        #             return False
+
+        # @staticmethod
+        # def __gitUpdate__():
+        #     '''Gets the last version of the CIP git repository.
+        #     In case it does not exist, it creates it from scratch
+        #     Returns true if there was any update in the repository'''
+        #     from git import Repo
+        #
+        #     if os.path.exists(Util.CIP_DEFAULT_GIT_REPO_FOLDER):
+        #         # Check for updates
+        #         repo = Repo(Util.CIP_DEFAULT_GIT_REPO_FOLDER)
+        #         #remote = repo.remotes.pop()
+        #         remote = repo.remotes.origin
+        #         prevCommit = repo.head.commit.hexsha
+        #         status = remote.fetch().pop()
+        #         if status and status.commit.hexsha != prevCommit:
+        #             remote.pull()
+        #             return True
+        #
+        #         return False
+        #
+        #     else:
+        #         # Create the new repository
+        #         os.makedirs(Util.CIP_DEFAULT_GIT_REPO_FOLDER)
+        #         os.chmod(Util.CIP_DEFAULT_GIT_REPO_FOLDER, 0777)
+        #         #repo = Repo(Util.CIP_GIT_REPO_FOLDER)
+        #         Repo.clone_from(Util.CIP_GIT_REMOTE_URL, Util.CIP_DEFAULT_GIT_REPO_FOLDER)
+        #         print ("Created folder %s (first time update)" % Util.CIP_DEFAULT_GIT_REPO_FOLDER)
+        #         # Always update the first time
+        #         return True

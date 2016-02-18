@@ -937,10 +937,10 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
 
         # Actions
         # Make sure that the right volume is selected
-        volumeSelector = slicer.util.findChildren(widget=widget, name='paa_volumeSelector')[0]
+        volumeSelector = SlicerUtil.findChildren(widget=widget, name='paa_volumeSelector')[0]
         logging.info("Volume selector: {0}".format(volumeSelector))
         volumeSelector.setCurrentNode(volume)
-        button = slicer.util.findChildren(widget=widget, name='placeDefaultRulersButton')[0]
+        button = SlicerUtil.findChildren(widget=widget, name='placeDefaultRulersButton')[0]
         # Place default rulers
         button.click()
         logging.info("Default rulers placed...OK")
@@ -969,10 +969,10 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
         style = redWidget.interactorStyle()
         style.MoveSlice(1)
         # Click in the radio button
-        button = slicer.util.findChildren(widget=widget, name='aortaRadioButton')[0]
+        button = SlicerUtil.findChildren(widget=widget, name='aortaRadioButton')[0]
         button.click()
         # click in the place ruler button
-        button = slicer.util.findChildren(widget=widget, name='placeRulersButton')[0]
+        button = SlicerUtil.findChildren(widget=widget, name='placeRulersButton')[0]
         button.click()
         # Make sure that the slice of the ruler has changed
         aorta.GetPosition1(coordsAorta1)
