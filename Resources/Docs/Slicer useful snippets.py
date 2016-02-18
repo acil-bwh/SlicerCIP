@@ -416,3 +416,21 @@ pathFormLayout.addRow("Camera:", cameraNodeSelector)
 self.parent.connect('mrmlSceneChanged(vtkMRMLScene*)',
                     cameraNodeSelector, 'setMRMLScene(vtkMRMLScene*)')
 
+
+####################################################################
+# Getting cursor position
+widget = slicer.app.layoutManager().sliceWidget('Red')
+interactor = widget.interactorStyle().GetInteractor()
+crosshairNode=slicer.util.getNode('Crosshair')
+
+from CIP.logic.SlicerUtil import SlicerUtil
+from CIP.logic import Util
+v = SlicerUtil.getFirstScalarNode()
+def f(arg1, arg2):
+    coords = [0,0, 0]
+    crosshairNode.GetCursorPositionRAS(coords)
+    print "RAS: ", coords
+    print "Converted:", Util.ras_to_ijk(v, coords)
+
+interactor.AddObserver("LeftButtonPressEvent", f)
+
