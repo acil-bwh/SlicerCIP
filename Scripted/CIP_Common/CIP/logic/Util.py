@@ -51,6 +51,16 @@ class Util:
         return os.sys.platform == "win32"
 
     @staticmethod
+    def get_current_username():
+        """ Current username (login).
+        @return: username or "Unknown" if there is any problem
+        """
+        try:
+            return os.path.split(os.path.expanduser('~'))[-1]
+        except:
+            return "Unknown"
+
+    @staticmethod
     def create_directory(path):
         """ Create a directory if it does not exist yet and give the maximum permissions
         :param path: Full path of the directory

@@ -933,12 +933,10 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
         # Get the logic
         logging.info("Getting logic...")
         logic = widget.self().logic
-        logging.info("Logic = {0}".format(logic))
 
         # Actions
         # Make sure that the right volume is selected
         volumeSelector = SlicerUtil.findChildren(widget=widget, name='paa_volumeSelector')[0]
-        logging.info("Volume selector: {0}".format(volumeSelector))
         volumeSelector.setCurrentNode(volume)
         button = SlicerUtil.findChildren(widget=widget, name='placeDefaultRulersButton')[0]
         # Place default rulers

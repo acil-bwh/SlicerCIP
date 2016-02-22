@@ -1609,6 +1609,7 @@ class CIP_LesionModelTest(ScriptedLoadableModuleTest):
         """ Do whatever is needed to reset the state - typically a scene clear will be enough.
         """
         slicer.mrmlScene.Clear(0)
+        slicer.util.selectModule('CIP_LesionModel')
 
     def runTest(self):
         """Run as few or as many tests as needed here.
@@ -1617,28 +1618,26 @@ class CIP_LesionModelTest(ScriptedLoadableModuleTest):
         self.test_CIP_LesionModel()
 
     def test_CIP_LesionModel(self):
-        self.fail("Test not implemented!")
-        # self.delayDisplay("Starting the test")
+        # Download a case with a known nodule
         #
-        # # first, get some data
-        # #
-        # import urllib
-        # downloads = (
-        #     ('http://slicer.kitware.com/midas3/download?items=5767', 'FA.nrrd', slicer.util.loadVolume),
-        #     )
-        #
-        # for url,name,loader in downloads:
-        #   filePath = slicer.app.temporaryPath + '/' + name
-        #   if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-        #     logging.info('Requesting download %s from %s...\n' % (name, url))
-        #     urllib.urlretrieve(url, filePath)
-        #   if loader:
-        #     logging.info('Loading %s...' % (name,))
-        #     loader(filePath)
-        # self.delayDisplay('Finished with download and loading')
-        #
-        # volumeNode = slicer.util.getNode(pattern="FA")
-        #
-        # self.assertIsNotNone(volumeNode )
-        # self.delayDisplay('Test passed!')
-        # # self.assertTrue(True)
+        import urllib
+        downloads = (
+            ('http://midas.chestimagingplatform.org/download/item/667/1001_UVM_CANCER.nrrd', '1001_UVM_CANCER.nrrd', slicer.util.loadVolume),
+            )
+
+        for url,name,loader in downloads:
+          filePath = slicer.app.temporaryPath + '/' + name
+          if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
+            logging.info('Requesting download %s from %s...\n' % (name, url))
+            urllib.urlretrieve(url, filePath)
+          if loader:
+            logging.info('Loading %s...' % (name,))
+            (isLoaded, volume) = loader(filePath)
+
+        self.assertIsNotNone(volume, "Volume loading failed")
+
+        # Make sure we have the required cli to do the segmentation
+
+
+        self.delayDisplay('Test passed!')
+        # self.assertTrue(True)
