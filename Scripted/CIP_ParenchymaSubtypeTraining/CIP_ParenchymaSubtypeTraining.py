@@ -1,22 +1,25 @@
 import os, sys
-from __main__ import vtk, qt, ctk, slicer
-from slicer.ScriptedLoadableModule import *
 import logging
+from shutil import copyfile
+import time
+import vtk, qt, ctk, slicer
+from slicer.ScriptedLoadableModule import *
+
 
 # Add the CIP common library to the path if it has not been loaded yet
-try:
-    from CIP.logic.SlicerUtil import SlicerUtil
-except Exception as ex:
-    currentpath = os.path.dirname(os.path.realpath(__file__))
-    # We assume that CIP_Common is in the development structure
-    path = os.path.normpath(currentpath + '/../CIP_Common')
-    if not os.path.exists(path):
-        # We assume that CIP is a subfolder (Slicer behaviour)
-        path = os.path.normpath(currentpath + '/CIP')
-    sys.path.append(path)
-    print("The following path was manually added to the PythonPath in CIP_ParenchymaSubtypeTraining: " + path)
-    from CIP.logic.SlicerUtil import SlicerUtil
-
+# try:
+#     from CIP.logic.SlicerUtil import SlicerUtil
+# except Exception as ex:
+#     currentpath = os.path.dirname(os.path.realpath(__file__))
+#     # We assume that CIP_Common is in the development structure
+#     path = os.path.normpath(currentpath + '/../CIP_Common')
+#     if not os.path.exists(path):
+#         # We assume that CIP is a subfolder (Slicer behaviour)
+#         path = os.path.normpath(currentpath + '/CIP')
+#     sys.path.append(path)
+#     print("The following path was manually added to the PythonPath in CIP_ParenchymaSubtypeTraining: " + path)
+#     from CIP.logic.SlicerUtil import SlicerUtil
+from CIP.logic.SlicerUtil import SlicerUtil
 from CIP.logic import SubtypingParameters, Util
 from CIP.logic import geometry_topology_data as GTD
 
@@ -174,7 +177,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.mainLayout.addWidget(self.saveResultsButton, 4, 0)
 
         # Save results directory button
-        defaultPath = os.path.join(SlicerUtil.getSettingsDataFolder(self.moduleName), "Results")     # Assign a default path for the results
+        defaultPath = os.path.join(SlicerUtil.getSettingsDataFolder(self.moduleName), "results")     # Assign a default path for the results
         path = SlicerUtil.settingGetOrSetDefault(self.moduleName, "SaveResultsDirectory", defaultPath)
         self.saveResultsDirectoryButton = ctk.ctkDirectoryButton()
         self.saveResultsDirectoryButton.directory = path
@@ -183,6 +186,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 
         #####
         # Case navigator
+        self.caseNavigatorWidget = None
         if SlicerUtil.isSlicerACILLoaded():
             caseNavigatorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
             caseNavigatorAreaCollapsibleButton.text = "Case navigator"
@@ -209,7 +213,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.loadButton.connect('clicked()', self.openFiducialsFile)
         self.removeLastFiducialButton.connect('clicked()', self.__onRemoveLastFiducialButtonClicked__)
         # self.saveResultsOpenDirectoryDialogButton.connect('clicked()', self.onOpenDirectoryDialogButtonClicked)
-        self.saveResultsDirectoryButton.connect("directoryChanged (str)", self.__onSaveResultsDirectoryChanged__)
+        self.saveResultsDirectoryButton.connect("directoryChanged (QString)", self.__onSaveResultsDirectoryChanged__)
         self.saveResultsButton.connect('clicked()', self.__onSaveResultsButtonClicked__)
 
         self.observers = []
@@ -242,6 +246,8 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
                 self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId(), self.artifactsRadioButtonGroup.checkedId())
 
     def saveResultsCurrentNode(self):
+        """ Get current active node and save the xml fiducials file
+        """
         d = self.saveResultsDirectoryButton.directory
         if not os.path.isdir(d):
             # Ask the user if he wants to create the folder
@@ -252,16 +258,21 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
                     os.makedirs(d)
                     # Make sure that everybody has write permissions (sometimes there are problems because of umask)
                     os.chmod(d, 0777)
-                    self.logic.saveCurrentFiducials(d)
+                    self.logic.saveCurrentFiducials(d, self.caseNavigatorWidget, self.uploadFileResult)
                     qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved',
                         "The results have been saved succesfully")
                 except:
                      qt.QMessageBox.warning(slicer.util.mainWindow(), 'Directory incorrect',
                         'The folder "{0}" could not be created. Please select a valid directory'.format(d))
         else:
-            self.logic.saveCurrentFiducials(d)
+            self.logic.saveCurrentFiducials(d, self.caseNavigatorWidget, self.uploadFileResult)
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved',
                 "The results have been saved succesfully")
+
+    def uploadFileResult(self, result):
+        if result != Util.OK:
+            qt.QMessageBox.warning(slicer.util.mainWindow(), "Error when uploading fiducials",
+                "There was an error when uploading the fiducials file. Please review the console for more inoformation")
 
     def openFiducialsFile(self):
         volumeNode = self.volumeSelector.currentNode()
@@ -272,7 +283,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 
         f = qt.QFileDialog.getOpenFileName()
         if f:
-            self.logic.loadFiducials(volumeNode, f)
+            self.logic.loadFiducialsXml(volumeNode, f)
             self.saveResultsDirectoryButton.directory = os.path.dirname(f)
             qt.QMessageBox.information(slicer.util.mainWindow(), "File loaded", "File loaded successfully")
 
@@ -286,7 +297,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 
         if self.volumeSelector.currentNodeId != "":
             SlicerUtil.setActiveVolumeId(self.volumeSelector.currentNodeId)
-            self.currentVolumeLoaded = slicer.util.getNode(self.volumeSelector.currentNodeId)
+            self.currentVolumeLoaded = slicer.mrmlScene.GetNodeByID(self.volumeSelector.currentNodeId)
             self.updateState()
 
     def exit(self):
@@ -314,10 +325,14 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         :param newVolumeNode:
         :return:
         """
+        # Filter the name of the volume to remove possible suffixes added by Slicer
+        filteredName = SlicerUtil.removeSlicerSuffixes(newVolumeNode.GetName())
+        newVolumeNode.SetName(filteredName)
         self.__checkNewVolume__(newVolumeNode)
         self.blockNodeEvents = True
         self.volumeSelector.setCurrentNode(newVolumeNode)
         self.blockNodeEvents = False
+
 
     def __onCurrentNodeChanged__(self, volumeNode):
         self.__checkNewVolume__(volumeNode)
@@ -344,6 +359,15 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         if self.currentVolumeLoaded is not None and newVolumeNode != self.currentVolumeLoaded:
             # Remove previously existing node
             self.logic.removeMarkupsAndNode(self.currentVolumeLoaded)
+        if self.caseNavigatorWidget is not None and newVolumeNode is not None:
+            # Try to load a previously existing fiducials file downloaded with the ACIL case navigator
+            fiducialsFileName = newVolumeNode.GetName() + Util.file_conventions_extensions["ParenchymaTrainingFiducials"]
+            fiducialsNavigatorFilePath = self.caseNavigatorWidget.logic.getFilePath(fiducialsFileName)
+            if os.path.exists(fiducialsNavigatorFilePath):
+                # The fiducials file was downloaded with the navigator
+                self.logic.loadFiducialsXml(newVolumeNode, fiducialsNavigatorFilePath)
+
+
         if newVolumeNode is not None:
             SlicerUtil.setActiveVolumeId(newVolumeNode.GetID())
             SlicerUtil.setFiducialsCursorMode(True, True)
@@ -429,7 +453,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         :return: fiducials list node
         """
         fidListID = self.markupsLogic.AddNewFiducialNode(nodeName, slicer.mrmlScene)
-        fidNode = slicer.util.getNode(fidListID)
+        fidNode = slicer.mrmlScene.GetNodeByID(fidListID)
         displayNode = fidNode.GetDisplayNode()
         displayNode.SetSelectedColor(self.params.getColor(typeId, artifactId))
         displayNode.SetTextScale(1.5)
@@ -513,71 +537,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         self.savedVolumes[self.currentVolumeId] = False
 
 
-    def saveCurrentFiducials(self, directory):
-        """ Save all the fiducials for the current volume.
-        The name of the file will be VolumeName_parenchymaTraining.xml"
-        :param volume: scalar node
-        :param directory: destiny directory
-        :return:
-        """
-        volume = slicer.util.getNode(self.currentVolumeId)
-        print("DEBUG: saving the fidcuals for volume " + volume.GetName())
-        # Iterate over all the fiducials list nodes
-        pos = [0,0,0]
-        topology = GTD.GeometryTopologyData()
-        topology.coordinate_system = topology.LPS
-        # Get the transformation matrix LPS-->IJK
-        matrix = Util.get_lps_to_ijk_transformation_matrix(volume)
-        topology.lps_to_ijk_transformation_matrix = Util.convert_vtk_matrix_to_list(matrix)
-
-        for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volume.GetID())).itervalues():
-            # Get all the markups
-            for i in range(fidListNode.GetNumberOfMarkups()):
-                fidListNode.GetNthFiducialPosition(i, pos)
-                # Get the type from the description (region will always be 0)
-                desc = fidListNode.GetNthMarkupDescription(i)
-                typeId = int(desc.split("_")[0])
-                artifactId = int(desc.split("_")[1])
-                # Switch coordinates from RAS to LPS
-                lps_coords = Util.ras_to_lps(list(pos))
-                p = GTD.Point(0, typeId, artifactId, lps_coords)
-                topology.add_point(p)
-
-        # Get the xml content file
-        xml = topology.to_xml()
-        # Save the file
-        fileName = os.path.join(directory, "{0}_parenchymaTraining.xml".format(volume.GetName()))
-        with open(fileName, 'w') as f:
-            f.write(xml)
-
-        # Mark the current volume as saved
-        #self.savedVolumes.add(volume.GetID())
-        self.savedVolumes[volume.GetID()] = True
-
-
-    def removeLastMarkup(self):
-        """ Remove the last markup that was added to the scene. It will remove all the markups if the user wants
-        """
-        fiducialsList = slicer.util.getNode(self.markupsLogic.GetActiveListID())
-        if fiducialsList is not None:
-            # Remove the last fiducial
-            fiducialsList.RemoveMarkup(fiducialsList.GetNumberOfMarkups()-1)
-        # Markup removed. Mark the current volume as state modified
-        # if self.currentVolumeId in self.savedVolumes:
-        #     self.savedVolumes.remove(self.currentVolumeId)
-        self.savedVolumes[self.currentVolumeId] = False
-
-    def isVolumeSaved(self, volumeId):
-        """ True if there are no markups unsaved for this volume
-        :param volumeId:
-        :return:
-        """
-        if not self.savedVolumes.has_key(volumeId):
-            raise Exception("Volume {0} is not in the list of managed volumes".format(volumeId))
-        return self.savedVolumes[volumeId]
-
-
-    def loadFiducials(self, volumeNode, fileName):
+    def loadFiducialsXml(self, volumeNode, fileName):
         """ Load from disk a list of fiducials for a particular volume node
         :param volumeNode: Volume (scalar node)
         :param fileName: full path of the file to load the fiducials where
@@ -606,6 +566,78 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
                 coord = point.coordinate
             # Add the fiducial
             fidList.AddFiducial(coord[0], coord[1], coord[2], self.getMarkupLabel(mainType, subtype, point.feature_type))
+
+
+
+    def saveCurrentFiducials(self, directory, caseNavigatorWidget=None, callbackFunction=None):
+        """ Save all the fiducials for the current volume.
+        The name of the file will be VolumeName_parenchymaTraining.xml"
+        :param volume: scalar node
+        :param directory: destination directory
+        """
+        volume = slicer.mrmlScene.GetNodeByID(self.currentVolumeId)
+        fileName = volume.GetName() + Util.file_conventions_extensions["ParenchymaTrainingFiducials"]
+        # If there is already a xml file in the results directory, make a copy.
+        fiducialsLocalFilePath = os.path.join(directory, fileName)
+        if os.path.isfile(fiducialsLocalFilePath):
+            # Make a copy of the file for history purposes
+            copyfile(fiducialsLocalFilePath, fiducialsLocalFilePath + "." + time.strftime("%Y%m%d.%H%M%S"))
+
+        # Iterate over all the fiducials list nodes
+        pos = [0,0,0]
+        topology = GTD.GeometryTopologyData()
+        topology.coordinate_system = topology.LPS
+        # Get the transformation matrix LPS-->IJK
+        matrix = Util.get_lps_to_ijk_transformation_matrix(volume)
+        topology.lps_to_ijk_transformation_matrix = Util.convert_vtk_matrix_to_list(matrix)
+
+        for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volume.GetID())).itervalues():
+            # Get all the markups
+            for i in range(fidListNode.GetNumberOfMarkups()):
+                fidListNode.GetNthFiducialPosition(i, pos)
+                # Get the type from the description (region will always be 0)
+                desc = fidListNode.GetNthMarkupDescription(i)
+                typeId = int(desc.split("_")[0])
+                artifactId = int(desc.split("_")[1])
+                # Switch coordinates from RAS to LPS
+                lps_coords = Util.ras_to_lps(list(pos))
+                p = GTD.Point(0, typeId, artifactId, lps_coords)
+                topology.add_point(p)
+
+        # Get the xml content file
+        xml = topology.to_xml()
+        # Save the file
+        with open(fiducialsLocalFilePath, 'w') as f:
+            f.write(xml)
+
+        # Upload to MAD if we are using the ACIL case navigator
+        if caseNavigatorWidget is not None:
+            caseNavigatorWidget.logic.uploadFile(fiducialsLocalFilePath, callbackFunction)
+
+        # Mark the current volume as saved
+        self.savedVolumes[volume.GetID()] = True
+
+
+    def removeLastMarkup(self):
+        """ Remove the last markup that was added to the scene. It will remove all the markups if the user wants
+        """
+        fiducialsList = slicer.mrmlScene.GetNodeByID(self.markupsLogic.GetActiveListID())
+        if fiducialsList is not None:
+            # Remove the last fiducial
+            fiducialsList.RemoveMarkup(fiducialsList.GetNumberOfMarkups()-1)
+        # Markup removed. Mark the current volume as state modified
+        # if self.currentVolumeId in self.savedVolumes:
+        #     self.savedVolumes.remove(self.currentVolumeId)
+        self.savedVolumes[self.currentVolumeId] = False
+
+    def isVolumeSaved(self, volumeId):
+        """ True if there are no markups unsaved for this volume
+        :param volumeId:
+        :return:
+        """
+        if not self.savedVolumes.has_key(volumeId):
+            raise Exception("Volume {0} is not in the list of managed volumes".format(volumeId))
+        return self.savedVolumes[volumeId]
 
 
     def reset(self, volumeToKeep=None):

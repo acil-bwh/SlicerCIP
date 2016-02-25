@@ -16,6 +16,16 @@ class Util:
     OK = 0
     ERROR = 1
 
+    # TODO: complete these conventions
+    file_conventions_extensions = {
+        "PartialLungLabelmap": "_partialLungLabelMap.nrrd",
+        "BodyCompositionLabelmap": "_bodyComposition.nrrd",
+        "ParenchymaTrainingFiducials": "_parenchymaTraining.xml",
+        "StructuresDetection": "_structures.xml",
+        "ILDClassificationLabelmap": "_histogramParenchymaILDClassification.nrrd"
+    }
+
+
     ###########
     # GENERAL SYSTEM FUNCTIONS
     @staticmethod

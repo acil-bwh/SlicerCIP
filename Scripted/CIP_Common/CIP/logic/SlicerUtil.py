@@ -643,7 +643,21 @@ class SlicerUtil:
             raise Exception("There is more than one widget that matches the given conditions")
         return results[0]
 
-
+    @staticmethod
+    def removeSlicerSuffixes(name):
+        """ Remove the suffixes that Slicer could introduce in a volume name (ex: myVolume_1)
+        @param name: current name in Slicer
+        @return: name without suffixes
+        """
+        import re
+        expr = "^(.*)(_\d+)$"
+        m = re.search(expr, name)
+        if m:
+            # There is suffix. Remove
+            suffix = m.groups(0)[1]
+            return name.replace(suffix, "")
+        # No suffix
+        return name
 
         # @staticmethod
         # def gitUpdateCIP():
