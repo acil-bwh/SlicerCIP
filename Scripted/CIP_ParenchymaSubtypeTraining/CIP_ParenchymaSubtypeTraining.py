@@ -51,6 +51,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
     def moduleName(self):
         return "CIP_ParenchymaSubtypeTraining"
 
+
     def __init__(self, parent):
         ScriptedLoadableModuleWidget.__init__(self, parent)
 
@@ -60,11 +61,12 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             if callData.GetClassName() == 'vtkMRMLScalarVolumeNode' \
                     and slicer.util.mainWindow().moduleSelector().selectedModule == self.moduleName:
                 self.__onNewVolumeLoaded__(callData)
+            # elif callData.GetClassName() == 'vtkMRMLLabelMapVolumeNode':
+            #     self.__onNewLabelmapLoaded__(callData)
+
 
         self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
         self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
-
-
 
 
     def setup(self):
@@ -197,8 +199,8 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             from ACIL.ui import CaseNavigatorWidget
             self.caseNavigatorWidget = CaseNavigatorWidget(self.moduleName, caseNavigatorAreaCollapsibleButton)
             self.caseNavigatorWidget.setup()
-            # Listen for the event of loading volume
-            #self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_VOLUME_LOADED, self.onNewVolumeLoaded)
+            # Listen for the event of loading a new labelmap
+            self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_LABELMAP_LOADED, self.__onNewILDClassificationLabelmapLoaded__)
 
         self.layout.addStretch()
 
@@ -219,7 +221,6 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.observers = []
         self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__))
         self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__))
-
 
     def updateState(self):
         """ Refresh the markups state, activate the right fiducials list node (depending on the
@@ -287,6 +288,53 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             self.saveResultsDirectoryButton.directory = os.path.dirname(f)
             qt.QMessageBox.information(slicer.util.mainWindow(), "File loaded", "File loaded successfully")
 
+    ## PRIVATE METHODS
+    def __checkNewVolume__(self, newVolumeNode):
+        if self.blockNodeEvents:
+            return
+        self.blockNodeEvents = True
+        volume = self.currentVolumeLoaded
+        if volume is not None and newVolumeNode is not None \
+                and newVolumeNode.GetID() != volume.GetID()  \
+                and not self.logic.isVolumeSaved(volume.GetID()):
+            # Ask the user if he wants to save the previously loaded volume
+            if qt.QMessageBox.question(slicer.util.mainWindow(), "Save results?",
+                    "The fiducials for the volume '{0}' have not been saved. Do you want to save them?"
+                    .format(volume.GetName()),
+                    qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
+                self.saveResultsCurrentNode()
+        # Remove all the previously existing nodes
+        if self.currentVolumeLoaded is not None and newVolumeNode != self.currentVolumeLoaded:
+            # Remove previously existing node
+            self.logic.removeMarkupsAndNode(self.currentVolumeLoaded)
+        if self.caseNavigatorWidget is not None and newVolumeNode is not None:
+            # Try to load a previously existing fiducials file downloaded with the ACIL case navigator
+            fiducialsFileName = newVolumeNode.GetName() + Util.file_conventions_extensions["ParenchymaTrainingFiducials"]
+            fiducialsNavigatorFilePath = self.caseNavigatorWidget.logic.getFilePath(fiducialsFileName)
+            if os.path.exists(fiducialsNavigatorFilePath):
+                # The fiducials file was downloaded with the navigator
+                self.logic.loadFiducialsXml(newVolumeNode, fiducialsNavigatorFilePath)
+
+        if newVolumeNode is not None:
+            SlicerUtil.setActiveVolumeId(newVolumeNode.GetID())
+            SlicerUtil.setFiducialsCursorMode(True, True)
+
+        self.currentVolumeLoaded = newVolumeNode
+        self.updateState()
+        self.blockNodeEvents = False
+
+
+    def __getColorTable__(self):
+        """ Color table for this module for a better labelmap visualization.
+        This method is optimized for ILD classification, but it can easily be extended for different visualizations"""
+        colorTableNode = slicer.util.getNode("CIP_ILDClassification_ColorMap*")
+        if colorTableNode is None:
+            # Load the node from disk
+            p = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Resources/CIP_ILDClassification_ColorMap.ctbl")
+            colorTableNode = slicer.modules.colors.logic().LoadColorFile(p)
+        return colorTableNode
+
+    ## EVENTS
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
         self.blockNodeEvents = False
@@ -326,12 +374,26 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         :return:
         """
         # Filter the name of the volume to remove possible suffixes added by Slicer
-        filteredName = SlicerUtil.removeSlicerSuffixes(newVolumeNode.GetName())
-        newVolumeNode.SetName(filteredName)
+        filteredName = SlicerUtil.filterVolumeName(newVolumeNode.GetName())
+        newVolumeNode.SetName(filteredName).GetFileName()
         self.__checkNewVolume__(newVolumeNode)
         self.blockNodeEvents = True
         self.volumeSelector.setCurrentNode(newVolumeNode)
         self.blockNodeEvents = False
+
+    def __onNewILDClassificationLabelmapLoaded__(self, labelmapNode, split1, split2):
+        """ Load a new ILD classification labelmap volume.
+        If the labelmap is a known labelmap type, set the right colors and opacity
+        @param labelmapNode:
+        """
+        if SlicerUtil.matchExtension(labelmapNode, "ILDClassificationLabelmap"):
+            colorNode = self.__getColorTable__()
+            displayNode = labelmapNode.GetDisplayNode()
+            displayNode.SetAndObserveColorNodeID(colorNode.GetID())
+            # Change Opacity
+            SlicerUtil.displayLabelmapVolume(labelmapNode.GetID(), 0.3)
+
+
 
 
     def __onCurrentNodeChanged__(self, volumeNode):
@@ -341,40 +403,6 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         #     SlicerUtil.setActiveVolumeId(volumeNode.GetID())
         #     self.updateState()
 
-    def __checkNewVolume__(self, newVolumeNode):
-        if self.blockNodeEvents:
-            return
-        self.blockNodeEvents = True
-        volume = self.currentVolumeLoaded
-        if volume is not None and newVolumeNode is not None \
-                and newVolumeNode.GetID() != volume.GetID()  \
-                and not self.logic.isVolumeSaved(volume.GetID()):
-            # Ask the user if he wants to save the previously loaded volume
-            if qt.QMessageBox.question(slicer.util.mainWindow(), "Save results?",
-                    "The fiducials for the volume '{0}' have not been saved. Do you want to save them?"
-                    .format(volume.GetName()),
-                    qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
-                self.saveResultsCurrentNode()
-        # Remove all the previously existing nodes
-        if self.currentVolumeLoaded is not None and newVolumeNode != self.currentVolumeLoaded:
-            # Remove previously existing node
-            self.logic.removeMarkupsAndNode(self.currentVolumeLoaded)
-        if self.caseNavigatorWidget is not None and newVolumeNode is not None:
-            # Try to load a previously existing fiducials file downloaded with the ACIL case navigator
-            fiducialsFileName = newVolumeNode.GetName() + Util.file_conventions_extensions["ParenchymaTrainingFiducials"]
-            fiducialsNavigatorFilePath = self.caseNavigatorWidget.logic.getFilePath(fiducialsFileName)
-            if os.path.exists(fiducialsNavigatorFilePath):
-                # The fiducials file was downloaded with the navigator
-                self.logic.loadFiducialsXml(newVolumeNode, fiducialsNavigatorFilePath)
-
-
-        if newVolumeNode is not None:
-            SlicerUtil.setActiveVolumeId(newVolumeNode.GetID())
-            SlicerUtil.setFiducialsCursorMode(True, True)
-
-        self.currentVolumeLoaded = newVolumeNode
-        self.updateState()
-        self.blockNodeEvents = False
 
     def __onTypesRadioButtonClicked__(self, button):
         """ One of the radio buttons has been pressed

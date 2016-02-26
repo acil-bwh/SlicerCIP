@@ -94,6 +94,18 @@ class SlicerUtil:
         """
         return "http://midas.chestimagingplatform.org/download/item/"
 
+
+    def matchExtension(self, labelmapNode, key):
+        """ Check if a labelmap node meets one of the ACIL given labelmap conventions
+        @param labelmapNode:
+        @param key: convention key (see Util.file_conventions_extensions)
+        @return: Bool
+        """
+        name = SlicerUtil.filterVolumeName(labelmapNode.GetName())
+        lmExt = name.split('_')[-1]
+        ext = Util.file_conventions_extensions[key].split('.')[0]
+        return ext == ("_" + lmExt)
+
     @staticmethod
     def createNewFiducial(x, y, z, radX, radY, radZ, scalarNode):
         '''Create a new fiducial (ROI) that will be visible in the scalar node passed.
@@ -489,6 +501,27 @@ class SlicerUtil:
             compNode.SetForegroundOpacity(opacity)
 
     @staticmethod
+    def displayLabelmapVolume(labelmapNodeId, opacity=1.0):
+        """ Display a labelmap in all the 2D windows with an optional opacity
+        :param volumeNodeId: labelmap id
+        :param opacity: 0.0-1.0 value
+        """
+        compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
+        for compNode in compNodes.itervalues():
+            compNode.SetLabelVolumeID(labelmapNodeId)
+            compNode.SetLabelOpacity(opacity)
+
+    @staticmethod
+    def changeLabelmapOpacity(opacity):
+        """ Change the labelmap opacity in all the 2D windows
+        @param opacity:
+        @return:
+        """
+        compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
+        for compNode in compNodes.itervalues():
+            compNode.SetLabelOpacity(opacity)
+
+    @staticmethod
     def takeSnapshot(fullFileName, type=-1):
         """ Save a png snapshot of the specified window
         :param fullFileName: Full path name of the output file (ex: "/Data/output.png")
@@ -644,7 +677,7 @@ class SlicerUtil:
         return results[0]
 
     @staticmethod
-    def removeSlicerSuffixes(name):
+    def filterVolumeName(name):
         """ Remove the suffixes that Slicer could introduce in a volume name (ex: myVolume_1)
         @param name: current name in Slicer
         @return: name without suffixes
