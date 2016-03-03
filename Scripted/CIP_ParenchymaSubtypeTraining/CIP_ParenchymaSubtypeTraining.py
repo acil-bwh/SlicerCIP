@@ -666,7 +666,11 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
 
         # Upload to MAD if we are using the ACIL case navigator
         if caseNavigatorWidget is not None:
-            caseNavigatorWidget.logic.uploadFile(fiducialsLocalFilePath, callbackFunction)
+            caseNavigatorWidget.logic.uploadFile(fiducialsLocalFilePath, callbackFunction=callbackFunction,
+                                                 server=caseNavigatorWidget.txtServer.text,
+                                                 serverPath=caseNavigatorWidget.txtServerpath.text,
+                                                 sshMode=caseNavigatorWidget.rbSSH.isChecked(),
+                                                 privateSSHKey=caseNavigatorWidget.txtPrivateKeySSH.text)
 
         # Mark the current volume as saved
         self.savedVolumes[volume.GetID()] = True
