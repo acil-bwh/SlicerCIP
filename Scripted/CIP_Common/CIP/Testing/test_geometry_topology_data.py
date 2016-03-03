@@ -39,10 +39,10 @@ def test_geometry_topology_data_write_read():
     g.coordinate_system = g.RAS
     g.lps_to_ijk_transformation_matrix = [[-1.9, 0, 0, 250], [0, -1.9, 0, 510], [0, 0, 2, 724], [0, 0, 0, 1]]
 
-    g.add_point(Point(2, 5, 1, [2, 3.5, 3], description="My desc", format_="%f"))
-    g.add_point(Point(2, 5, 1, coordinate=[2, 3.5, 3], format_="%i"))
-    g.add_bounding_box(BoundingBox(2, 5, 1, start=[2, 3.5, 3], size=[1, 1, 4], format_="%i"))
-    g.add_bounding_box(BoundingBox(2, 5, 1, start=[2, 3.5, 3], size=[1, 1, 3], format_="%f"))
+    g.add_point(Point(2, 5, 1, [2, 3.5, 3], description="My desc", format_="%f"), fill_auto_fields=True)
+    g.add_point(Point(2, 5, 1, coordinate=[2, 3.5, 3], format_="%i"), fill_auto_fields=True)
+    g.add_bounding_box(BoundingBox(2, 5, 1, start=[2, 3.5, 3], size=[1, 1, 4], format_="%i"), fill_auto_fields=True)
+    g.add_bounding_box(BoundingBox(2, 5, 1, start=[2, 3.5, 3], size=[1, 1, 3], format_="%f"), fill_auto_fields=True)
 
     # Get xml representation for the object
     xml = g.to_xml()

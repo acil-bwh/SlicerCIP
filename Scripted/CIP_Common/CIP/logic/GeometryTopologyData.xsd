@@ -34,6 +34,9 @@
                   </xs:choice>
                 </xs:complexType>
               </xs:element>
+              <xs:element type="xs:string" name="UserName" minOccurs="0" maxOccurs="1"/>
+              <xs:element type="xs:string" name="MachineName" minOccurs="0" maxOccurs="1"/>
+              <xs:element type="xs:string" name="TimeStamp" minOccurs="0" maxOccurs="1"/>
             </xs:sequence>
           </xs:complexType>
         </xs:element>
@@ -57,7 +60,10 @@
                     <xs:element type="xs:float" name="value" minOccurs="0" maxOccurs="unbounded" />
                   </xs:sequence>
                 </xs:complexType>
-              </xs:element>              
+              </xs:element>
+              <xs:element type="xs:string" name="UserName" minOccurs="0" maxOccurs="1"/>
+              <xs:element type="xs:string" name="MachineName" minOccurs="0" maxOccurs="1"/>
+              <xs:element type="xs:string" name="TimeStamp" minOccurs="0" maxOccurs="1"/>
             </xs:sequence>
           </xs:complexType>
         </xs:element>

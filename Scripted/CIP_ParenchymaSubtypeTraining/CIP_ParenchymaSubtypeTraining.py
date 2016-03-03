@@ -249,31 +249,37 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
     def saveResultsCurrentNode(self):
         """ Get current active node and save the xml fiducials file
         """
-        d = self.saveResultsDirectoryButton.directory
-        if not os.path.isdir(d):
-            # Ask the user if he wants to create the folder
-            if qt.QMessageBox.question(slicer.util.mainWindow(), "Create directory?",
-                "The directory '{0}' does not exist. Do you want to create it?".format(d),
-                                       qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
-                try:
-                    os.makedirs(d)
-                    # Make sure that everybody has write permissions (sometimes there are problems because of umask)
-                    os.chmod(d, 0777)
+        try:
+            d = self.saveResultsDirectoryButton.directory
+            if not os.path.isdir(d):
+                # Ask the user if he wants to create the folder
+                if qt.QMessageBox.question(slicer.util.mainWindow(), "Create directory?",
+                    "The directory '{0}' does not exist. Do you want to create it?".format(d),
+                                           qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
+                    try:
+                        os.makedirs(d)
+                        # Make sure that everybody has write permissions (sometimes there are problems because of umask)
+                        os.chmod(d, 0777)
+                    except:
+                        qt.QMessageBox.warning(slicer.util.mainWindow(), 'Directory incorrect',
+                            'The folder "{0}" could not be created. Please select a valid directory'.format(d))
+                        return
                     self.logic.saveCurrentFiducials(d, self.caseNavigatorWidget, self.uploadFileResult)
-                    qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved',
-                        "The results have been saved succesfully")
-                except:
-                     qt.QMessageBox.warning(slicer.util.mainWindow(), 'Directory incorrect',
-                        'The folder "{0}" could not be created. Please select a valid directory'.format(d))
-        else:
-            self.logic.saveCurrentFiducials(d, self.caseNavigatorWidget, self.uploadFileResult)
-            qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved',
-                "The results have been saved succesfully")
+                    qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved', "The results have been saved succesfully")
+            else:
+                self.logic.saveCurrentFiducials(d, self.caseNavigatorWidget, self.uploadFileResult)
+                qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved',
+                    "The results have been saved succesfully")
+        except:
+            Util.print_last_exception()
+            qt.QMessageBox.critical(slicer.util.mainWindow(), "Error when saving the results",
+                                    "Error when saving the results. Please review the console for additional info")
 
     def uploadFileResult(self, result):
         if result != Util.OK:
             qt.QMessageBox.warning(slicer.util.mainWindow(), "Error when uploading fiducials",
-                "There was an error when uploading the fiducials file. Please review the console for more inoformation")
+                "There was an error when uploading the fiducials file. This doesn't mean that your file wasn't saved locally!\n" +
+                "Please review the console for more information")
 
     def openFiducialsFile(self):
         volumeNode = self.volumeSelector.currentNode()
@@ -375,7 +381,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         """
         # Filter the name of the volume to remove possible suffixes added by Slicer
         filteredName = SlicerUtil.filterVolumeName(newVolumeNode.GetName())
-        newVolumeNode.SetName(filteredName).GetFileName()
+        newVolumeNode.SetName(filteredName)
         self.__checkNewVolume__(newVolumeNode)
         self.blockNodeEvents = True
         self.volumeSelector.setCurrentNode(newVolumeNode)
@@ -392,9 +398,6 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             displayNode.SetAndObserveColorNodeID(colorNode.GetID())
             # Change Opacity
             SlicerUtil.displayLabelmapVolume(labelmapNode.GetID(), 0.3)
-
-
-
 
     def __onCurrentNodeChanged__(self, volumeNode):
         self.__checkNewVolume__(volumeNode)
@@ -435,6 +438,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 
     def __onSceneClosed__(self, arg1, arg2):
         self.currentVolumeLoaded = None
+        self.logic = CIP_ParenchymaSubtypeTrainingLogic()
 #
 # CIP_ParenchymaSubtypeTrainingLogic
 #
@@ -449,6 +453,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         self.currentSubtypeId = -1
         self.currentArtifactId = 0
         self.savedVolumes = {}
+        self.currentGeometryTopologyData = None
 
     def getSubtypes(self, typeId):
         """ Get all the subtypes for the specified type
@@ -573,8 +578,8 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         with open(fileName, "r") as f:
             xml = f.read()
 
-        geom = GTD.GeometryTopologyData.from_xml(xml)
-        for point in geom.points:
+        self.currentGeometryTopologyData = GTD.GeometryTopologyData.from_xml(xml)
+        for point in self.currentGeometryTopologyData.points:
             subtype = point.chest_type
             if subtype in self.params.mainTypes.keys():
                 # Main type. The subtype will be "Any"
@@ -583,17 +588,19 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
             else:
                 mainType = self.params.getMainTypeForSubtype(subtype)
             # Activate the current fiducials list based on the main type
-            fidList = self.setActiveFiducialsListNode(volumeNode, mainType, subtype, point.feature_type)
+            fidListNode = self.setActiveFiducialsListNode(volumeNode, mainType, subtype, point.feature_type)
             # Check if the coordinate system is RAS (and make the corresponding transform otherwise)
-            if geom.coordinate_system == geom.LPS:
+            if self.currentGeometryTopologyData.coordinate_system == self.currentGeometryTopologyData.LPS:
                 coord = Util.lps_to_ras(point.coordinate)
-            elif geom.coordinate_system == geom.IJK:
+            elif self.currentGeometryTopologyData.coordinate_system == self.currentGeometryTopologyData.IJK:
                 coord = Util.ijk_to_ras(volumeNode, point.coordinate)
             else:
                 # Try default mode (RAS)
                 coord = point.coordinate
             # Add the fiducial
-            fidList.AddFiducial(coord[0], coord[1], coord[2], self.getMarkupLabel(mainType, subtype, point.feature_type))
+            fidListNode.AddFiducial(coord[0], coord[1], coord[2], self.getMarkupLabel(mainType, subtype, point.feature_type))
+            # Bind the fiducial to the point to keep track of which points were loaded from the file
+            #self.currentPoints[point.get_hash()] = point
 
 
 
@@ -613,11 +620,20 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
 
         # Iterate over all the fiducials list nodes
         pos = [0,0,0]
-        topology = GTD.GeometryTopologyData()
-        topology.coordinate_system = topology.LPS
+        geometryTopologyData = GTD.GeometryTopologyData()
+        geometryTopologyData.coordinate_system = geometryTopologyData.LPS
         # Get the transformation matrix LPS-->IJK
         matrix = Util.get_lps_to_ijk_transformation_matrix(volume)
-        topology.lps_to_ijk_transformation_matrix = Util.convert_vtk_matrix_to_list(matrix)
+        geometryTopologyData.lps_to_ijk_transformation_matrix = Util.convert_vtk_matrix_to_list(matrix)
+        # Get the hashtable and seed from previously loaded GeometryTopologyData object (if available)
+        if self.currentGeometryTopologyData is None:
+            hashTable = {}
+        else:
+            hashTable = self.currentGeometryTopologyData.get_hashtable()
+            geometryTopologyData.id_seed = self.currentGeometryTopologyData.id_seed
+
+        # Get a timestamp that will be used for all the points
+        timestamp = GTD.GeometryTopologyData.get_timestamp()
 
         for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volume.GetID())).itervalues():
             # Get all the markups
@@ -630,13 +646,23 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
                 # Switch coordinates from RAS to LPS
                 lps_coords = Util.ras_to_lps(list(pos))
                 p = GTD.Point(0, typeId, artifactId, lps_coords)
-                topology.add_point(p)
+                key = p.get_hash()
+                if hashTable.has_key(key):
+                    # Add previously existing point
+                    geometryTopologyData.add_point(hashTable[key], fill_auto_fields=False)
+                else:
+                    # Add a new point with a precalculated timestamp
+                    geometryTopologyData.add_point(p, fill_auto_fields=True)
+                    p.timestamp = timestamp
 
         # Get the xml content file
-        xml = topology.to_xml()
+        xml = geometryTopologyData.to_xml()
         # Save the file
         with open(fiducialsLocalFilePath, 'w') as f:
             f.write(xml)
+
+        # Use the new object as the current GeometryTopologyData
+        self.currentGeometryTopologyData = geometryTopologyData
 
         # Upload to MAD if we are using the ACIL case navigator
         if caseNavigatorWidget is not None:
@@ -696,10 +722,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         for node in nodes.itervalues():
             slicer.mrmlScene.RemoveNode(node)
         slicer.mrmlScene.RemoveNode(volume)
-
-    def printMessage(self, message):
-        print("This is your message: ", message)
-        return "I have printed this message: " + message
+        self.currentGeometryTopologyData = None
 
 
 
