@@ -302,7 +302,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         volume = self.currentVolumeLoaded
         if volume is not None and newVolumeNode is not None \
                 and newVolumeNode.GetID() != volume.GetID()  \
-                and not self.logic.isVolumeSaved(volume.GetID()):
+                and not self.logic.isVolumeSaved(volume.GetName()):
             # Ask the user if he wants to save the previously loaded volume
             if qt.QMessageBox.question(slicer.util.mainWindow(), "Save results?",
                     "The fiducials for the volume '{0}' have not been saved. Do you want to save them?"
@@ -509,16 +509,16 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         if volumeNode is not None:
             if artifactId == -1:
                 # No artifact
-                nodeName = "{0}_fiducials_{1}".format(volumeNode.GetID(), typeId)
+                nodeName = "{0}_fiducials_{1}".format(volumeNode.GetName(), typeId)
             else:
                 # Artifact. Add the type of artifact to the node name
-                nodeName = "{0}_fiducials_{1}_{2}".format(volumeNode.GetID(), typeId, artifactId)
+                nodeName = "{0}_fiducials_{1}_{2}".format(volumeNode.GetName(), typeId, artifactId)
             fid = slicer.util.getNode(nodeName)
             if fid is None and createIfNotExists:
                 # print("DEBUG: creating a new fiducials node: " + nodeName)
                 fid = self._createFiducialsListNode_(nodeName, typeId, artifactId)
                 # Add the volume to the list of "managed" cases
-                self.savedVolumes[volumeNode.GetID()] = False
+                self.savedVolumes[volumeNode.GetName()] = False
             self.currentVolumeId = volumeNode.GetID()
             self.currentTypeId = typeId
             self.currentSubtypeId = subtypeId
@@ -635,7 +635,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         # Get a timestamp that will be used for all the points
         timestamp = GTD.GeometryTopologyData.get_timestamp()
 
-        for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volume.GetID())).itervalues():
+        for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volume.GetName())).itervalues():
             # Get all the markups
             for i in range(fidListNode.GetNumberOfMarkups()):
                 fidListNode.GetNthFiducialPosition(i, pos)
@@ -673,7 +673,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
                                                  privateSSHKey=caseNavigatorWidget.txtPrivateKeySSH.text)
 
         # Mark the current volume as saved
-        self.savedVolumes[volume.GetID()] = True
+        self.savedVolumes[volume.GetName()] = True
 
 
     def removeLastMarkup(self):
@@ -688,41 +688,41 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         #     self.savedVolumes.remove(self.currentVolumeId)
         self.savedVolumes[self.currentVolumeId] = False
 
-    def isVolumeSaved(self, volumeId):
+    def isVolumeSaved(self, volumeName):
         """ True if there are no markups unsaved for this volume
-        :param volumeId:
+        :param volumeName:
         :return:
         """
-        if not self.savedVolumes.has_key(volumeId):
-            raise Exception("Volume {0} is not in the list of managed volumes".format(volumeId))
-        return self.savedVolumes[volumeId]
+        if not self.savedVolumes.has_key(volumeName):
+            raise Exception("Volume {0} is not in the list of managed volumes".format(volumeName))
+        return self.savedVolumes[volumeName]
 
 
-    def reset(self, volumeToKeep=None):
-        """ Remove a volume node and all its associated fiducials """
-        if volumeToKeep is None:
-            # Just clear the scene
-            slicer.mrmlScene.Clear(False)
-        else:
-            # Remove scalarNodes
-            nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLScalarVolumeNode")
-            nodes.InitTraversal()
-            node = nodes.GetNextItemAsObject()
-            while node is not None:
-                if node.GetID() != volumeToKeep.GetID():
-                    slicer.mrmlScene.RemoveNode(node)
-                node = nodes.GetNextItemAsObject()
-
-            # Remove fiducials
-            nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLMarkupsFiducialNode")
-            nodes.InitTraversal()
-            node = nodes.GetNextItemAsObject()
-            while node is not None:
-                slicer.mrmlScene.RemoveNode(node)
-                node = nodes.GetNextItemAsObject()
+    # def reset(self, volumeToKeep=None):
+    #     """ Remove a volume node and all its associated fiducials """
+    #     if volumeToKeep is None:
+    #         # Just clear the scene
+    #         slicer.mrmlScene.Clear(False)
+    #     else:
+    #         # Remove scalarNodes
+    #         nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLScalarVolumeNode")
+    #         nodes.InitTraversal()
+    #         node = nodes.GetNextItemAsObject()
+    #         while node is not None:
+    #             if node.GetID() != volumeToKeep.GetID():
+    #                 slicer.mrmlScene.RemoveNode(node)
+    #             node = nodes.GetNextItemAsObject()
+    #
+    #         # Remove fiducials
+    #         nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLMarkupsFiducialNode")
+    #         nodes.InitTraversal()
+    #         node = nodes.GetNextItemAsObject()
+    #         while node is not None:
+    #             slicer.mrmlScene.RemoveNode(node)
+    #             node = nodes.GetNextItemAsObject()
 
     def removeMarkupsAndNode(self, volume):
-        nodes = slicer.util.getNodes(volume.GetID() + "_*")
+        nodes = slicer.util.getNodes(volume.GetName() + "_*")
         for node in nodes.itervalues():
             slicer.mrmlScene.RemoveNode(node)
         slicer.mrmlScene.RemoveNode(volume)

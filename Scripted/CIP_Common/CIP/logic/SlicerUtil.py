@@ -94,8 +94,8 @@ class SlicerUtil:
         """
         return "http://midas.chestimagingplatform.org/download/item/"
 
-
-    def matchExtension(self, labelmapNode, key):
+    @staticmethod
+    def matchExtension(labelmapNode, key):
         """ Check if a labelmap node meets one of the ACIL given labelmap conventions
         @param labelmapNode:
         @param key: convention key (see Util.file_conventions_extensions)
