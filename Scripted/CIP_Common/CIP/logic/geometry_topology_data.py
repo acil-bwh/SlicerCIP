@@ -64,15 +64,19 @@ class GeometryTopologyData:
 
 
     def fill_auto_fields(self, structure):
-        """ Fill "auto" fields like timestamp, username, etc.
+        """ Fill "auto" fields like timestamp, username, etc, unless there is already a specified value
         The id will be id_seed + 1
         @param structure: object whose fields will be filled
         """
-        structure.__id__ = self.id_seed + 1
-        self.id_seed += 1
-        structure.timestamp = GeometryTopologyData.get_timestamp()
-        structure.user_name = os.path.split(os.path.expanduser('~'))[-1]
-        structure.machine_name = platform.node()
+        if structure.__id__ == 0:
+            structure.__id__ = self.id_seed + 1
+            self.id_seed += 1
+        if not structure.timestamp:
+            structure.timestamp = GeometryTopologyData.get_timestamp()
+        if not structure.user_name:
+            structure.user_name = os.path.split(os.path.expanduser('~'))[-1]
+        if not structure.machine_name:
+            structure.machine_name = platform.node()
 
     @staticmethod
     def get_timestamp():
