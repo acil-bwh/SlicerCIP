@@ -18,6 +18,8 @@ set(EXTENSION_BUILD_SUBDIRECTORY inner-build)
 
 set(SUPERBUILD_TOPLEVEL_PROJECT inner)
 
+set(CMAKE_CXX_COMPILER ${Slicer_CMAKE_CXX_COMPILER})
+set(CMAKE_C_COMPILER:FILEPATH=${Slicer_CMAKE_C_COMPILER})
 
 #-----------------------------------------------------------------------------
 find_package(Slicer REQUIRED)
@@ -49,7 +51,7 @@ if(WIN32)
 endif()
 
 if(APPLE)
-  set(CMAKE_CXX_FLAGS "-stdlib=libstdc++ -mmacosx-version-min=10.6")
+  #set(CMAKE_CXX_FLAGS "-stdlib=libstdc++ -mmacosx-version-min=10.6")
   set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-dylib_file,/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib")
   set(CMAKE_EXE_LINKER_FLAGS "-Wl,-dylib_file,/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib")
 endif()

@@ -16,18 +16,27 @@ if(DEFINED CIP_DIR AND NOT EXISTS ${CIP_DIR})
   message(FATAL_ERROR "CIP_DIR variable is defined but corresponds to nonexistent directory")
 endif()
 
+
+#This check is because  default runtime associated with <=10.8 deployment target is 'libstdc++'
+# if (APPLE)
+#   if (${CMAKE_OSX_DEPLOYMENT_TARGET} VERSION_LESS "10.8")
+#     set(CIP_CMAKE_CXX_FLAGS "-stdlib=libstdc++ -mmacosx-version-min=10.6")
+#   endif()
+# endif()
+
 if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
 
   if(NOT DEFINED git_protocol)
     set(git_protocol "git")
   endif()
   message(STATUS ${VTK_DIR})
-  ExternalProject_Add(${proj}
+ExternalProject_Add(${proj}
     ${${proj}_EP_ARGS}
     GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
     GIT_TAG develop # Develop
-    #DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
     SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
+    #DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
+    #SOURCE_DIR ../CIP
     BINARY_DIR ${proj}-build
     CMAKE_CACHE_ARGS
       -DCIP_SUPERBUILD:BOOL=OFF
@@ -53,12 +62,15 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DCIP_CLI_INSTALL_LIBRARY_DESTINATION:PATH=${Slicer_INSTALL_CLIMODULES_LIB_DIR}
       -DCIP_CLI_INSTALL_ARCHIVE_DESTINATION:PATH=${Slicer_INSTALL_CLIMODULES_LIB_DIR}
       -DCIP_CLI_INSTALL_RUNTIME_DESTINATION:PATH=${Slicer_INSTALL_CLIMODULES_BIN_DIR}
-      -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
+      -DCMAKE_CXX_COMPILER:FILEPATH=${Slicer_CMAKE_CXX_COMPILER}
       -DCMAKE_CXX_FLAGS:STRING=${ep_common_cxx_flags}
-      -DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}
+      -DCMAKE_C_COMPILER:FILEPATH=${Slicer_CMAKE_C_COMPILER}
       -DCMAKE_C_FLAGS:STRING=${ep_common_c_flags}
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DBUILD_TESTING:BOOL=OFF
+      -DCMAKE_CXX_FLAGS:STRING=${CIP_CMAKE_CXX_FLAGS}
+      -DUSE_CYTHON:BOOL=OFF
+
     #CONFIGURE_COMMAND ${CMAKE_COMMAND}
     #-E echo
     #  "This CONFIGURE_COMMAND is just here as a placeholder."
