@@ -386,7 +386,6 @@ class Util:
         geom = GeometryTopologyData()
 
         # If the coordinate system is not IJK, we have to make transformations
-
         geom.lps_to_ijk_transformation_matrix
 
         for bounding_box in geom.bounding_boxes:
