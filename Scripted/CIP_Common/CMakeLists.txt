@@ -45,6 +45,7 @@ set(MODULE_PYTHON_RESOURCES
   CIP/ui/Resources/Icons/ruler.png
   CIP/ui/Resources/Icons/rulers.png
   CIP/ui/Resources/Icons/sagittal.png
+  CIP/ui/Resources/StructuresColorMap.ctbl
   )
 
 #-----------------------------------------------------------------------------

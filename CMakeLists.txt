@@ -18,13 +18,22 @@ set(EXTENSION_BUILD_SUBDIRECTORY inner-build)
 
 set(SUPERBUILD_TOPLEVEL_PROJECT inner)
 
-set(CMAKE_CXX_COMPILER ${Slicer_CMAKE_CXX_COMPILER})
-set(CMAKE_C_COMPILER:FILEPATH=${Slicer_CMAKE_C_COMPILER})
+if (APPLE)
+	# Force compiler because Slicer is also forcing it)
+	set(CMAKE_C_COMPILER="/usr/bin/cc")
+	set(CMAKE_CXX_COMPILER="/usr/bin/c++")
+endif()
+
 
 #-----------------------------------------------------------------------------
 find_package(Slicer REQUIRED)
 include(${Slicer_USE_FILE})
 mark_as_superbuild(Slicer_DIR)
+
+if (NOT APPLE)
+	set(CMAKE_C_COMPILER:FILEPATH=${Slicer_CMAKE_C_COMPILER})
+	set(CMAKE_CXX_COMPILER:FILEPATH=${Slicer_CMAKE_CXX_COMPILER})
+endif()
 
 find_package(Git REQUIRED)
 mark_as_superbuild(GIT_EXECUTABLE)

@@ -38,30 +38,36 @@ class GeometryTopologyData:
     def __init__(self):
         self.__num_dimensions__ = 0
         self.coordinate_system = self.UNKNOWN
-        self.lps_to_ijk_transformation_matrix = None    # 4x4 transformation matrix to go from LPS to IJK (in the shape of a 4x4 list)
+        self.lps_to_ijk_transformation_matrix = None    # Transformation matrix to go from LPS to IJK (in the shape of a 4x4 list)
 
         self.points = []    # List of Point objects
         self.bounding_boxes = []    # List of BoundingBox objects
 
         self.id_seed = 0    # Seed. The structures added with "add_point", etc. will have an id = id_seed + 1
 
-    def add_point(self, point, fill_auto_fields=True):
+    def add_point(self, point, fill_auto_fields=True, timestamp=None):
         """ Add a new Point to the structure
-        :param point: Point object """
+        :param point: Point object
+        :param fill_auto_fields: fill automatically UserName, MachineName, etc.
+        :param timestamp: optional timestamp to be set in the object
+        """
         self.points.append(point)
         if fill_auto_fields:
             self.fill_auto_fields(point)
+        if timestamp:
+            point.timestamp = timestamp
 
-
-    def add_bounding_box(self, bounding_box, fill_auto_fields=True):
+    def add_bounding_box(self, bounding_box, fill_auto_fields=True, timestamp=None):
         """ Add a new BoundingBox to the structure
         :param bounding_box: BoundingBox object
-        :return:
+        :param fill_auto_fields: fill automatically UserName, MachineName, etc.
+        :param timestamp: optional timestamp to be set in the object
         """
         self.bounding_boxes.append(bounding_box)
         if fill_auto_fields:
             self.fill_auto_fields(bounding_box)
-
+        if timestamp:
+            bounding_box.timestamp = timestamp
 
     def fill_auto_fields(self, structure):
         """ Fill "auto" fields like timestamp, username, etc, unless there is already a specified value

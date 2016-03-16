@@ -178,7 +178,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.btnGoToPreviousStructure.toolTip = "Go to the previous slice that contains the selected label"
         self.btnGoToPreviousStructure.setIcon(qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, "previous.png")))
         self.btnGoToPreviousStructure.setIconSize(qt.QSize(24, 24))
-        # self.btnGoToPreviousStructure.setFixedWidth(150)
+        # self.goToPreviousStructureButton.setFixedWidth(150)
         self.btnGoToPreviousStructure.iconAlignment = 0x0001  # Align the icon to the right. See http://qt-project.org/doc/qt-4.8/qt.html#AlignmentFlag-enum for a complete list
         self.btnGoToPreviousStructure.buttonTextAlignment = (0x0081)  # Aling the text to the left and vertical center
         self.btnGoToPreviousStructure.enabled = False
@@ -189,7 +189,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.btnGoToNextStructure.toolTip = "Go to the next slice that contains the selected label"
         self.btnGoToNextStructure.setIcon(qt.QIcon("{0}/next.png".format(self.iconsPath)))
         self.btnGoToNextStructure.setIconSize(qt.QSize(24, 24))
-        # self.btnGoToNextStructure.setFixedWidth(150)
+        # self.goToNextStructureButton.setFixedWidth(150)
         self.btnGoToNextStructure.iconAlignment = 0x0002  # Align the icon to the right. See http://qt-project.org/doc/qt-4.8/qt.html#AlignmentFlag-enum for a complete list
         self.btnGoToNextStructure.buttonTextAlignment = (0x0081)  # Aling the text to the left and vertical center
         self.btnGoToNextStructure.enabled = False
@@ -312,7 +312,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.nodeObserver = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
         self.btnRefresh2.connect("clicked()", self.onBtnSyncLabelmapClicked)
         # self.btnRefresh.connect("clicked()", self.onBtnRefreshClicked)
-        self.saveLabelmapButton.connect("clicked()", self.__onSaveLabelmapClicked__)
+        self.saveLabelmapButton.connect("clicked()", self.onSaveLabelmapClicked)
         self.analysisButton.connect("clicked()", self.onBtnAnalysisClicked)
         self.btnAnalysis2.connect("clicked()", self.onBtnAnalysisClicked)
         self.btnGoToNextStructure.connect("clicked()", self.onBtnNextClicked)
@@ -1003,17 +1003,17 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         if labelmap is not None:
             self.__sliceChecking__(labelmap, forceRefresh=True)
 
-    def __onSaveLabelmapClicked__(self):
+    def onSaveLabelmapClicked(self):
         labelmapNode = self.getCurrentLabelMapNode()
         if labelmapNode is not None \
             and qt.QMessageBox.question(slicer.util.mainWindow(), "Upload volume?",
                     "Are you sure you want to save the changes for the volume '{0}'?".format(labelmapNode.GetName()),
                     qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
-            self.caseNavigatorWidget.uploadVolume(labelmapNode, self.getCurrentGrayscaleNode().GetName(),
-                    self.__uploadLabelmapCallback__, waitForCompletion=True)
+            self.caseNavigatorWidget.uploadVolume(self.getCurrentGrayscaleNode().GetName(), labelmapNode,
+                                                  self.__uploadLabelmapCallback__, waitForCompletion=True)
 
     def __uploadLabelmapCallback__(self, result):
-        print "This is the result: ", result
+        SlicerUtil.logDevelop("Upload labemap callback: {0}".format(result), includePythonConsole=True)
 
     def onBtnAnalysisClicked(self):
         self.populateStatisticsTable()

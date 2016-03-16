@@ -8,6 +8,7 @@ import os, sys
 import traceback
 import numpy as np
 import time
+from CIP.logic import file_conventions
 
 import SimpleITK as sitk
 
@@ -16,15 +17,7 @@ class Util:
     OK = 0
     ERROR = 1
 
-    # TODO: complete these conventions
-    file_conventions_extensions = {
-        "PartialLungLabelmap": "_partialLungLabelMap.nrrd",
-        "BodyCompositionLabelmap": "_bodyComposition.nrrd",
-        "ParenchymaTrainingFiducials": "_parenchymaTraining.xml",
-        "StructuresDetection": "_structures.xml",
-        "ILDClassificationLabelmap": "_histogramParenchymaILDClassification.nrrd"
-    }
-
+    file_conventions_extensions = file_conventions.file_conventions_extensions
 
     ###########
     # GENERAL SYSTEM FUNCTIONS
@@ -36,6 +29,30 @@ class Util:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         print ("*** EXCEPTION OCCURRED: ")
         traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stdout)
+
+    @staticmethod
+    def get_cip_extension(file_type_key, include_file_extension=False):
+        """ Get the extension of a type of file
+        @param file_type_key: type of file file_type_key
+        @param include_file_extension: include the file extension (ex: .nrrd)
+        @return: extension
+        """
+        if not Util.file_conventions_extensions.has_key(file_type_key):
+            raise Exception("Key not found: " + file_type_key)
+        s = Util.file_conventions_extensions[file_type_key]
+        if not include_file_extension:
+            s = os.path.splitext(s)[0]
+        return s
+
+    @staticmethod
+    def get_case_name_from_labelmap(labelmap_name):
+        """ Get the case name from a labelmap
+        @param labelmap_name:
+        @return: case name
+        """
+        if labelmap_name:
+            ext = labelmap_name.split("_")[-1]
+            return labelmap_name.replace("_" + ext, "")
 
     @staticmethod
     def get_dimensions(vtk_mrml_volume_node):
@@ -350,13 +367,29 @@ class Util:
         return np.where(tproj)[0]
 
     @staticmethod
-    def centroid(numpyArray, labelId=1):
+    def centroid(np_array, labelId=1):
         """ Calculate the coordinates of a centroid for a concrete labelId (default=1)
-        :param numpyArray: numpy array
+        :param np_array: numpy array
         :param labelId: label id (default = 1)
         :return: numpy array with the coordinates (int format)
         """
-        mean = np.mean(np.where(numpyArray == labelId), axis=1)
+        mean = np.mean(np.where(np_array == labelId), axis=1)
         return np.asarray(np.round(mean, 0), np.int)
+
+    @staticmethod
+    def geometry_topology_data_to_array(np_array, geom):
+        """ Write in a numpy array the information stored in a GeometryTopologyData object
+        @param np_array:
+        @param geom:
+        """
+        from geometry_topology_data import *
+        geom = GeometryTopologyData()
+
+        # If the coordinate system is not IJK, we have to make transformations
+
+        geom.lps_to_ijk_transformation_matrix
+
+        for bounding_box in geom.bounding_boxes:
+            pass
 
 

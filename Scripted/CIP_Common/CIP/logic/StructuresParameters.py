@@ -3,6 +3,30 @@ from collections import OrderedDict
 class StructuresParameters(object):
     INF = 100000
 
+    """
+        Ids:
+        - StructureId
+        - ChestRegion
+        - ChestType
+        - Red level (0-1)
+        - Green level (0-1)
+        - Blue level (0-1)
+        - WindowWidth
+        - WindowLevel
+        - Plane
+        """
+    STRUCTURE_ID = 0                        # Structure (0-255)
+    CHEST_REGION_ID = 1                     # ChestRegion id to which the structure is linked
+    CHEST_TYPE_ID = 2                       # ChestType id to which the structure is linked
+    DESCRIPTION = 3                         # Description
+    RED = 4                                 # Red level (0-1). DEPRECATED
+    GREEN = 5                               # Green level (0-1). DEPRECATED
+    BLUE = 6                                # Blue level (0-1). DEPRECATED
+    WINDOW_WIDTH = 7                        # Width of the preferred contrast window to segment this label
+    WINDOW_LEVEL = 8                        # Level of the preferred contrast window to segment this label (the whole window is [Level-Window/2, Level+Window/2]
+    PLANE = 9                               # A=Axial, S=Sagital, C=Coronal
+
+
     """Structures"""
     structureTypes = OrderedDict()
     structureTypes["UNDEFINED"] = (0, 0, 0, "Undefined structure", 0, 0, 0, -INF, INF , '')
@@ -53,31 +77,10 @@ class StructuresParameters(object):
     structureTypes['LeftSubclavian'+slicePlane] = (59, 48, 0, 'Left Subclavian Artery (Coronal)', 0.6, 0.7, 0.3, 900, 50, 'C') 
     structureTypes['Spine'+slicePlane] = (60, 51, 0, 'Spine (Coronal)', 0.2, 0.7, 0.2, 900, 50, 'C') 
     structureTypes['HernialHiatus'+slicePlane] = (61, 66, 81, 'Hernial Hiatus (Coronal)', 0.2, 0.5, 0.5, 900, 50, 'C')
+    structureTypes['PulmonaryArtery'+slicePlane] = (62, 8, 18, 'Pulmonary Artery (Coronal)', 0, 0, 0, 900, 50, 'C')
     
 
 
-    """
-        Ids:
-        - StructureId
-        - ChestRegion
-        - ChestType
-        - Red level (0-1)
-        - Green level (0-1)
-        - Blue level (0-1)
-        - WindowWidth
-        - WindowLevel
-        - Plane
-        """
-    STRUCTURE_ID = 0                        # Structure (0-255)
-    CHEST_REGION_ID = 1                     # ChestRegion id to which the structure is linked
-    CHEST_TYPE_ID = 2                       # ChestType id to which the structure is linked
-    DESCRIPTION = 3                         # Description
-    RED = 4                                 # Red level (0-1)
-    GREEN = 5                               # Green level (0-1)
-    BLUE = 6                                # Blue level (0-1)
-    WINDOW_WIDTH = 7                        # Width of the preferred contrast window to segment this label
-    WINDOW_LEVEL = 8                        # Level of the preferred contrast window to segment this label (the whole window is [Level-Window/2, Level+Window/2]
-    PLANE = 9                               # A=Axial, S=Sagital, C=Coronal
 
     def getItem(self, structureId):
         return self.structureTypes[structureId]

@@ -20,7 +20,7 @@ self.exampleButton.setFixedWidth(200)
 self.btnGoToPreviousStructure = ctk.ctkPushButton()
 self.btnGoToPreviousStructure.text = " Previous slice"
 self.btnGoToPreviousStructure.toolTip = "Go to the previous slice that contains the selected label" 
-#self.btnGoToPreviousStructure.setIcon(qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, "previous.png")))
+#self.goToPreviousStructureButton.setIcon(qt.QIcon(os.path.join(SlicerUtil.CIP_ICON_DIR, "previous.png")))
 self.btnGoToPreviousStructure.setIcon(SlicerUtil.getIcon("previous.png"))
 # To Reuse one of the system icons: self.singleSlideViewButton.setIcon(SlicerUtil.getIcon("LayoutOneUpRedSliceView.png", isSystemIcon=True))
 self.btnGoToPreviousStructure.setIconSize(qt.QSize(24,24))

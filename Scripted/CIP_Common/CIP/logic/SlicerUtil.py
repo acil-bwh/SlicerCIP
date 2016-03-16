@@ -95,7 +95,7 @@ class SlicerUtil:
         return "http://midas.chestimagingplatform.org/download/item/"
 
     @staticmethod
-    def matchExtension(labelmapNode, key):
+    def isExtensionMatch(labelmapNode, key):
         """ Check if a labelmap node meets one of the ACIL given labelmap conventions
         @param labelmapNode:
         @param key: convention key (see Util.file_conventions_extensions)
@@ -143,6 +143,17 @@ class SlicerUtil:
         except:
             return False
         return True
+
+    @staticmethod
+    def logDevelop(message, includePythonConsole=False):
+        """ Log a message when we Slicer is in Development mode.
+        If includePythonConsole, also prints
+        @param message:
+        """
+        if SlicerUtil.IsDevelopment:
+            logging.debug(message)
+            if includePythonConsole:
+                print(message)
 
     @staticmethod
     def getRootAnnotationsNode():
@@ -691,6 +702,15 @@ class SlicerUtil:
             return name.replace(suffix, "")
         # No suffix
         return name
+
+    @staticmethod
+    def get_case_name_from_labelmap(labelmap_name):
+        """ Get the case name from a labelmap
+        @param labelmap_name:
+        @return: case name
+        """
+        name = SlicerUtil.filterVolumeName(labelmap_name)
+        return Util.get_case_name_from_labelmap(name)
 
         # @staticmethod
         # def gitUpdateCIP():

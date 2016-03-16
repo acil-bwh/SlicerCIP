@@ -64,4 +64,3 @@ def test_geometry_topology_data_write_read():
     xmlparser = etree.XMLParser(schema=schema)
     etree.fromstring(xml, xmlparser)
 
-test_geometry_topology_data_write_read()

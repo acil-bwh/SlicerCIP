@@ -296,6 +296,10 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
 
     ## PRIVATE METHODS
     def __checkNewVolume__(self, newVolumeNode):
+        """ New volume loaded in the scene in some way.
+        If it's really a new volume, try to save and close the current one
+        @param newVolumeNode:
+        """
         if self.blockNodeEvents:
             return
         self.blockNodeEvents = True
@@ -315,7 +319,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             self.logic.removeMarkupsAndNode(self.currentVolumeLoaded)
         if self.caseNavigatorWidget is not None and newVolumeNode is not None:
             # Try to load a previously existing fiducials file downloaded with the ACIL case navigator
-            fiducialsFileName = newVolumeNode.GetName() + Util.file_conventions_extensions["ParenchymaTrainingFiducials"]
+            fiducialsFileName = newVolumeNode.GetName() + Util.file_conventions_extensions["ParenchymaTrainingFiducialsXml"]
             fiducialsNavigatorFilePath = self.caseNavigatorWidget.logic.getFilePath(fiducialsFileName)
             if os.path.exists(fiducialsNavigatorFilePath):
                 # The fiducials file was downloaded with the navigator
@@ -392,7 +396,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         If the labelmap is a known labelmap type, set the right colors and opacity
         @param labelmapNode:
         """
-        if SlicerUtil.matchExtension(labelmapNode, "ILDClassificationLabelmap"):
+        if SlicerUtil.isExtensionMatch(labelmapNode, "ILDClassificationLabelmap"):
             colorNode = self.__getColorTable__()
             displayNode = labelmapNode.GetDisplayNode()
             displayNode.SetAndObserveColorNodeID(colorNode.GetID())
@@ -611,7 +615,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         :param directory: destination directory
         """
         volume = slicer.mrmlScene.GetNodeByID(self.currentVolumeId)
-        fileName = volume.GetName() + Util.file_conventions_extensions["ParenchymaTrainingFiducials"]
+        fileName = volume.GetName() + Util.file_conventions_extensions["ParenchymaTrainingFiducialsXml"]
         # If there is already a xml file in the results directory, make a copy.
         fiducialsLocalFilePath = os.path.join(directory, fileName)
         if os.path.isfile(fiducialsLocalFilePath):
@@ -666,11 +670,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
 
         # Upload to MAD if we are using the ACIL case navigator
         if caseNavigatorWidget is not None:
-            caseNavigatorWidget.logic.uploadFile(fiducialsLocalFilePath, callbackFunction=callbackFunction,
-                                                 server=caseNavigatorWidget.txtServer.text,
-                                                 serverPath=caseNavigatorWidget.txtServerpath.text,
-                                                 sshMode=caseNavigatorWidget.rbSSH.isChecked(),
-                                                 privateSSHKey=caseNavigatorWidget.txtPrivateKeySSH.text)
+             caseNavigatorWidget.uploadFile(fiducialsLocalFilePath, callbackFunction=callbackFunction)
 
         # Mark the current volume as saved
         self.savedVolumes[volume.GetName()] = True
