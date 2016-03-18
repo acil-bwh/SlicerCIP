@@ -133,7 +133,7 @@ class CaseReportsWidget(EventsTrigger):
         """ Export the current csv file to a customized and formatted file
         :return:
         """
-        fileName = qt.QFileDialog.getSaveFileName(self.parent, "Export to CSV file")
+        fileName = qt.QFileDialog.getSaveFileName(slicer.util.mainWindow(), "Export to CSV file")
         if fileName:
             self.logic.exportCSV(fileName)
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data exported', 'The data were exported successfully')
@@ -235,12 +235,8 @@ class CaseReportsLogic(object):
             else:
                 orderedColumns.append('')
 
-        fileExists = os.path.isfile(self.csvFilePath)
         with open(self.csvFilePath, 'a+b') as csvfile:
             writer = csv.writer(csvfile)
-            # If file is empty, save also the column names
-            # if not fileExists:
-            #     writer.writerow(self.columnNames)
             writer.writerow(orderedColumns)
 
 
