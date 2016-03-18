@@ -34,11 +34,23 @@ class GeometryTopologyData:
     def num_dimensions(self, value):
         self.__num_dimensions__ = value
 
+    @property
+    def lps_to_ijk_transformation_matrix_array(self):
+        """ LPS_IJK transformation matrix in a numpy format
+        """
+        if self.lps_to_ijk_transformation_matrix is None:
+            return None
+        if self.__lps_to_ijk_transformation_matrix_array__ is None:
+            import numpy as np
+            self.__lps_to_ijk_transformation_matrix_array__ = np.array(self.lps_to_ijk_transformation_matrix, dtype=np.float)
+        return self.__lps_to_ijk_transformation_matrix_array__
+
 
     def __init__(self):
         self.__num_dimensions__ = 0
         self.coordinate_system = self.UNKNOWN
         self.lps_to_ijk_transformation_matrix = None    # Transformation matrix to go from LPS to IJK (in the shape of a 4x4 list)
+        self.__lps_to_ijk_transformation_matrix_array__ = None  # Same matrix in a numpy array
 
         self.points = []    # List of Point objects
         self.bounding_boxes = []    # List of BoundingBox objects
@@ -470,5 +482,3 @@ class BoundingBox(Structure):
         structure = super(BoundingBox, self).to_xml()
 
         return '<BoundingBox>%s<Start>%s</Start><Size>%s</Size></BoundingBox>' % (structure, start_str, size_str)
-
-

@@ -35,6 +35,9 @@ class CIP_EditorWidget(EditorWidget):
         #self.helper.mergeSelector.setCurrentNode(value)
         self.helper.setMergeVolume(value)
 
+    def cleanVolumes(self):
+        self.helper.setVolumes(None, None)
+
     def createEditBox(self):
         """Override the parent's method. Builds the editor with a limited set of tools"""
         self.editBoxFrame = qt.QFrame(self.effectsToolsFrame)

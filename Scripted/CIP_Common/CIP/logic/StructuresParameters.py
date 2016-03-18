@@ -79,9 +79,7 @@ class StructuresParameters(object):
     structureTypes['HernialHiatus'+slicePlane] = (61, 66, 81, 'Hernial Hiatus (Coronal)', 0.2, 0.5, 0.5, 900, 50, 'C')
     structureTypes['PulmonaryArtery'+slicePlane] = (62, 8, 18, 'Pulmonary Artery (Coronal)', 0, 0, 0, 900, 50, 'C')
     
-
-
-
+    
     def getItem(self, structureId):
         return self.structureTypes[structureId]
 

@@ -12,7 +12,9 @@ from . import Util
 
 
 class SlicerUtil:
-    # Constants    
+    #######################################
+    #### Constants / Properties
+    #######################################
     try:
         IsDevelopment = slicer.app.settings().value('Developer/DeveloperMode').lower() == 'true'
     except:
@@ -43,6 +45,10 @@ class SlicerUtil:
     ALIGNMENT_VERTICAL_BOTTOM = 0x0040
     ALIGNMENT_VERTICAL_CENTER = 0x0080
 
+
+    #######################################
+    #### Environment internals
+    #######################################
     @staticmethod
     def getModuleFolder(moduleName):
         '''Get the folder where a python scripted module is physically stored'''
@@ -95,45 +101,6 @@ class SlicerUtil:
         return "http://midas.chestimagingplatform.org/download/item/"
 
     @staticmethod
-    def isExtensionMatch(labelmapNode, key):
-        """ Check if a labelmap node meets one of the ACIL given labelmap conventions
-        @param labelmapNode:
-        @param key: convention key (see Util.file_conventions_extensions)
-        @return: Bool
-        """
-        name = SlicerUtil.filterVolumeName(labelmapNode.GetName())
-        lmExt = name.split('_')[-1]
-        ext = Util.file_conventions_extensions[key].split('.')[0]
-        return ext == ("_" + lmExt)
-
-    @staticmethod
-    def createNewFiducial(x, y, z, radX, radY, radZ, scalarNode):
-        '''Create a new fiducial (ROI) that will be visible in the scalar node passed.
-        Parameters: 
-        - x, y, z: fiducial coordinates
-        - radX, radY, radZ: ROI size
-        - scalarNode: vtk scalar node where the fiducial will be displayed'''
-        fiducial = slicer.mrmlScene.CreateNodeByClass('vtkMRMLAnnotationROINode')
-        fiducial.SetXYZ(x, y, z)
-        fiducial.SetRadiusXYZ(radX, radY, radZ)
-        # Add the fiducial to the scalar node
-        displayNodeID = scalarNode.GetDisplayNode().GetID()
-        fiducial.AddAndObserveDisplayNodeID(displayNodeID)
-        # Get fiducial (Point)
-        # f = slicer.mrmlScene.CreateNodeByClass('vtkMRMLMarkupsFiducialNode')
-        # f.GetMarkupPointVector(0,0) --> returns a vtkVector3d with the coordinates for the
-        # first node where the fidual is displayed (param 0) and the number of markup (param1)
-
-    @staticmethod
-    def refreshActiveWindows():
-        """ Refresh all the windows currently visible to the user"""
-        lm = slicer.app.layoutManager()
-        for windowName in lm.sliceViewNames():
-            slice = lm.sliceWidget(windowName)
-            if not slice.isHidden():
-                slice.repaint()
-
-    @staticmethod
     def isSlicerACILLoaded():
         """ Check the existence of the common ACIL module
         :return: True if the module is found
@@ -155,75 +122,9 @@ class SlicerUtil:
             if includePythonConsole:
                 print(message)
 
-    @staticmethod
-    def getRootAnnotationsNode():
-        """ Get the root annotations node global to the scene, creating it if necessary.
-        This is useful as a starting point to add rulers to the scene
-        :return: "All Annotations" vtkMRMLAnnotationHierarchyNode
-        """
-        rootHierarchyNode = slicer.util.getNode('All Annotations')
-        if rootHierarchyNode is None:
-            # Create root annotations node
-            rootHierarchyNode = slicer.modules.annotations.logic().GetActiveHierarchyNode()
-        return rootHierarchyNode
-
-    @staticmethod
-    def __setMarkupsMode__(isFiducialsMode, fiducialClass, keepFiducialsModeOn):
-        """ Activate fiducials mode.
-        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
-        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
-        calling setFiducialsMode with activateFiducials=False
-        :param isFiducialsMode: True for "fiducials mode". False for a regular use
-        :fiducialClass: "vtkMRMLMarkupsFiducialNode", "vtkMRMLAnnotationRulerNode"...
-        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
-        first fiducial we will come back to the regular state
-        """
-        applicationLogic = slicer.app.applicationLogic()
-        # selectionNode = applicationLogic.GetSelectionNode()
-        # selectionNode.SetReferenceActivePlaceNodeClassName(fiducialClass)
-        interactionNode = applicationLogic.GetInteractionNode()
-        if isFiducialsMode:
-            if keepFiducialsModeOn:
-                interactionNode.SwitchToPersistentPlaceMode()
-            else:
-                interactionNode.SwitchToSinglePlaceMode()
-        else:
-            interactionNode.SwitchToViewTransformMode()
-
-    @staticmethod
-    def setFiducialsCursorMode(isFiducialsMode, keepFiducialsModeOn=False):
-        """ Activate fiducials mode.
-        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
-        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
-        calling setFiducialsMode with activateFiducials=False
-        :param isFiducialsMode: True for "fiducials mode". False for a regular use
-        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
-        first fiducial we will come back to the regular state
-        """
-        SlicerUtil.__setMarkupsMode__(isFiducialsMode, "vtkMRMLMarkupsFiducialNode", keepFiducialsModeOn)
-
-    @staticmethod
-    def setCrosshairCursor(isActive):
-        """Turn on or off the crosshair and enable navigation mode
-        by manipulating the scene's singleton crosshair node.
-        :param isActive: enable / disable crosshair (boolean value)
-        """
-        crosshairNode = slicer.util.getNode('vtkMRMLCrosshairNode*')
-        if crosshairNode:
-            crosshairNode.SetCrosshairMode(int(isActive))
-
-    @staticmethod
-    def setRulersMode(isRulersMode, keepFiducialsModeOn=False):
-        """ Activate fiducials ruler mode.
-        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
-        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
-        calling setFiducialsMode with activateFiducials=False
-        :param isRulersMode: True for "fiducials mode". False for a regular use
-        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
-        first fiducial we will come back to the regular state
-        """
-        SlicerUtil.__setMarkupsMode__(isRulersMode, "vtkMRMLAnnotationRulerNode", keepFiducialsModeOn)
-
+    #######################################
+    #### Volumes
+    #######################################
     @staticmethod
     def setActiveVolumeId(volumeId, labelmapId=None):
         selectionNode = slicer.app.applicationLogic().GetSelectionNode()
@@ -398,6 +299,149 @@ class SlicerUtil:
         return None
 
     @staticmethod
+    def filterVolumeName(name):
+        """ Remove the suffixes that Slicer could introduce in a volume name (ex: myVolume_1)
+        @param name: current name in Slicer
+        @return: name without suffixes
+        """
+        import re
+        expr = "^(.*)(_\d+)$"
+        m = re.search(expr, name)
+        if m:
+            # There is suffix. Remove
+            suffix = m.groups(0)[1]
+            return name.replace(suffix, "")
+        # No suffix
+        return name
+
+    @staticmethod
+    def get_case_name_from_labelmap(labelmap_name):
+        """ Get the case name from a labelmap
+        @param labelmap_name:
+        @return: case name
+        """
+        name = SlicerUtil.filterVolumeName(labelmap_name)
+        return Util.get_case_name_from_labelmap(name)
+
+    @staticmethod
+    def isExtensionMatch(labelmapNode, key):
+        """ Check if a labelmap node meets one of the ACIL given labelmap conventions
+        @param labelmapNode:
+        @param key: convention key (see Util.file_conventions_extensions)
+        @return: Bool
+        """
+        name = SlicerUtil.filterVolumeName(labelmapNode.GetName())
+        lmExt = name.split('_')[-1]
+        ext = Util.file_conventions_extensions[key].split('.')[0]
+        return ext == ("_" + lmExt)
+
+    @staticmethod
+    def clearVolume(volumeNode):
+        slicer.modules.volumes.logic().ClearVolumeImageData(volumeNode)
+
+    #######################################
+    #### Fiducials
+    #######################################
+    @staticmethod
+    def createNewFiducial(x, y, z, radX, radY, radZ, scalarNode):
+        '''Create a new fiducial (ROI) that will be visible in the scalar node passed.
+        Parameters: 
+        - x, y, z: fiducial coordinates
+        - radX, radY, radZ: ROI size
+        - scalarNode: vtk scalar node where the fiducial will be displayed'''
+        fiducial = slicer.mrmlScene.CreateNodeByClass('vtkMRMLAnnotationROINode')
+        fiducial.SetXYZ(x, y, z)
+        fiducial.SetRadiusXYZ(radX, radY, radZ)
+        # Add the fiducial to the scalar node
+        displayNodeID = scalarNode.GetDisplayNode().GetID()
+        fiducial.AddAndObserveDisplayNodeID(displayNodeID)
+        # Get fiducial (Point)
+        # f = slicer.mrmlScene.CreateNodeByClass('vtkMRMLMarkupsFiducialNode')
+        # f.GetMarkupPointVector(0,0) --> returns a vtkVector3d with the coordinates for the
+        # first node where the fidual is displayed (param 0) and the number of markup (param1)
+
+    @staticmethod
+    def getRootAnnotationsNode():
+        """ Get the root annotations node global to the scene, creating it if necessary.
+        This is useful as a starting point to add rulers to the scene
+        :return: "All Annotations" vtkMRMLAnnotationHierarchyNode
+        """
+        rootHierarchyNode = slicer.util.getNode('All Annotations')
+        if rootHierarchyNode is None:
+            # Create root annotations node
+            rootHierarchyNode = slicer.modules.annotations.logic().GetActiveHierarchyNode()
+        return rootHierarchyNode
+
+    @staticmethod
+    def __setMarkupsMode__(isFiducialsMode, fiducialClass, keepFiducialsModeOn):
+        """ Activate fiducials mode.
+        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
+        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
+        calling setFiducialsMode with activateFiducials=False
+        :param isFiducialsMode: True for "fiducials mode". False for a regular use
+        :fiducialClass: "vtkMRMLMarkupsFiducialNode", "vtkMRMLAnnotationRulerNode"...
+        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
+        first fiducial we will come back to the regular state
+        """
+        applicationLogic = slicer.app.applicationLogic()
+        # selectionNode = applicationLogic.GetSelectionNode()
+        # selectionNode.SetReferenceActivePlaceNodeClassName(fiducialClass)
+        interactionNode = applicationLogic.GetInteractionNode()
+        if isFiducialsMode:
+            if keepFiducialsModeOn:
+                interactionNode.SwitchToPersistentPlaceMode()
+            else:
+                interactionNode.SwitchToSinglePlaceMode()
+        else:
+            interactionNode.SwitchToViewTransformMode()
+
+    @staticmethod
+    def setFiducialsCursorMode(isFiducialsMode, keepFiducialsModeOn=False):
+        """ Activate fiducials mode.
+        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
+        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
+        calling setFiducialsMode with activateFiducials=False
+        :param isFiducialsMode: True for "fiducials mode". False for a regular use
+        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
+        first fiducial we will come back to the regular state
+        """
+        SlicerUtil.__setMarkupsMode__(isFiducialsMode, "vtkMRMLMarkupsFiducialNode", keepFiducialsModeOn)
+
+    @staticmethod
+    def setCrosshairCursor(isActive):
+        """Turn on or off the crosshair and enable navigation mode
+        by manipulating the scene's singleton crosshair node.
+        :param isActive: enable / disable crosshair (boolean value)
+        """
+        crosshairNode = slicer.util.getNode('vtkMRMLCrosshairNode*')
+        if crosshairNode:
+            crosshairNode.SetCrosshairMode(int(isActive))
+
+    @staticmethod
+    def setRulersMode(isRulersMode, keepFiducialsModeOn=False):
+        """ Activate fiducials ruler mode.
+        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
+        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
+        calling setFiducialsMode with activateFiducials=False
+        :param isRulersMode: True for "fiducials mode". False for a regular use
+        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
+        first fiducial we will come back to the regular state
+        """
+        SlicerUtil.__setMarkupsMode__(isRulersMode, "vtkMRMLAnnotationRulerNode", keepFiducialsModeOn)
+
+    #######################################
+    #### GUI / Layout
+    #######################################
+    @staticmethod
+    def refreshActiveWindows():
+        """ Refresh all the windows currently visible to the user"""
+        lm = slicer.app.layoutManager()
+        for windowName in lm.sliceViewNames():
+            slice = lm.sliceWidget(windowName)
+            if not slice.isHidden():
+                slice.repaint()
+
+    @staticmethod
     def getIcon(iconName, isSystemIcon=False):
         """ Build a new QIcon from the common CIP icons library or from the Slicer system icons
         :param iconName: name of the file (ex: previous.png)
@@ -448,24 +492,6 @@ class SlicerUtil:
                 displayNode.SetWindow(window)
                 displayNode.SetLevel(level)
                 return
-
-    @staticmethod
-    def vtkImageData_numpy_array(vtkImageData_node):
-        """ Return a numpy array from a vtkImageData node
-        :param vtkImageData_node:
-        :return:
-        """
-        shape = list(vtkImageData_node.GetDimensions())
-        shape.reverse()
-        return vtk.util.numpy_support.vtk_to_numpy(vtkImageData_node.GetPointData().GetScalars()).reshape(shape)
-        # shape = list(vtk_node.GetImageData().GetDimensions())
-        # shape.reverse()
-        # arr = vtk.util.numpy_support.vtk_to_numpy(vtk_node.GetPointData().GetScalars()).reshape(shape)
-        # spacing = list(vtk_node.GetSpacing())
-        # spacing.reverse()
-        # origin = list(vtk_node.GetOrigin())
-        # origin.reverse()
-        # return arr, spacing, origin
 
     @staticmethod
     def jumpToSlice(widgetName, slice):
@@ -581,6 +607,9 @@ class SlicerUtil:
         for toolbar in slicer.util.mainWindow().findChildren('QToolBar'):
             toolbar.setVisible(show)
 
+    #######################################
+    #### Testing
+    #######################################
     @staticmethod
     def downloadVolumeForTests(downloadWhenCached=False, tryUsingACILNavigator=True, widget=None):
         """ Download a sample volume for testing purposes.
@@ -687,30 +716,7 @@ class SlicerUtil:
             raise Exception("There is more than one widget that matches the given conditions")
         return results[0]
 
-    @staticmethod
-    def filterVolumeName(name):
-        """ Remove the suffixes that Slicer could introduce in a volume name (ex: myVolume_1)
-        @param name: current name in Slicer
-        @return: name without suffixes
-        """
-        import re
-        expr = "^(.*)(_\d+)$"
-        m = re.search(expr, name)
-        if m:
-            # There is suffix. Remove
-            suffix = m.groups(0)[1]
-            return name.replace(suffix, "")
-        # No suffix
-        return name
 
-    @staticmethod
-    def get_case_name_from_labelmap(labelmap_name):
-        """ Get the case name from a labelmap
-        @param labelmap_name:
-        @return: case name
-        """
-        name = SlicerUtil.filterVolumeName(labelmap_name)
-        return Util.get_case_name_from_labelmap(name)
 
         # @staticmethod
         # def gitUpdateCIP():

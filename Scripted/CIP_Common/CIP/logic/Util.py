@@ -7,10 +7,10 @@ import vtk
 import os, sys
 import traceback
 import numpy as np
-import time
-from CIP.logic import file_conventions
-
 import SimpleITK as sitk
+
+import file_conventions
+from geometry_topology_data import *
 
 class Util: 
     # Constants
@@ -108,6 +108,24 @@ class Util:
         """
         (f, ext) = os.path.splitext(file_path)
         return ext
+
+    @staticmethod
+    def vtkImageData_numpy_array(vtkImageData_node):
+        """ Return a numpy array from a vtkImageData node
+        :param vtkImageData_node:
+        :return:
+        """
+        shape = list(vtkImageData_node.GetDimensions())
+        shape.reverse()
+        return vtk.util.numpy_support.vtk_to_numpy(vtkImageData_node.GetPointData().GetScalars()).reshape(shape)
+        # shape = list(vtk_node.GetImageData().GetDimensions())
+        # shape.reverse()
+        # arr = vtk.util.numpy_support.vtk_to_numpy(vtk_node.GetPointData().GetScalars()).reshape(shape)
+        # spacing = list(vtk_node.GetSpacing())
+        # spacing.reverse()
+        # origin = list(vtk_node.GetOrigin())
+        # origin.reverse()
+        # return arr, spacing, origin
 
     ##################
     # COORDINATE SYSTEMS
@@ -376,19 +394,7 @@ class Util:
         mean = np.mean(np.where(np_array == labelId), axis=1)
         return np.asarray(np.round(mean, 0), np.int)
 
+
     @staticmethod
-    def geometry_topology_data_to_array(np_array, geom):
-        """ Write in a numpy array the information stored in a GeometryTopologyData object
-        @param np_array:
-        @param geom:
-        """
-        from geometry_topology_data import *
-        geom = GeometryTopologyData()
-
-        # If the coordinate system is not IJK, we have to make transformations
-        geom.lps_to_ijk_transformation_matrix
-
-        for bounding_box in geom.bounding_boxes:
-            pass
-
-
+    def get_value_from_chest_region_and_type(region, _type):
+        return (_type << 8) + region
