@@ -113,9 +113,13 @@ class MIPViewerWidget(object):
         self.operationComboBox.currentIndex = value
         self.operationComboBox.blockSignals(False)
 
-
-
-    ####
+    @property
+    def isCrosshairEnabled(self):
+        return self.crosshairCheckbox.isChecked()
+    @currentPlane.setter
+    def isCrosshairEnabled(self, value):
+        self.crosshairCheckbox.setChecked(value)
+        
     # PUBLIC METHODS
     def setup(self):
         """This is called one time when the module GUI is initialized

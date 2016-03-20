@@ -48,7 +48,8 @@ class StructuresParameters(object):
     structureTypes['Liver'+slicePlane] = (11, 25, 0, 'Liver (Axial)', 0, 0.5, 0.5, 900, 50, 'A') 
     structureTypes['Spleen'+slicePlane] = (12, 26, 0, 'Spleen (Axial)', 0.4, 0.3, 0.9, 900, 50, 'A') 
     structureTypes['LeftKidney'+slicePlane] = (13, 43, 0, 'Left Kidney (Axial)', 0.05, 0.7, 0.2, 900, 50, 'A') 
-    structureTypes['RightKidney'+slicePlane] = (14, 44, 0, 'Right Kidney (Axial)', 0.9, 0.2, 0.4, 900, 50, 'A') 
+    structureTypes['RightKidney'+slicePlane] = (14, 44, 0, 'Right Kidney (Axial)', 0.9, 0.2, 0.4, 900, 50, 'A')
+    structureTypes['Nodule'+slicePlane] = (15, 0, 86, 'Nodule (Axial)', 0.9, 0.2, 0.4, 900, 50, 'A')
     
     #Sagittal Slice
     slicePlane="Sagittal"
@@ -63,7 +64,8 @@ class StructuresParameters(object):
     structureTypes['LeftHilum'+slicePlane] = (39, 40, 0, 'Left Hilum (Sagittal)', 0.7, 0.3, 0.6, 900, 50, 'S') 
     structureTypes['RightHilum'+slicePlane] = (40, 41, 0, 'Right Hilum (Sagittal)', 0.5, 0.1, 0.4, 900, 50, 'S') 
     structureTypes['LeftVentricle'+slicePlane] = (41, 52, 0, 'Left Ventricle (Sagittal)', 0.2, 0.1, 0.3, 900, 50, 'S') 
-    
+    structureTypes['Nodule'+slicePlane] = (42, 0, 86, 'Nodule (Sagittal)', 0.9, 0.2, 0.4, 900, 50, 'S')
+
     # Coronal Slice
     slicePlane="Coronal"
     structureTypes['DescendingAorta'+slicePlane] = (51, 47, 0, 'Descending Aorta (Coronal)', 0.4, 0.2, 0.9, 900, 50, 'C') 
@@ -78,8 +80,8 @@ class StructuresParameters(object):
     structureTypes['Spine'+slicePlane] = (60, 51, 0, 'Spine (Coronal)', 0.2, 0.7, 0.2, 900, 50, 'C') 
     structureTypes['HernialHiatus'+slicePlane] = (61, 66, 81, 'Hernial Hiatus (Coronal)', 0.2, 0.5, 0.5, 900, 50, 'C')
     structureTypes['PulmonaryArtery'+slicePlane] = (62, 8, 18, 'Pulmonary Artery (Coronal)', 0, 0, 0, 900, 50, 'C')
-    
-    
+    structureTypes['Nodule'+slicePlane] = (63, 0, 86, 'Nodule (Coronal)', 0.9, 0.2, 0.4, 900, 50, 'C')
+
     def getItem(self, structureId):
         return self.structureTypes[structureId]
 
