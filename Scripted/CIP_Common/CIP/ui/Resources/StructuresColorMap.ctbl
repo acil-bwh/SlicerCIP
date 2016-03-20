@@ -14,7 +14,7 @@
 12 SpleenAxial 102 76 229 127
 13 LeftKidneyAxial 12 178 51 127
 14 RightKidneyAxial 229 51 102 127
-15 NoduleAxial 77 249 78
+15 NoduleAxial 77 249 78 127
 31 TransversalAortaSagittal 76 25 204 127
 32 AscendingAortaSagittal 204 204 0 127
 33 PulmonaryArterySagittal 51 81 25 127
@@ -26,7 +26,7 @@
 39 LeftHilumSagittal 44 127 0 127
 40 RightHilumSagittal 127 25 102 127
 41 LeftVentricleSagittal 51 25 76 127
-42 NoduleSagittal 77 249 78
+42 NoduleSagittal 77 249 78 127
 51 DescendingAortaCoronal 102 51 229 127
 52 Trachea2Coronal 85 188 255 127
 53 AscendingAortaCoronal 229 229 25 127
@@ -39,4 +39,4 @@
 60 SpineCoronal 51 178 51 127
 61 HernialHiatusCoronal 25 200 200 127
 62 PulmonaryArteryCoronal 217 0 92 127
-63 NoduleCoronal 77 249 78
+63 NoduleCoronal 77 249 78 127
