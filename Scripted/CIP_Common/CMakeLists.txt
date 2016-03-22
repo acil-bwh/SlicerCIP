@@ -7,6 +7,7 @@ set(MODULE_PYTHON_SCRIPTS
   CIP/__init__.py
   CIP/logic/__init__.py
   CIP/logic/EventsTrigger.py
+  CIP/logic/file_conventions.py
   CIP/logic/geometry_topology_data.py
   CIP/logic/SlicerUtil.py
   CIP/logic/StructuresParameters.py
