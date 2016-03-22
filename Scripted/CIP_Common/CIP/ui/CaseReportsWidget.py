@@ -121,7 +121,7 @@ class CaseReportsWidget(EventsTrigger):
         """ Export the current csv file to a customized and formatted file
         :return:
         """
-        fileName = qt.QFileDialog.getSaveFileName(self.parent, "Export to CSV file")
+        fileName = qt.QFileDialog.getSaveFileName(slicer.util.mainWindow(), "Export to CSV file")
         if fileName:
             self.logic.exportCSV(fileName)
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data exported', 'The data were exported successfully')
