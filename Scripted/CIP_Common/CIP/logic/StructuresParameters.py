@@ -50,6 +50,7 @@ class StructuresParameters(object):
     structureTypes['LeftKidney'+slicePlane] = (13, 43, 0, 'Left Kidney (Axial)', 0.05, 0.7, 0.2, 900, 50, 'A') 
     structureTypes['RightKidney'+slicePlane] = (14, 44, 0, 'Right Kidney (Axial)', 0.9, 0.2, 0.4, 900, 50, 'A')
     structureTypes['Nodule'+slicePlane] = (15, 0, 86, 'Nodule (Axial)', 0.9, 0.2, 0.4, 900, 50, 'A')
+    structureTypes['AscendingAorta'+slicePlane] = (16, 32, 45, 'Ascending Aorta (Axial)', 0.9, 0.2, 0.4, 900, 50, 'A')
     
     #Sagittal Slice
     slicePlane="Sagittal"
