@@ -59,6 +59,8 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DCMAKE_C_FLAGS:STRING=${ep_common_c_flags}
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DBUILD_TESTING:BOOL=OFF
+      # Temporal to FIX bug. Remove when the name is shorter
+      -DBUILD_GENERATEREGIONHISTOGRAMANDPARENCHYMAPHENOTYPES:BOOL=OFF
     #CONFIGURE_COMMAND ${CMAKE_COMMAND}
     #-E echo
     #  "This CONFIGURE_COMMAND is just here as a placeholder."
