@@ -70,6 +70,8 @@ ExternalProject_Add(${proj}
       -DBUILD_TESTING:BOOL=OFF
       -DCMAKE_CXX_FLAGS:STRING=${CIP_CMAKE_CXX_FLAGS}
       -DUSE_CYTHON:BOOL=OFF
+      # Temporal to FIX bug. Remove when the name is shorter
+      -DBUILD_GENERATEREGIONHISTOGRAMANDPARENCHYMAPHENOTYPES:BOOL=OFF
 
     #CONFIGURE_COMMAND ${CMAKE_COMMAND}
     #-E echo
