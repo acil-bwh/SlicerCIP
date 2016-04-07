@@ -29,6 +29,8 @@ class SubtypingParameters(object):
     __subtypes__[26] = ("Centrilobular nodule", "Cen")
     __subtypes__[86] = ("Nodule", "Nod")
     __subtypes__[34] = ("Linear scar", "Lin")
+    __subtypes__[35] = ("Cyst", "Cyst")
+    __subtypes__[90] = ("Fibronodular", "Fib")
     # Emphysema
     __subtypes__[67] = ("Paraseptal", "PSE")
     __subtypes__[68] = ("Centrilobular", "CLE")
@@ -81,6 +83,8 @@ class SubtypingParameters(object):
         (84, 26),
         (84, 86),
         (84, 34),
+        (84, 35),
+        (84, 90),
         # EMPHYSEPMA
         (4, 0),
         (4, 67),
