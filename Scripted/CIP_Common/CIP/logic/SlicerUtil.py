@@ -608,6 +608,21 @@ class SlicerUtil:
         for toolbar in slicer.util.mainWindow().findChildren('QToolBar'):
             toolbar.setVisible(show)
 
+    @staticmethod
+    def createNewColormapNode(nodeName, numberOfColors=0):
+        """ Create a new empty color map node
+        @param nodeName: name of the node to be created
+        @param numberOfColors: total number of colors of the color node (it can be set later)
+        @return: new node
+        """
+        colorNode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLColorTableNode")
+        slicer.mrmlScene.AddNode(colorNode)
+        colorNode.SetName(nodeName)
+        colorNode.SetTypeToUser()
+        colorNode.NamesInitialisedOn()
+        colorNode.SetNumberOfColors(numberOfColors)
+        return colorNode
+
     #######################################
     #### Testing
     #######################################

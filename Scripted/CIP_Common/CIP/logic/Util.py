@@ -398,3 +398,4 @@ class Util:
     @staticmethod
     def get_value_from_chest_region_and_type(region, _type):
         return (_type << 8) + region
+
