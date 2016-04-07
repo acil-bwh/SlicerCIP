@@ -396,6 +396,12 @@ class Util:
 
 
     @staticmethod
-    def get_value_from_chest_region_and_type(region, _type):
-        return (_type << 8) + region
+    def get_value_from_chest_type_and_region(chestType, chestRegion):
+        """ Get an int code where the most significant byte encodes the ChestType and the less significant byte
+        encodes the region
+        @param chestType:
+        @param chestRegion:
+        @return: int code
+        """
+        return (chestType << 8) + chestRegion
 

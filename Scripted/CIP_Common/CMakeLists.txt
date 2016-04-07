@@ -10,7 +10,6 @@ set(MODULE_PYTHON_SCRIPTS
   CIP/logic/file_conventions.py
   CIP/logic/geometry_topology_data.py
   CIP/logic/SlicerUtil.py
-  CIP/logic/StructuresParameters.py
   CIP/logic/SubtypingParameters.py
   CIP/logic/Util.py
   CIP/ui/__init__.py
