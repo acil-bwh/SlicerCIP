@@ -34,7 +34,7 @@ class SlicerUtil:
     CIP_ModuleName = "CIP_Common"
 
     GIT_REPO_FOLDER = path.join(slicer.app.temporaryPath, 'CIP-Repo')
-    GIT_REMOTE_URL = "https://github.com/acil-bwh/ChestImagingPlatform.git"
+    GIT_REMOTE_URL = "https://github.com/acil-bwh/SlicerCIP.git"
 
     # Aligment
     ALIGNMENT_HORIZONTAL_LEFT = 0x0001
