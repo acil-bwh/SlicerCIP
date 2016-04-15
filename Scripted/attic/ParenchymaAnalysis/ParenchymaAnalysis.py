@@ -240,12 +240,16 @@ class ParenchymaAnalysisWidget:
     self.HistSection = qt.QFrame()
     self.HistSection.setLayout(qt.QVBoxLayout())
     self.parent.layout().addWidget(self.HistSection)
+    self.HistSection.setObjectName('HistSection')
+    self.HistSection.setStyleSheet('#HistSection {border: 0.5px solid lightGray; }')
     HistSectionTitle = qt.QLabel()
-    HistSectionTitle.setText('Histogram')
+    HistSectionTitle.setText('Histogram Section')
+    #HistSectionTitle.setStyleSheet('border: 1px solid white; color: black')
     self.HistSection.layout().addWidget(HistSectionTitle)
     
     self.histogramCheckBoxes = []
     self.histFrame = qt.QFrame()
+    #self.histFrame.setStyleSheet('border: 1px solid white')
     self.histFrame.setLayout(qt.QHBoxLayout())
     
     self.GlobalHistCheckBox = qt.QCheckBox()
@@ -312,27 +316,36 @@ class ParenchymaAnalysisWidget:
     self.HistSection.enabled = False
     
     # Chart button
-    self.chartFrame = qt.QFrame()
-    self.chartFrame.setLayout(qt.QHBoxLayout())
-    self.parent.layout().addWidget(self.chartFrame)
+    self.chartBox = qt.QFrame()
+    self.chartBox.setObjectName("chartBox")
+    self.chartBox.setStyleSheet('#chartBox {border: 0.5px solid lightGray;}') 
+    self.chartBox.setLayout(qt.QVBoxLayout())
+    self.parent.layout().addWidget(self.chartBox)
+    chartSectionTitle = qt.QLabel()
+    chartSectionTitle.setText('Chart Section')
+    self.chartBox.layout().addWidget(chartSectionTitle) 
+    chartFrame = qt.QFrame()
+    chartFrame.setLayout(qt.QHBoxLayout())
+    self.chartBox.layout().addWidget(chartFrame)  
     self.chartButton = qt.QPushButton("Chart")
     self.chartButton.toolTip = "Make a chart from the current statistics."
-    self.chartFrame.layout().addWidget(self.chartButton)
+    chartFrame.layout().addWidget(self.chartButton)
     self.chartOption = qt.QComboBox()
     self.chartOption.addItems(self.chartOptions)
-    self.chartFrame.layout().addWidget(self.chartOption)
+    chartFrame.layout().addWidget(self.chartOption)
     self.chartIgnoreZero = qt.QCheckBox()
     self.chartIgnoreZero.setText('Ignore Zero')
     self.chartIgnoreZero.checked = False
     self.chartIgnoreZero.setToolTip('Do not include the zero index in the chart to avoid dwarfing other bars')
     #self.chartFrame.layout().addWidget(self.chartIgnoreZero)
-    self.chartFrame.enabled = False
+    self.chartBox.enabled = False
 
     # Save button
-    self.saveButton = qt.QPushButton("Save")
-    self.saveButton.toolTip = "Save Statistics as a csv file."
+    self.saveButton = qt.QPushButton("Save Statistics")
+    self.saveButton.toolTip = "Save statistics as a csv file."
+    self.saveButton.setFixedSize(300,30)
     self.saveButton.enabled = False
-    self.parent.layout().addWidget(self.saveButton)
+    self.parent.layout().addWidget(self.saveButton,0,4)
 
     # Add vertical spacer
     self.parent.layout().addStretch(1)
@@ -533,7 +546,7 @@ class ParenchymaAnalysisWidget:
         self.histogramCheckBoxes[self.rTags.index(tag)].show()    
     
     self.HistSection.enabled = True
-    self.chartFrame.enabled = True
+    self.chartBox.enabled = True
     self.saveButton.enabled = True
     self.applyButton.text = "Apply" 
     self.filterButton.enabled = True
