@@ -6,6 +6,7 @@ set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
   CIP/__init__.py
   CIP/logic/__init__.py
+  CIP/logic/Colors.py
   CIP/logic/EventsTrigger.py
   CIP/logic/file_conventions.py
   CIP/logic/geometry_topology_data.py
