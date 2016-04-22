@@ -9,6 +9,7 @@ class SubtypingParameters(object):
     __types__[84] = ["ILD", "ILD", (1, 0.525, 0)]
     __types__[4] = ["Emphysema", "Emphysema", (0.24, 0.74, 1)]
     __types__[2] = ["Airway", "Airway", (0.097, 0.173, 1)]
+    __types__[3] = ["Vessel", "Vessel", (1, 0, 0)]
     __types__[86] = ["Nodule", "Nodule", (0.49, 0, 0.88)]
     __types__[1] = ["Normal parenchyma", "Normal", (0.28, 0.77, 0.22)]
 
@@ -44,12 +45,24 @@ class SubtypingParameters(object):
     __subtypes__[19] = ("Mild panlobular", "Mild PLE")
     __subtypes__[20] = ("Moderate panlobular", "Mod PLE")
     __subtypes__[21] = ("Severe panlobular", "Sev PLE")
-    # Bronchiestatic
+    # Airway
     __subtypes__[77] = ("Bronchiectatic", "BE")
     __subtypes__[78] = ("Not bronchiectatic", "non-BE")
+    __subtypes__[41] = ("Airway Gen.3", "A3")
+    __subtypes__[42] = ("Airway Gen.4", "A4")
+    # Vessel
+    __subtypes__[50] = ("Artery", "Art")
+    __subtypes__[51] = ("Vein", "Vein")
+    __subtypes__[57] = ("Vessel Gen. 1", "VG1")
+    __subtypes__[58] = ("Vessel Gen. 2", "VG2")
+    __subtypes__[59] = ("Vessel Gen. 3", "VG3")
+    __subtypes__[60] = ("Vessel Gen. 4", "VG4")
+
+
     # Nodule
     __subtypes__[87] = ("Benign nodule", "BN")
     __subtypes__[88] = ("Malign nodule", "Tumor")
+
 
 
     @property
@@ -103,6 +116,16 @@ class SubtypingParameters(object):
         (2, 0),
         (2, 77),
         (2, 78),
+        (2, 41),
+        (2, 42),
+        # VESSEL
+        (3, 0),
+        (3, 50),
+        (3, 51),
+        (3, 57),
+        (3, 58),
+        (3, 59),
+        (3, 60),
         # NODULE
         (86, 0),
         (86, 87),
