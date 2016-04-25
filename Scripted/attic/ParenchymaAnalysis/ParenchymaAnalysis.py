@@ -438,11 +438,6 @@ class ParenchymaAnalysisWidget:
     self.chartOption = qt.QComboBox()
     self.chartOption.addItems(self.chartOptions)
     chartFrame.layout().addWidget(self.chartOption)
-#    self.chartIgnoreZero = qt.QCheckBox()
-#    self.chartIgnoreZero.setText('Ignore Zero')
-#    self.chartIgnoreZero.checked = False
-#    self.chartIgnoreZero.setToolTip('Do not include the zero index in the chart to avoid dwarfing other bars')
-#    chartFrame.layout().addWidget(self.chartIgnoreZero)
     self.chartBox.enabled = False
 
 
@@ -726,7 +721,6 @@ class ParenchymaAnalysisWidget:
     """chart the parenchyma analysis
     """
     valueToPlot = self.chartOptions[self.chartOption.currentIndex]
-#    ignoreZero = self.chartIgnoreZero.checked
     self.logic.createStatsChart(self.CTlabelNode,valueToPlot)
 
   def onSaveReport(self):
@@ -993,7 +987,7 @@ class ParenchymaAnalysisLogic:
     if not self.__preventDialogs__:
       qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
 
-  def createStatsChart(self, labelNode, valueToPlot, ignoreZero=False):
+  def createStatsChart(self, labelNode, valueToPlot):
     """Make a MRML chart of the current stats
     """
     self.setChartLayout()
