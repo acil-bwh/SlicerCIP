@@ -1,4 +1,20 @@
 from __main__ import vtk, qt, ctk, slicer
+import os
+import sys
+
+try:
+    from CIP.ui import CaseReportsWidget
+except Exception as ex:
+    currentpath = os.path.dirname(os.path.realpath(__file__))
+    # We assume that CIP_Common is in the development structure
+    path = os.path.normpath(currentpath + '/../../CIP_Common')
+    if not os.path.exists(path):
+        print("Path not found: " + path)
+        # We assume that CIP is a subfolder (Slicer behaviour)
+        path = os.path.normpath(currentpath + '/CIP')
+    sys.path.append(path)
+    #print("The following path was manually added to the PythonPath in CIP_BodyComposition: " + path) 
+    from CIP.ui import CaseReportsWidget
 
 #
 # ParenchymaAnalysis
@@ -23,8 +39,13 @@ Use this module to calculate counts and volumes for different labels of a label 
 #
 
 class ParenchymaAnalysisWidget:
+  @property
+  def moduleName(self):
+    return os.path.basename(__file__).replace(".py", "")
+     
   def __init__(self, parent=None):
     self.chartOptions = ("LAA%-950","LAA%-910","LAA%-856","HAA%-700","HAA%-600","Mean","Std","Kurtosis","Skewness","Volume")
+    self.storedColumnNames = ["Region","LAA%-950","LAA%-910","LAA%-856","HAA%-700","HAA%-600","Mean","Std","Kurtosis","Skewness","Volume"]
     self.rTags = ("Global","Right","Left","RUL","RLL","RML","LUL","LLL","LUT","LMT","LLT","RUT","RMT","RLT")
     if not parent:
       self.parent = slicer.qMRMLWidget()
@@ -47,7 +68,6 @@ class ParenchymaAnalysisWidget:
       self.CTlabelSelector.setMRMLScene(slicer.mrmlScene)
       #self.explabelSelector.setMRMLScene(slicer.mrmlScene)
       self.parent.show()
-      
       
   def setup(self):
 
@@ -129,95 +149,180 @@ class ParenchymaAnalysisWidget:
     self.CTlabelSelector.setMRMLScene( slicer.mrmlScene )
     self.CTlabelSelector.setToolTip( "CT label map" )
     self.CTlabelSelectorFrame.layout().addWidget( self.CTlabelSelector )
-
+    
     # Image filtering section
-    self.FilteringCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.FilteringCollapsibleButton.text = "CT Image Filtering"
-    self.FilteringCollapsibleButton.setChecked(False)
-    self.FilteringCollapsibleButton.enabled = True
-    self.parent.layout().addWidget(self.FilteringCollapsibleButton)
-    filteringFormLayout = qt.QVBoxLayout(self.FilteringCollapsibleButton)
-    self.filteringOption = qt.QComboBox()
-    self.filteringOptions = ("NLM Filter", "Median Filter", "Gaussian Blur Filter")
-    self.filteringOption.addItems(self.filteringOptions)
-    filteringFormLayout.layout().addWidget(self.filteringOption)
-
-    # NLM Filter Params    
-    self.NLMParams = qt.QFrame()
-    self.NLMParams.setLayout(qt.QVBoxLayout())
-    self.NLMParams.show()
-    filteringFormLayout.layout().addWidget(self.NLMParams)
-    self.NLMDimensionBox = qt.QFrame()
-    self.NLMDimensionBox.setLayout(qt.QHBoxLayout())
-    self.NLMDimensionLabel = qt.QLabel()
-    self.NLMDimensionLabel.setText('Dimensions: ')
-    self.NLMDimensionLabel.setToolTip('Choose if the filter has to operate in 2D or 3D.')
-    self.NLMDimensionBox.layout().addWidget(self.NLMDimensionLabel)
-    self.NLMDimOption = qt.QComboBox()
-    self.DimOptions = ("2D","3D")
-    self.NLMDimOption.addItems(self.DimOptions)
-    self.NLMDimensionBox.layout().addWidget(self.NLMDimOption,0)
-    self.NLMParams.layout().addWidget(self.NLMDimensionBox)
+    self.FilteringFrame = qt.QFrame()
+    self.FilteringFrame.setLayout(qt.QVBoxLayout())
+    self.FilteringFrame.enabled = False
+    self.FilteringFrame.setObjectName('FilteringFrame')
+    self.FilteringFrame.setStyleSheet('#FilteringFrame {border: 1px solid lightGray; color: black; }')
+    self.parent.layout().addWidget( self.FilteringFrame )    
     
-    self.NLMStrengthBox = qt.QFrame()
-    self.NLMStrengthBox.setLayout(qt.QHBoxLayout())
-    self.NLMStrengthLabel = qt.QLabel()
-    self.NLMStrengthLabel.setText('Filter Strength: ')
-    self.NLMStrengthLabel.setToolTip('Choose strength of the filtering process.')
-    self.NLMStrengthBox.layout().addWidget(self.NLMStrengthLabel)
-    self.NLMStrengthOption= qt.QComboBox()
-    self.StrengthOptions = ("Smooth","Medium","Heavy")
-    self.NLMStrengthOption.addItems(self.StrengthOptions)
-    self.NLMStrengthBox.layout().addWidget(self.NLMStrengthOption,0)
-    self.NLMParams.layout().addWidget(self.NLMStrengthBox)
-
-    # Median Filter Params    
-    self.medianParams = qt.QFrame()
-    self.medianParams.setLayout(qt.QVBoxLayout())
-    self.medianParams.hide()
-    filteringFormLayout.layout().addWidget(self.medianParams)
-    self.medianBox = qt.QFrame()
-    self.medianBox.setLayout(qt.QHBoxLayout())
-    self.medianLabel = qt.QLabel()
-    self.medianLabel.setText('Neighborhood Size: ')
-    self.medianLabel.setToolTip('The size of the neighborhood in each dimension')
-    self.medianBox.layout().addWidget(self.medianLabel)
-    self.medianSpinBox = qt.QDoubleSpinBox()
-    self.medianSpinBox.setValue(1.0)
-    self.medianSpinBox.setDecimals(1)
-    self.medianSpinBox.setSingleStep(0.1)
-    self.medianBox.layout().addWidget(self.medianSpinBox)
-    self.medianParams.layout().addWidget(self.medianBox)
+    filterLabel = qt.QLabel()
+    filterLabel.setText('Filtering')
+    self.FilteringFrame.layout().addWidget(filterLabel)
     
-    # Gaussian Blur Filter Params    
-    self.gaussianParams = qt.QFrame()
-    self.gaussianParams.setLayout(qt.QVBoxLayout())
-    self.gaussianParams.hide()
-    filteringFormLayout.layout().addWidget(self.gaussianParams)
-    self.gaussianBox = qt.QFrame()
-    self.gaussianBox.setLayout(qt.QHBoxLayout())
-    self.gaussianLabel = qt.QLabel()
-    self.gaussianLabel.setText('Sigma: ')
-    self.gaussianLabel.setToolTip('Sigma value in physical units (e.g. mm) of the Gaussian kernel')
-    self.gaussianBox.layout().addWidget(self.gaussianLabel)
-    self.gaussianSpinBox = qt.QDoubleSpinBox()
-    self.gaussianSpinBox.setValue(1.0)
-    self.gaussianSpinBox.setDecimals(1)
-    self.gaussianSpinBox.setSingleStep(0.1)
-    self.gaussianBox.layout().addWidget(self.gaussianSpinBox)
-    self.gaussianParams.layout().addWidget(self.gaussianBox)
-           
-    # Apply Filtering button
-    self.filterButton = qt.QPushButton("Apply Filter")
-    self.filterButton.toolTip = "Filter the input CT image."
-    self.filterButton.enabled = False
-    self.filterButton.setFixedSize(150,40)
-    filteringFormLayout.layout().addWidget(self.filterButton,0,4)
+    radioButtonsGroup = qt.QGroupBox()
+    radioButtonsGroup.setLayout(qt.QHBoxLayout())
+    radioButtonsGroup.setFixedWidth(100)
+    radioButtonsGroup.setObjectName('radioButtonsGroup')
+    radioButtonsGroup.setStyleSheet('#radioButtonsGroup {border: 1px solid white; color: black; }')   
     
+    self.filterOnRadioButton = qt.QRadioButton()
+    self.filterOnRadioButton.setText('On')
+    self.filterOnRadioButton.setChecked(0)
+    radioButtonsGroup.layout().addWidget(self.filterOnRadioButton)
+        
+    self.filterOffRadioButton = qt.QRadioButton()
+    self.filterOffRadioButton.setText('Off')
+    self.filterOffRadioButton.setChecked(1)
+    radioButtonsGroup.layout().addWidget(self.filterOffRadioButton)
+    
+    self.FilteringFrame.layout().addWidget(radioButtonsGroup)
+        
+    # Image filtering section
+    self.filterOptionsFrame = qt.QFrame()
+    self.filterOptionsFrame.setLayout(qt.QVBoxLayout())
+    self.filterOptionsFrame.setObjectName('filterOptionsFrame')
+    self.filterOptionsFrame.setStyleSheet('#filterOptionsFrame {border: 0.5px solid lightGray; color: black; }')   
+    self.filterOptionsFrame.hide()
+    
+    self.FilteringFrame.layout().addWidget(self.filterOptionsFrame)
+    
+    self.filterApplication = qt.QCheckBox()
+    self.filterApplication.setText('Only for Phenotype')
+    self.filterApplication.setChecked(0)
+    self.filterOptionsFrame.layout().addWidget(self.filterApplication)     
+    
+    filterOptionsGroup = qt.QGroupBox()
+    filterOptionsGroup.setLayout(qt.QHBoxLayout())
+    filterOptionsGroup.setFixedWidth(200)
+    filterOptionsGroup.setObjectName('filterOptionsGroup')
+    filterOptionsGroup.setStyleSheet('#filterOptionsGroup {border: 1px solid white; color: black; }')
+    
+    self.NLMFilterRadioButton = qt.QRadioButton()
+    self.NLMFilterRadioButton.setText('NLM')
+    self.NLMFilterRadioButton.setChecked(1)
+    filterOptionsGroup.layout().addWidget(self.NLMFilterRadioButton)
+        
+    self.MedianFilterRadioButton = qt.QRadioButton()
+    self.MedianFilterRadioButton.setText('Median')
+    self.MedianFilterRadioButton.setChecked(0)
+    filterOptionsGroup.layout().addWidget(self.MedianFilterRadioButton)
+    
+    self.GaussianFilterRadioButton = qt.QRadioButton()
+    self.GaussianFilterRadioButton.setText('Gaussian')
+    self.GaussianFilterRadioButton.setChecked(0)
+    filterOptionsGroup.layout().addWidget(self.GaussianFilterRadioButton)
+    
+    self.filterOptionsFrame.layout().addWidget(filterOptionsGroup)  
+    
+    # Filter Params    
+    FilterParams = qt.QFrame()
+    FilterParams.setLayout(qt.QVBoxLayout())
+    self.filterOptionsFrame.layout().addWidget(FilterParams)
+     
+    DimGroupBox = qt.QGroupBox()
+    DimGroupBox.setLayout(qt.QHBoxLayout())
+    DimGroupBox.setFixedWidth(180)
+    DimGroupBox.setObjectName('DimGroupBox')
+    DimGroupBox.setStyleSheet('#DimGroupBox {border: 1px solid white; color: black; }')
+    FilterParams.layout().addWidget(DimGroupBox)    
+    
+    FilterDimensionLabel = qt.QLabel()
+    FilterDimensionLabel.setText('Dimensions: ')
+    FilterDimensionLabel.setToolTip('Choose if the filter has to operate in 2D or 3D.')
+    DimGroupBox.layout().addWidget(FilterDimensionLabel)
+       
+    self.Filt2DOption = qt.QPushButton()
+    self.Filt2DOption.setText('2D')
+    self.Filt2DOption.setCheckable(1)
+    self.Filt2DOption.setChecked(0)
+    self.Filt2DOption.setAutoExclusive(1) 
+    self.Filt2DOption.setFixedWidth(45)
+    DimGroupBox.layout().addWidget(self.Filt2DOption)
+    
+    self.Filt3DOption = qt.QPushButton()
+    self.Filt3DOption.setText('3D')
+    self.Filt3DOption.setCheckable(1)
+    self.Filt3DOption.setChecked(1)
+    self.Filt3DOption.setFixedWidth(45)
+    self.Filt3DOption.setAutoExclusive(1)    
+    DimGroupBox.layout().addWidget(self.Filt3DOption)
+    
+    StrengthGroupBox = qt.QGroupBox()
+    StrengthGroupBox.setLayout(qt.QHBoxLayout())
+    StrengthGroupBox.setFixedWidth(270)
+    StrengthGroupBox.setObjectName('StrengthGroupBox')
+    StrengthGroupBox.setStyleSheet('#StrengthGroupBox {border: 1px solid white; color: black; }')
+    FilterParams.layout().addWidget(StrengthGroupBox)
+    
+    FilterStrengthLabel = qt.QLabel()
+    FilterStrengthLabel.setText('Strength: ')
+    FilterStrengthLabel.setToolTip('Choose strength of the filtering process.')
+    StrengthGroupBox.layout().addWidget(FilterStrengthLabel)  
+    
+    self.SmoothOption = qt.QPushButton()
+    self.SmoothOption.setText('Smooth')
+    self.SmoothOption.setCheckable(1)
+    self.SmoothOption.setChecked(1)
+    self.SmoothOption.setAutoExclusive(1) 
+    self.SmoothOption.setFixedWidth(60)
+    StrengthGroupBox.layout().addWidget(self.SmoothOption)
+    
+    self.MediumOption = qt.QPushButton()
+    self.MediumOption.setText('Medium')
+    self.MediumOption.setCheckable(1)
+    self.MediumOption.setChecked(0)
+    self.MediumOption.setFixedWidth(60)
+    self.MediumOption.setAutoExclusive(1)    
+    StrengthGroupBox.layout().addWidget(self.MediumOption)
+    
+    self.HeavyOption = qt.QPushButton()
+    self.HeavyOption.setText('Heavy')
+    self.HeavyOption.setCheckable(1)
+    self.HeavyOption.setChecked(0)
+    self.HeavyOption.setFixedWidth(60)
+    self.HeavyOption.setAutoExclusive(1)    
+    StrengthGroupBox.layout().addWidget(self.HeavyOption)
+    
+    
+    # Downsampling option for label map creation
+    self.LMCreationFrame = qt.QFrame()
+    self.LMCreationFrame.setLayout(qt.QVBoxLayout())
+    self.LMCreationFrame.enabled = False
+    self.LMCreationFrame.setObjectName('LMCreationFrame')
+    self.LMCreationFrame.setStyleSheet('#LMCreationFrame {border: 1px solid lightGray; color: black; }')
+    self.parent.layout().addWidget(self.LMCreationFrame)    
+    
+    LMCreationLabel = qt.QLabel()
+    LMCreationLabel.setText('Label Map Creation:')
+    self.LMCreationFrame.layout().addWidget(LMCreationLabel)    
+        
+    self.DownSamplingGroupBox = qt.QGroupBox()
+    self.DownSamplingGroupBox.setLayout(qt.QHBoxLayout())
+    self.DownSamplingGroupBox.setFixedWidth(120)
+    self.DownSamplingGroupBox.setObjectName('DownSamplingGroupBox')
+    self.DownSamplingGroupBox.setStyleSheet('#DownSamplingGroupBox {border: 1px solid white; color: black; }')
+    self.DownSamplingGroupBox.setToolTip('Choose between fast and slow label map creation.')
+    self.LMCreationFrame.layout().addWidget(self.DownSamplingGroupBox)
+     
+    self.FastOption = qt.QRadioButton()
+    self.FastOption.setText('Fast')
+    self.FastOption.setCheckable(1)
+    self.FastOption.setChecked(0)
+    self.DownSamplingGroupBox.layout().addWidget(self.FastOption)     
+    
+    self.SlowOption = qt.QRadioButton()
+    self.SlowOption.setText('Slow')
+    self.SlowOption.setCheckable(1)
+    self.SlowOption.setChecked(1)
+    self.DownSamplingGroupBox.layout().addWidget(self.SlowOption) 
+          
     # Add space between the two buttons
-    stretchBox = qt.QFrame()
-    stretchBox.setFixedHeight(20)
-    filteringFormLayout.layout().addWidget(stretchBox)
+#    stretchBox = qt.QFrame()
+#    stretchBox.setFixedHeight(20)
+#    self.filterOptionsFrame.layout().addWidget(stretchBox)
  
     # Apply button
     self.applyButton = qt.QPushButton("Apply")
@@ -333,19 +438,21 @@ class ParenchymaAnalysisWidget:
     self.chartOption = qt.QComboBox()
     self.chartOption.addItems(self.chartOptions)
     chartFrame.layout().addWidget(self.chartOption)
-    self.chartIgnoreZero = qt.QCheckBox()
-    self.chartIgnoreZero.setText('Ignore Zero')
-    self.chartIgnoreZero.checked = False
-    self.chartIgnoreZero.setToolTip('Do not include the zero index in the chart to avoid dwarfing other bars')
-    #self.chartFrame.layout().addWidget(self.chartIgnoreZero)
+#    self.chartIgnoreZero = qt.QCheckBox()
+#    self.chartIgnoreZero.setText('Ignore Zero')
+#    self.chartIgnoreZero.checked = False
+#    self.chartIgnoreZero.setToolTip('Do not include the zero index in the chart to avoid dwarfing other bars')
+#    chartFrame.layout().addWidget(self.chartIgnoreZero)
     self.chartBox.enabled = False
 
-    # Save button
-    self.saveButton = qt.QPushButton("Save Statistics")
-    self.saveButton.toolTip = "Save statistics as a csv file."
-    self.saveButton.setFixedSize(300,30)
-    self.saveButton.enabled = False
-    self.parent.layout().addWidget(self.saveButton,0,4)
+
+    self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames, parentWidget=self.parent)
+    self.reportsWidget.setup()
+    self.reportsWidget.saveButton.enabled = False
+    self.reportsWidget.openButton.enabled = False
+    self.reportsWidget.exportButton.enabled = False
+    self.reportsWidget.removeButton.enabled = False
+#    self.reportsWidget.openButton.hide()
 
     # Add vertical spacer
     self.parent.layout().addStretch(1)
@@ -353,15 +460,14 @@ class ParenchymaAnalysisWidget:
     # connections
     self.applyButton.connect('clicked()', self.onApply)
     self.chartButton.connect('clicked()', self.onChart)
-    self.saveButton.connect('clicked()', self.onSave)
+    
+    self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
     self.CTSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onCTSelect)
     self.CTlabelSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onCTLabelSelect)
-    #self.expSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onExpSelect)
-    #self.explabelSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onExpLabelSelect)
-    
-    self.filteringOption.connect('currentIndexChanged(int)',self.showFilterParams)
-    self.filterButton.connect('clicked()', self.onFilterButton)
-    
+
+    self.filterOnRadioButton.connect('toggled(bool)',self.showFilterParams)
+    self.filterOffRadioButton.connect('toggled(bool)',self.hideFilterParams)
+       
     self.GlobalHistCheckBox.connect('clicked()', self.onHistogram)
     self.RightHistCheckBox.connect('clicked()', self.onHistogram)
     self.LeftHistCheckBox.connect('clicked()', self.onHistogram)
@@ -375,98 +481,26 @@ class ParenchymaAnalysisWidget:
     self.LLTHistCheckBox.connect('clicked()', self.onHistogram)
     self.RUTHistCheckBox.connect('clicked()', self.onHistogram)
     self.RMTHistCheckBox.connect('clicked()', self.onHistogram)
-    self.RLTHistCheckBox.connect('clicked()', self.onHistogram)
-    
+    self.RLTHistCheckBox.connect('clicked()', self.onHistogram)    
 
   def onCTSelect(self, node):
     self.CTNode = node
     self.applyButton.enabled = bool(self.CTNode) #and bool(self.CTlabelNode)
-    self.filterButton.enabled = bool(self.CTNode)
+    self.FilteringFrame.enabled = bool(self.CTNode)
+    self.LMCreationFrame.enabled = bool(not self.CTlabelNode)
 
   def onCTLabelSelect(self, node):
     self.CTlabelNode = node
     self.applyButton.enabled = bool(self.CTNode) #and bool(self.CTlabelNode)
-
-  """def onExpSelect(self, node):
-    self.expNode = node
-    self.applyButton.enabled = bool(self.expNode) and bool(self.explabelNode)
-
-  def onExpLabelSelect(self, node):
-    self.explabelNode = node
-    self.applyButton.enabled = bool(self.expNode) and bool(self.explabelNode)
-  """
+    self.FilteringFrame.enabled = bool(self.CTNode) 
+    self.LMCreationFrame.enabled = bool(not self.CTlabelNode)
   
-  def showFilterParams(self,f):
-    if self.filteringOption.currentIndex == 0:
-      self.gaussianParams.hide()    
-      self.medianParams.hide() 
-      self.NLMParams.show()
-    elif self.filteringOption.currentIndex == 1:      
-      self.NLMParams.hide()
-      self.gaussianParams.hide()
-      self.medianParams.show()
-    elif self.filteringOption.currentIndex == 2:
-      self.medianParams.hide()
-      self.NLMParams.hide()
-      self.gaussianParams.show()     
-      
-  def onFilterButton(self):
-    self.applyButton.enabled = False
-    self.filterButton.text = "Filtering..."
-    # TODO: why doesn't processEvents alone make the label text change?
-    self.filterButton.repaint()
-    slicer.app.processEvents()  
-      
-    if self.filteringOption.currentIndex == 0: # NLM filter
-      generatenlmfilteredimage = slicer.modules.generatenlmfilteredimage
+  def showFilterParams(self):
+    self.filterOptionsFrame.show()
 
-      searchRadius = [3,3,3]
-      comparisonRadius   = [5,5,5]   
-      if self.NLMDimOption.currentIndex == 0: #2D filtering
-        searchRadius[2] = 1
-        comparisonRadius[2] = 1
-   
-      noisePower = 3.0
-      h = 0.8
-      ps = 2.0
-      
-      if self.NLMStrengthOption == 1:
-        noisePower = 4.0
-        h = 1.0
-      elif self.NLMStrengthOption == 2:
-        noisePower = 5.0
-        h = 1.2
-      
-      parameters = {
-          "ctFileName": self.CTNode.GetID(),
-          "outputFileName": self.CTNode.GetID(),
-          "iSigma": noisePower,
-          "iRadiusSearch": searchRadius,
-          "iRadiusComp": comparisonRadius,
-          "iH": h,
-          "iPs": ps,
-          }
-      slicer.cli.run(generatenlmfilteredimage,None,parameters,wait_for_completion=True)
-    elif self.filteringOption.currentIndex == 1: # Median Filter
-      generatemedianfilteredimage = slicer.modules.generatemedianfilteredimage
-      parameters = {
-          "ctFileName": self.CTNode.GetID(),
-          "outputFileName": self.CTNode.GetID(),
-          "radiusValue": self.medianSpinBox.value,
-          }
-      slicer.cli.run(generatemedianfilteredimage,None,parameters,wait_for_completion=True)
-    elif self.filteringOption.currentIndex == 2: # Gaussian Blur Filter
-      gaussianblurimagefilter = slicer.modules.gaussianblurimagefilter
-      parameters = {
-          "inputVolume": self.CTNode.GetID(),
-          "outputVolume": self.CTNode.GetID(),
-          "sigma": self.gaussianSpinBox.value,
-          }
-      slicer.cli.run(gaussianblurimagefilter,None,parameters,wait_for_completion=True)
-      
-    self.filterButton.text = "Apply Filter" 
-    self.applyButton.enabled = True
-      
+  def hideFilterParams(self):
+    self.filterOptionsFrame.hide() 
+          
   def inputVolumesAreValid(self):
     """Verify that volumes are compatible with label calculation
     algorithm assumptions"""
@@ -484,56 +518,179 @@ class ParenchymaAnalysisWidget:
           self.createLungLabelMap()
       else:
         qt.QMessageBox.warning(slicer.util.mainWindow(),
-          "Parenchyma Analysis", "Please select a CT Label Map.")   
-      return False
-      
+          "Parenchyma Analysis", "Please select a CT Label Map.")
+        return False
+      return True      
     if self.CTNode.GetImageData().GetDimensions() != self.CTlabelNode.GetImageData().GetDimensions():
       qt.QMessageBox.warning(slicer.util.mainWindow(),
           "Parenchyma Analysis", "Input Volumes do not have the same geometry.")
       return False         
     
+    if self.filterOnRadioButton.checked:
+      self.filterApplication.setChecked(1)
     return True
+  
+  def filterInputCT(self):
+    self.applyButton.enabled = False
+    self.applyButton.text = "Filtering..."
+    # TODO: why doesn't processEvents alone make the label text change?
+    self.applyButton.repaint()
+    slicer.app.processEvents()    
+      
+    if self.NLMFilterRadioButton.checked: # NLM filter
+      generatenlmfilteredimage = slicer.modules.generatenlmfilteredimage
 
-  """def expvolumesAreValid(self):
-    Verify that volumes are compatible with label calculation
-      algorithm assumptions
-    if not self.expNode or not self.explabelNode:
-      return False
-    if not self.expNode.GetImageData() or not self.explabelNode.GetImageData():
-      return False
-    if self.expNode.GetImageData().GetDimensions() != self.explabelNode.GetImageData().GetDimensions():
-      return False
-    return True"""
+      searchRadius = [3,3,3]
+      comparisonRadius = [5,5,5]   
+      if self.Filt2DOption.checked: # 2D filtering
+        searchRadius[2] = 1
+        comparisonRadius[2] = 1
+   
+      noisePower = 3.0 # Smooth filtering
+      h = 0.8
+      ps = 2.0
+      
+      if self.MediumOption.checked: # Medium strength
+        noisePower = 4.0
+        h = 1.0
+      elif self.HeavyOption.checked: # Heavy strength
+        noisePower = 5.0
+        h = 1.2
+      
+      parameters = {
+          "ctFileName": self.CTNode.GetID(),
+          "outputFileName": self.CTNode.GetID(),
+          "iSigma": noisePower,
+          "iRadiusSearch": searchRadius,
+          "iRadiusComp": comparisonRadius,
+          "iH": h,
+          "iPs": ps,
+          }
+      slicer.cli.run(generatenlmfilteredimage,None,parameters,wait_for_completion=True)
+    elif self.MedianFilterRadioButton.checked: # Median Filter
+      medianimagefilter = slicer.modules.medianimagefilter
+      
+      neighborhoodRadius = [1,1,1]
+      
+      if self.MediumOption.checked: # Medium strength
+        neighborhoodRadius = [2,2,2]
+      elif self.HeavyOption.checked: # Heavy strength
+        neighborhoodRadius = [3,3,3]      
+         
+      if self.Filt2DOption.checked: # 2D filtering
+        neighborhoodRadius[2] = 1      
+      
+      parameters = {
+          "inputVolume": self.CTNode.GetID(),
+          "outputVolume": self.CTNode.GetID(),
+          "neighborhood": neighborhoodRadius,
+          }
+      slicer.cli.run(medianimagefilter,None,parameters,wait_for_completion=True)
+    elif self.GaussianFilterRadioButton.checked: # Gaussian Blur Filter
+      gaussianblurimagefilter = slicer.modules.gaussianblurimagefilter
+      
+      sigma = 1.0      
+      
+      if self.MediumOption.checked: # Medium strength
+        sigma = 2.0
+      elif self.HeavyOption.checked: # Heavy strength
+        sigma = 3.0
+      
+      parameters = {
+          "inputVolume": self.CTNode.GetID(),
+          "outputVolume": self.CTNode.GetID(),
+          "sigma": sigma,
+          }
+      slicer.cli.run(gaussianblurimagefilter,None,parameters,wait_for_completion=True)
   
   def createLungLabelMap(self):
     """Create the lung label map
     """
+    self.applyButton.enabled = False
+    if self.filterOnRadioButton.checked and not self.filterApplication.checked:
+      self.filterInputCT()      
+    
+    inputNode = self.CTNode
+    
+    # Downsampling  
+    if self.FastOption.checked:
+      inputNode = self.donwsampleCT()
+    
+    self.applyButton.text = "Creating Label Map..."
+    # TODO: why doesn't processEvents alone make the label text change?
+    self.applyButton.repaint()
+    slicer.app.processEvents()
+    
     generatepartiallunglabelmap = slicer.modules.generatepartiallunglabelmap
-    outputNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLLabelMapVolumeNode())
-    outputNode.SetName(self.CTNode.GetName() + '_partialLungLabelMap')
+    self.CTlabelNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLLabelMapVolumeNode())
+    self.CTlabelNode.SetName(self.CTNode.GetName() + '_partialLungLabelMap')
     parameters = {
-          "ctFileName": self.CTNode.GetID(),
-          "outputLungMaskFileName": outputNode.GetID(),	  
+          "ctFileName": inputNode.GetID(),
+          "outputLungMaskFileName": self.CTlabelNode.GetID(),	  
           }
     slicer.cli.run(generatepartiallunglabelmap,None,parameters,wait_for_completion=True)
-
+    
+    if self.FastOption.checked:
+      self.CTlabelNode = self.upsampleLabel(self.CTlabelNode)
+      slicer.mrmlScene.RemoveNode(inputNode)
+    
+    self.CTlabelSelector.setCurrentNode(self.CTlabelNode)
+    
+  def donwsampleCT(self):
+    oldSpacing = self.CTNode.GetSpacing()
+    
+    newSpacing = []    
+    newSpacing.append(oldSpacing[0]*2)
+    newSpacing.append(oldSpacing[1]*2)
+    newSpacing.append(oldSpacing[2])
+    
+    resamplescalarvolume = slicer.modules.resamplescalarvolume
+    outputNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLScalarVolumeNode())
+    
+    parameters = {
+          "outputPixelSpacing": newSpacing,
+          "InputVolume": self.CTNode.GetID(),
+          "OutputVolume": outputNode.GetID(),
+          }
+    slicer.cli.run(resamplescalarvolume,None,parameters,wait_for_completion=True)
+    
+    return outputNode
+    
+  def upsampleLabel(self, labelMap):
+    oldSpacing = labelMap.GetSpacing()
+    
+    newSpacing = []    
+    newSpacing.append(oldSpacing[0]/2)
+    newSpacing.append(oldSpacing[1]/2)
+    newSpacing.append(oldSpacing[2])
+    
+    resamplescalarvolume = slicer.modules.resamplescalarvolume
+    
+    parameters = {
+          "outputPixelSpacing": newSpacing,
+          "InputVolume": labelMap.GetID(),
+          "OutputVolume": labelMap.GetID(),
+          }
+    slicer.cli.run(resamplescalarvolume,None,parameters,wait_for_completion=True)
+    
+    return labelMap
+    
   def onApply(self):
     """Calculate the parenchyma analysis
     """    
     if not self.inputVolumesAreValid():
       return
 
-    """if not self.expvolumesAreValid():
-      qt.QMessageBox.warning(slicer.util.mainWindow(),
-          "Parenchyma Analysis", "Expiratory Volumes do not have the same geometry.")
-      return
-    """
-    self.filterButton.enabled = False
-    self.applyButton.text = "Working..."
+    self.applyButton.enabled = False
+
+    if self.filterOnRadioButton.checked and self.filterApplication.checked:
+      self.filterInputCT()
+
+    self.applyButton.text = "Analysing..."
     # TODO: why doesn't processEvents alone make the label text change?
     self.applyButton.repaint()
     slicer.app.processEvents()
-    #self.logic = ParenchymaAnalysisLogic(self.CTNode, self.CTlabelNode,self.expNode,self.explabelNode)
+    
     self.logic = ParenchymaAnalysisLogic(self.CTNode, self.CTlabelNode)
     self.populateStats()
     self.logic.createHistogram()
@@ -547,9 +704,13 @@ class ParenchymaAnalysisWidget:
     
     self.HistSection.enabled = True
     self.chartBox.enabled = True
-    self.saveButton.enabled = True
-    self.applyButton.text = "Apply" 
-    self.filterButton.enabled = True
+    self.reportsWidget.saveButton.enabled = True
+    self.reportsWidget.openButton.enabled = True
+    self.reportsWidget.exportButton.enabled = True
+    self.reportsWidget.removeButton.enabled = True   
+    
+    self.applyButton.enabled = True
+    self.applyButton.text = "Apply"
     
   def onHistogram(self):
     """Histogram of the selected region
@@ -565,20 +726,14 @@ class ParenchymaAnalysisWidget:
     """chart the parenchyma analysis
     """
     valueToPlot = self.chartOptions[self.chartOption.currentIndex]
-    ignoreZero = self.chartIgnoreZero.checked
-    self.logic.createStatsChart(self.CTlabelNode,valueToPlot,ignoreZero)
+#    ignoreZero = self.chartIgnoreZero.checked
+    self.logic.createStatsChart(self.CTlabelNode,valueToPlot)
 
-  def onSave(self):
-    """save the parenchyma analysis
-    """
-    if not self.fileDialog:
-      self.fileDialog = qt.QFileDialog(self.parent)
-      self.fileDialog.options = self.fileDialog.DontUseNativeDialog
-      self.fileDialog.acceptMode = self.fileDialog.AcceptSave
-      self.fileDialog.defaultSuffix = "csv"
-      self.fileDialog.setNameFilter("Comma Separated Values (*.csv)")
-      self.fileDialog.connect("fileSelected(QString)", self.onFileSelected)
-    self.fileDialog.show()
+  def onSaveReport(self):
+    """ Save the current values in a persistent csv file
+    """   
+    self.logic.statsAsCSV(self.reportsWidget)
+
 
   def onFileSelected(self,fileName):
     self.logic.saveStats(fileName)
@@ -690,11 +845,9 @@ class ParenchymaAnalysisLogic:
   Nodes are passed in as arguments.
   Results are stored as 'statistics' instance variable.
   """
-
-  #def __init__(self, CTNode, CTlabelNode,expNode, explabelNode, fileName=None):
+  __preventDialogs__ = False
+  
   def __init__(self, CTNode, CTlabelNode, fileName=None):
-    #import numpy
-
     self.keys = ["LAA%-950","LAA%-910","LAA%-856","HAA%-700","HAA%-600","Mean","Std","Kurtosis","Skewness","Volume"]
     
     rTags=["Global","Right","Right","Right","Left","Left","RUL","RLL","RML","LUL","LLL","LUT","LMT","LLT","RUT","RMT","RLT"]
@@ -703,8 +856,6 @@ class ParenchymaAnalysisLogic:
     cubicMMPerVoxel = reduce(lambda x,y: x*y, CTlabelNode.GetSpacing())
     litersPerCubicMM = 0.000001
     
-    
-
     # TODO: progress and status updates
     # this->InvokeEvent(vtkParenchymaAnalysisLogic::StartLabelStats, (void*)"start label stats")
 
@@ -713,8 +864,7 @@ class ParenchymaAnalysisLogic:
     # GenerateRegionHistogramsAndParenchymaPhenotypes --max 0 --min -1200 --op CTpheno.csv --oh CThisto.csv -l CTlabelNode -c CTNode
     CTPhenoFile = '/var/tmp/CTpheno.csv'
     CTHistoFile = '/var/tmp/CThisto.csv'
-    print CTlabelNode.GetID()
-    print CTNode.GetID()
+
     parameters=dict()
     parameters['max']=0
     parameters['min']=-1200
@@ -725,8 +875,7 @@ class ParenchymaAnalysisLogic:
 
     #cliNode = slicer.cli.run(slicer.modules.generateregionhistogramsandparenchymaphenotypes,None,parameters,wait_for_completion=True)
     
-    ## Get data from numpy
-    
+    ## Get data from numpy    
     import vtk.util.numpy_support, numpy
     
     self.labelStats = {}
@@ -734,13 +883,8 @@ class ParenchymaAnalysisLogic:
     self.regionHists = {}
     self.regionBins = {}
     
-    #for cycle in ["CT"]: #"exp"]:
-     # if cycle == "CT":
     datalabel_arr=vtk.util.numpy_support.vtk_to_numpy(CTlabelNode.GetImageData().GetPointData().GetScalars())
     data_arr=vtk.util.numpy_support.vtk_to_numpy(CTNode.GetImageData().GetPointData().GetScalars())
-    #  if cycle == "exp":
-    #    datalabel_arr=vtk.util.numpy_support.vtk_to_numpy(explabelNode.GetImageData().GetPointData().GetScalars())
-    #    data_arr=vtk.util.numpy_support.vtk_to_numpy(expNode.GetImageData().GetPointData().GetScalars())
   
     for value,tag in zip(self.regionValues,rTags):
       data=data_arr[(datalabel_arr>=value[0]) & (datalabel_arr<=value[1])]
@@ -761,33 +905,16 @@ class ParenchymaAnalysisLogic:
         #self.labelStats[cycle,'Perc15',tag]=self.percentile(data,.15)
         self.labelStats['Volume',tag]=data.size*cubicMMPerVoxel*litersPerCubicMM;
       
-        #Compute histograms      
+        #Compute histograms
+        data = data[data < -350]
         binContainers = numpy.arange(data.min(), data.max()+2)    
         histogram,bins = numpy.histogram(data, bins=binContainers)
         self.regionHists[tag] = histogram
         self.regionBins[tag] = bins
         
-        self.regionTags.append(tag)
+        self.regionTags.append(tag)  
 
-    
-    ## EXP scan
-    # GenerateRegionHistogramsAndParenchymaPhenotypes --max 0 --min -1200 --op CTpheno.csv --oh CThisto.csv -l CTlabelNode -c CTNode
-    #expPhenoFile = '/var/tmp/exppheno.csv'
-    #expHistoFile = '/var/tmp/exphisto.csv'
-    
-    #parameters=dict()
-    #parameters['max']=0
-    #parameters['min']=-1200
-    #parameters['ipl']=explabelNode.GetID()
-    #parameters['ic']=expNode.GetID()
-    #parameters['op']=expPhenoFile
-    #parameters['oh']=expHistoFile
-
-  #slicer.cli.run(slicer.modules.generateregionhistogramsandparenchymaphenotypes,None,parameters,wait_for_completion=True)
-    
-
-    ## Read files and populate array
-    
+    ## Read files and populate array   
 
     # add an entry to the LabelStats list
     #self.labelStats["Labels"].append(i)
@@ -814,7 +941,7 @@ class ParenchymaAnalysisLogic:
       
       @return - the percentile of the values
       """
-    import numpy
+    import math
     N.sort()
     if not N:
       return None
@@ -826,8 +953,6 @@ class ParenchymaAnalysisLogic:
     d0 = key(N[int(f)]) * (c-k)
     d1 = key(N[int(c)]) * (k-f)
     return d0+d1
-
-
 
   def kurt(self,obs,meanVal,stdDev):
     import numpy as np
@@ -850,7 +975,23 @@ class ParenchymaAnalysisLogic:
     n = float(len(obs))
     num = 1/n* np.sum((obs - meanVal) ** 3)
     denom = stdDev** 3 # avoid losing precision with np.sqrt call
-    return num / denom
+    return num / denom    
+    
+  def statsAsCSV(self, repWidget):  
+    if self.labelStats is None:
+      qt.QMessageBox.warning(slicer.util.mainWindow(), "Data not existing", "No statistics calculated")
+      return 
+     
+    for tag in self.regionTags:
+      e = {}
+      e['Region'] = tag
+      for k in self.keys:
+        e[k] = self.labelStats[k,tag]
+
+      repWidget.saveCurrentValues( **e )
+
+    if not self.__preventDialogs__:
+      qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
 
   def createStatsChart(self, labelNode, valueToPlot, ignoreZero=False):
     """Make a MRML chart of the current stats
@@ -864,7 +1005,7 @@ class ParenchymaAnalysisLogic:
     tuples = samples
     array.SetNumberOfTuples(tuples)
     tuple = 0
-    #cycle = 'CT'
+
     for i in xrange(samples):
         index = self.regionTags[i]
         array.SetComponent(tuple, 0, i)
@@ -886,30 +1027,14 @@ class ParenchymaAnalysisLogic:
 
     # series level properties
     if labelNode.GetDisplayNode() != None and labelNode.GetDisplayNode().GetColorNode() != None:
+      colorNode = labelNode.GetDisplayNode().GetColorNode()
+      
+      colorNumber = 0
+      for tag in self.regionTags:
+        colorNode.SetColorName(colorNumber,tag)
+        colorNumber +=1
+      
       chartNode.SetProperty(valueToPlot, 'lookupTable', labelNode.GetDisplayNode().GetColorNodeID());
-
-  def statsAsCSV(self):
-    """
-    print comma separated value file with header keys in quotes
-    """
-    csv = ""
-    header = ""
-    for k in self.keys[:-1]:
-      header += "\"%s\"" % k + ","
-    header += "\"%s\"" % self.keys[-1] + "\n"
-    csv = header
-    for i in self.labelStats["Labels"]:
-      line = ""
-      for k in self.keys[:-1]:
-        line += str(self.labelStats[i,k]) + ","
-      line += str(self.labelStats[i,self.keys[-1]]) + "\n"
-      csv += line
-    return csv
-
-  def saveStats(self,fileName):
-    fp = open(fileName, "w")
-    fp.write(self.statsAsCSV())
-    fp.close()    
     
   def createHistogram(self):    
     self.setHistogramLayout()
@@ -1070,8 +1195,7 @@ class ParenchymaAnalysisLogic:
     customLayoutId = 502
     layoutManager.layoutLogic().GetLayoutNode().AddLayoutDescription(customLayoutId, customLayout)
     layoutManager.setLayout(customLayoutId)
-
-
+       
 class Slicelet(object):
   """A slicer slicelet is a module widget that comes up in stand alone mode
   implemented as a python class.
