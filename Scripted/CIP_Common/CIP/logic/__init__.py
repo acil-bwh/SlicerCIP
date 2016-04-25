@@ -4,5 +4,5 @@ from EventsTrigger import *
 import file_conventions
 #from StructuresParameters import *
 from Colors import *
-
+from timer import *
 
