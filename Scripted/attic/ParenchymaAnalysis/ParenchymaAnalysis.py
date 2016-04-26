@@ -846,7 +846,8 @@ class ParenchymaAnalysisLogic:
     
     rTags=["Global","Right","Right","Right","Left","Left","RUL","RLL","RML","LUL","LLL","LUT","LMT","LLT","RUT","RMT","RLT"]
     self.regionTags = []
-    self.regionValues=[(1,14),(2,2),(4,6),(12,14),(3,3),(7,11),(4,4),(5,5),(6,6),(7,7),(8,8),(9,9),(10,10),(10,10),(11,11),(12,12),(13,13),(14,14)]
+    self.regionValues = [(1,14),(2,2),(4,6),(12,14),(3,3),(7,11),(4,4),(5,5),(6,6),(7,7),(8,8),(9,9),(10,10),(11,11),(12,12),(13,13),(14,14)]
+    self.valuesDictionary = {}
     cubicMMPerVoxel = reduce(lambda x,y: x*y, CTlabelNode.GetSpacing())
     litersPerCubicMM = 0.000001
     
@@ -906,7 +907,9 @@ class ParenchymaAnalysisLogic:
         self.regionHists[tag] = histogram
         self.regionBins[tag] = bins
         
-        self.regionTags.append(tag)  
+        self.regionTags.append(tag)
+        
+        self.valuesDictionary[tag] = value
 
     ## Read files and populate array   
 
@@ -1021,14 +1024,28 @@ class ParenchymaAnalysisLogic:
 
     # series level properties
     if labelNode.GetDisplayNode() != None and labelNode.GetDisplayNode().GetColorNode() != None:
-      colorNode = labelNode.GetDisplayNode().GetColorNode()
+      colorNode = labelNode.GetDisplayNode().GetColorNode() 
       
+      newDisplayNode = slicer.vtkMRMLLabelMapVolumeDisplayNode()
+      newDisplayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeFileGenericAnatomyColors.txt')
+      slicer.mrmlScene.AddNode(newDisplayNode)
+      newColorNode = newDisplayNode.GetColorNode()
+        
       colorNumber = 0
       for tag in self.regionTags:
-        colorNode.SetColorName(colorNumber,tag)
+        c = [0,0,0,0]
+        value = self.valuesDictionary[tag]
+        if value[0] == value[1]:
+          colorNode.SetColorName(value[0],tag)
+          colorNode.GetColor(value[0],c)
+          newColorNode.SetColor(colorNumber,c[0],c[1],c[2])
+          
+          
+        newColorNode.SetColorName(colorNumber,tag)
         colorNumber +=1
-      
-      chartNode.SetProperty(valueToPlot, 'lookupTable', labelNode.GetDisplayNode().GetColorNodeID());
+
+#      chartNode.SetProperty(valueToPlot, 'lookupTable', labelNode.GetDisplayNode().GetColorNodeID())
+      chartNode.SetProperty(valueToPlot, 'lookupTable', newColorNode.GetID())
     
   def createHistogram(self):    
     self.setHistogramLayout()
