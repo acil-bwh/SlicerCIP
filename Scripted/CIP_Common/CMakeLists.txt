@@ -12,6 +12,7 @@ set(MODULE_PYTHON_SCRIPTS
   CIP/logic/geometry_topology_data.py
   CIP/logic/SlicerUtil.py
   CIP/logic/SubtypingParameters.py
+  CIP/logic/timer.py
   CIP/logic/Util.py
   CIP/ui/__init__.py
   CIP/ui/AutoUpdateWidget.py
