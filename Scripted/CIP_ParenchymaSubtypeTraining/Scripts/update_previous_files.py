@@ -155,3 +155,19 @@ for file_name in xmls:
     with open(p, "w+b") as f:
         f.write(new_xml)
     print(file_name + " processed")
+
+def upload_to_MAD(input_folder):
+    """ Upload all the xml files to the corresponding MAD folder
+    @param input_folder:
+    """
+    for file_name in os.listdir(input_folder):
+        if file_name.endswith("_parenchymaTraining.xml"):
+            s = "scp {} copd@mad-replicated1.research.partners.org:Processed/COPDGene/{}/{}".format(
+                os.path.join(input_folder, file_name),
+                file_name.split("_")[0],
+                file_name.replace("_parenchymaTraining.xml", "")
+            )
+
+            print s
+# upload_to_MAD("/Data/jonieva/tempdata/George/")
+

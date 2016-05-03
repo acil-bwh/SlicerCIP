@@ -11,6 +11,7 @@ class SubtypingParameters(object):
     __types__[2] = ["Airway", "Airway", (0.097, 0.173, 1)]
     __types__[3] = ["Vessel", "Vessel", (1, 0, 0)]
     __types__[86] = ["Nodule", "Nodule", (0.49, 0, 0.88)]
+    __types__[91] = ["Mesothelioma", "Meso", (0.8, 0.2, 0.8)]
     __types__[1] = ["Normal parenchyma", "Normal", (0.28, 0.77, 0.22)]
 
     @property
@@ -57,7 +58,6 @@ class SubtypingParameters(object):
     __subtypes__[58] = ("Vessel Gen. 2", "VG2")
     __subtypes__[59] = ("Vessel Gen. 3", "VG3")
     __subtypes__[60] = ("Vessel Gen. 4", "VG4")
-
 
     # Nodule
     __subtypes__[87] = ("Benign nodule", "BN")
@@ -130,8 +130,8 @@ class SubtypingParameters(object):
         (86, 0),
         (86, 87),
         (86, 88),
-        # ARTIFACT
-        #(95, 0),
+        # MESOTHELIOMA
+        (91, 0),
         # NORMAL
         (1, 0))
 
