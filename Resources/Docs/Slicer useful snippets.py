@@ -187,19 +187,25 @@ for nodeIndex in xrange(sliceNodeCount):
   sliceWidget = layoutManager.sliceWidget(sliceNode.GetLayoutName())
   if sliceWidget:
     # add obserservers and keep track of tags
-    style = sliceWidget.sliceView().interactorStyle().GetInteractor()
+    interactor = sliceWidget.sliceView().interactor()
     self.sliceWidgetsPerStyle[style] = sliceWidget
     events = ("MouseMoveEvent", "EnterEvent", "LeaveEvent")
     # See http://www.vtk.org/doc/release/5.0/html/a01252.html for a complete list of VTK events
     for event in events:
-      tag = style.AddObserver(event, self.processEvent, self.priority)
-      self.observerTags.append([style,tag])
+      tag = interactor.AddObserver(event, self.processEvent, self.priority)
+      self.observerTags.append([interactor,tag])
     tag = sliceNode.AddObserver("ModifiedEvent", self.processEvent, self.priority)
     self.observerTags.append([sliceNode,tag])
     sliceLogic = sliceWidget.sliceLogic()
     compositeNode = sliceLogic.GetSliceCompositeNode()
     tag = compositeNode.AddObserver("ModifiedEvent", self.processEvent, self.priority)
     self.observerTags.append([compositeNode,tag])
+
+# To get the position of the mouse in a left click:
+def f(obj, event):
+    print interactor.GetLastEventPosition()
+
+interactor.AddObserver(vtk.vtkCommand.LeftButtonPressEvent, f)
 
 ########################################################################
 # Make a batch of changes in the scene and trigger just one event
