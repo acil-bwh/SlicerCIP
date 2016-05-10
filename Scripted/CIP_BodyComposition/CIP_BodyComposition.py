@@ -1011,7 +1011,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                 lmPath = os.path.join(self.caseNavigatorWidget.localStoragePath, "BodyCompositionLabelmaps",
                                       labelmapNode.GetName() + ".nrrd")
                 self.caseNavigatorWidget.uploadVolume(labelmapNode, callbackFunction=self.__uploadLabelmapCallback__,
-                                                      waitForCompletion=True, localPath=lmPath)
+                                    waitForCompletion=True, localPath=lmPath)
             except:
                 Util.print_last_exception()
                 self.__uploadLabelmapCallback__(Util.ERROR)
