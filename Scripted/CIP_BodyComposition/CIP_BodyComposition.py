@@ -119,7 +119,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.labelMapSlices = {}  # Dict. with the slices that contain data for each label in a label map volume
         self.statistics = {}  # Dictionary with all the statistics calculated for a volume
 
-
         # Create the appropiate color maps for each type of segmentation
         self.__loadColormapNode__()
 
@@ -129,8 +128,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
             "{0}/labelmapNodeNameExtension".format(self.moduleName)
             , "_bodyComposition")
 
-        # Create and embed the Slicer Editor
-        self.__createEditorWidget__()
 
         ####################
         # Place the main paramteres (region and type selection)
@@ -138,8 +135,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.structuresCollapsibleButton.text = "Select the structure"
         self.layout.addWidget(self.structuresCollapsibleButton)
         self.structuresLayout = qt.QGridLayout(self.structuresCollapsibleButton)
-
-
 
         # Chest regions combo box
         self.regionComboBox = qt.QComboBox(self.structuresCollapsibleButton)
@@ -198,7 +193,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         # Save labelmap button
         self.saveLabelmapButton = ctk.ctkPushButton()
         self.saveLabelmapButton.text = "Save labelmap in server"
-        self.saveLabelmapButton.toolTip = "Load the labelmap information that has been painted"
+        self.saveLabelmapButton.toolTip = "Save the body composition labelmap in MAD (or any other remote server)"
         self.saveLabelmapButton.setIcon(qt.QIcon("{0}/upload.png".format(self.iconsPath)))
         self.saveLabelmapButton.setIconSize(qt.QSize(20, 20))
         self.saveLabelmapButton.setStyleSheet("font-weight:bold; font-size:12px")
@@ -216,6 +211,9 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.analysisButton.setIcon(qt.QIcon("{0}/1415667870_kview.png".format(self.iconsPath)))
         self.analysisButton.setIconSize(qt.QSize(24, 24))
         self.structuresLayout.addWidget(self.analysisButton, 3, 2)
+
+        # Create and embed the Slicer Editor
+        self.__createEditorWidget__()
 
         # Statistics table
         self.statisticsCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -1009,11 +1007,22 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
             and qt.QMessageBox.question(slicer.util.mainWindow(), "Upload volume?",
                     "Are you sure you want to save the changes for the volume '{0}'?".format(labelmapNode.GetName()),
                     qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
-            self.caseNavigatorWidget.uploadVolume(self.getCurrentGrayscaleNode().GetName(), labelmapNode,
-                                                  self.__uploadLabelmapCallback__, waitForCompletion=True)
+            try:
+                lmPath = os.path.join(self.caseNavigatorWidget.localStoragePath, "BodyCompositionLabelmaps",
+                                      labelmapNode.GetName() + ".nrrd")
+                self.caseNavigatorWidget.uploadVolume(labelmapNode, callbackFunction=self.__uploadLabelmapCallback__,
+                                                      waitForCompletion=True, localPath=lmPath)
+            except:
+                Util.print_last_exception()
+                self.__uploadLabelmapCallback__(Util.ERROR)
 
     def __uploadLabelmapCallback__(self, result):
-        SlicerUtil.logDevelop("Upload labemap callback: {0}".format(result), includePythonConsole=True)
+        if result == Util.OK:
+            SlicerUtil.logDevelop("Upload labemap callback: {0}".format(result), includePythonConsole=True)
+            qt.QMessageBox.information(slicer.util.mainWindow(), "Labelmap saved", "Labelmap saved succesfully")
+        else:
+            qt.QMessageBox.warning(slicer.util.mainWindow(), "Labelmap NOT saved",
+                                       "There was an error while saving the labelmap in the remote server")
 
     def onBtnAnalysisClicked(self):
         self.populateStatisticsTable()
