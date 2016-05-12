@@ -1008,8 +1008,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                     "Are you sure you want to save the changes for the volume '{0}'?".format(labelmapNode.GetName()),
                     qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
             try:
-                lmPath = os.path.join(self.caseNavigatorWidget.localStoragePath, "BodyCompositionLabelmaps",
-                                      labelmapNode.GetName() + ".nrrd")
+                lmPath = os.path.join(self.caseNavigatorWidget.localStoragePath, labelmapNode.GetName() + ".nrrd")
                 self.caseNavigatorWidget.uploadVolume(labelmapNode, callbackFunction=self.__uploadLabelmapCallback__,
                                     waitForCompletion=True, localPath=lmPath)
             except:
