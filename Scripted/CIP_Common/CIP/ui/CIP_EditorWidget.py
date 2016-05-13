@@ -5,6 +5,7 @@ Created on Sep 29, 2014
 '''
 from __main__ import qt, slicer, vtk
 from Editor import EditorWidget
+import EditorLib.EditUtil as EditUtil
 from . import CIP_EditBox
  
 class CIP_EditorWidget(EditorWidget):
@@ -49,3 +50,16 @@ class CIP_EditorWidget(EditorWidget):
     def setThresholds(self, min, max):
         """Set the threshold for all the allowed effects"""
         self.toolsBox.setThresholds(min, max)
+
+    def changePaintEffectRadius(self, sizeInMM):
+        """ Set the radius (in mm) for PaintEffect
+        @param sizeInMM:
+        """
+        self.toolsBox.parameterNode.SetParameter("PaintEffect,radius", str(sizeInMM))
+
+    def setActiveEffect(self, effectName):
+        """ Set the active effect
+        @param effectName:
+        @return:
+        """
+        self.toolsBox.selectEffect(effectName)

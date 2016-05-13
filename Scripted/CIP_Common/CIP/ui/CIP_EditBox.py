@@ -78,6 +78,7 @@ class CIP_EditBox(EditBox):
 
         self.parameterNode.SetParameter("LabelEffect,paintOver", "1")  # Enable paintOver
         self.parameterNode.SetParameter("LabelEffect,paintThreshold", "1")  # Enable Threshold checkbox
+        self.parameterNode.SetParameter("PaintEffect,radius", "5")
 
     def setThresholds(self, min, max):
         """Set the threshold for all the allowed effects"""

@@ -154,8 +154,10 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.labelType = qt.QLabel("Select the tissue type")
         self.structuresLayout.addWidget(self.labelType, 1, 0)
         self.structuresLayout.addWidget(self.typeComboBox, 1, 1)
-
         self.structuresLayout.setColumnMinimumWidth(2, 250)
+        # Keep track of the previously selected type (for right-left changes)
+        self.previouslySelectedTypeIndex = 0
+
 
         # Sync labelmaps button
         self.btnRefresh2 = ctk.ctkPushButton()
@@ -354,6 +356,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.editorWidget.toolsColor.frame.visible = False
         # Uncollapse Volumes selector by default
         self.editorWidget.volumes.collapsed = False
+        self.editorWidget.changePaintEffectRadius(5)
 
         # Refresh labelmap info button
         # self.btnRefresh = ctk.ctkPushButton()
@@ -543,12 +546,23 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.typeComboBox.disconnect("currentIndexChanged (int)", self.onCbTypeCurrentIndexChanged)
         self.typeComboBox.clear()
         index = 0
-
-        for ctype in filter(lambda combination: self.logic.getRegionStringCodeItem(combination) == regionCode,
-                            self.logic.getAllowedCombinations()):
+        combinations = filter(lambda combination: self.logic.getRegionStringCodeItem(combination) == regionCode,
+                            self.logic.getAllowedCombinations())
+        # Sort elements by name
+        combinations = sorted(combinations, key=lambda c:c[2])
+        # print "Commbinations for code {}:".format(regionCode)
+        # print combinations
+        for ctype in combinations:
             self.typeComboBox.addItem(self.logic.getTypeStringDescriptionItem(ctype))  # Add label description
             self.typeComboBox.setItemData(index, self.logic.getTypeStringCodeItem(ctype))  # Add string code
             index += 1
+
+        # Set the same position that we had previously (right-left regions case very common)
+        if self.previouslySelectedTypeIndex >= len(combinations):
+            self.typeComboBox.currentIndex = 0
+            self.previouslySelectedTypeIndex = 0
+        else:
+            self.typeComboBox.currentIndex = self.previouslySelectedTypeIndex
 
         self.typeComboBox.connect("currentIndexChanged (int)", self.onCbTypeCurrentIndexChanged)
         self.__setStructureProperties__()
@@ -588,6 +602,10 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                 # Set window
                 displayNode.AutoWindowLevelOff()
                 displayNode.SetWindowLevel(crange[0], crange[1])
+
+        # Select the right effect/radius in the editor
+        self.editorWidget.setActiveEffect(self.logic.getDefaultTool(region, ctype))
+        self.editorWidget.changePaintEffectRadius(self.logic.getDefaultRadius(region, ctype))
 
     def refreshGUI(self):
         """Enable/disable or show/hide GUI components depending on the state of the module"""
@@ -959,6 +977,8 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     def onCbTypeCurrentIndexChanged(self, index):
         """Event when Type combobox is changed"""
         self.__setStructureProperties__()
+        self.previouslySelectedTypeIndex = index
+        print("DEBUG: updating: ", self.previouslySelectedTypeIndex)
 
     #     def onCompositeNodeModified(self, caller, event):
     #         """This event is neccesary if we want to react to a volume load through Slicer interface.
@@ -1386,9 +1406,9 @@ class CIP_BodyCompositionLogic(ScriptedLoadableModuleLogic):
     # All these methods at the moment will reuse a structure that may be shared in other ACIL modules
     #########################
 
-    def getItem(self, region, type):
+    def getItem(self, region, _type):
         """Return the allowed combination parameters (or Nothing if the combination is not valid)"""
-        return self.params.getItem(region, type)
+        return self.params.getItem(region, _type)
 
     def getIntCodeItem(self, item):
         """Get the integer code for this combination in an item from the mainParameters structure"""
@@ -1426,17 +1446,19 @@ class CIP_BodyCompositionLogic(ScriptedLoadableModuleLogic):
         """Return the label region-type in an allowed combination or just region if type is undefined"""
         return self.params.getFullStringDescriptionItem(item)
 
-    def getValueFromChestRegionAndTypeLabels(self, region, type):
+    def getValueFromChestRegionAndTypeLabels(self, region, _type):
         """Get the value for the label map for the current chest region and type"""
-        return self.params.getValueFromChestRegionAndTypeLabels(region, type)
+        return self.params.getValueFromChestRegionAndTypeLabels(region, _type)
 
-    def getThresholdRange(self, region, type):
+    def getThresholdRange(self, region, _type):
         """Returns a tuple (MIN, MAX) with the threshold range for the selected combination"""
-        return self.params.getThresholdRange(region, type)
+        item = self.params.getItem(region, _type)
+        return self.params.getThresholdRange(item)
 
-    def getWindowRange(self, region, type):
+    def getWindowRange(self, region, _type):
         """Returns a tuple (Window_size, Window_center_level) with the window range for the selected combination"""
-        return self.params.getWindowRange(region, type)
+        item = self.params.getItem(region, _type)
+        return self.params.getWindowRange(item)
 
     def getAllowedCombinations(self):
         """Get all the allowed Regiomn-Type combinations"""
@@ -1450,6 +1472,14 @@ class CIP_BodyCompositionLogic(ScriptedLoadableModuleLogic):
         """Get the "Region-Type int code from a stat dictionary with the structure built in 'calculateStatistics'"""
         labelCode = stat[0]  # Key
         return labelCode % self.params.MAX_REGION_TYPE_CODE
+
+    def getDefaultTool(self, region, _type):
+        item = self.params.getItem(region, _type)
+        return self.params.getDefaultTool(item)
+
+    def getDefaultRadius(self, region, _type):
+        item = self.params.getItem(region, _type)
+        return self.params.getDefaultRadius(item)
 
 
 class StatsWrapper(object):
