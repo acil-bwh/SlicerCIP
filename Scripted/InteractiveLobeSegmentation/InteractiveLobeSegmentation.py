@@ -306,7 +306,7 @@ class InteractiveLobeSegmentationWidget:
   def onFourUpButton(self):
     applicationLogic = slicer.app.applicationLogic()
     interactionNode = applicationLogic.GetInteractionNode()
-    interactionNode.Reset()
+    interactionNode.Reset(None)
     interactionNode.SwitchToPersistentPlaceMode()
     layoutManager = slicer.app.layoutManager()
     layoutManager.setLayout(3)
@@ -314,7 +314,7 @@ class InteractiveLobeSegmentationWidget:
   def onRedViewButton(self):
     applicationLogic = slicer.app.applicationLogic()
     interactionNode = applicationLogic.GetInteractionNode()
-    interactionNode.Reset()
+    interactionNode.Reset(None)
     interactionNode.SwitchToPersistentPlaceMode()
     layoutManager = slicer.app.layoutManager()
     layoutManager.setLayout(6)
@@ -322,7 +322,7 @@ class InteractiveLobeSegmentationWidget:
   def onYellowViewButton(self):
     applicationLogic = slicer.app.applicationLogic()
     interactionNode = applicationLogic.GetInteractionNode()
-    interactionNode.Reset()
+    interactionNode.Reset(None)
     interactionNode.SwitchToPersistentPlaceMode()
     layoutManager = slicer.app.layoutManager()
     layoutManager.setLayout(7)
@@ -330,7 +330,7 @@ class InteractiveLobeSegmentationWidget:
   def onGreenViewButton(self):
     applicationLogic = slicer.app.applicationLogic()
     interactionNode = applicationLogic.GetInteractionNode()
-    interactionNode.Reset()
+    interactionNode.Reset(None)
     interactionNode.SwitchToPersistentPlaceMode()
     layoutManager = slicer.app.layoutManager()
     layoutManager.setLayout(8)
@@ -692,7 +692,7 @@ class ILSVisualizationWidget(ILSpqWidget):
   def updateScene(self):
     applicationLogic = slicer.app.applicationLogic()
     interactionNode = applicationLogic.GetInteractionNode()
-    interactionNode.Reset()
+    interactionNode.Reset(None)
     self.applyButton.enabled = False
     for i in self.fiducialButtonsList:
       i.setStyleSheet("background-color: rgb(255,255,255)") 
