@@ -978,7 +978,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         """Event when Type combobox is changed"""
         self.__setStructureProperties__()
         self.previouslySelectedTypeIndex = index
-        print("DEBUG: updating: ", self.previouslySelectedTypeIndex)
 
     #     def onCompositeNodeModified(self, caller, event):
     #         """This event is neccesary if we want to react to a volume load through Slicer interface.
