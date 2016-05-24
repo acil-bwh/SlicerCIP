@@ -3,6 +3,7 @@ file_conventions_extensions = {
     # Labelmaps
     "PartialLungLabelMap": "_partialLungLabelMap.nrrd",
     "BodyCompositionLabelMap": "_bodyComposition.nrrd",
+    "interactiveBodyCompositionLabelMap": "_interactiveBodyComposition.nrrd",
     "StructuresLabelMap": "_structuresLabelMap.nrrd",
     "ILDClassificationLabelmap": "_histogramParenchymaILDClassification.nrrd",
     # Xmls

@@ -30,6 +30,7 @@ except Exception as ex:
     from CIP.logic.SlicerUtil import SlicerUtil
 
 from CIP.logic import Util
+from CIP.logic import file_conventions
 from CIP_BodyComposition_logic import BodyCompositionParameters
 from CIP.ui import CaseReportsWidget
 import CIP.ui as CIPUI
@@ -124,10 +125,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
         self.iconsPath = SlicerUtil.CIP_ICON_DIR  # Imported from CIP library
 
-        self.labelmapNodeNameExtension = self.logic.settingGetOrSetDefault(
-            "{0}/labelmapNodeNameExtension".format(self.moduleName)
-            , "_bodyComposition")
-
+        self.labelmapNodeNameExtension = Util.get_cip_extension("interactiveBodyCompositionLabelMap", include_file_extension=False)
 
         ####################
         # Place the main paramteres (region and type selection)

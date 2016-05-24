@@ -69,6 +69,7 @@ class CIP_GetImageWidget:
     labelMapTypes = OrderedDict()
     labelMapTypes["Partial Lung"] = (False, "_partialLungLabelMap")
     labelMapTypes["Body Composition"] = (False, "_bodyComposition")
+    labelMapTypes["Body Composition (interactive)"] = (False, "_interactiveBodyComposition")
 
     
     def __init__(self, parent = None):
