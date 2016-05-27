@@ -1582,9 +1582,10 @@ class CIP_BodyCompositionTest(ScriptedLoadableModuleTest):
         self.assertTrue(a.max() == 0, "Labelmap should be empty as we still didn't label anything")
         # Paint
         l = slicer.ScriptedLoadableModule.ScriptedLoadableModuleLogic()
-        l.clickAndDrag(redWidget, start=(30,500), end=(330, 330))
+        l.clickAndDrag(redWidget, start=(0,0), end=(5000, 5000))
         # Check that the labelmap node does contain data
         self.assertTrue(a.max() > 0, "Labelmap should not be empty, we draw a region")
+        self.assertTrue(a.min() == 0, "Labelmap should not be totally filled. Thresholding are likely not working")
 
         # TODO: Undo labeling
         # IMPORTANT. This will not work using "Reload and test" button. There must be something
