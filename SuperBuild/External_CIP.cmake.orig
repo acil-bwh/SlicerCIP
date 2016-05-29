@@ -68,11 +68,16 @@ ExternalProject_Add(${proj}
       -DCMAKE_C_FLAGS:STRING=${ep_common_c_flags}
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DBUILD_TESTING:BOOL=OFF
+<<<<<<< HEAD
+      # Temporal to FIX bug. Remove when the name is shorter
+      -DBUILD_GENERATEREGIONHISTOGRAMANDPARENCHYMAPHENOTYPES:BOOL=OFF
+=======
       -DCMAKE_CXX_FLAGS:STRING=${CIP_CMAKE_CXX_FLAGS}
       -DUSE_CYTHON:BOOL=OFF
       # Temporal to FIX bug. Remove when the name is shorter
       -DBUILD_GENERATEREGIONHISTOGRAMANDPARENCHYMAPHENOTYPES:BOOL=OFF
 
+>>>>>>> develop
     #CONFIGURE_COMMAND ${CMAKE_COMMAND}
     #-E echo
     #  "This CONFIGURE_COMMAND is just here as a placeholder."

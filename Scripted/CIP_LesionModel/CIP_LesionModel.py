@@ -6,6 +6,7 @@ import itertools
 import numpy as np
 import time
 import SimpleITK as sitk
+import logging
 
 from FeatureWidgetHelperLib import FeatureExtractionLogic
 # Add the CIP common library to the path if it has not been loaded yet
@@ -30,9 +31,9 @@ from CIP.ui import CaseReportsWidget, MIPViewerWidget
 import FeatureWidgetHelperLib
 import FeatureExtractionLib
 
-#
+#############################
 # CIP_LesionModel
-#
+#############################
 class CIP_LesionModel(ScriptedLoadableModule):
     """Uses ScriptedLoadableModule base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
@@ -51,10 +52,9 @@ class CIP_LesionModel(ScriptedLoadableModule):
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 
-#
+#############################
 # CIP_LesionModelWidget
-#
-
+#############################
 class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
@@ -86,7 +86,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # Timer for dynamic zooming
         self.timer = qt.QTimer()
         self.timer.setInterval(150)
-        self.timer.timeout.connect(self.__updateFOV__)
+        self.timer.timeout.connect(self.zoomToSeed)
 
     @property
     def storedColumnNames(self):
@@ -163,8 +163,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def setup(self):
         """This is called one time when the module GUI is initialized
         """
-        ScriptedLoadableModuleWidget.setup(self)
-
         self.semaphoreOpen = False      # To prevent duplicate events
         # self.timer = qt.QTimer()
         # self.timer.timeout.connect(self.checkAndRefreshModels)
@@ -172,14 +170,13 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         #######################
         # Case selector area
-        collapsibleButton = ctk.ctkCollapsibleButton()
-        collapsibleButton.text = "Case selector"
-        self.layout.addWidget(collapsibleButton)
+        self.caseSeletorCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.caseSeletorCollapsibleButton.text = "Case selector"
+        self.layout.addWidget(self.caseSeletorCollapsibleButton)
         # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
-        self.caseSelectorLayout = qt.QGridLayout(collapsibleButton)
+        self.caseSelectorLayout = qt.QGridLayout(self.caseSeletorCollapsibleButton)
 
         row = 0
-
         # Main volume selector
         self.inputVolumeLabel = qt.QLabel("Input volume")
         self.inputVolumeLabel.setStyleSheet("margin-left:5px")
@@ -219,14 +216,14 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         #######################
         # Nodule segmentation area
-        collapsibleButton = ctk.ctkCollapsibleButton()
-        collapsibleButton.text = "Nodule segmentation"
-        self.layout.addWidget(collapsibleButton)
+        self.noduleSegmentationCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.noduleSegmentationCollapsibleButton.text = "Nodule segmentation"
+        self.layout.addWidget(self.noduleSegmentationCollapsibleButton)
         # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
-        self.noduleSegmentationLayout = qt.QGridLayout(collapsibleButton)
+        self.noduleSegmentationLayout = qt.QGridLayout(self.noduleSegmentationCollapsibleButton)
 
         # Add seeds
-        row += 1
+        row = 0
         self.labelAddedSeeds = qt.QLabel("Added seeds:")
         self.labelAddedSeeds.setStyleSheet("margin: 10px 0 0 5px")
         self.noduleSegmentationLayout.addWidget(self.labelAddedSeeds, row, 0)
@@ -490,12 +487,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.radiomicsLayout.addWidget(self.sphereRadiusFrame)
 
         # Reports widget
-        collapsibleButton = ctk.ctkCollapsibleButton()
-        collapsibleButton.text = "Results of the analysis"
-        self.layout.addWidget(collapsibleButton)
-        self.reportsLayout = qt.QHBoxLayout(collapsibleButton)
+        self.analysisResultsCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.analysisResultsCollapsibleButton.text = "Results of the analysis"
+        self.layout.addWidget(self.analysisResultsCollapsibleButton)
+        self.reportsLayout = qt.QHBoxLayout(self.analysisResultsCollapsibleButton)
         self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
-                                               parentWidget=self.reportsLayout)
+                                               parentWidget=self.analysisResultsCollapsibleButton)
         self.reportsWidget.setup()
         self.reportsWidget.showWarnigMessages(False)
 
@@ -506,7 +503,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             caseNavigatorCollapsibleButton = ctk.ctkCollapsibleButton()
             caseNavigatorCollapsibleButton.text = "Case navigator (advanced)"
             self.layout.addWidget(caseNavigatorCollapsibleButton)
-            caseNavigatorAreaLayout = qt.QHBoxLayout(caseNavigatorCollapsibleButton)
+            # caseNavigatorAreaLayout = qt.QHBoxLayout(caseNavigatorCollapsibleButton)
 
             from ACIL.ui import CaseNavigatorWidget
             self.caseNavigatorWidget = CaseNavigatorWidget("CIP_LesionModel", caseNavigatorCollapsibleButton)
@@ -515,12 +512,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         #######################
         # Advanced parameters area
-        collapsibleButton = ctk.ctkCollapsibleButton()
-        collapsibleButton.text = "Advanced parameters"
-        collapsibleButton.collapsed = True
-        self.layout.addWidget(collapsibleButton)
+        self.advancedParametersCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.advancedParametersCollapsibleButton.text = "Advanced parameters"
+        self.advancedParametersCollapsibleButton.collapsed = True
+        self.layout.addWidget(self.advancedParametersCollapsibleButton)
         # Layout within the dummy collapsible button. See http://doc.qt.io/qt-4.8/layout.html for more info about layouts
-        self.advancedParametersLayout = qt.QFormLayout(collapsibleButton)
+        self.advancedParametersLayout = qt.QFormLayout(self.advancedParametersCollapsibleButton)
         self.evaluateSegmentationCheckbox = qt.QCheckBox()
         self.evaluateSegmentationCheckbox.setText("Enable saving seeds mode for batch processing")
         self.advancedParametersLayout.addWidget(self.evaluateSegmentationCheckbox)
@@ -559,14 +556,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def refreshUI(self):
         """ Confiugre the GUI elements based on the current configuration
         """
-        if self.inputVolumeSelector.currentNodeID != "":
-            self.addFiducialButton.enabled = True
-            self.addFiducialButton.toolTip = "Click and add a new seed in the volume"
-        else:
-            self.addFiducialButton.enabled = False
-            self.addFiducialButton.toolTip = "Select a volume before adding any seed"
+        # Show fiducials panel just if there is a main volume loaded
+        if self.inputVolumeSelector.currentNodeID == "":
+            self.noduleSegmentationCollapsibleButton.visible = self.radiomicsCollapsibleButton.visible = False
             self.__removeFiducialsFrames__()
-
+        else:
+            self.noduleSegmentationCollapsibleButton.visible = True
 
         # Apply segmentation button allowed only if there is at least one seed
         if self.inputVolumeSelector.currentNodeID != "" and \
@@ -575,8 +570,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         else:
             self.segmentButton.setVisible(False)
 
-        # Level slider and Features Selection section active after running the segmentation algorithm
-        self.selectThresholdLabel.visible = self.distanceLevelSlider.visible = self.logic.cliOutputScalarNode is not None
+        # Level slider, Features Selection and radiomics section active after running the segmentation algorithm
+        self.selectThresholdLabel.visible = self.distanceLevelSlider.visible = \
+            self.radiomicsCollapsibleButton.visible = self.logic.cliOutputScalarNode is not None
 
         # Show spheres buttons just visible for the analyzed spheres
         for mode in self.logic.spheresDict.iterkeys():
@@ -905,6 +901,24 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         self.timer.start()
 
+    def zoomToSeed(self):
+        """ Dynamic zoom to the center of the current view in all the 2D windows
+        :return:
+        """
+        sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+        fov = sliceNode.GetFieldOfView()
+        if fov[0] > 45:
+            sliceNode.SetFieldOfView(fov[0] * 0.90,
+                                     fov[1] * 0.90, fov[2])
+            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
+            sliceNode.SetFieldOfView(fov[0] * 0.90,
+                                     fov[1] * 0.90, fov[2])
+            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeGreen')
+            sliceNode.SetFieldOfView(fov[0] * 0.90,
+                                     fov[1] * 0.90, fov[2])
+        else:
+            self.timer.stop()
+
     def reset(self):
         """ Reset the GUI
         """
@@ -1025,23 +1039,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         d[keyName]["LesionType"] = self.lesionType
         d[keyName]["Seeds_LPS"] = coordsList.__str__()
 
-    def __updateFOV__(self):
-        """ Dynamic zoom to the center of the current view in all the 2D windows
-        :return:
-        """
-        sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
-        fov = sliceNode.GetFieldOfView()
-        if fov[0] > 45:
-            sliceNode.SetFieldOfView(fov[0] * 0.90,
-                                     fov[1] * 0.90, fov[2])
-            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
-            sliceNode.SetFieldOfView(fov[0] * 0.90,
-                                     fov[1] * 0.90, fov[2])
-            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeGreen')
-            sliceNode.SetFieldOfView(fov[0] * 0.90,
-                                     fov[1] * 0.90, fov[2])
-        else:
-            self.timer.stop()
 
     ############
     # Events
@@ -1167,6 +1164,13 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # self.refreshUI()
         self.noduleLabelmapSelector.setCurrentNode(self.logic.currentLabelmap)
 
+        # Change the layout to a regular 3D view (without MIP)
+        self.enhanceVisualizationCheckbox.setChecked(False)
+        SlicerUtil.changeLayout(1)
+
+        # TODO: Zoom to seed with the right zoom value
+        #self.zoomToSeed()
+
         # Start the timer that will refresh all the visualization nodes
         # self.timer.start(500)
 
@@ -1206,9 +1210,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     # def updateFeatureClassParameterDict(self, intValue, featureClassWidget):
     #     featureClassName = featureClassWidget.getName()
     #     self.featureClassParametersDict[featureClassName].update(featureClassWidget.getParameterDict())
-
-
-
 
 
 #############################
@@ -1601,34 +1602,42 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         return node
 
 
+#############################
+# CIP_LesionModel
 class CIP_LesionModelTest(ScriptedLoadableModuleTest):
-    """
-    This is the test case for your scripted module.
-    Uses ScriptedLoadableModuleTest base class, available at:
-    https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
-    """
-
     def setUp(self):
         """ Do whatever is needed to reset the state - typically a scene clear will be enough.
         """
         slicer.mrmlScene.Clear(0)
+        slicer.util.selectModule('CIP_LesionModel')
 
     def runTest(self):
         """Run as few or as many tests as needed here.
         """
         self.setUp()
-        self.test_CIP_LesionModel_PrintMessage()
+        self.test_CIP_LesionModel()
 
-    def test_CIP_LesionModel_PrintMessage(self):
-        self.delayDisplay("Starting the test")
-        # logic = CIP_LesionModelLogic()
-        # myMessage = "Print this test message in console"
-        # logging.info("Starting the test with this message: " + myMessage)
-        # expectedMessage = "I have printed this message: " + myMessage
-        # logging.info("The expected message would be: " + expectedMessage)
-        # responseMessage = logic.printMessage(myMessage)
-        # logging.info("The response message was: " + responseMessage)
-        # self.assertTrue(responseMessage == expectedMessage)
-        # self.delayDisplay('Test passed!')
-        # t = unittest.TestCase()
-        self.fail("Test not implemented yet")
+    def test_CIP_LesionModel(self):
+        # Download a case with a known nodule
+        #
+        import urllib
+        downloads = (
+            ('http://midas.chestimagingplatform.org/download/item/667/1001_UVM_CANCER.nrrd', '1001_UVM_CANCER.nrrd', slicer.util.loadVolume),
+            )
+
+        for url,name,loader in downloads:
+          filePath = slicer.app.temporaryPath + '/' + name
+          if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
+            logging.info('Requesting download %s from %s...\n' % (name, url))
+            urllib.urlretrieve(url, filePath)
+          if loader:
+            logging.info('Loading %s...' % (name,))
+            (isLoaded, volume) = loader(filePath)
+
+        self.assertIsNotNone(volume, "Volume loading failed")
+
+        # Make sure we have the required cli to do the segmentation
+
+
+        self.delayDisplay('Test passed!')
+        # self.assertTrue(True)

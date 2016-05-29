@@ -1178,12 +1178,6 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
 
 
 class CIP_TracheaStentPlanningTest(ScriptedLoadableModuleTest):
-    """
-    This is the test case for your scripted module.
-    Uses ScriptedLoadableModuleTest base class, available at:
-    https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
-    """
-
     def setUp(self):
         """ Do whatever is needed to reset the state - typically a scene clear will be enough.
         """
@@ -1196,14 +1190,4 @@ class CIP_TracheaStentPlanningTest(ScriptedLoadableModuleTest):
         self.test_CIP_TracheaStentPlanning_PrintMessage()
 
     def test_CIP_TracheaStentPlanning_PrintMessage(self):
-        self.delayDisplay("Starting the test")
-        logic = CIP_TracheaStentPlanningLogic()
-
-        # myMessage = "Print this test message in console"
-        # logging.info("Starting the test with this message: " + myMessage)
-        # expectedMessage = "I have printed this message: " + myMessage
-        # logging.info("The expected message would be: " + expectedMessage)
-        # responseMessage = logic.printMessage(myMessage)
-        # logging.info("The response message was: " + responseMessage)
-        # self.assertTrue(responseMessage == expectedMessage)
-        self.delayDisplay('Test passed!')
+        self.fail("Test not implemented!")

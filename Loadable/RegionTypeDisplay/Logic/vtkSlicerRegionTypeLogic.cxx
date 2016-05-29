@@ -24,7 +24,6 @@
 
 #include <vtkMRMLRegionTypeNode.h>
 #include <vtkMRMLRegionTypeDisplayNode.h>
-#include <vtkMRMLChestRTColorTableNode.h>
 
 // VTK includes
 #include <vtkObjectFactory.h>
@@ -143,14 +142,11 @@ void vtkSlicerRegionTypeLogic::RegisterNodes()
   }
   vtkMRMLRegionTypeNode* rtNode = vtkMRMLRegionTypeNode::New();
   vtkMRMLRegionTypeDisplayNode* drtNode = vtkMRMLRegionTypeDisplayNode::New();
-  vtkMRMLChestRTColorTableNode* cNode = vtkMRMLChestRTColorTableNode::New();
   this->GetMRMLScene()->RegisterNodeClass(rtNode);
   this->GetMRMLScene()->RegisterNodeClass(drtNode);
-  this->GetMRMLScene()->RegisterNodeClass(cNode);
 
   rtNode->Delete();
   drtNode->Delete();
-  cNode->Delete();
 }
 
 //---------------------------------------------------------------------------

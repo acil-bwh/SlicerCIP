@@ -18,11 +18,22 @@ set(EXTENSION_BUILD_SUBDIRECTORY inner-build)
 
 set(SUPERBUILD_TOPLEVEL_PROJECT inner)
 
+if (APPLE)
+	# Force compiler because Slicer is also forcing it)
+	set(CMAKE_C_COMPILER="/usr/bin/cc")
+	set(CMAKE_CXX_COMPILER="/usr/bin/c++")
+endif()
+
 
 #-----------------------------------------------------------------------------
 find_package(Slicer REQUIRED)
 include(${Slicer_USE_FILE})
 mark_as_superbuild(Slicer_DIR)
+
+if (NOT APPLE)
+	set(CMAKE_C_COMPILER:FILEPATH=${Slicer_CMAKE_C_COMPILER})
+	set(CMAKE_CXX_COMPILER:FILEPATH=${Slicer_CMAKE_CXX_COMPILER})
+endif()
 
 find_package(Git REQUIRED)
 mark_as_superbuild(GIT_EXECUTABLE)
@@ -49,7 +60,7 @@ if(WIN32)
 endif()
 
 if(APPLE)
-  set(CMAKE_CXX_FLAGS "-stdlib=libstdc++ -mmacosx-version-min=10.6")
+  #set(CMAKE_CXX_FLAGS "-stdlib=libstdc++ -mmacosx-version-min=10.6")
   set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-dylib_file,/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib")
   set(CMAKE_EXE_LINKER_FLAGS "-Wl,-dylib_file,/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib")
 endif()

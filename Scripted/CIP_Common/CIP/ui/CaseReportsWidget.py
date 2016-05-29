@@ -9,7 +9,8 @@ class CaseReportsWidget(EventsTrigger):
     # Events triggered by the widget
     EVENT_SAVE_BUTTON_CLICKED = 1
     EVENT_SHOW_REPORT = 2
-    EVENT_CLEAN_CACHE = 3
+    EVENT_HIDE_REPORT = 3
+    EVENT_CLEAN_CACHE = 4
 
     @property
     def TIMESTAMP_COLUMN_NAME(self):
@@ -31,19 +32,23 @@ class CaseReportsWidget(EventsTrigger):
         self.logic = CaseReportsLogic(moduleName, columnNames, filePreffix)
         self.__initEvents__()
         self.reportWindow = CaseReportsWindow(self)
+        self.reportWindow.objectName = "caseReportsWindow"
+
     @property
     def showWarningWhenWrongColumns(self):
         return self.__showWarningWhenIncompleteColumns__
 
     def setup(self):
-        self.saveValuesButton = ctk.ctkPushButton()
-        self.saveValuesButton.text = "Save"
-        self.saveValuesButton.setIcon(qt.QIcon("{0}/Save.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.saveValuesButton.setIconSize(qt.QSize(24,24))
-        self.layout.addWidget(self.saveValuesButton)
+        self.saveButton = ctk.ctkPushButton()
+        self.saveButton.text = "Save"
+        self.saveButton.objectName = "reportSaveButton"
+        self.saveButton.setIcon(qt.QIcon("{0}/Save.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.saveButton.setIconSize(qt.QSize(24, 24))
+        self.layout.addWidget(self.saveButton)
 
         self.openButton = ctk.ctkPushButton()
         self.openButton.text = "Open"
+        self.openButton.objectName = "reportOpenButton"
         self.openButton.setIcon(qt.QIcon("{0}/open_file.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.openButton.setIconSize(qt.QSize(24,24))
 
@@ -51,6 +56,7 @@ class CaseReportsWidget(EventsTrigger):
 
         self.exportButton = ctk.ctkPushButton()
         self.exportButton.text = "Export"
+        self.exportButton.objectName = "reportExportButton"
         self.exportButton.setIcon(qt.QIcon("{0}/export-csv.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.exportButton.setIconSize(qt.QSize(24,24))
         self.layout.addWidget(self.exportButton)
@@ -61,7 +67,7 @@ class CaseReportsWidget(EventsTrigger):
         self.removeButton.text = "Clean cache"
         self.layout.addWidget(self.removeButton)
 
-        self.saveValuesButton.connect('clicked()', self.onSave)
+        self.saveButton.connect('clicked()', self.onSave)
         self.exportButton.connect('clicked()', self.onExport)
         self.openButton.connect('clicked()', self.onShowStoredData)
         self.removeButton.connect('clicked()', self.onRemoveStoredData)
@@ -92,13 +98,13 @@ class CaseReportsWidget(EventsTrigger):
         """ Enable/Disable the "Save" button
         :param enabled: True/False
         """
-        self.saveValuesButton.setEnabled(enabled)
+        self.saveButton.setEnabled(enabled)
 
     def showSaveButton(self, show):
         """ Show/hide the save button (it can be hidden when the data are saved obligatory)
         :param show: show == True
         """
-        self.saveValuesButton.setVisible(show)
+        self.saveButton.setVisible(show)
 
     def showWarnigMessages(self, showMessages):
         """ Show/Hide warning messages when the columns passed when saving some values are not exactly the ones expected
@@ -106,6 +112,12 @@ class CaseReportsWidget(EventsTrigger):
         """
         self.__showWarningWhenIncompleteColumns__ = showMessages
         self.logic.showWarningWhenIncompleteColumns = showMessages
+
+    def hideReportsWindow(self):
+        """ Hide the reports window
+        """
+        self.reportWindow.hide()
+        self.triggerEvent(self.EVENT_HIDE_REPORT)
 
     ###############
     # EVENTS
@@ -125,7 +137,6 @@ class CaseReportsWidget(EventsTrigger):
         if fileName:
             self.logic.exportCSV(fileName)
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data exported', 'The data were exported successfully')
-
 
     def onShowStoredData(self):
         """ Show the dialog window with all the information stored so far
@@ -224,12 +235,8 @@ class CaseReportsLogic(object):
             else:
                 orderedColumns.append('')
 
-        fileExists = os.path.isfile(self.csvFilePath)
         with open(self.csvFilePath, 'a+b') as csvfile:
             writer = csv.writer(csvfile)
-            # If file is empty, save also the column names
-            # if not fileExists:
-            #     writer.writerow(self.columnNames)
             writer.writerow(orderedColumns)
 
 
@@ -333,7 +340,7 @@ class CaseReportsWindow(qt.QWidget):
         self.mainLayout.addWidget(self.exportButton)
 
         self.removeButton = ctk.ctkPushButton()
-        self.removeButton.text = "Clean cache"
+        self.removeButton.text = "Clean"
         self.removeButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.removeButton.setIconSize(qt.QSize(24,24))
         self.removeButton.setFixedWidth(150)

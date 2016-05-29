@@ -3,7 +3,7 @@
 import sys, os
 import os.path as path
 
-sys.path.append("/Users/jonieva/Projects/SlicerCIP/Scripted/CIP_Common/")
+# sys.path.append("/Users/jonieva/Projects/SlicerCIP/Scripted/CIP_Common/")
 from CIP.logic import geometry_topology_data as gtd
 from CIP.logic import Util
 
@@ -35,7 +35,7 @@ for file_name in files:
         geom.num_dimensions = 3
         points = []
         change_coords = geom.coordinate_system != geom.LPS
-        for point in geom.points:
+        for point[ in geom.points:
             if point.chest_type not in types_delete:
                 if types_replace.has_key(point.chest_type):
                     # Replace type
@@ -116,3 +116,58 @@ for file_name in xmls:
 #         with open(resultspath, "w") as f:
 #             f.write(xml)
 # return wrong_cases, wrong_points
+
+#################################################################
+# Add new fields
+from xml.etree import ElementTree as etree
+import xml.etree.ElementTree as et
+import os.path as path
+xmls_dir = "/Data/jonieva/Dropbox/ProjectsResources/parenchyma_classification/data/Training_points/ILD_trainingpoints-2015-10-20-postQC/"
+output_dir = "/Data/jonieva/tempdata/tmp/updated"
+xmls = os.listdir(xmls_dir)
+timestamp = gtd.GeometryTopologyData.get_timestamp()
+username = "gwashko"
+machineName = "BatchProcess"
+id = 1
+
+
+for file_name in xmls:
+    if Util.get_file_extension(file_name) != ".xml":
+        continue
+    id = 1
+    p = path.join(xmls_dir, file_name)
+    with open(p, "r+b") as f:
+        xml = f.read()
+    root = et.fromstring(xml)
+    for xml_point_node in root.findall("Point"):
+        s = "<Id>%i</Id>" % id
+        xml_point_node.append(et.fromstring(s))
+        s = "<Timestamp>%s</Timestamp>" % timestamp
+        xml_point_node.append(et.fromstring(s))
+        s = "<UserName>gwahsko</UserName>"
+        xml_point_node.append(et.fromstring(s))
+        s = "<MachineName>BATCH_PROCESS</MachineName>"
+        xml_point_node.append(et.fromstring(s))
+        id += 1
+
+    new_xml = etree.tostring(root)
+    p = path.join(output_dir, file_name)
+    with open(p, "w+b") as f:
+        f.write(new_xml)
+    print(file_name + " processed")
+
+def upload_to_MAD(input_folder):
+    """ Upload all the xml files to the corresponding MAD folder
+    @param input_folder:
+    """
+    for file_name in os.listdir(input_folder):
+        if file_name.endswith("_parenchymaTraining.xml"):
+            s = "scp {} copd@mad-replicated1.research.partners.org:Processed/COPDGene/{}/{}".format(
+                os.path.join(input_folder, file_name),
+                file_name.split("_")[0],
+                file_name.replace("_parenchymaTraining.xml", "")
+            )
+
+            print s
+# upload_to_MAD("/Data/jonieva/tempdata/George/")
+

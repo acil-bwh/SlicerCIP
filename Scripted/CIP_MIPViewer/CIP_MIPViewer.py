@@ -69,3 +69,17 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
         self.layout.addStretch(1)
 
 
+class CIP_MIPViewerTest(ScriptedLoadableModuleTest):
+    def setUp(self):
+        """ Do whatever is needed to reset the state - typically a scene clear will be enough.
+        """
+        slicer.mrmlScene.Clear(0)
+
+    def runTest(self):
+        """Run as few or as many tests as needed here.
+        """
+        self.setUp()
+        self.test_CIP_MIPViewer()
+
+    def test_CIP_MIPViewer(self):
+        self.fail("Test not implemented!")

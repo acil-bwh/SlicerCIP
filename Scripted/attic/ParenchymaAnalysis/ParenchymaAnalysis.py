@@ -1,4 +1,20 @@
 from __main__ import vtk, qt, ctk, slicer
+import os
+import sys
+
+try:
+    from CIP.ui import CaseReportsWidget
+except Exception as ex:
+    currentpath = os.path.dirname(os.path.realpath(__file__))
+    # We assume that CIP_Common is in the development structure
+    path = os.path.normpath(currentpath + '/../../CIP_Common')
+    if not os.path.exists(path):
+        print("Path not found: " + path)
+        # We assume that CIP is a subfolder (Slicer behaviour)
+        path = os.path.normpath(currentpath + '/CIP')
+    sys.path.append(path)
+    #print("The following path was manually added to the PythonPath in CIP_BodyComposition: " + path) 
+    from CIP.ui import CaseReportsWidget
 
 #
 # ParenchymaAnalysis
@@ -23,8 +39,14 @@ Use this module to calculate counts and volumes for different labels of a label 
 #
 
 class ParenchymaAnalysisWidget:
+  @property
+  def moduleName(self):
+    return os.path.basename(__file__).replace(".py", "")
+     
   def __init__(self, parent=None):
     self.chartOptions = ("LAA%-950","LAA%-910","LAA%-856","HAA%-700","HAA%-600","Mean","Std","Kurtosis","Skewness","Volume")
+    self.storedColumnNames = ["Region","LAA%-950","LAA%-910","LAA%-856","HAA%-700","HAA%-600","Mean","Std","Kurtosis","Skewness","Volume"]
+    self.rTags = ("Global","Right","Left","RUL","RLL","RML","LUL","LLL","LUT","LMT","LLT","RUT","RMT","RLT")
     if not parent:
       self.parent = slicer.qMRMLWidget()
       self.parent.setLayout(qt.QVBoxLayout())
@@ -32,20 +54,21 @@ class ParenchymaAnalysisWidget:
     else:
       self.parent = parent
     self.logic = None
-    self.inspNode = None
-    self.insplabelNode = None
-    self.expNode = None
-    self.explabelNode = None
+    self.CTNode = None
+    self.CTlabelNode = None
+    #self.expNode = None
+    #self.explabelNode = None
     self.fileName = None
     self.fileDialog = None
+
     if not parent:
       self.setup()
-      self.inspSelector.setMRMLScene(slicer.mrmlScene)
-      self.expSelector.setMRMLScene(slicer.mrmlScene)
-      self.insplabelSelector.setMRMLScene(slicer.mrmlScene)
-      self.explabelSelector.setMRMLScene(slicer.mrmlScene)
+      self.CTSelector.setMRMLScene(slicer.mrmlScene)
+      #self.expSelector.setMRMLScene(slicer.mrmlScene)
+      self.CTlabelSelector.setMRMLScene(slicer.mrmlScene)
+      #self.explabelSelector.setMRMLScene(slicer.mrmlScene)
       self.parent.show()
-
+      
   def setup(self):
 
     #
@@ -78,148 +101,353 @@ class ParenchymaAnalysisWidget:
     #
     # the inps volume selector
     #
-    self.inspSelectorFrame = qt.QFrame(self.parent)
-    self.inspSelectorFrame.setLayout(qt.QHBoxLayout())
-    self.parent.layout().addWidget(self.inspSelectorFrame)
+    self.CTSelectorFrame = qt.QFrame(self.parent)
+    self.CTSelectorFrame.setLayout(qt.QHBoxLayout())
+    self.parent.layout().addWidget(self.CTSelectorFrame)
 
-    self.inspSelectorLabel = qt.QLabel("Inspiratory CT: ", self.inspSelectorFrame)
-    self.inspSelectorLabel.setToolTip( "Select the Inspiratory CT for parenchymal analysis")
-    self.inspSelectorFrame.layout().addWidget(self.inspSelectorLabel)
+    self.CTSelectorLabel = qt.QLabel("Input CT: ", self.CTSelectorFrame)
+    self.CTSelectorLabel.setToolTip( "Select the input CT for parenchymal analysis")
+    self.CTSelectorFrame.layout().addWidget(self.CTSelectorLabel)
 
-    self.inspSelector = slicer.qMRMLNodeComboBox(self.inspSelectorFrame)
-    self.inspSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.inspSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
-    self.inspSelector.selectNodeUponCreation = False
-    self.inspSelector.addEnabled = False
-    self.inspSelector.removeEnabled = False
-    self.inspSelector.noneEnabled = True
-    self.inspSelector.showHidden = False
-    self.inspSelector.showChildNodeTypes = False
-    self.inspSelector.setMRMLScene( slicer.mrmlScene )
+    self.CTSelector = slicer.qMRMLNodeComboBox(self.CTSelectorFrame)
+    self.CTSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.CTSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
+    self.CTSelector.selectNodeUponCreation = False
+    self.CTSelector.addEnabled = False
+    self.CTSelector.removeEnabled = False
+    self.CTSelector.noneEnabled = True
+    self.CTSelector.showHidden = False
+    self.CTSelector.showChildNodeTypes = False
+    self.CTSelector.setMRMLScene( slicer.mrmlScene )
     # TODO: need to add a QLabel
-    # self.inspSelector.SetLabelText( "Master Volume:" )
-    self.inspSelectorFrame.layout().addWidget(self.inspSelector)
+    # self.CTSelector.SetLabelText( "Master Volume:" )
+    self.CTSelectorFrame.layout().addWidget(self.CTSelector) 
+    
+    #
+    # the CT label volume selector
+    #
+    self.CTlabelSelectorFrame = qt.QFrame()
+    self.CTlabelSelectorFrame.setLayout( qt.QHBoxLayout() )
+    self.parent.layout().addWidget( self.CTlabelSelectorFrame )
 
-    
-    #
-    # the exp volume selector
-    #
-    self.expSelectorFrame = qt.QFrame(self.parent)
-    self.expSelectorFrame.setLayout(qt.QHBoxLayout())
-    self.parent.layout().addWidget(self.expSelectorFrame)
-    
-    self.expSelectorLabel = qt.QLabel("Expiratory CT: ", self.expSelectorFrame)
-    self.expSelectorLabel.setToolTip( "Select the Expiratory CT for parenchymal analysis")
-    self.expSelectorFrame.layout().addWidget(self.expSelectorLabel)
-    
-    self.expSelector = slicer.qMRMLNodeComboBox(self.expSelectorFrame)
-    self.expSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.expSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
-    self.expSelector.selectNodeUponCreation = False
-    self.expSelector.addEnabled = False
-    self.expSelector.removeEnabled = False
-    self.expSelector.noneEnabled = True
-    self.expSelector.showHidden = False
-    self.expSelector.showChildNodeTypes = False
-    self.expSelector.setMRMLScene( slicer.mrmlScene )
-    # TODO: need to add a QLabel
-    # self.inspSelector.SetLabelText( "Master Volume:" )
-    self.expSelectorFrame.layout().addWidget(self.expSelector)
-    
-    
-    #
-    # the insp label volume selector
-    #
-    self.insplabelSelectorFrame = qt.QFrame()
-    self.insplabelSelectorFrame.setLayout( qt.QHBoxLayout() )
-    self.parent.layout().addWidget( self.insplabelSelectorFrame )
+    self.CTlabelSelectorLabel = qt.QLabel()
+    self.CTlabelSelectorLabel.setText( "Select the CT Label Map: " )
+    self.CTlabelSelectorFrame.layout().addWidget( self.CTlabelSelectorLabel )
 
-    self.insplabelSelectorLabel = qt.QLabel()
-    self.insplabelSelectorLabel.setText( "Inspiratory Label Map: " )
-    self.insplabelSelectorFrame.layout().addWidget( self.insplabelSelectorLabel )
-
-    self.insplabelSelector = slicer.qMRMLNodeComboBox()
-    #self.insplabelSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
-    #self.insplabelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", "1" )
-    self.insplabelSelector.nodeTypes = ( "vtkMRMLLabelMapVolumeNode", "" )
+    self.CTlabelSelector = slicer.qMRMLNodeComboBox()
+    #self.CTlabelSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
+    #self.CTlabelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", "1" )
+    self.CTlabelSelector.nodeTypes = ( "vtkMRMLLabelMapVolumeNode", "" )
 
     # todo addAttribute
-    self.insplabelSelector.selectNodeUponCreation = False
-    self.insplabelSelector.addEnabled = False
-    self.insplabelSelector.noneEnabled = True
-    self.insplabelSelector.removeEnabled = False
-    self.insplabelSelector.showHidden = False
-    self.insplabelSelector.showChildNodeTypes = False
-    self.insplabelSelector.setMRMLScene( slicer.mrmlScene )
-    self.insplabelSelector.setToolTip( "Inspiratory label map" )
-    self.insplabelSelectorFrame.layout().addWidget( self.insplabelSelector )
-
-    #
-    # the exp label volume selector
-    #
-    self.explabelSelectorFrame = qt.QFrame()
-    self.explabelSelectorFrame.setLayout( qt.QHBoxLayout() )
-    self.parent.layout().addWidget( self.explabelSelectorFrame )
+    self.CTlabelSelector.selectNodeUponCreation = False
+    self.CTlabelSelector.addEnabled = False
+    self.CTlabelSelector.noneEnabled = True
+    self.CTlabelSelector.removeEnabled = False
+    self.CTlabelSelector.showHidden = False
+    self.CTlabelSelector.showChildNodeTypes = False
+    self.CTlabelSelector.setMRMLScene( slicer.mrmlScene )
+    self.CTlabelSelector.setToolTip( "CT label map" )
+    self.CTlabelSelectorFrame.layout().addWidget( self.CTlabelSelector )
     
-    self.explabelSelectorLabel = qt.QLabel()
-    self.explabelSelectorLabel.setText( "Expiratory Label Map: " )
-    self.explabelSelectorFrame.layout().addWidget( self.explabelSelectorLabel )
+    # Image filtering section
+    self.FilteringFrame = qt.QFrame()
+    self.FilteringFrame.setLayout(qt.QVBoxLayout())
+    self.FilteringFrame.enabled = False
+    self.FilteringFrame.setObjectName('FilteringFrame')
+    self.FilteringFrame.setStyleSheet('#FilteringFrame {border: 1px solid lightGray; color: black; }')
+    self.parent.layout().addWidget( self.FilteringFrame )    
     
-    self.explabelSelector = slicer.qMRMLNodeComboBox()
-    #self.explabelSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
-    #self.explabelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", "1" )
-    self.explabelSelector.nodeTypes = ( "vtkMRMLLabelMapVolumeNode", "" )
-
-    # todo addAttribute
-    self.explabelSelector.selectNodeUponCreation = False
-    self.explabelSelector.addEnabled = False
-    self.explabelSelector.noneEnabled = True
-    self.explabelSelector.removeEnabled = False
-    self.explabelSelector.showHidden = False
-    self.explabelSelector.showChildNodeTypes = False
-    self.explabelSelector.setMRMLScene( slicer.mrmlScene )
-    self.explabelSelector.setToolTip( "Expiratory label map" )
-    self.explabelSelectorFrame.layout().addWidget( self.explabelSelector )
+    filterLabel = qt.QLabel()
+    filterLabel.setText('Filtering')
+    self.FilteringFrame.layout().addWidget(filterLabel)
     
+    radioButtonsGroup = qt.QGroupBox()
+    radioButtonsGroup.setLayout(qt.QHBoxLayout())
+    radioButtonsGroup.setFixedWidth(100)
+    radioButtonsGroup.setObjectName('radioButtonsGroup')
+    radioButtonsGroup.setStyleSheet('#radioButtonsGroup {border: 1px solid white; color: black; }')   
+    
+    self.filterOnRadioButton = qt.QRadioButton()
+    self.filterOnRadioButton.setText('On')
+    self.filterOnRadioButton.setChecked(0)
+    radioButtonsGroup.layout().addWidget(self.filterOnRadioButton)
+        
+    self.filterOffRadioButton = qt.QRadioButton()
+    self.filterOffRadioButton.setText('Off')
+    self.filterOffRadioButton.setChecked(1)
+    radioButtonsGroup.layout().addWidget(self.filterOffRadioButton)
+    
+    self.FilteringFrame.layout().addWidget(radioButtonsGroup)
+        
+    # Image filtering section
+    self.filterOptionsFrame = qt.QFrame()
+    self.filterOptionsFrame.setLayout(qt.QVBoxLayout())
+    self.filterOptionsFrame.setObjectName('filterOptionsFrame')
+    self.filterOptionsFrame.setStyleSheet('#filterOptionsFrame {border: 0.5px solid lightGray; color: black; }')   
+    self.filterOptionsFrame.hide()
+    
+    self.FilteringFrame.layout().addWidget(self.filterOptionsFrame)
+    
+    self.filterApplication = qt.QCheckBox()
+    self.filterApplication.setText('Only for Phenotype')
+    self.filterApplication.setChecked(0)
+    self.filterOptionsFrame.layout().addWidget(self.filterApplication)     
+    
+    filterOptionsGroup = qt.QGroupBox()
+    filterOptionsGroup.setLayout(qt.QHBoxLayout())
+    filterOptionsGroup.setFixedWidth(200)
+    filterOptionsGroup.setObjectName('filterOptionsGroup')
+    filterOptionsGroup.setStyleSheet('#filterOptionsGroup {border: 1px solid white; color: black; }')
+    
+    self.NLMFilterRadioButton = qt.QRadioButton()
+    self.NLMFilterRadioButton.setText('NLM')
+    self.NLMFilterRadioButton.setChecked(1)
+    filterOptionsGroup.layout().addWidget(self.NLMFilterRadioButton)
+        
+    self.MedianFilterRadioButton = qt.QRadioButton()
+    self.MedianFilterRadioButton.setText('Median')
+    self.MedianFilterRadioButton.setChecked(0)
+    filterOptionsGroup.layout().addWidget(self.MedianFilterRadioButton)
+    
+    self.GaussianFilterRadioButton = qt.QRadioButton()
+    self.GaussianFilterRadioButton.setText('Gaussian')
+    self.GaussianFilterRadioButton.setChecked(0)
+    filterOptionsGroup.layout().addWidget(self.GaussianFilterRadioButton)
+    
+    self.filterOptionsFrame.layout().addWidget(filterOptionsGroup)  
+    
+    # Filter Params    
+    FilterParams = qt.QFrame()
+    FilterParams.setLayout(qt.QVBoxLayout())
+    self.filterOptionsFrame.layout().addWidget(FilterParams)
+     
+    DimGroupBox = qt.QGroupBox()
+    DimGroupBox.setLayout(qt.QHBoxLayout())
+    DimGroupBox.setFixedWidth(180)
+    DimGroupBox.setObjectName('DimGroupBox')
+    DimGroupBox.setStyleSheet('#DimGroupBox {border: 1px solid white; color: black; }')
+    FilterParams.layout().addWidget(DimGroupBox)    
+    
+    FilterDimensionLabel = qt.QLabel()
+    FilterDimensionLabel.setText('Dimensions: ')
+    FilterDimensionLabel.setToolTip('Choose if the filter has to operate in 2D or 3D.')
+    DimGroupBox.layout().addWidget(FilterDimensionLabel)
+       
+    self.Filt2DOption = qt.QPushButton()
+    self.Filt2DOption.setText('2D')
+    self.Filt2DOption.setCheckable(1)
+    self.Filt2DOption.setChecked(0)
+    self.Filt2DOption.setAutoExclusive(1) 
+    self.Filt2DOption.setFixedWidth(45)
+    DimGroupBox.layout().addWidget(self.Filt2DOption)
+    
+    self.Filt3DOption = qt.QPushButton()
+    self.Filt3DOption.setText('3D')
+    self.Filt3DOption.setCheckable(1)
+    self.Filt3DOption.setChecked(1)
+    self.Filt3DOption.setFixedWidth(45)
+    self.Filt3DOption.setAutoExclusive(1)    
+    DimGroupBox.layout().addWidget(self.Filt3DOption)
+    
+    StrengthGroupBox = qt.QGroupBox()
+    StrengthGroupBox.setLayout(qt.QHBoxLayout())
+    StrengthGroupBox.setFixedWidth(270)
+    StrengthGroupBox.setObjectName('StrengthGroupBox')
+    StrengthGroupBox.setStyleSheet('#StrengthGroupBox {border: 1px solid white; color: black; }')
+    FilterParams.layout().addWidget(StrengthGroupBox)
+    
+    FilterStrengthLabel = qt.QLabel()
+    FilterStrengthLabel.setText('Strength: ')
+    FilterStrengthLabel.setToolTip('Choose strength of the filtering process.')
+    StrengthGroupBox.layout().addWidget(FilterStrengthLabel)  
+    
+    self.SmoothOption = qt.QPushButton()
+    self.SmoothOption.setText('Smooth')
+    self.SmoothOption.setCheckable(1)
+    self.SmoothOption.setChecked(1)
+    self.SmoothOption.setAutoExclusive(1) 
+    self.SmoothOption.setFixedWidth(60)
+    StrengthGroupBox.layout().addWidget(self.SmoothOption)
+    
+    self.MediumOption = qt.QPushButton()
+    self.MediumOption.setText('Medium')
+    self.MediumOption.setCheckable(1)
+    self.MediumOption.setChecked(0)
+    self.MediumOption.setFixedWidth(60)
+    self.MediumOption.setAutoExclusive(1)    
+    StrengthGroupBox.layout().addWidget(self.MediumOption)
+    
+    self.HeavyOption = qt.QPushButton()
+    self.HeavyOption.setText('Heavy')
+    self.HeavyOption.setCheckable(1)
+    self.HeavyOption.setChecked(0)
+    self.HeavyOption.setFixedWidth(60)
+    self.HeavyOption.setAutoExclusive(1)    
+    StrengthGroupBox.layout().addWidget(self.HeavyOption)
+    
+    
+    # Downsampling option for label map creation
+    self.LMCreationFrame = qt.QFrame()
+    self.LMCreationFrame.setLayout(qt.QVBoxLayout())
+    self.LMCreationFrame.enabled = False
+    self.LMCreationFrame.setObjectName('LMCreationFrame')
+    self.LMCreationFrame.setStyleSheet('#LMCreationFrame {border: 1px solid lightGray; color: black; }')
+    self.parent.layout().addWidget(self.LMCreationFrame)    
+    
+    LMCreationLabel = qt.QLabel()
+    LMCreationLabel.setText('Label Map Creation:')
+    self.LMCreationFrame.layout().addWidget(LMCreationLabel)    
+        
+    self.DownSamplingGroupBox = qt.QGroupBox()
+    self.DownSamplingGroupBox.setLayout(qt.QHBoxLayout())
+    self.DownSamplingGroupBox.setFixedWidth(120)
+    self.DownSamplingGroupBox.setObjectName('DownSamplingGroupBox')
+    self.DownSamplingGroupBox.setStyleSheet('#DownSamplingGroupBox {border: 1px solid white; color: black; }')
+    self.DownSamplingGroupBox.setToolTip('Choose between fast and slow label map creation.')
+    self.LMCreationFrame.layout().addWidget(self.DownSamplingGroupBox)
+     
+    self.FastOption = qt.QRadioButton()
+    self.FastOption.setText('Fast')
+    self.FastOption.setCheckable(1)
+    self.FastOption.setChecked(0)
+    self.DownSamplingGroupBox.layout().addWidget(self.FastOption)     
+    
+    self.SlowOption = qt.QRadioButton()
+    self.SlowOption.setText('Slow')
+    self.SlowOption.setCheckable(1)
+    self.SlowOption.setChecked(1)
+    self.DownSamplingGroupBox.layout().addWidget(self.SlowOption) 
+          
+    # Add space between the two buttons
+#    stretchBox = qt.QFrame()
+#    stretchBox.setFixedHeight(20)
+#    self.filterOptionsFrame.layout().addWidget(stretchBox)
+ 
     # Apply button
     self.applyButton = qt.QPushButton("Apply")
     self.applyButton.toolTip = "Calculate Parenchyma Phenotypes."
     self.applyButton.enabled = False
-    self.parent.layout().addWidget(self.applyButton)
+    self.applyButton.setFixedSize(300,30)
+    self.parent.layout().addWidget(self.applyButton,0,4)
 
-    # model and view for INSP stats table
+    # model and view for stats table
     self.view = qt.QTableView()
     self.view.sortingEnabled = True
     self.parent.layout().addWidget(self.view)
 
     # model and view for EXP stats table
-    self.viewexp = qt.QTableView()
+    """self.viewexp = qt.QTableView()
     self.viewexp.sortingEnabled = True
-    self.parent.layout().addWidget(self.viewexp)
+    self.parent.layout().addWidget(self.viewexp)"""
+    
+    # Histogram Selection   
+    self.HistSection = qt.QFrame()
+    self.HistSection.setLayout(qt.QVBoxLayout())
+    self.parent.layout().addWidget(self.HistSection)
+    self.HistSection.setObjectName('HistSection')
+    self.HistSection.setStyleSheet('#HistSection {border: 0.5px solid lightGray; }')
+    HistSectionTitle = qt.QLabel()
+    HistSectionTitle.setText('Histogram Section')
+    #HistSectionTitle.setStyleSheet('border: 1px solid white; color: black')
+    self.HistSection.layout().addWidget(HistSectionTitle)
+    
+    self.histogramCheckBoxes = []
+    self.histFrame = qt.QFrame()
+    #self.histFrame.setStyleSheet('border: 1px solid white')
+    self.histFrame.setLayout(qt.QHBoxLayout())
+    
+    self.GlobalHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.GlobalHistCheckBox)
+    self.histFrame.layout().addWidget(self.GlobalHistCheckBox)
+   
+    self.RightHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.RightHistCheckBox)
+    self.histFrame.layout().addWidget(self.RightHistCheckBox)
+
+    self.LeftHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.LeftHistCheckBox)
+    self.histFrame.layout().addWidget(self.LeftHistCheckBox)
+
+    self.RULHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.RULHistCheckBox)
+    self.histFrame.layout().addWidget(self.RULHistCheckBox)
+
+    self.RLLHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.RLLHistCheckBox)
+    self.histFrame.layout().addWidget(self.RLLHistCheckBox)
+
+    self.RMLHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.RMLHistCheckBox)
+    self.histFrame.layout().addWidget(self.RMLHistCheckBox)
+
+    self.LULHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.LULHistCheckBox)
+    self.histFrame.layout().addWidget(self.LULHistCheckBox)
+    
+    self.LLLHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.LLLHistCheckBox)
+    self.histFrame.layout().addWidget(self.LLLHistCheckBox)
+
+    self.LUTHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.LUTHistCheckBox)
+    self.histFrame.layout().addWidget(self.LUTHistCheckBox)
+
+    self.LMTHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.LMTHistCheckBox)
+    self.histFrame.layout().addWidget(self.LMTHistCheckBox)
+
+    self.LLTHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.LLTHistCheckBox)
+    self.histFrame.layout().addWidget(self.LLTHistCheckBox)
+
+    self.RUTHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.RUTHistCheckBox)
+    self.histFrame.layout().addWidget(self.RUTHistCheckBox)
+
+    self.RMTHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.RMTHistCheckBox)
+    self.histFrame.layout().addWidget(self.RMTHistCheckBox)
+    
+    self.RLTHistCheckBox = qt.QCheckBox()
+    self.histogramCheckBoxes.append(self.RLTHistCheckBox)
+    self.histFrame.layout().addWidget(self.RLTHistCheckBox)
+    
+    for i in xrange(len(self.histogramCheckBoxes)):
+      self.histogramCheckBoxes[i].setText(self.rTags[i])
+      self.histogramCheckBoxes[i].hide()   
+    
+    self.HistSection.layout().addWidget(self.histFrame)
+    self.HistSection.enabled = False
     
     # Chart button
-    self.chartFrame = qt.QFrame()
-    self.chartFrame.setLayout(qt.QHBoxLayout())
-    self.parent.layout().addWidget(self.chartFrame)
+    self.chartBox = qt.QFrame()
+    self.chartBox.setObjectName("chartBox")
+    self.chartBox.setStyleSheet('#chartBox {border: 0.5px solid lightGray;}') 
+    self.chartBox.setLayout(qt.QVBoxLayout())
+    self.parent.layout().addWidget(self.chartBox)
+    chartSectionTitle = qt.QLabel()
+    chartSectionTitle.setText('Chart Section')
+    self.chartBox.layout().addWidget(chartSectionTitle) 
+    chartFrame = qt.QFrame()
+    chartFrame.setLayout(qt.QHBoxLayout())
+    self.chartBox.layout().addWidget(chartFrame)  
     self.chartButton = qt.QPushButton("Chart")
     self.chartButton.toolTip = "Make a chart from the current statistics."
-    self.chartFrame.layout().addWidget(self.chartButton)
+    chartFrame.layout().addWidget(self.chartButton)
     self.chartOption = qt.QComboBox()
     self.chartOption.addItems(self.chartOptions)
-    self.chartFrame.layout().addWidget(self.chartOption)
-    self.chartIgnoreZero = qt.QCheckBox()
-    self.chartIgnoreZero.setText('Ignore Zero')
-    self.chartIgnoreZero.checked = False
-    self.chartIgnoreZero.setToolTip('Do not include the zero index in the chart to avoid dwarfing other bars')
-    #self.chartFrame.layout().addWidget(self.chartIgnoreZero)
-    self.chartFrame.enabled = False
+    chartFrame.layout().addWidget(self.chartOption)
+    self.chartBox.enabled = False
 
 
-    # Save button
-    self.saveButton = qt.QPushButton("Save")
-    self.saveButton.toolTip = "Save Statistics as a csv file."
-    self.saveButton.enabled = False
-    self.parent.layout().addWidget(self.saveButton)
+    self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames, parentWidget=self.parent)
+    self.reportsWidget.setup()
+    self.reportsWidget.saveButton.enabled = False
+    self.reportsWidget.openButton.enabled = False
+    self.reportsWidget.exportButton.enabled = False
+    self.reportsWidget.removeButton.enabled = False
+#    self.reportsWidget.openButton.hide()
 
     # Add vertical spacer
     self.parent.layout().addStretch(1)
@@ -227,92 +455,279 @@ class ParenchymaAnalysisWidget:
     # connections
     self.applyButton.connect('clicked()', self.onApply)
     self.chartButton.connect('clicked()', self.onChart)
-    self.saveButton.connect('clicked()', self.onSave)
-    self.inspSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onInspSelect)
-    self.insplabelSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onInspLabelSelect)
-    self.expSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onExpSelect)
-    self.explabelSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onExpLabelSelect)
+    
+    self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
+    self.CTSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onCTSelect)
+    self.CTlabelSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onCTLabelSelect)
 
-  def onInspSelect(self, node):
-    self.inspNode = node
-    self.applyButton.enabled = bool(self.inspNode) and bool(self.insplabelNode)
+    self.filterOnRadioButton.connect('toggled(bool)',self.showFilterParams)
+    self.filterOffRadioButton.connect('toggled(bool)',self.hideFilterParams)
+       
+    self.GlobalHistCheckBox.connect('clicked()', self.onHistogram)
+    self.RightHistCheckBox.connect('clicked()', self.onHistogram)
+    self.LeftHistCheckBox.connect('clicked()', self.onHistogram)
+    self.RULHistCheckBox.connect('clicked()', self.onHistogram)
+    self.RLLHistCheckBox.connect('clicked()', self.onHistogram)
+    self.RMLHistCheckBox.connect('clicked()', self.onHistogram)
+    self.LULHistCheckBox.connect('clicked()', self.onHistogram)
+    self.LLLHistCheckBox.connect('clicked()', self.onHistogram)
+    self.LUTHistCheckBox.connect('clicked()', self.onHistogram)
+    self.LMTHistCheckBox.connect('clicked()', self.onHistogram)
+    self.LLTHistCheckBox.connect('clicked()', self.onHistogram)
+    self.RUTHistCheckBox.connect('clicked()', self.onHistogram)
+    self.RMTHistCheckBox.connect('clicked()', self.onHistogram)
+    self.RLTHistCheckBox.connect('clicked()', self.onHistogram)    
 
-  def onInspLabelSelect(self, node):
-    self.insplabelNode = node
-    self.applyButton.enabled = bool(self.inspNode) and bool(self.insplabelNode)
+  def onCTSelect(self, node):
+    self.CTNode = node
+    self.applyButton.enabled = bool(self.CTNode) #and bool(self.CTlabelNode)
+    self.FilteringFrame.enabled = bool(self.CTNode)
+    self.LMCreationFrame.enabled = bool(not self.CTlabelNode)
 
-  def onExpSelect(self, node):
-    self.expNode = node
-    self.applyButton.enabled = bool(self.expNode) and bool(self.explabelNode)
+  def onCTLabelSelect(self, node):
+    self.CTlabelNode = node
+    self.applyButton.enabled = bool(self.CTNode) #and bool(self.CTlabelNode)
+    self.FilteringFrame.enabled = bool(self.CTNode) 
+    self.LMCreationFrame.enabled = bool(not self.CTlabelNode)
+  
+  def showFilterParams(self):
+    self.filterOptionsFrame.show()
 
-  def onExpLabelSelect(self, node):
-    self.explabelNode = node
-    self.applyButton.enabled = bool(self.expNode) and bool(self.explabelNode)
-
-
-  def inspvolumesAreValid(self):
+  def hideFilterParams(self):
+    self.filterOptionsFrame.hide() 
+          
+  def inputVolumesAreValid(self):
     """Verify that volumes are compatible with label calculation
     algorithm assumptions"""
-    if not self.inspNode or not self.insplabelNode:
-      return False
-    if not self.inspNode.GetImageData() or not self.insplabelNode.GetImageData():
-      return False
-    if self.inspNode.GetImageData().GetDimensions() != self.insplabelNode.GetImageData().GetDimensions():
-      return False
-    return True
-
-  def expvolumesAreValid(self):
-    """Verify that volumes are compatible with label calculation
-      algorithm assumptions"""
-    if not self.expNode or not self.explabelNode:
-      return False
-    if not self.expNode.GetImageData() or not self.explabelNode.GetImageData():
-      return False
-    if self.expNode.GetImageData().GetDimensions() != self.explabelNode.GetImageData().GetDimensions():
-      return False
-    return True
-
-  def onApply(self):
-    """Calculate the parenchyma analysis
-    """
-    if not self.inspvolumesAreValid():
+    if not self.CTNode: #or not self.CTlabelNode:
       qt.QMessageBox.warning(slicer.util.mainWindow(),
-          "Parenchyma Analysis", "Inspiratory Volumes do not have the same geometry.")
-      return
-
-    if not self.expvolumesAreValid():
+          "Parenchyma Analysis", "Please select a CT Input Volume.")
+      return False
+    if not self.CTNode.GetImageData(): #or not self.CTlabelNode.GetImageData():
       qt.QMessageBox.warning(slicer.util.mainWindow(),
-          "Parenchyma Analysis", "Expiratory Volumes do not have the same geometry.")
-      return
+          "Parenchyma Analysis", "Please select a CT Input Volume.")
+      return False
+    if not self.CTlabelNode or not self.CTlabelNode.GetImageData():
+      answer = qt.QMessageBox.question(slicer.util.mainWindow(),'Parenchyma Analysis', 'Do you want to create a lung label map?', qt.QMessageBox.Yes | qt.QMessageBox.No)
+      if answer == 16384:
+          self.createLungLabelMap()
+      else:
+        qt.QMessageBox.warning(slicer.util.mainWindow(),
+          "Parenchyma Analysis", "Please select a CT Label Map.")
+        return False
+      return True      
+    if self.CTNode.GetImageData().GetDimensions() != self.CTlabelNode.GetImageData().GetDimensions():
+      qt.QMessageBox.warning(slicer.util.mainWindow(),
+          "Parenchyma Analysis", "Input Volumes do not have the same geometry.")
+      return False         
     
-    self.applyButton.text = "Working..."
+    if self.filterOnRadioButton.checked:
+      self.filterApplication.setChecked(1)
+    return True
+  
+  def filterInputCT(self):
+    self.applyButton.enabled = False
+    self.applyButton.text = "Filtering..."
+    # TODO: why doesn't processEvents alone make the label text change?
+    self.applyButton.repaint()
+    slicer.app.processEvents()    
+      
+    if self.NLMFilterRadioButton.checked: # NLM filter
+      generatenlmfilteredimage = slicer.modules.generatenlmfilteredimage
+
+      searchRadius = [3,3,3]
+      comparisonRadius = [5,5,5]   
+      if self.Filt2DOption.checked: # 2D filtering
+        searchRadius[2] = 1
+        comparisonRadius[2] = 1
+   
+      noisePower = 3.0 # Smooth filtering
+      h = 0.8
+      ps = 2.0
+      
+      if self.MediumOption.checked: # Medium strength
+        noisePower = 4.0
+        h = 1.0
+      elif self.HeavyOption.checked: # Heavy strength
+        noisePower = 5.0
+        h = 1.2
+      
+      parameters = {
+          "ctFileName": self.CTNode.GetID(),
+          "outputFileName": self.CTNode.GetID(),
+          "iSigma": noisePower,
+          "iRadiusSearch": searchRadius,
+          "iRadiusComp": comparisonRadius,
+          "iH": h,
+          "iPs": ps,
+          }
+      slicer.cli.run(generatenlmfilteredimage,None,parameters,wait_for_completion=True)
+    elif self.MedianFilterRadioButton.checked: # Median Filter
+      medianimagefilter = slicer.modules.medianimagefilter
+      
+      neighborhoodRadius = [1,1,1]
+      
+      if self.MediumOption.checked: # Medium strength
+        neighborhoodRadius = [2,2,2]
+      elif self.HeavyOption.checked: # Heavy strength
+        neighborhoodRadius = [3,3,3]      
+         
+      if self.Filt2DOption.checked: # 2D filtering
+        neighborhoodRadius[2] = 1      
+      
+      parameters = {
+          "inputVolume": self.CTNode.GetID(),
+          "outputVolume": self.CTNode.GetID(),
+          "neighborhood": neighborhoodRadius,
+          }
+      slicer.cli.run(medianimagefilter,None,parameters,wait_for_completion=True)
+    elif self.GaussianFilterRadioButton.checked: # Gaussian Blur Filter
+      gaussianblurimagefilter = slicer.modules.gaussianblurimagefilter
+      
+      sigma = 1.0      
+      
+      if self.MediumOption.checked: # Medium strength
+        sigma = 2.0
+      elif self.HeavyOption.checked: # Heavy strength
+        sigma = 3.0
+      
+      parameters = {
+          "inputVolume": self.CTNode.GetID(),
+          "outputVolume": self.CTNode.GetID(),
+          "sigma": sigma,
+          }
+      slicer.cli.run(gaussianblurimagefilter,None,parameters,wait_for_completion=True)
+  
+  def createLungLabelMap(self):
+    """Create the lung label map
+    """
+    self.applyButton.enabled = False
+    if self.filterOnRadioButton.checked and not self.filterApplication.checked:
+      self.filterInputCT()      
+    
+    inputNode = self.CTNode
+    
+    # Downsampling  
+    if self.FastOption.checked:
+      inputNode = self.donwsampleCT()
+    
+    self.applyButton.text = "Creating Label Map..."
     # TODO: why doesn't processEvents alone make the label text change?
     self.applyButton.repaint()
     slicer.app.processEvents()
-    self.logic = ParenchymaAnalysisLogic(self.inspNode, self.insplabelNode,self.expNode,self.explabelNode)
-    self.populateStats()
-    self.chartFrame.enabled = True
-    self.saveButton.enabled = True
-    self.applyButton.text = "Apply"
+    
+    generatepartiallunglabelmap = slicer.modules.generatepartiallunglabelmap
+    self.CTlabelNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLLabelMapVolumeNode())
+    self.CTlabelNode.SetName(self.CTNode.GetName() + '_partialLungLabelMap')
+    parameters = {
+          "ctFileName": inputNode.GetID(),
+          "outputLungMaskFileName": self.CTlabelNode.GetID(),	  
+          }
+    slicer.cli.run(generatepartiallunglabelmap,None,parameters,wait_for_completion=True)
+    
+    if self.FastOption.checked:
+      self.CTlabelNode = self.upsampleLabel(self.CTlabelNode)
+      slicer.mrmlScene.RemoveNode(inputNode)
+    
+    self.CTlabelSelector.setCurrentNode(self.CTlabelNode)
+    
+  def donwsampleCT(self):
+    oldSpacing = self.CTNode.GetSpacing()
+    
+    newSpacing = []    
+    newSpacing.append(oldSpacing[0]*2)
+    newSpacing.append(oldSpacing[1]*2)
+    newSpacing.append(oldSpacing[2])
+    
+    resamplescalarvolume = slicer.modules.resamplescalarvolume
+    outputNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLScalarVolumeNode())
+    
+    parameters = {
+          "outputPixelSpacing": newSpacing,
+          "InputVolume": self.CTNode.GetID(),
+          "OutputVolume": outputNode.GetID(),
+          }
+    slicer.cli.run(resamplescalarvolume,None,parameters,wait_for_completion=True)
+    
+    return outputNode
+    
+  def upsampleLabel(self, labelMap):
+    oldSpacing = labelMap.GetSpacing()
+    
+    newSpacing = []    
+    newSpacing.append(oldSpacing[0]/2)
+    newSpacing.append(oldSpacing[1]/2)
+    newSpacing.append(oldSpacing[2])
+    
+    resamplescalarvolume = slicer.modules.resamplescalarvolume
+    
+    parameters = {
+          "outputPixelSpacing": newSpacing,
+          "InputVolume": labelMap.GetID(),
+          "OutputVolume": labelMap.GetID(),
+          }
+    slicer.cli.run(resamplescalarvolume,None,parameters,wait_for_completion=True)
+    
+    return labelMap
+    
+  def onApply(self):
+    """Calculate the parenchyma analysis
+    """    
+    if not self.inputVolumesAreValid():
+      return
 
+    self.applyButton.enabled = False
+
+    if self.filterOnRadioButton.checked and self.filterApplication.checked:
+      self.filterInputCT()
+
+    self.applyButton.text = "Analysing..."
+    # TODO: why doesn't processEvents alone make the label text change?
+    self.applyButton.repaint()
+    slicer.app.processEvents()
+    
+    self.logic = ParenchymaAnalysisLogic(self.CTNode, self.CTlabelNode)
+    self.populateStats()
+    self.logic.createHistogram()
+    for i in xrange(len(self.histogramCheckBoxes)):
+      self.histogramCheckBoxes[i].setChecked(0)
+      self.histogramCheckBoxes[i].hide()
+    
+    for tag in self.rTags:
+      if tag in self.logic.regionTags:
+        self.histogramCheckBoxes[self.rTags.index(tag)].show()    
+    
+    self.HistSection.enabled = True
+    self.chartBox.enabled = True
+    self.reportsWidget.saveButton.enabled = True
+    self.reportsWidget.openButton.enabled = True
+    self.reportsWidget.exportButton.enabled = True
+    self.reportsWidget.removeButton.enabled = True   
+    
+    self.applyButton.enabled = True
+    self.applyButton.text = "Apply"
+    
+  def onHistogram(self):
+    """Histogram of the selected region
+    """    
+    self.histList = []
+    for i in xrange(len(self.histogramCheckBoxes)):
+      if self.histogramCheckBoxes[i].checked == True:
+        self.histList.append(self.rTags[i])
+        
+    self.logic.AddSelectedHistograms(self.histList)
+    
   def onChart(self):
     """chart the parenchyma analysis
     """
     valueToPlot = self.chartOptions[self.chartOption.currentIndex]
-    ignoreZero = self.chartIgnoreZero.checked
-    self.logic.createStatsChart(self.insplabelNode,valueToPlot,ignoreZero)
+    self.logic.createStatsChart(self.CTlabelNode,valueToPlot)
 
-  def onSave(self):
-    """save the parenchyma analysis
-    """
-    if not self.fileDialog:
-      self.fileDialog = qt.QFileDialog(self.parent)
-      self.fileDialog.options = self.fileDialog.DontUseNativeDialog
-      self.fileDialog.acceptMode = self.fileDialog.AcceptSave
-      self.fileDialog.defaultSuffix = "csv"
-      self.fileDialog.setNameFilter("Comma Separated Values (*.csv)")
-      self.fileDialog.connect("fileSelected(QString)", self.onFileSelected)
-    self.fileDialog.show()
+  def onSaveReport(self):
+    """ Save the current values in a persistent csv file
+    """   
+    self.logic.statsAsCSV(self.reportsWidget)
+
 
   def onFileSelected(self,fileName):
     self.logic.saveStats(fileName)
@@ -320,7 +735,7 @@ class ParenchymaAnalysisWidget:
   def populateStats(self):
     if not self.logic:
       return
-    displayNode = self.insplabelNode.GetDisplayNode()
+    displayNode = self.CTlabelNode.GetDisplayNode()
     colorNode = displayNode.GetColorNode()
     lut = colorNode.GetLookupTable()
     self.items = []
@@ -328,75 +743,38 @@ class ParenchymaAnalysisWidget:
     self.view.setModel(self.model)
     self.view.verticalHeader().visible = False
     row = 0
-    
-    cycle=['insp']
-      
-    for i in cycle:
-      for regionTag,regionValue in zip(self.logic.regionTags,self.logic.regionValues):
-        color = qt.QColor()
-        rgb = lut.GetTableValue(regionValue[0])
-        color.setRgb(rgb[0]*255,rgb[1]*255,rgb[2]*255)
+            
+    for regionTag,regionValue in zip(self.logic.regionTags,self.logic.regionValues):
+      color = qt.QColor()
+      rgb = lut.GetTableValue(regionValue[0])
+      color.setRgb(rgb[0]*255,rgb[1]*255,rgb[2]*255)
+      item = qt.QStandardItem()
+      item.setData(color,1)
+      item.setText(str(regionTag))
+      item.setData(regionTag,1)
+      item.setToolTip(regionTag)
+      item.setTextAlignment(1)
+      self.model.setItem(row,0,item)
+      self.items.append(item)
+      col = 1
+      for k in self.logic.keys:
         item = qt.QStandardItem()
-        item.setData(color,1)
-        item.setText(str(regionTag))
-        item.setData(regionTag,1)
-        item.setToolTip(regionTag)
-        self.model.setItem(row,0,item)
+        item.setText("%.3f" % self.logic.labelStats[k,regionTag])
+        item.setTextAlignment(4)
+        self.view.setColumnWidth(col,15*len(item.text()))
+        self.model.setItem(row,col,item)
         self.items.append(item)
-        col = 1
-        for k in self.logic.keys:
-          item = qt.QStandardItem()
-          item.setText("%.3f" % self.logic.labelStats[i,k,regionTag])
-          self.model.setItem(row,col,item)
-          self.items.append(item)
-          col += 1
-        row += 1
+        col += 1
+      row += 1
 
-    self.view.setColumnWidth(0,30)
-    self.model.setHeaderData(0,1,"INSP")
+    self.view.setColumnWidth(0,15*len('Region'))
+    self.model.setHeaderData(0,1,"Region")
     col = 1
     for k in self.logic.keys:
-      self.view.setColumnWidth(col,15*len(k))
+      #self.view.setColumnWidth(col,15*len(k))
       self.model.setHeaderData(col,1,k)
-      col += 1
-
-  
-    self.itemsexp = []
-    self.modelexp = qt.QStandardItemModel()
-    self.viewexp.setModel(self.modelexp)
-    self.viewexp.verticalHeader().visible = False
-    row = 0
-    
-    cycle=['exp']
-    
-    for i in cycle:
-      for regionTag,regionValue in zip(self.logic.regionTags,self.logic.regionValues):
-        color = qt.QColor()
-        rgb = lut.GetTableValue(regionValue[0])
-        color.setRgb(rgb[0]*255,rgb[1]*255,rgb[2]*255)
-        item = qt.QStandardItem()
-        item.setData(color,1)
-        item.setText(str(regionTag))
-        item.setData(regionTag,1)
-        item.setToolTip(regionTag)
-        self.modelexp.setItem(row,0,item)
-        self.itemsexp.append(item)
-        col = 1
-        for k in self.logic.keys:
-          item = qt.QStandardItem()
-          item.setText("%.3f" % self.logic.labelStats[i,k,regionTag])
-          self.modelexp.setItem(row,col,item)
-          self.itemsexp.append(item)
-          col += 1
-        row += 1
-    
-    self.viewexp.setColumnWidth(0,30)
-    self.modelexp.setHeaderData(0,1,"EXP")
-    col = 1
-    for k in self.logic.keys:
-      self.viewexp.setColumnWidth(col,15*len(k))
-      self.modelexp.setHeaderData(col,1,k)
-      col += 1
+      col += 1      
+      
 
   def onReload(self,moduleName="ParenchymaAnalysis"):
     """Generic reload method for any scripted module.
@@ -461,87 +839,79 @@ class ParenchymaAnalysisLogic:
   Nodes are passed in as arguments.
   Results are stored as 'statistics' instance variable.
   """
-
-  def __init__(self, inspNode, insplabelNode,expNode, explabelNode, fileName=None):
-    #import numpy
-
+  __preventDialogs__ = False
+  
+  def __init__(self, CTNode, CTlabelNode, fileName=None):
     self.keys = ["LAA%-950","LAA%-910","LAA%-856","HAA%-700","HAA%-600","Mean","Std","Kurtosis","Skewness","Volume"]
     
-    self.regionTags=["Global","Right","Left","RUL","RLL","RML","LUL","LLL"]
-    self.regionValues=[(4,8),(4,6),(7,8),(4,4),(5,5),(6,6),(7,7),(8,8)]
-    cubicMMPerVoxel = reduce(lambda x,y: x*y, insplabelNode.GetSpacing())
+    rTags=["Global","Right","Right","Right","Left","Left","RUL","RLL","RML","LUL","LLL","LUT","LMT","LLT","RUT","RMT","RLT"]
+    self.regionTags = []
+    self.regionValues = [(1,14),(2,2),(4,6),(12,14),(3,3),(7,11),(4,4),(5,5),(6,6),(7,7),(8,8),(9,9),(10,10),(11,11),(12,12),(13,13),(14,14)]
+    self.valuesDictionary = {}
+    cubicMMPerVoxel = reduce(lambda x,y: x*y, CTlabelNode.GetSpacing())
     litersPerCubicMM = 0.000001
-
+    
     # TODO: progress and status updates
     # this->InvokeEvent(vtkParenchymaAnalysisLogic::StartLabelStats, (void*)"start label stats")
 
     ## Call CLI to compute parenchyma phenotypes
-    ## INSP scan
-    # GenerateRegionHistogramsAndParenchymaPhenotypes --max 0 --min -1200 --op insppheno.csv --oh insphisto.csv -l insplabelNode -c inspNode
-    inspPhenoFile = '/var/tmp/insppheno.csv'
-    inspHistoFile = '/var/tmp/insphisto.csv'
-    print insplabelNode.GetID()
-    print inspNode.GetID()
+    ## CT scan
+    # GenerateRegionHistogramsAndParenchymaPhenotypes --max 0 --min -1200 --op CTpheno.csv --oh CThisto.csv -l CTlabelNode -c CTNode
+    CTPhenoFile = '/var/tmp/CTpheno.csv'
+    CTHistoFile = '/var/tmp/CThisto.csv'
+
     parameters=dict()
     parameters['max']=0
     parameters['min']=-1200
-    parameters['ipl']=insplabelNode.GetID()
-    parameters['ic']=inspNode.GetID()
-    parameters['op']=inspPhenoFile
-    parameters['oh']=inspHistoFile
+    parameters['ipl']=CTlabelNode.GetID()
+    parameters['ic']=CTNode.GetID()
+    parameters['op']=CTPhenoFile
+    parameters['oh']=CTHistoFile
 
     #cliNode = slicer.cli.run(slicer.modules.generateregionhistogramsandparenchymaphenotypes,None,parameters,wait_for_completion=True)
     
-    ## Get data from numpy
-    
+    ## Get data from numpy    
     import vtk.util.numpy_support, numpy
     
     self.labelStats = {}
-
     
-    for cycle in ["insp","exp"]:
-      if cycle == "insp":
-        datalabel_arr=vtk.util.numpy_support.vtk_to_numpy(insplabelNode.GetImageData().GetPointData().GetScalars())
-        data_arr=vtk.util.numpy_support.vtk_to_numpy(inspNode.GetImageData().GetPointData().GetScalars())
-      if cycle == "exp":
-        datalabel_arr=vtk.util.numpy_support.vtk_to_numpy(explabelNode.GetImageData().GetPointData().GetScalars())
-        data_arr=vtk.util.numpy_support.vtk_to_numpy(expNode.GetImageData().GetPointData().GetScalars())
+    self.regionHists = {}
+    self.regionBins = {}
+    
+    datalabel_arr=vtk.util.numpy_support.vtk_to_numpy(CTlabelNode.GetImageData().GetPointData().GetScalars())
+    data_arr=vtk.util.numpy_support.vtk_to_numpy(CTNode.GetImageData().GetPointData().GetScalars())
   
-      for value,tag in zip(self.regionValues,self.regionTags):
-        data=data_arr[(datalabel_arr>=value[0]) & (datalabel_arr<=value[1])]
+    for value,tag in zip(self.regionValues,rTags):
+      data=data_arr[(datalabel_arr>=value[0]) & (datalabel_arr<=value[1])]
+	
+      if data.any():
         mean_data=numpy.mean(data)
         std_data=numpy.std(data)
-        self.labelStats[cycle,'Mean',tag]=mean_data
-        self.labelStats[cycle,'Std',tag]=std_data
-        self.labelStats[cycle,'Kurtosis',tag]=self.kurt(data,mean_data,std_data)
-        self.labelStats[cycle,'Skewness',tag]=self.skew(data,mean_data,std_data)
-        self.labelStats[cycle,'LAA%-950',tag]=100.0*(data<-950).sum()/float(data.size)
-        self.labelStats[cycle,'LAA%-910',tag]=100.0*(data<-910).sum()/float(data.size)
-        self.labelStats[cycle,'LAA%-856',tag]=100.0*(data<-856).sum()/float(data.size)
-        self.labelStats[cycle,'HAA%-700',tag]=100.0*(data>-700).sum()/float(data.size)
-        self.labelStats[cycle,'HAA%-600',tag]=100.0*(data>-600).sum()/float(data.size)
+        self.labelStats['Mean',tag]=mean_data
+        self.labelStats['Std',tag]=std_data
+        self.labelStats['Kurtosis',tag]=self.kurt(data,mean_data,std_data)
+        self.labelStats['Skewness',tag]=self.skew(data,mean_data,std_data)
+        self.labelStats['LAA%-950',tag]=100.0*(data<-950).sum()/float(data.size)
+        self.labelStats['LAA%-910',tag]=100.0*(data<-910).sum()/float(data.size)
+        self.labelStats['LAA%-856',tag]=100.0*(data<-856).sum()/float(data.size)
+        self.labelStats['HAA%-700',tag]=100.0*(data>-700).sum()/float(data.size)
+        self.labelStats['HAA%-600',tag]=100.0*(data>-600).sum()/float(data.size)
         #self.labelStats[cycle,'Perc10',tag]=self.percentile(data,.1)
-        #sefl.labelStats[cycle,'Perc15',tag]=self.percentile(data,.15)
-        self.labelStats[cycle,'Volume',tag]=data.size*cubicMMPerVoxel*litersPerCubicMM;
-    
-    ## EXP scan
-    # GenerateRegionHistogramsAndParenchymaPhenotypes --max 0 --min -1200 --op insppheno.csv --oh insphisto.csv -l insplabelNode -c inspNode
-    #expPhenoFile = '/var/tmp/exppheno.csv'
-    #expHistoFile = '/var/tmp/exphisto.csv'
-    
-    #parameters=dict()
-    #parameters['max']=0
-    #parameters['min']=-1200
-    #parameters['ipl']=explabelNode.GetID()
-    #parameters['ic']=expNode.GetID()
-    #parameters['op']=expPhenoFile
-    #parameters['oh']=expHistoFile
+        #self.labelStats[cycle,'Perc15',tag]=self.percentile(data,.15)
+        self.labelStats['Volume',tag]=data.size*cubicMMPerVoxel*litersPerCubicMM;
+      
+        #Compute histograms
+        data = data[data < -350]
+        binContainers = numpy.arange(data.min(), data.max()+2)    
+        histogram,bins = numpy.histogram(data, bins=binContainers)
+        self.regionHists[tag] = histogram
+        self.regionBins[tag] = bins
+        
+        self.regionTags.append(tag)
+        
+        self.valuesDictionary[tag] = value
 
-  #slicer.cli.run(slicer.modules.generateregionhistogramsandparenchymaphenotypes,None,parameters,wait_for_completion=True)
-    
-
-    ## Read files and populate array
-    
+    ## Read files and populate array   
 
     # add an entry to the LabelStats list
     #self.labelStats["Labels"].append(i)
@@ -568,7 +938,7 @@ class ParenchymaAnalysisLogic:
       
       @return - the percentile of the values
       """
-    import numpy
+    import math
     N.sort()
     if not N:
       return None
@@ -580,8 +950,6 @@ class ParenchymaAnalysisLogic:
     d0 = key(N[int(f)]) * (c-k)
     d1 = key(N[int(c)]) * (k-f)
     return d0+d1
-
-
 
   def kurt(self,obs,meanVal,stdDev):
     import numpy as np
@@ -604,21 +972,29 @@ class ParenchymaAnalysisLogic:
     n = float(len(obs))
     num = 1/n* np.sum((obs - meanVal) ** 3)
     denom = stdDev** 3 # avoid losing precision with np.sqrt call
-    return num / denom
+    return num / denom    
+    
+  def statsAsCSV(self, repWidget):  
+    if self.labelStats is None:
+      qt.QMessageBox.warning(slicer.util.mainWindow(), "Data not existing", "No statistics calculated")
+      return 
+     
+    for tag in self.regionTags:
+      e = {}
+      e['Region'] = tag
+      for k in self.keys:
+        e[k] = self.labelStats[k,tag]
 
-  def createStatsChart(self, labelNode, valueToPlot, ignoreZero=False):
+      repWidget.saveCurrentValues( **e )
+
+    if not self.__preventDialogs__:
+      qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+
+  def createStatsChart(self, labelNode, valueToPlot):
     """Make a MRML chart of the current stats
     """
-    layoutNodes = slicer.mrmlScene.GetNodesByClass('vtkMRMLLayoutNode')
-    layoutNodes.SetReferenceCount(layoutNodes.GetReferenceCount()-1)
-    layoutNodes.InitTraversal()
-    layoutNode = layoutNodes.GetNextItemAsObject()
-    layoutNode.SetViewArrangement(slicer.vtkMRMLLayoutNode.SlicerLayoutConventionalQuantitativeView)
-
-    chartViewNodes = slicer.mrmlScene.GetNodesByClass('vtkMRMLChartViewNode')
-    chartViewNodes.SetReferenceCount(chartViewNodes.GetReferenceCount()-1)
-    chartViewNodes.InitTraversal()
-    chartViewNode = chartViewNodes.GetNextItemAsObject()
+    self.setChartLayout()
+    chartViewNode = slicer.util.getNode('ChartView')
 
     arrayNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLDoubleArrayNode())
     array = arrayNode.GetArray()
@@ -626,11 +1002,11 @@ class ParenchymaAnalysisLogic:
     tuples = samples
     array.SetNumberOfTuples(tuples)
     tuple = 0
-    cycle = 'insp'
+
     for i in xrange(samples):
         index = self.regionTags[i]
         array.SetComponent(tuple, 0, i)
-        array.SetComponent(tuple, 1, self.labelStats[cycle,valueToPlot,index])
+        array.SetComponent(tuple, 1, self.labelStats[valueToPlot,index])
         array.SetComponent(tuple, 2, 0)
         tuple += 1
 
@@ -648,33 +1024,189 @@ class ParenchymaAnalysisLogic:
 
     # series level properties
     if labelNode.GetDisplayNode() != None and labelNode.GetDisplayNode().GetColorNode() != None:
-      chartNode.SetProperty(valueToPlot, 'lookupTable', labelNode.GetDisplayNode().GetColorNodeID());
+      colorNode = labelNode.GetDisplayNode().GetColorNode() 
+      
+      newDisplayNode = slicer.vtkMRMLLabelMapVolumeDisplayNode()
+      newDisplayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeFileGenericAnatomyColors.txt')
+      slicer.mrmlScene.AddNode(newDisplayNode)
+      newColorNode = newDisplayNode.GetColorNode()
+        
+      colorNumber = 0
+      for tag in self.regionTags:
+        c = [0,0,0,0]
+        value = self.valuesDictionary[tag]
+        if value[0] == value[1]:
+          colorNode.SetColorName(value[0],tag)
+          colorNode.GetColor(value[0],c)
+          newColorNode.SetColor(colorNumber,c[0],c[1],c[2])
+          
+          
+        newColorNode.SetColorName(colorNumber,tag)
+        colorNumber +=1
 
+#      chartNode.SetProperty(valueToPlot, 'lookupTable', labelNode.GetDisplayNode().GetColorNodeID())
+      chartNode.SetProperty(valueToPlot, 'lookupTable', newColorNode.GetID())
+    
+  def createHistogram(self):    
+    self.setHistogramLayout()
+    
+    histogramViewNode = slicer.util.getNode('HistogramView')      
+      
+    # Show histogram
+    self.histogramArrays = {}
+    
+    HistNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLChartNode())
+   
+    for tag in self.regionTags:
+      arrayDataNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLDoubleArrayNode())
+      arrayData = arrayDataNode.GetArray()
+  
+      histogram = self.regionHists[tag]
+      bins = self.regionBins[tag]
 
-  def statsAsCSV(self):
-    """
-    print comma separated value file with header keys in quotes
-    """
-    csv = ""
-    header = ""
-    for k in self.keys[:-1]:
-      header += "\"%s\"" % k + ","
-    header += "\"%s\"" % self.keys[-1] + "\n"
-    csv = header
-    for i in self.labelStats["Labels"]:
-      line = ""
-      for k in self.keys[:-1]:
-        line += str(self.labelStats[i,k]) + ","
-      line += str(self.labelStats[i,self.keys[-1]]) + "\n"
-      csv += line
-    return csv
+      dataSamples = histogram.size
+      dataTuples = dataSamples
+      arrayData.SetNumberOfTuples(dataTuples)
+      tuple = 0
+    
+      for i in xrange(dataSamples):
+        arrayData.SetComponent(tuple, 0, bins[i])
+        arrayData.SetComponent(tuple, 1, histogram[i])
+        arrayData.SetComponent(tuple, 2, 0)
+        tuple += 1
 
-  def saveStats(self,fileName):
-    fp = open(fileName, "w")
-    fp.write(self.statsAsCSV())
-    fp.close()
+      self.histogramArrays[tag] = arrayDataNode   
+      HistNode.AddArray(tag, arrayDataNode.GetID())
 
+    histogramViewNode.SetChartNodeID(HistNode.GetID())
 
+    HistNode.SetProperty('default', 'title', 'Lung Density Histogram')
+    HistNode.SetProperty('default', 'xAxisLabel', 'Density (HU)')
+    HistNode.SetProperty('default', 'yAxisLabel', 'Frequency')
+    HistNode.SetProperty('default', 'type', 'Line');
+    HistNode.SetProperty('default', 'xAxisType', 'quantitative')
+    HistNode.SetProperty('default', 'showLegend', 'on')  
+          
+      
+  def AddSelectedHistograms(self, histogramsList):
+    histogramViewNode = slicer.util.getNode('HistogramView') 
+
+    HistNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLChartNode())
+
+    for tag in histogramsList:
+      HistNode.AddArray(tag, self.histogramArrays[tag].GetID())
+
+    histogramViewNode.SetChartNodeID(HistNode.GetID())
+    
+    HistNode.SetProperty('default', 'title', 'Lung Density Histogram')
+    HistNode.SetProperty('default', 'xAxisLabel', 'Density (HU)')
+    HistNode.SetProperty('default', 'yAxisLabel', 'Frequency')
+    HistNode.SetProperty('default', 'type', 'Line');
+    HistNode.SetProperty('default', 'xAxisType', 'quantitative')
+    HistNode.SetProperty('default', 'showLegend', 'on')
+    
+    
+  def setHistogramLayout(self):
+    customLayout = ("<layout type=\"vertical\" split=\"false\" >"
+                    " <item>"
+                    "  <layout type=\"horizontal\">"
+                    "   <item>"
+                    "    <view class=\"vtkMRMLViewNode\" singletontag=\"1\">"
+                    "     <property name=\"viewlabel\" action=\"default\">1</property>"
+                    "    </view>"
+                    "   </item>"
+                    "   <item>"
+                    "    <view class=\"vtkMRMLChartViewNode\" singletontag=\"HistogramView\">"
+                    "     <property name=\"viewlabel\" action=\"default\">HV</property>"
+                    "    </view>"
+                    "   </item>"
+                    "  </layout>"
+                    " </item>"
+                    " <item>"
+                    "  <layout type=\"horizontal\">"
+                    "   <item>"
+                    "    <view class=\"vtkMRMLSliceNode\" singletontag=\"Red\">"
+                    "     <property name=\"orientation\" action=\"default\">Axial</property>"
+                    "     <property name=\"viewlabel\" action=\"default\">R</property>"
+                    "     <property name=\"viewcolor\" action=\"default\">#F34A33</property>"
+                    "    </view>"
+                    "   </item>"
+                    "   <item>"
+                    "    <view class=\"vtkMRMLSliceNode\" singletontag=\"Yellow\">"
+                    "     <property name=\"orientation\" action=\"default\">Sagittal</property>"
+                    "     <property name=\"viewlabel\" action=\"default\">Y</property>"
+                    "     <property name=\"viewcolor\" action=\"default\">#EDD54C</property>"
+                    "    </view>"
+                    "   </item>"
+                    "   <item>"
+                    "    <view class=\"vtkMRMLSliceNode\" singletontag=\"Green\">"
+                    "     <property name=\"orientation\" action=\"default\">Coronal</property>"
+                    "     <property name=\"viewlabel\" action=\"default\">G</property>"
+                    "     <property name=\"viewcolor\" action=\"default\">#6EB04B</property>"
+                    "    </view>"
+                    "   </item>"
+                    "  </layout>"
+                    " </item>"
+                    "</layout>")
+    
+    layoutManager = slicer.app.layoutManager()
+    customLayoutId = 501
+    layoutManager.layoutLogic().GetLayoutNode().AddLayoutDescription(customLayoutId, customLayout)
+    layoutManager.setLayout(customLayoutId)
+    
+  def setChartLayout(self):
+    customLayout = ("<layout type=\"vertical\" split=\"false\" >"
+                    " <item>"
+                    "  <layout type=\"horizontal\">"
+                    "   <item>"
+                    "    <view class=\"vtkMRMLViewNode\" singletontag=\"1\">"
+                    "     <property name=\"viewlabel\" action=\"default\">1</property>"
+                    "    </view>"
+                    "   </item>"
+                    "   <item>"
+                    "    <view class=\"vtkMRMLChartViewNode\" singletontag=\"HistogramView\">"
+                    "     <property name=\"viewlabel\" action=\"default\">HV</property>"
+                    "    </view>"
+                    "   </item>"
+                    "   <item>"
+                    "    <view class=\"vtkMRMLChartViewNode\" singletontag=\"ChartView\">"
+                    "     <property name=\"viewlabel\" action=\"default\">CV</property>"
+                    "    </view>"
+                    "   </item>"
+                    "  </layout>"
+                    " </item>"
+                    " <item>"
+                    "  <layout type=\"horizontal\">"
+                    "   <item>"
+                    "    <view class=\"vtkMRMLSliceNode\" singletontag=\"Red\">"
+                    "     <property name=\"orientation\" action=\"default\">Axial</property>"
+                    "     <property name=\"viewlabel\" action=\"default\">R</property>"
+                    "     <property name=\"viewcolor\" action=\"default\">#F34A33</property>"
+                    "    </view>"
+                    "   </item>"
+                    "   <item>"
+                    "    <view class=\"vtkMRMLSliceNode\" singletontag=\"Yellow\">"
+                    "     <property name=\"orientation\" action=\"default\">Sagittal</property>"
+                    "     <property name=\"viewlabel\" action=\"default\">Y</property>"
+                    "     <property name=\"viewcolor\" action=\"default\">#EDD54C</property>"
+                    "    </view>"
+                    "   </item>"
+                    "   <item>"
+                    "    <view class=\"vtkMRMLSliceNode\" singletontag=\"Green\">"
+                    "     <property name=\"orientation\" action=\"default\">Coronal</property>"
+                    "     <property name=\"viewlabel\" action=\"default\">G</property>"
+                    "     <property name=\"viewcolor\" action=\"default\">#6EB04B</property>"
+                    "    </view>"
+                    "   </item>"
+                    "  </layout>"
+                    " </item>"
+                    "</layout>")
+    
+    layoutManager = slicer.app.layoutManager()
+    customLayoutId = 502
+    layoutManager.layoutLogic().GetLayoutNode().AddLayoutDescription(customLayoutId, customLayout)
+    layoutManager.setLayout(customLayoutId)
+       
 class Slicelet(object):
   """A slicer slicelet is a module widget that comes up in stand alone mode
   implemented as a python class.

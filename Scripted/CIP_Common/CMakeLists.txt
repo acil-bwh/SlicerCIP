@@ -6,18 +6,19 @@ set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
   CIP/__init__.py
   CIP/logic/__init__.py
+  CIP/logic/Colors.py
   CIP/logic/EventsTrigger.py
+  CIP/logic/file_conventions.py
   CIP/logic/geometry_topology_data.py
   CIP/logic/SlicerUtil.py
-  CIP/logic/StructuresParameters.py
   CIP/logic/SubtypingParameters.py
+  CIP/logic/timer.py
   CIP/logic/Util.py
   CIP/ui/__init__.py
   CIP/ui/AutoUpdateWidget.py
   CIP/ui/CaseReportsWidget.py
   CIP/ui/CIP_EditBox.py
   CIP/ui/CIP_EditorWidget.py
-  CIP/ui/LoadSaveDataWidget.py
   CIP/ui/MIPViewerWidget.py
   )
 
@@ -45,6 +46,7 @@ set(MODULE_PYTHON_RESOURCES
   CIP/ui/Resources/Icons/ruler.png
   CIP/ui/Resources/Icons/rulers.png
   CIP/ui/Resources/Icons/sagittal.png
+  CIP/ui/Resources/StructuresColorMap.ctbl
   )
 
 #-----------------------------------------------------------------------------

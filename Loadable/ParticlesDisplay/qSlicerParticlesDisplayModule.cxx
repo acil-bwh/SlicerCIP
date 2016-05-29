@@ -35,7 +35,6 @@
 #include "qSlicerParticlesDisplayModuleWidget.h"
 #include "qSlicerParticlesReader.h"
 
-#include <vtkMRMLThreeDViewDisplayableManagerFactory.h>
 //-----------------------------------------------------------------------------
 Q_EXPORT_PLUGIN2(qSlicerParticlesDisplayModule, qSlicerParticlesDisplayModule);
 
@@ -107,16 +106,13 @@ QStringList qSlicerParticlesDisplayModule::categories() const
 //-----------------------------------------------------------------------------
 QStringList qSlicerParticlesDisplayModule::dependencies() const
 {
-  return QStringList() << "RegionType";
+  return QStringList() << "RegionType" << "TractographyDisplay";
 }
 
 //-----------------------------------------------------------------------------
 void qSlicerParticlesDisplayModule::setup()
 {
   this->Superclass::setup();
-
-  vtkMRMLThreeDViewDisplayableManagerFactory::GetInstance()->
-    RegisterDisplayableManager("vtkMRMLTractographyDisplayDisplayableManager");
 
   vtkSlicerParticlesDisplayLogic* particlesDisplayLogic =
     vtkSlicerParticlesDisplayLogic::SafeDownCast(this->logic());

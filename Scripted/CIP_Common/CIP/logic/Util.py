@@ -7,14 +7,17 @@ import vtk
 import os, sys
 import traceback
 import numpy as np
-import time
-
 import SimpleITK as sitk
+
+import file_conventions
+from geometry_topology_data import *
 
 class Util: 
     # Constants
     OK = 0
     ERROR = 1
+
+    file_conventions_extensions = file_conventions.file_conventions_extensions
 
     ###########
     # GENERAL SYSTEM FUNCTIONS
@@ -26,6 +29,30 @@ class Util:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         print ("*** EXCEPTION OCCURRED: ")
         traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stdout)
+
+    @staticmethod
+    def get_cip_extension(file_type_key, include_file_extension=False):
+        """ Get the extension of a type of file
+        @param file_type_key: type of file file_type_key
+        @param include_file_extension: include the file extension (ex: .nrrd)
+        @return: extension
+        """
+        if not Util.file_conventions_extensions.has_key(file_type_key):
+            raise Exception("Key not found: " + file_type_key)
+        s = Util.file_conventions_extensions[file_type_key]
+        if not include_file_extension:
+            s = os.path.splitext(s)[0]
+        return s
+
+    @staticmethod
+    def get_case_name_from_labelmap(labelmap_name):
+        """ Get the case name from a labelmap
+        @param labelmap_name:
+        @return: case name
+        """
+        if labelmap_name:
+            ext = labelmap_name.split("_")[-1]
+            return labelmap_name.replace("_" + ext, "")
 
     @staticmethod
     def get_dimensions(vtk_mrml_volume_node):
@@ -51,6 +78,16 @@ class Util:
         return os.sys.platform == "win32"
 
     @staticmethod
+    def get_current_username():
+        """ Current username (login).
+        @return: username or "Unknown" if there is any problem
+        """
+        try:
+            return os.path.split(os.path.expanduser('~'))[-1]
+        except:
+            return "Unknown"
+
+    @staticmethod
     def create_directory(path):
         """ Create a directory if it does not exist yet and give the maximum permissions
         :param path: Full path of the directory
@@ -71,6 +108,24 @@ class Util:
         """
         (f, ext) = os.path.splitext(file_path)
         return ext
+
+    @staticmethod
+    def vtkImageData_numpy_array(vtkImageData_node):
+        """ Return a numpy array from a vtkImageData node
+        :param vtkImageData_node:
+        :return:
+        """
+        shape = list(vtkImageData_node.GetDimensions())
+        shape.reverse()
+        return vtk.util.numpy_support.vtk_to_numpy(vtkImageData_node.GetPointData().GetScalars()).reshape(shape)
+        # shape = list(vtk_node.GetImageData().GetDimensions())
+        # shape.reverse()
+        # arr = vtk.util.numpy_support.vtk_to_numpy(vtk_node.GetPointData().GetScalars()).reshape(shape)
+        # spacing = list(vtk_node.GetSpacing())
+        # spacing.reverse()
+        # origin = list(vtk_node.GetOrigin())
+        # origin.reverse()
+        # return arr, spacing, origin
 
     ##################
     # COORDINATE SYSTEMS
@@ -330,13 +385,23 @@ class Util:
         return np.where(tproj)[0]
 
     @staticmethod
-    def centroid(numpyArray, labelId=1):
+    def centroid(np_array, labelId=1):
         """ Calculate the coordinates of a centroid for a concrete labelId (default=1)
-        :param numpyArray: numpy array
+        :param np_array: numpy array
         :param labelId: label id (default = 1)
         :return: numpy array with the coordinates (int format)
         """
-        mean = np.mean(np.where(numpyArray == labelId), axis=1)
+        mean = np.mean(np.where(np_array == labelId), axis=1)
         return np.asarray(np.round(mean, 0), np.int)
 
+
+    @staticmethod
+    def get_value_from_chest_type_and_region(chestType, chestRegion):
+        """ Get an int code where the most significant byte encodes the ChestType and the less significant byte
+        encodes the region
+        @param chestType:
+        @param chestRegion:
+        @return: int code
+        """
+        return (chestType << 8) + chestRegion
 

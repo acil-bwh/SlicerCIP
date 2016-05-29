@@ -6,32 +6,35 @@ Common functions that can be useful in any Slicer module development
 
 import os
 import os.path as path
+import logging
 from __main__ import slicer, vtk, qt
 from . import Util
 
 
 class SlicerUtil:
-    # Constants    
+    #######################################
+    #### Constants / Properties
+    #######################################
     try:
         IsDevelopment = slicer.app.settings().value('Developer/DeveloperMode').lower() == 'true'
     except:
         IsDevelopment = False
 
-
     CIP_MODULE_ROOT_DIR = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + '/../..')
-    #CIP_GIT_REPO_FOLDER = os.path.realpath(CIP_MODULE_ROOT_DIR + '/../CIP-Repo')
-    CIP_DEFAULT_GIT_REPO_FOLDER = os.path.join(slicer.app.temporaryPath, 'CIP-Repo')
-    CIP_GIT_REMOTE_URL = "https://acilgeneric:bwhacil2015@github.com/acil-bwh/ACILSlicer.git"
+
     CIP_LIBRARY_ROOT_DIR = os.path.join(CIP_MODULE_ROOT_DIR, 'CIP')
 
     CIP_RESOURCES_DIR = os.path.join(CIP_LIBRARY_ROOT_DIR, 'ui', 'Resources')
     CIP_ICON_DIR = os.path.join(CIP_RESOURCES_DIR, 'Icons')
-        
+
     ACIL_AcknowledgementText = """This work is funded by the National Heart, Lung, And Blood Institute of the National Institutes of Health under Award Number R01HL116931. 
         The content is solely the responsibility of the authors and does not necessarily represent the official views of the National Institutes of Health."""
 
     CIP_ModulesCategory = ["Chest Imaging Platform.Modules"]
     CIP_ModuleName = "CIP_Common"
+
+    GIT_REPO_FOLDER = path.join(slicer.app.temporaryPath, 'CIP-Repo')
+    GIT_REMOTE_URL = "https://github.com/acil-bwh/SlicerCIP.git"
 
     # Aligment
     ALIGNMENT_HORIZONTAL_LEFT = 0x0001
@@ -44,9 +47,12 @@ class SlicerUtil:
     ALIGNMENT_VERTICAL_CENTER = 0x0080
 
 
+    #######################################
+    #### Environment internals
+    #######################################
     @staticmethod
     def getModuleFolder(moduleName):
-        '''Get the folder where a python scripted module is physically stored''' 
+        '''Get the folder where a python scripted module is physically stored'''
         path = os.path.dirname(slicer.util.getModule(moduleName).path)
         if (os.sys.platform == "win32"):
             path = path.replace("/", "\\")
@@ -60,8 +66,8 @@ class SlicerUtil:
         :param moduleName: name of the module
         :return: full path to the file
         """
-        #return os.path.join(os.path.expanduser('~'), "SlicerCIP_Data", moduleName, "Results")
-        #p = path.join(path.dirname(slicer.app.slicerDefaultSettingsFilePath), "DataStore", "CIP", moduleName)
+        # return os.path.join(os.path.expanduser('~'), "SlicerCIP_Data", moduleName, "Results")
+        # p = path.join(path.dirname(slicer.app.slicerDefaultSettingsFilePath), "DataStore", "CIP", moduleName)
         baseDir = os.path.dirname(slicer.app.slicerRevisionUserSettingsFilePath)
         p = path.join(baseDir, "CIP", moduleName)
 
@@ -69,53 +75,31 @@ class SlicerUtil:
             os.makedirs(p)
             print ("Created path " + p)
         return p
- 
+
     @staticmethod
     def setSetting(moduleName, settingName, settingValue):
         '''Set the value of a setting in Slicer'''
-        settingPath = "%s/%s" % (moduleName, settingName)     
+        settingPath = "%s/%s" % (moduleName, settingName)
         slicer.app.settings().setValue(settingPath, settingValue)
-     
- 
+
     @staticmethod
     def settingGetOrSetDefault(moduleName, settingName, settingDefaultValue=None):
         '''Try to find the value of a setting in Slicer and, if it does not exist, set it to the settingDefaultValue (optional)'''
         settingPath = "%s/%s" % (moduleName, settingName)
         setting = slicer.app.settings().value(settingPath)
         if setting is not None:
-            return setting    # The setting was already initialized
-        
+            return setting  # The setting was already initialized
+
         if settingDefaultValue is not None:
             slicer.app.settings().setValue(settingPath, settingDefaultValue)
-                
+
         return settingDefaultValue
-    
-    @staticmethod     
-    def createNewFiducial(x, y, z, radX, radY, radZ, scalarNode):
-        '''Create a new fiducial (ROI) that will be visible in the scalar node passed.
-        Parameters: 
-        - x, y, z: fiducial coordinates
-        - radX, radY, radZ: ROI size
-        - scalarNode: vtk scalar node where the fiducial will be displayed'''
-        fiducial = slicer.mrmlScene.CreateNodeByClass('vtkMRMLAnnotationROINode')
-        fiducial.SetXYZ(x, y, z)
-        fiducial.SetRadiusXYZ(radX, radY, radZ)
-        # Add the fiducial to the scalar node
-        displayNodeID = scalarNode.GetDisplayNode().GetID()
-        fiducial.AddAndObserveDisplayNodeID(displayNodeID)
-        # Get fiducial (Point)
-        #f = slicer.mrmlScene.CreateNodeByClass('vtkMRMLMarkupsFiducialNode')
-        #f.GetMarkupPointVector(0,0) --> returns a vtkVector3d with the coordinates for the
-        # first node where the fidual is displayed (param 0) and the number of markup (param1)
 
     @staticmethod
-    def refreshActiveWindows():
-        """ Refresh all the windows currently visible to the user"""
-        lm = slicer.app.layoutManager()
-        for windowName in lm.sliceViewNames():
-            slice = lm.sliceWidget(windowName)
-            if not slice.isHidden():
-                slice.repaint()
+    def testingDataRootUrl():
+        """ Root data where all the images for testing will be stored
+        """
+        return "http://midas.chestimagingplatform.org/download/item/"
 
     @staticmethod
     def isSlicerACILLoaded():
@@ -129,76 +113,19 @@ class SlicerUtil:
         return True
 
     @staticmethod
-    def getRootAnnotationsNode():
-        """ Get the root annotations node global to the scene, creating it if necessary.
-        This is useful as a starting point to add rulers to the scene
-        :return: "All Annotations" vtkMRMLAnnotationHierarchyNode
+    def logDevelop(message, includePythonConsole=False):
+        """ Log a message when we Slicer is in Development mode.
+        If includePythonConsole, also prints
+        @param message:
         """
-        rootHierarchyNode = slicer.util.getNode('All Annotations')
-        if rootHierarchyNode is None:
-            # Create root annotations node
-            rootHierarchyNode = slicer.modules.annotations.logic().GetActiveHierarchyNode()
-        return rootHierarchyNode
+        if SlicerUtil.IsDevelopment:
+            logging.debug(message)
+            if includePythonConsole:
+                print(message)
 
-
-    @staticmethod
-    def __setMarkupsMode__(isFiducialsMode, fiducialClass, keepFiducialsModeOn):
-        """ Activate fiducials mode.
-        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
-        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
-        calling setFiducialsMode with activateFiducials=False
-        :param isFiducialsMode: True for "fiducials mode". False for a regular use
-        :fiducialClass: "vtkMRMLMarkupsFiducialNode", "vtkMRMLAnnotationRulerNode"...
-        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
-        first fiducial we will come back to the regular state
-        """
-        applicationLogic = slicer.app.applicationLogic()
-        # selectionNode = applicationLogic.GetSelectionNode()
-        # selectionNode.SetReferenceActivePlaceNodeClassName(fiducialClass)
-        interactionNode = applicationLogic.GetInteractionNode()
-        if isFiducialsMode:
-            if keepFiducialsModeOn:
-                interactionNode.SwitchToPersistentPlaceMode()
-            else:
-                interactionNode.SwitchToSinglePlaceMode()
-        else:
-            interactionNode.SwitchToViewTransformMode()
-
-    @staticmethod
-    def setFiducialsCursorMode(isFiducialsMode, keepFiducialsModeOn=False):
-        """ Activate fiducials mode.
-        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
-        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
-        calling setFiducialsMode with activateFiducials=False
-        :param isFiducialsMode: True for "fiducials mode". False for a regular use
-        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
-        first fiducial we will come back to the regular state
-        """
-        SlicerUtil.__setMarkupsMode__(isFiducialsMode, "vtkMRMLMarkupsFiducialNode", keepFiducialsModeOn)
-
-    @staticmethod
-    def setCrosshairCursor(isActive):
-        """Turn on or off the crosshair and enable navigation mode
-        by manipulating the scene's singleton crosshair node.
-        :param isActive: enable / disable crosshair (boolean value)
-        """
-        crosshairNode = slicer.util.getNode('vtkMRMLCrosshairNode*')
-        if crosshairNode:
-            crosshairNode.SetCrosshairMode(int(isActive))
-
-    @staticmethod
-    def setRulersMode(isRulersMode, keepFiducialsModeOn=False):
-        """ Activate fiducials ruler mode.
-        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
-        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
-        calling setFiducialsMode with activateFiducials=False
-        :param isRulersMode: True for "fiducials mode". False for a regular use
-        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
-        first fiducial we will come back to the regular state
-        """
-        SlicerUtil.__setMarkupsMode__(isRulersMode, "vtkMRMLAnnotationRulerNode", keepFiducialsModeOn)
-
-
+    #######################################
+    #### Volumes
+    #######################################
     @staticmethod
     def setActiveVolumeId(volumeId, labelmapId=None):
         selectionNode = slicer.app.applicationLogic().GetSelectionNode()
@@ -235,8 +162,8 @@ class SlicerUtil:
         # Get the position of the origin in the small volume in the big one
         origin = Util.ras_to_ijk(bigVolume, smallVolume.GetOrigin())
         # Create a copy of the big volume to have the same spacial information
-        #vlogic = slicer.modules.volumes.logic()
-        #resultVolume = vlogic.CloneVolume(bigVolume, smallVolume.GetName() + "_extended")
+        # vlogic = slicer.modules.volumes.logic()
+        # resultVolume = vlogic.CloneVolume(bigVolume, smallVolume.GetName() + "_extended")
         resultVolume = Util.cloneVolume(bigVolume, smallVolume.GetName() + "_extended")
 
         # Get the numpy arrays to operate with them
@@ -257,7 +184,7 @@ class SlicerUtil:
         z0 = int(origin[2])
         z1 = z0 + nps.shape[0]
         # Copy values
-        npb[z0:z1, y0:y1, x0:x1] = nps[:,:,:]
+        npb[z0:z1, y0:y1, x0:x1] = nps[:, :, :]
         # Refresh values in mrml
         resultVolume.GetImageData().Modified()
         # Return the result volume
@@ -290,7 +217,7 @@ class SlicerUtil:
         clonedVolume = slicer.mrmlScene.CreateNodeByClass(volumeNode.GetClassName())
         clonedVolume.CopyWithScene(volumeNode)
 
-        #clonedVolume.SetName(scene.GetUniqueNameByString(copyVolumeName))
+        # clonedVolume.SetName(scene.GetUniqueNameByString(copyVolumeName))
         clonedVolume.SetName(copyVolumeName)
         if displayNodeCopy is not None:
             clonedVolume.SetAndObserveDisplayNodeID(displayNodeCopy.GetID())
@@ -311,7 +238,6 @@ class SlicerUtil:
         if addToScene:
             scene.AddNode(clonedVolume)
         return clonedVolume
-
 
     @staticmethod
     def getLabelmapFromScalar(vtkMRMLScalarVolumeNode, nodeName=""):
@@ -374,6 +300,149 @@ class SlicerUtil:
         return None
 
     @staticmethod
+    def filterVolumeName(name):
+        """ Remove the suffixes that Slicer could introduce in a volume name (ex: myVolume_1)
+        @param name: current name in Slicer
+        @return: name without suffixes
+        """
+        import re
+        expr = "^(.*)(_\d+)$"
+        m = re.search(expr, name)
+        if m:
+            # There is suffix. Remove
+            suffix = m.groups(0)[1]
+            return name.replace(suffix, "")
+        # No suffix
+        return name
+
+    @staticmethod
+    def get_case_name_from_labelmap(labelmap_name):
+        """ Get the case name from a labelmap
+        @param labelmap_name:
+        @return: case name
+        """
+        name = SlicerUtil.filterVolumeName(labelmap_name)
+        return Util.get_case_name_from_labelmap(name)
+
+    @staticmethod
+    def isExtensionMatch(labelmapNode, key):
+        """ Check if a labelmap node meets one of the ACIL given labelmap conventions
+        @param labelmapNode:
+        @param key: convention key (see Util.file_conventions_extensions)
+        @return: Bool
+        """
+        name = SlicerUtil.filterVolumeName(labelmapNode.GetName())
+        lmExt = name.split('_')[-1]
+        ext = Util.file_conventions_extensions[key].split('.')[0]
+        return ext == ("_" + lmExt)
+
+    @staticmethod
+    def clearVolume(volumeNode):
+        slicer.modules.volumes.logic().ClearVolumeImageData(volumeNode)
+
+    #######################################
+    #### Fiducials
+    #######################################
+    @staticmethod
+    def createNewFiducial(x, y, z, radX, radY, radZ, scalarNode):
+        '''Create a new fiducial (ROI) that will be visible in the scalar node passed.
+        Parameters: 
+        - x, y, z: fiducial coordinates
+        - radX, radY, radZ: ROI size
+        - scalarNode: vtk scalar node where the fiducial will be displayed'''
+        fiducial = slicer.mrmlScene.CreateNodeByClass('vtkMRMLAnnotationROINode')
+        fiducial.SetXYZ(x, y, z)
+        fiducial.SetRadiusXYZ(radX, radY, radZ)
+        # Add the fiducial to the scalar node
+        displayNodeID = scalarNode.GetDisplayNode().GetID()
+        fiducial.AddAndObserveDisplayNodeID(displayNodeID)
+        # Get fiducial (Point)
+        # f = slicer.mrmlScene.CreateNodeByClass('vtkMRMLMarkupsFiducialNode')
+        # f.GetMarkupPointVector(0,0) --> returns a vtkVector3d with the coordinates for the
+        # first node where the fidual is displayed (param 0) and the number of markup (param1)
+
+    @staticmethod
+    def getRootAnnotationsNode():
+        """ Get the root annotations node global to the scene, creating it if necessary.
+        This is useful as a starting point to add rulers to the scene
+        :return: "All Annotations" vtkMRMLAnnotationHierarchyNode
+        """
+        rootHierarchyNode = slicer.util.getNode('All Annotations')
+        if rootHierarchyNode is None:
+            # Create root annotations node
+            rootHierarchyNode = slicer.modules.annotations.logic().GetActiveHierarchyNode()
+        return rootHierarchyNode
+
+    @staticmethod
+    def __setMarkupsMode__(isFiducialsMode, fiducialClass, keepFiducialsModeOn):
+        """ Activate fiducials mode.
+        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
+        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
+        calling setFiducialsMode with activateFiducials=False
+        :param isFiducialsMode: True for "fiducials mode". False for a regular use
+        :fiducialClass: "vtkMRMLMarkupsFiducialNode", "vtkMRMLAnnotationRulerNode"...
+        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
+        first fiducial we will come back to the regular state
+        """
+        applicationLogic = slicer.app.applicationLogic()
+        # selectionNode = applicationLogic.GetSelectionNode()
+        # selectionNode.SetReferenceActivePlaceNodeClassName(fiducialClass)
+        interactionNode = applicationLogic.GetInteractionNode()
+        if isFiducialsMode:
+            if keepFiducialsModeOn:
+                interactionNode.SwitchToPersistentPlaceMode()
+            else:
+                interactionNode.SwitchToSinglePlaceMode()
+        else:
+            interactionNode.SwitchToViewTransformMode()
+
+    @staticmethod
+    def setFiducialsCursorMode(isFiducialsMode, keepFiducialsModeOn=False):
+        """ Activate fiducials mode.
+        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
+        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
+        calling setFiducialsMode with activateFiducials=False
+        :param isFiducialsMode: True for "fiducials mode". False for a regular use
+        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
+        first fiducial we will come back to the regular state
+        """
+        SlicerUtil.__setMarkupsMode__(isFiducialsMode, "vtkMRMLMarkupsFiducialNode", keepFiducialsModeOn)
+
+    @staticmethod
+    def setCrosshairCursor(isActive):
+        """Turn on or off the crosshair and enable navigation mode
+        by manipulating the scene's singleton crosshair node.
+        :param isActive: enable / disable crosshair (boolean value)
+        """
+        crosshairNode = slicer.util.getNode('vtkMRMLCrosshairNode*')
+        if crosshairNode:
+            crosshairNode.SetCrosshairMode(int(isActive))
+
+    @staticmethod
+    def setRulersMode(isRulersMode, keepFiducialsModeOn=False):
+        """ Activate fiducials ruler mode.
+        When activateFiducials==True, the mouse cursor will be ready to add fiducials. Also, if
+        keepFiducialsModeOn==True, then the cursor will be still in Fiducials mode until we deactivate it by
+        calling setFiducialsMode with activateFiducials=False
+        :param isRulersMode: True for "fiducials mode". False for a regular use
+        :param keepFiducialsModeOn: when True, we can add an unlimited number of fiducials. Otherwise after adding the
+        first fiducial we will come back to the regular state
+        """
+        SlicerUtil.__setMarkupsMode__(isRulersMode, "vtkMRMLAnnotationRulerNode", keepFiducialsModeOn)
+
+    #######################################
+    #### GUI / Layout
+    #######################################
+    @staticmethod
+    def refreshActiveWindows():
+        """ Refresh all the windows currently visible to the user"""
+        lm = slicer.app.layoutManager()
+        for windowName in lm.sliceViewNames():
+            slice = lm.sliceWidget(windowName)
+            if not slice.isHidden():
+                slice.repaint()
+
+    @staticmethod
     def getIcon(iconName, isSystemIcon=False):
         """ Build a new QIcon from the common CIP icons library or from the Slicer system icons
         :param iconName: name of the file (ex: previous.png)
@@ -393,12 +462,20 @@ class SlicerUtil:
         """
         applicationLogic = slicer.app.applicationLogic()
         interactionNode = applicationLogic.GetInteractionNode()
-        interactionNode.Reset()
+        # Change in signature in Reset method.
+        try:
+            interactionNode.Reset(None)
+        except:
+            # Backwards compatibility
+            interactionNode.Reset()
         layoutManager = slicer.app.layoutManager()
         layoutManager.setLayout(layoutNumber)
         # Call this function to force the refresh of properties like the field of view of the sliceNodes
         slicer.app.processEvents()
 
+    @staticmethod
+    def changeLayoutToAxial():
+        SlicerUtil.changeLayout(6)
 
     @staticmethod
     def changeContrastWindow(window, level):
@@ -416,24 +493,6 @@ class SlicerUtil:
                 displayNode.SetWindow(window)
                 displayNode.SetLevel(level)
                 return
-
-    @staticmethod
-    def vtkImageData_numpy_array(vtkImageData_node):
-        """ Return a numpy array from a vtkImageData node
-        :param vtkImageData_node:
-        :return:
-        """
-        shape = list(vtkImageData_node.GetDimensions())
-        shape.reverse()
-        return vtk.util.numpy_support.vtk_to_numpy(vtkImageData_node.GetPointData().GetScalars()).reshape(shape)
-        # shape = list(vtk_node.GetImageData().GetDimensions())
-        # shape.reverse()
-        # arr = vtk.util.numpy_support.vtk_to_numpy(vtk_node.GetPointData().GetScalars()).reshape(shape)
-        # spacing = list(vtk_node.GetSpacing())
-        # spacing.reverse()
-        # origin = list(vtk_node.GetOrigin())
-        # origin.reverse()
-        # return arr, spacing, origin
 
     @staticmethod
     def jumpToSlice(widgetName, slice):
@@ -479,61 +538,197 @@ class SlicerUtil:
             compNode.SetForegroundVolumeID(volumeNodeId)
             compNode.SetForegroundOpacity(opacity)
 
-        # @staticmethod
-    # def gitUpdateCIP():
-    #     if Util.AUTO_UPDATE_DISABLED:
-    #         print("CIP auto update is disabled")
-    #         return False
-    #
-    #     #try:
-    #     update = Util.__gitUpdate__()
-    #     if update:
-    #         # Copy the directory under CIP_GIT_REPO with this module name
-    #         #srcPath = "%s/%s" %    (Util.CIP_GIT_REPO_FOLDER, moduleName)
-    #         srcPath = Util.CIP_DEFAULT_GIT_REPO_FOLDER
-    #         print('src: ', srcPath)
-    #         #destPath = os.path.join(Util.CIP_LIBRARY_ROOT_DIR, moduleName)
-    #         destPath = os.path.realpath(SlicerUtil.CIP_MODULE_ROOT_DIR + '/..')
-    #         print('dest: ', destPath)
-    #         # First rename the folder to a temp name, as a backup
-    #         backupPath = destPath + "_TMP"
-    #         os.rename(destPath, backupPath)
-    #         # Copy the folder
-    #         shutil.copytree(srcPath, destPath)
-    #         # Remove the temp folder
-    #         shutil.rmtree(backupPath)
-    #
-    #     return update
-#         except Exception as ex:
-#             print (ex.message())
-#             return False
+    @staticmethod
+    def displayLabelmapVolume(labelmapNodeId, opacity=1.0):
+        """ Display a labelmap in all the 2D windows with an optional opacity
+        :param volumeNodeId: labelmap id
+        :param opacity: 0.0-1.0 value
+        """
+        compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
+        for compNode in compNodes.itervalues():
+            compNode.SetLabelVolumeID(labelmapNodeId)
+            compNode.SetLabelOpacity(opacity)
 
-    # @staticmethod
-    # def __gitUpdate__():
-    #     '''Gets the last version of the CIP git repository.
-    #     In case it does not exist, it creates it from scratch
-    #     Returns true if there was any update in the repository'''
-    #     from git import Repo
-    #
-    #     if os.path.exists(Util.CIP_DEFAULT_GIT_REPO_FOLDER):
-    #         # Check for updates
-    #         repo = Repo(Util.CIP_DEFAULT_GIT_REPO_FOLDER)
-    #         #remote = repo.remotes.pop()
-    #         remote = repo.remotes.origin
-    #         prevCommit = repo.head.commit.hexsha
-    #         status = remote.fetch().pop()
-    #         if status and status.commit.hexsha != prevCommit:
-    #             remote.pull()
-    #             return True
-    #
-    #         return False
-    #
-    #     else:
-    #         # Create the new repository
-    #         os.makedirs(Util.CIP_DEFAULT_GIT_REPO_FOLDER)
-    #         os.chmod(Util.CIP_DEFAULT_GIT_REPO_FOLDER, 0777)
-    #         #repo = Repo(Util.CIP_GIT_REPO_FOLDER)
-    #         Repo.clone_from(Util.CIP_GIT_REMOTE_URL, Util.CIP_DEFAULT_GIT_REPO_FOLDER)
-    #         print ("Created folder %s (first time update)" % Util.CIP_DEFAULT_GIT_REPO_FOLDER)
-    #         # Always update the first time
-    #         return True
+    @staticmethod
+    def changeLabelmapOpacity(opacity):
+        """ Change the labelmap opacity in all the 2D windows
+        @param opacity:
+        @return:
+        """
+        compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
+        for compNode in compNodes.itervalues():
+            compNode.SetLabelOpacity(opacity)
+
+    @staticmethod
+    def takeSnapshot(fullFileName, type=-1):
+        """ Save a png snapshot of the specified window
+        :param fullFileName: Full path name of the output file (ex: "/Data/output.png")
+        :param type: slicer.qMRMLScreenShotDialog.FullLayout, slicer.qMRMLScreenShotDialog.ThreeD,
+                    slicer.qMRMLScreenShotDialog.Red, slicer.qMRMLScreenShotDialog.Yellow, slicer.qMRMLScreenShotDialog.Green
+                    Default: main window
+        :return: full path of the snapshot
+        """
+        # show the message even if not taking a screen shot
+        lm = slicer.app.layoutManager()
+        # switch on the type to get the requested window
+        widget = 0
+        if type == slicer.qMRMLScreenShotDialog.FullLayout:
+            # full layout
+            widget = lm.viewport()
+        elif type == slicer.qMRMLScreenShotDialog.ThreeD:
+            # just the 3D window
+            widget = lm.threeDWidget(0).threeDView()
+        elif type == slicer.qMRMLScreenShotDialog.Red:
+            # red slice window
+            widget = lm.sliceWidget("Red")
+        elif type == slicer.qMRMLScreenShotDialog.Yellow:
+            # yellow slice window
+            widget = lm.sliceWidget("Yellow")
+        elif type == slicer.qMRMLScreenShotDialog.Green:
+            # green slice window
+            widget = lm.sliceWidget("Green")
+        else:
+            # default to using the full window
+            widget = slicer.util.mainWindow()
+            # reset the type so that the node is set correctly
+            # type = slicer.qMRMLScreenShotDialog.FullLayout
+
+        # grab and convert to vtk image data
+        qpixMap = qt.QPixmap().grabWidget(widget)
+        # Save as a png file
+        qpixMap.save(fullFileName)
+
+        return fullFileName
+
+    @staticmethod
+    def showToolbars(show):
+        """ Show/hide all the superior toolbars in the Slicer GUI
+        @param show:
+        """
+        for toolbar in slicer.util.mainWindow().findChildren('QToolBar'):
+            toolbar.setVisible(show)
+
+    @staticmethod
+    def createNewColormapNode(nodeName, numberOfColors=0):
+        """ Create a new empty color map node
+        @param nodeName: name of the node to be created
+        @param numberOfColors: total number of colors of the color node (it can be set later)
+        @return: new node
+        """
+        colorNode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLColorTableNode")
+        slicer.mrmlScene.AddNode(colorNode)
+        colorNode.SetName(nodeName)
+        colorNode.SetTypeToUser()
+        colorNode.NamesInitialisedOn()
+        colorNode.SetNumberOfColors(numberOfColors)
+        return colorNode
+
+    #######################################
+    #### Testing
+    #######################################
+    @staticmethod
+    def downloadVolumeForTests(downloadWhenCached=False, tryUsingACILNavigator=True, widget=None):
+        """ Download a sample volume for testing purposes.
+        The first option will be to use the ACIL caseNavigatorWidget (unless tryUsingACILNavigator==False).
+        Otherwise, it will download the CT chest scan in http://www.slicer.org/slicerWiki/images/3/31/CT-chest.nrrd
+        @param downloadWhenCached: download the case even if it's been previously downloaded
+        @param tryUsingACILNavigator: try to use case the ACIL case navigator as the primary source for data
+        @param widget: Parent widget where the navigator could be included
+        @return: loaded volume
+        """
+        volume = None
+        if tryUsingACILNavigator and SlicerUtil.isSlicerACILLoaded():
+            try:
+                logging.info("Trying to use the case navigator to download the case...")
+                # Try first with case navigator (not necessarily included!)
+                downloadButton = slicer.util.findChildren(widget, "downloadSingleCaseButton")[0]
+                caseIdTxt = slicer.util.findChildren(widget, "singleCaseIdTxt")[0]
+                studyButton = slicer.util.findChildren(widget, "studyIdButton_COPDGene")[0]
+                studyButton.click()
+                caseId = "11488P_INSP_STD_HAR_COPD"
+                caseIdTxt.setText(caseId)
+                if downloadWhenCached:
+                    # Disable cache to always force the download
+                    cbCache = slicer.util.findChildren(widget, "cbCacheMode")[0]
+                    cbCache.setChecked(False)
+                downloadButton.click()
+                volume = slicer.util.getNode(caseId)
+            except Exception as ex:
+                logging.info("Case Navigator failed ({0}). Downloading web case...".format(ex.message))
+        if volume is None:
+            # Load the volume from a Slicer generic testing cases url
+            import urllib
+            url = "http://www.slicer.org/slicerWiki/images/3/31/CT-chest.nrrd"
+            name = url.split("/")[-1]
+            localFilePath = os.path.join(slicer.app.temporaryPath, name)
+            if not os.path.exists(localFilePath) or os.stat(localFilePath).st_size == 0 or downloadWhenCached:
+                logging.info('Requesting download %s from %s...\n' % (name, url))
+                urllib.urlretrieve(url, localFilePath)
+            logging.debug("Loading volume in {0}...".format(localFilePath))
+            (loaded, volume) = slicer.util.loadVolume(localFilePath, returnNode=True)
+        return volume
+
+    ### Methods to find widgets that should be merged into Base/Python/slicer/Util.py at some point (Pull Request made)
+    @staticmethod
+    def findChildren(widget=None, name="", text="", title="", className=""):
+        """ Return a list of child widgets that meet all the given criteria.
+        If no criteria are given, the function will return all the child widgets.
+        The function applies an "and" filter, instead of the previous "or" behavior
+        (see http://slicer-devel.65872.n3.nabble.com/Changing-the-behavior-of-slicer-util-findChildren-td4036266.html
+        for additional info)
+        :param widget: parent widget where the widgets will be searched
+        :param name: name attribute of the widget
+        :param text: text attribute of the widget
+        :param title: title attribute of the widget
+        :param className: className() attribute of the widget
+        :return: list with all the widgets that meet all the given criteria.
+        """
+        # TODO: figure out why the native QWidget.findChildren method does not seem to work from PythonQt
+        import slicer, fnmatch
+        if not widget:
+            widget = slicer.util.mainWindow()
+        if not widget:
+            return []
+        children = []
+        parents = [widget]
+        while parents:
+            p = parents.pop()
+            # sometimes, p is null, f.e. when using --python-script or --python-code
+            if not p:
+                break
+            if not hasattr(p, 'children'):
+                continue
+            parents += p.children()
+            matched_filter_criteria = True
+            if name and hasattr(p, 'name'):
+                matched_filter_criteria &= fnmatch.fnmatchcase(p.name, name)
+            if text and hasattr(p, 'text'):
+                matched_filter_criteria &= fnmatch.fnmatchcase(p.text, text)
+            if title and hasattr(p, 'title'):
+                matched_filter_criteria &= fnmatch.fnmatchcase(p.title, title)
+            if className and hasattr(p, 'className'):
+                matched_filter_criteria &= fnmatch.fnmatchcase(p.className(), className)
+
+            if matched_filter_criteria:
+                children.append(p)
+        return children
+
+    @staticmethod
+    def findChild(widget=None, name="", text="", title="", className=""):
+        """ Return a single child widget that meet all the given criteria.
+        If there is more than one widget that matches the conditions, an Exception is raised.
+        If there is no widget that matches the conditions, the method returns None.
+        :param widget: parent widget where the widgets will be searched
+        :param name: name attribute of the widget
+        :param text: text attribute of the widget
+        :param title: title attribute of the widget
+        :param className: className() attribute of the widget
+        :return: single widget that meet all the given criteria (or None otherwise)
+        """
+        results = SlicerUtil.findChildren(widget, name, text, title, className)
+        if len(results) == 0:
+            return None
+        if len(results) > 1:
+            raise Exception("There is more than one widget that matches the given conditions")
+        return results[0]
+

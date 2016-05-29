@@ -1,2 +1,8 @@
+slicer_add_python_unittest(SCRIPT ${MODULE_NAME}.py
+  SLICER_ARGS --additional-module-paths
+                ${MODULE_BUILD_DIR}
+                ${CMAKE_BINARY_DIR}/${Slicer_QTSCRIPTEDMODULES_LIB_DIR}
+                ${Slicer_CLIMODULES_BIN_DIR}
+                #Slicer_CLIMODULES_LIB_DIR
 
-slicer_add_python_unittest(SCRIPT ${MODULE_NAME}ModuleTest.py)
+)

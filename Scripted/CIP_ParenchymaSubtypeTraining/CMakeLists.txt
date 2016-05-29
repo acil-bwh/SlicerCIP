@@ -8,6 +8,7 @@ set(MODULE_PYTHON_SCRIPTS
 
 set(MODULE_PYTHON_RESOURCES
   Resources/Icons/${MODULE_NAME}.png
+  Resources/CIP_ILDClassification_ColorMap.ctbl
   )
 
 #-----------------------------------------------------------------------------
@@ -26,6 +27,6 @@ if(BUILD_TESTING)
   slicer_add_python_unittest(SCRIPT ${MODULE_NAME}.py)
 
   # Additional build-time testing
-  add_subdirectory(Testing)
+  # add_subdirectory(Testing)
 endif()
 
