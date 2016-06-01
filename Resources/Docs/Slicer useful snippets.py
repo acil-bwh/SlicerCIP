@@ -71,7 +71,7 @@ NUMPY / VTK
 node = slicer.mrmlScene.CreateNodeByClass("vtkMRMLDisplayNode")
 slicer.mrmlScene.AddNode(node)
 # or
-#node =  slicer.modulelogic.vtkSlicerVolumesLogic().
+#node =  slicer.vtkSlicerVolumesLogic().
 
 # Get node by name (also valid with id)
 n = slicer.util.getNode("12257B_INSP_STD_UIA_COPD")
