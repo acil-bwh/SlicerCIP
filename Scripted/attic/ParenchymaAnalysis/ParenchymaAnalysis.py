@@ -15,6 +15,20 @@ except Exception as ex:
     sys.path.append(path)
     #print("The following path was manually added to the PythonPath in CIP_BodyComposition: " + path) 
     from CIP.ui import CaseReportsWidget
+    
+try:
+    from CIP.logic.SlicerUtil import SlicerUtil
+except Exception as ex:
+    currentpath = os.path.dirname(os.path.realpath(__file__))
+    # We assume that CIP_Common is in the development structure
+    path = os.path.normpath(currentpath + '/../CIP_Common')
+    if not os.path.exists(path):
+        print("Path not found: " + path)
+        # We assume that CIP is a subfolder (Slicer behaviour)
+        path = os.path.normpath(currentpath + '/CIP')
+    sys.path.append(path)
+    print("The following path was manually added to the PythonPath in CIP_BodyComposition: " + path)
+    from CIP.logic.SlicerUtil import SlicerUtil
 
 #
 # ParenchymaAnalysis
@@ -489,6 +503,7 @@ class ParenchymaAnalysisWidget:
     self.applyButton.enabled = bool(self.CTNode) #and bool(self.CTlabelNode)
     self.FilteringFrame.enabled = bool(self.CTNode) 
     self.LMCreationFrame.enabled = bool(not self.CTlabelNode)
+    SlicerUtil.changeLabelmapOpacity(0.5)
   
   def showFilterParams(self):
     self.filterOptionsFrame.show()
@@ -629,6 +644,7 @@ class ParenchymaAnalysisWidget:
       self.CTlabelNode = self.upsampleLabel(self.CTlabelNode)
       slicer.mrmlScene.RemoveNode(inputNode)
     
+    SlicerUtil.changeLabelmapOpacity(0.5)
     self.CTlabelSelector.setCurrentNode(self.CTlabelNode)
     
   def donwsampleCT(self):
