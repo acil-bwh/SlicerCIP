@@ -440,7 +440,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
         # if self.disableEvents: return     # To avoid infinite loops
 
-        self.__loadColormapNode__()  # Recreate color map node when neccesary (for example if the user closed the scene)
+        self.__loadColormapNode__()  # Recreate color map node when necessary (for example if the user closed the scene)
         # if SlicerUtil.IsDevelopment: print ("DEBUG: Entering checkMasterAndLabelMapNodes")
 
         if self.editorWidget.masterVolume:
@@ -482,8 +482,9 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         if displayNode:
             # if SlicerUtil.IsDevelopment: print "Setting color for display node: " + displayNode.GetName()
             displayNode.SetAndObserveColorNodeID(self.colorTableNode.GetID())
+            SlicerUtil.changeLabelmapOpacity(0.5)
         else:
-            # print "There is no DisplayNode for label map " + labelMapNode.GetName()
+            SlicerUtil.logDevelop("There is no DisplayNode for label map " + labelMapNode.GetName(), includePythonConsole=True)
             return
 
         # slicer.app.applicationLogic().PropagateVolumeSelection(0)
