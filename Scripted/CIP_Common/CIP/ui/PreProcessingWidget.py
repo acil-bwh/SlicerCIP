@@ -156,7 +156,6 @@ class PreProcessingWidget():
         self.HeavyOption.setAutoExclusive(1)    
         StrengthGroupBox.layout().addWidget(self.HeavyOption)
     
-    
         # Downsampling option for label map creation
         self.LMCreationFrame = qt.QFrame()
         self.LMCreationFrame.setLayout(qt.QVBoxLayout())
