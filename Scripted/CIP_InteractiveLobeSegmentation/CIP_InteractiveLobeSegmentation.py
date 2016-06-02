@@ -5,6 +5,7 @@ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 
 from CIP.logic.SlicerUtil import SlicerUtil
+from CIP.ui import PreProcessingWidget
 
 #
 # CIP_InteractiveLobeSegmentation
@@ -30,6 +31,10 @@ class CIP_InteractiveLobeSegmentation(ScriptedLoadableModule):
 #
 
 class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
+    @property
+    def moduleName(self):
+        return os.path.basename(__file__).replace(".py", "")    
+    
     def __init__(self, parent=None):
         ScriptedLoadableModuleWidget.__init__(self, parent)
         self.logic = CIP_InteractiveLobeSegmentationLogic()
@@ -66,19 +71,19 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         # first input volume selector
         #
 
-        self.inputSelector1 = slicer.qMRMLNodeComboBox()
-        # self.inputSelector1.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-        # self.inputSelector1.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 1 )
-        self.inputSelector1.nodeTypes = (("vtkMRMLLabelMapVolumeNode"), "")
-        self.inputSelector1.selectNodeUponCreation = True
-        self.inputSelector1.addEnabled = False
-        self.inputSelector1.removeEnabled = False
-        self.inputSelector1.noneEnabled = False
-        self.inputSelector1.showHidden = False
-        self.inputSelector1.showChildNodeTypes = False
-        self.inputSelector1.setMRMLScene(slicer.mrmlScene)
-        self.inputSelector1.setToolTip("Pick the label map to the algorithm.")
-        parametersFormLayout.addRow("Label Map Volume: ", self.inputSelector1)
+        self.labelSelector = slicer.qMRMLNodeComboBox()
+        # self.labelSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+        # self.labelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 1 )
+        self.labelSelector.nodeTypes = (("vtkMRMLLabelMapVolumeNode"), "")
+        self.labelSelector.selectNodeUponCreation = True
+        self.labelSelector.addEnabled = False
+        self.labelSelector.removeEnabled = False
+        self.labelSelector.noneEnabled = True
+        self.labelSelector.showHidden = False
+        self.labelSelector.showChildNodeTypes = False
+        self.labelSelector.setMRMLScene(slicer.mrmlScene)
+        self.labelSelector.setToolTip("Pick the label map to the algorithm.")
+        parametersFormLayout.addRow("Label Map Volume: ", self.labelSelector)
         #
         # output volume selector
         #
@@ -96,6 +101,13 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         self.outputSelector.setMRMLScene(slicer.mrmlScene)
         self.outputSelector.setToolTip("Pick the output to the algorithm.")
         parametersFormLayout.addRow("Output Volume: ", self.outputSelector)
+        
+        self.preProcessingWidget = PreProcessingWidget(self.moduleName, parentWidget=self.parent)
+        self.preProcessingWidget.setup()
+        self.preProcessingWidget.filterApplication.hide()
+        self.preProcessingWidget.enableFilteringFrame(True)
+        self.preProcessingWidget.enableFilterOptions(True)
+        self.preProcessingWidget.enableLMFrame(True)
 
         self.layoutCollapsibleButton = ctk.ctkCollapsibleButton()
         self.layoutCollapsibleButton.text = "Layout Selection"
@@ -245,7 +257,7 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
 
         # connections
         self.applyButton.connect('clicked(bool)', self.onApplyButton)
-        self.inputSelector1.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+        self.labelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
         self.outputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
         self.AddLeftListButton.connect('clicked()', self.onAddLeftListButton)
         self.AddRight1ListButton.connect('clicked()', self.onAddRight1ListButton)
@@ -260,10 +272,15 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         pass
 
     def onSelect(self):
-        # self.applyButton.enabled = self.inputSelector.currentNode() and self.inputSelector1.currentNode() and self.outputSelector.currentNode()
         self.layoutCollapsibleButton.setChecked(True)
-        if self.inputSelector1.currentNode() and (self.outputSelector.currentNode() != None):
+        if self.outputSelector.currentNode() != None:
             self.visualizationWidget.enableApplyButton = True
+        if self.labelSelector.currentNode():
+            self.preProcessingWidget.enableFilteringFrame(False)
+            self.preProcessingWidget.enableLMFrame(False)
+        else:
+            self.preProcessingWidget.enableFilteringFrame(True)
+            self.preProcessingWidget.enableLMFrame(True)
 
     def onFourUpButton(self):
         applicationLogic = slicer.app.applicationLogic()
@@ -298,7 +315,7 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         layoutManager.setLayout(8)
 
     def onAddLeftListButton(self):
-        # self.applyButton.enabled = self.inputSelector.currentNode() and self.inputSelector1.currentNode() and self.outputSelector.currentNode()
+        # self.applyButton.enabled = self.inputSelector.currentNode() and self.labelSelector.currentNode() and self.outputSelector.currentNode()
         self.AddLeftListButton.setStyleSheet("background-color: rgb(255,99,71)")
         self.AddRight1ListButton.setStyleSheet("background-color: rgb(255,255,255)")
         self.AddRight2ListButton.setStyleSheet("background-color: rgb(255,255,255)")
@@ -307,7 +324,7 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         logic.createList('leftObliqueFiducial')
 
     def onAddRight1ListButton(self):
-        # self.applyButton.enabled = self.inputSelector.currentNode() and self.inputSelector1.currentNode() and self.outputSelector.currentNode()
+        # self.applyButton.enabled = self.inputSelector.currentNode() and self.labelSelector.currentNode() and self.outputSelector.currentNode()
         self.AddRight1ListButton.setStyleSheet("background-color: rgb(255,99,71)")
         self.AddLeftListButton.setStyleSheet("background-color: rgb(255,255,255)")
         self.AddRight2ListButton.setStyleSheet("background-color: rgb(255,255,255)")
@@ -316,7 +333,7 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         logic.createList('rightObliqueFiducial')
 
     def onAddRight2ListButton(self):
-        # self.applyButton.enabled = self.inputSelector.currentNode() and self.inputSelector1.currentNode() and self.outputSelector.currentNode()
+        # self.applyButton.enabled = self.inputSelector.currentNode() and self.labelSelector.currentNode() and self.outputSelector.currentNode()
         self.AddRight2ListButton.setStyleSheet("background-color: rgb(255,99,71)")
         self.AddLeftListButton.setStyleSheet("background-color: rgb(255,255,255)")
         self.AddRight1ListButton.setStyleSheet("background-color: rgb(255,255,255)")
@@ -325,18 +342,60 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         logic.createList('rightHorizontalFiducial')
 
     def onApplyButton(self):
+        if self.labelSelector.currentNode() == None:
+           warning = self.preProcessingWidget.warningMessageForLM()
+           if warning == 16384:
+               red_logic = slicer.app.layoutManager().sliceWidget("Red").sliceLogic()
+               red_cn = red_logic.GetSliceCompositeNode()
+               volumeID = red_cn.GetBackgroundVolumeID()
+               CTNode = slicer.util.getNode(volumeID)
+               if not CTNode:
+                   return False
+               if self.preProcessingWidget.filterOnRadioButton.checked:
+                   self.filterInputCT(CTNode)
+               self.createLungLabelMap(CTNode)
+           else:
+               self.applyButton.enabled = True
+               return False
+           
         self.visualizationWidget.updateScene()
-        self.applyButton.enabled = True
+        
+        self.applyButton.text = "Segmenting Lobes..."
+        self.applyButton.repaint()
+        slicer.app.processEvents()
+
         logic = CIP_InteractiveLobeSegmentationLogic()
-        print("Run the algorithm")
         try:
-            logic.run(self.inputSelector1.currentNode(), self.outputSelector.currentNode())
+            logic.run(self.labelSelector.currentNode(), self.outputSelector.currentNode())
         except Exception, e:
             import traceback
             traceback.print_exc()
             qt.QMessageBox.warning(slicer.util.mainWindow(),
                                    "Running", 'Exception!\n\n' + str(e) + "\n\nSee Python Console for Stack Trace")
         self.onFourUpButton()
+        
+    def filterInputCT(self, input_node):
+        self.applyButton.enabled = False
+        self.applyButton.text = "Filtering..."
+        self.applyButton.repaint()
+        slicer.app.processEvents()
+
+        self.preProcessingWidget.filterInputCT(input_node)
+        
+    def createLungLabelMap(self, input_node):
+        """Create the lung label map
+        """
+        self.applyButton.text = "Creating Label Map..."
+        self.applyButton.repaint()
+        slicer.app.processEvents()
+
+        labelNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLLabelMapVolumeNode())
+        labelNode.SetName(input_node.GetName() + '_partialLungLabelMap')
+
+        self.preProcessingWidget.createPartialLM(input_node, labelNode)
+
+        SlicerUtil.changeLabelmapOpacity(0.5)
+        self.labelSelector.setCurrentNode(labelNode)        
 
     def updateList(self):
         """Observe the mrml scene for changes that we wish to respond to."""
