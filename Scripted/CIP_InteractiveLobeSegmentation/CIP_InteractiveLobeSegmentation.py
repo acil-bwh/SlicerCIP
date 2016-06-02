@@ -49,7 +49,8 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         # Instantiate and connect widgets ...
         ScriptedLoadableModuleWidget.setup(self)
 
-        self.reloadAndTestButton.visible = False    # No valid tests at the moment
+        if SlicerUtil.IsDevelopment:
+            self.reloadAndTestButton.visible = False    # No valid tests at the moment
         #
         # Parameters Area
         #
@@ -355,65 +356,6 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         self.visualizationWidget.updateScene()
         self.visualizationWidget.fiducialsCollapsibleButton.hide()
         self.visualizationWidget.removeFiducialObservers()
-
-    def onReload(self, moduleName="CIP_InteractiveLobeSegmentation"):
-        """Generic reload method for any scripted module.
-        ModuleWizard will subsitute correct default moduleName.
-        """
-        import imp, sys, os, slicer
-
-        widgetName = moduleName + "Widget"
-
-        # reload the source code
-        # - set source file path
-        # - load the module to the global space
-        filePath = eval('slicer.modules.%s.path' % moduleName.lower())
-        p = os.path.dirname(filePath)
-        if not sys.path.__contains__(p):
-            sys.path.insert(0, p)
-        fp = open(filePath, "r")
-        globals()[moduleName] = imp.load_module(
-            moduleName, fp, filePath, ('.py', 'r', imp.PY_SOURCE))
-        fp.close()
-
-        # rebuild the widget
-        # - find and hide the existing widget
-        # - create a new widget in the existing parent
-        parent = slicer.util.findChildren(name='%s Reload' % moduleName)[0].parent().parent()
-        for child in parent.children():
-            try:
-                child.hide()
-            except AttributeError:
-                pass
-        # Remove spacer items
-        item = parent.layout().itemAt(0)
-        while item:
-            parent.layout().removeItem(item)
-            item = parent.layout().itemAt(0)
-
-        # delete the old widget instance
-        if hasattr(globals()['slicer'].modules, widgetName):
-            getattr(globals()['slicer'].modules, widgetName).cleanup()
-
-        # create new widget inside existing parent
-        globals()[widgetName.lower()] = eval(
-            'globals()["%s"].%s(parent)' % (moduleName, widgetName))
-        globals()[widgetName.lower()].setup()
-        setattr(globals()['slicer'].modules, widgetName, globals()[widgetName.lower()])
-
-    def onReloadAndTest(self, moduleName="CIP_InteractiveLobeSegmentation"):
-        try:
-            self.onReload()
-            evalString = 'globals()["%s"].%sTest()' % (moduleName, moduleName)
-            tester = eval(evalString)
-            tester.runTest()
-        except Exception, e:
-            import traceback
-            traceback.print_exc()
-            qt.QMessageBox.warning(slicer.util.mainWindow(),
-                                   "Reload and Test",
-                                   'Exception!\n\n' + str(e) + "\n\nSee Python Console for Stack Trace")
-
 
 class ILSpqWidget(object):
     """
