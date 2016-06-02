@@ -1,6 +1,7 @@
 from CIP_EditorWidget import CIP_EditorWidget
 from CIP_EditBox import *
 from CaseReportsWidget import *
+from PreProcessingWidget import *
 from MIPViewerWidget import *
 #from ACIL_GetImage.CaseNavigatorWidget import *
 #from AutoUpdateWidget import AutoUpdateWidget

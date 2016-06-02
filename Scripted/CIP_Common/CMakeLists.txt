@@ -20,6 +20,7 @@ set(MODULE_PYTHON_SCRIPTS
   CIP/ui/CIP_EditBox.py
   CIP/ui/CIP_EditorWidget.py
   CIP/ui/MIPViewerWidget.py
+  CIP/ui/PreProcessingWidget.py
   )
 
 set(MODULE_PYTHON_RESOURCES
