@@ -262,9 +262,6 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.CTSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onCTSelect)
         self.CTlabelSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onCTLabelSelect)
 
-        self.preProcessingWidget.filterOnRadioButton.connect('toggled(bool)', self.showFilterParams)
-        self.preProcessingWidget.filterOffRadioButton.connect('toggled(bool)', self.hideFilterParams)
-
         self.GlobalHistCheckBox.connect('clicked()', self.onHistogram)
         self.RightHistCheckBox.connect('clicked()', self.onHistogram)
         self.LeftHistCheckBox.connect('clicked()', self.onHistogram)
@@ -292,12 +289,6 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.preProcessingWidget.enableFilteringFrame(bool(self.CTNode))
         self.preProcessingWidget.enableLMFrame(bool(not self.CTlabelNode))
         SlicerUtil.changeLabelmapOpacity(0.5)
-
-    def showFilterParams(self):
-        self.preProcessingWidget.showFilterOptions(True)
-
-    def hideFilterParams(self):
-        self.preProcessingWidget.showFilterOptions(False)
 
     def inputVolumesAreValid(self):
         """Verify that volumes are compatible with label calculation

@@ -186,8 +186,16 @@ class PreProcessingWidget():
         self.SlowOption.setText('Slow')
         self.SlowOption.setCheckable(1)
         self.SlowOption.setChecked(1)
-        self.DownSamplingGroupBox.layout().addWidget(self.SlowOption) 
-
+        self.DownSamplingGroupBox.layout().addWidget(self.SlowOption)
+        
+        self.filterOnRadioButton.connect('toggled(bool)', self.showFilterParams)
+        self.filterOffRadioButton.connect('toggled(bool)', self.hideFilterParams)
+        
+    def showFilterParams(self):
+        self.showFilterOptions(True)
+    
+    def hideFilterParams(self):
+        self.showFilterOptions(False)
 
     def showFilteringFrame(self,show):
         """ Show/Hide the filtering frame 
