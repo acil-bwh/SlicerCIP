@@ -45,12 +45,12 @@ class CIP_PAARatio(ScriptedLoadableModule):
         self.parent.categories = SlicerUtil.CIP_ModulesCategory
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
         self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory", "Brigham and Women's Hospital"]
-        self.parent.helpText = """Calculate the ratio between pulmonary arterial and aorta. This biomarker has been proved
-                                to predict acute exacerbations of COPD (Wells, J. M., Washko, G. R., Han, M. K., Abbas,
-                                N., Nath, H., Mamary, a. J., Dransfield, M. T. (2012). Pulmonary Arterial Enlargement and Acute Exacerbations
-                                of COPD. New England Journal of Medicine, 367(10), 913-921).
-                                For more information refer to:
-                                http://www.nejm.org/doi/full/10.1056/NEJMoa1203830"""
+        self.parent.helpText = """Calculate the ratio between pulmonary arterial and aorta.<br>
+            A quick tutorial of the module can be found <a href='https://s3.amazonaws.com/acil-public/SlicerCIP+Tutorials/PAA_Ratio.pptx'>here</a>.<br><br>
+            The PAA Ratio biomarker has been proved to predict acute exacerbations of COPD (Wells, J. M., Washko, G. R.,
+            Han, M. K., Abbas, N., Nath, H., Mamary, a. J., Dransfield, M. T. (2012).
+            Pulmonary Arterial Enlargement and Acute Exacerbations of COPD. New England Journal of Medicine, 367(10), 913-921).
+            For more information refer to: <a href='http://www.nejm.org/doi/full/10.1056/NEJMoa1203830'>http://www.nejm.org/doi/full/10.1056/NEJMoa1203830</a>"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 #
@@ -111,11 +111,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.volumeSelector.setMRMLScene( slicer.mrmlScene )
         self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
         self.mainAreaLayout.addWidget(self.volumeSelector, 0, 1)
-
-
-        # self.label2 = qt.QLabel("Select the slice")
-        # self.label2.setStyleSheet("margin:0px 0 20px 7px; padding-top:20px")
-        # self.mainAreaLayout.addWidget(self.label2, 1, 0)
 
         self.placeDefaultRulersButton = ctk.ctkPushButton()
         self.placeDefaultRulersButton.name = "placeDefaultRulersButton"

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------
-set(MODULE_NAME InteractiveLobeSegmentation)
+set(MODULE_NAME CIP_InteractiveLobeSegmentation)
 
 string(TOUPPER ${MODULE_NAME} MODULE_NAME_UPPER)
 
@@ -12,6 +12,7 @@ set(MODULE_PYTHON_SCRIPTS
   )
 
 set(MODULE_PYTHON_RESOURCES
+   Resources/Icons/${MODULE_NAME}.png
   )
 
 

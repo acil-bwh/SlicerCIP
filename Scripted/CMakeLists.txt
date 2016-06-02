@@ -4,7 +4,7 @@ include(SlicerMacroBuildScriptedModule)
 #add_subdirectory(Example)
 set(modules
   #Example
-  InteractiveLobeSegmentation
+  CIP_InteractiveLobeSegmentation
   #LungRegistration
   #ParenchymaAnalysis
   #EmphysemaSubtypes
