@@ -1,5 +1,7 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
   <qresource>
+    <file>Icons/AirwayInspector.png</file>
   </qresource>
+
 </RCC>

@@ -102,7 +102,7 @@ QStringList qSlicerAirwayInspectorModule::contributors()const
 //-----------------------------------------------------------------------------
 QIcon qSlicerAirwayInspectorModule::icon()const
 {
-  return QIcon(":/Icons/Medium/SlicerAirwayInspector.png");
+  return QIcon(":/Icons/AirwayInspector.png");
 }
 
 //-----------------------------------------------------------------------------
