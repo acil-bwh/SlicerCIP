@@ -73,7 +73,7 @@ class SlicerUtil:
 
         if not path.exists(p):
             os.makedirs(p)
-            print ("Created path " + p)
+            print ("Created path {} for module {} settings".format(p, moduleName))
         return p
 
     @staticmethod

@@ -1,35 +1,12 @@
 # -*- coding: utf-8 -*-
-import os, sys
-import unittest
-from __main__ import vtk, qt, ctk, slicer
-from slicer.ScriptedLoadableModule import *
-
 import logging
 
-# Add the CIP common library to the path if it has not been loaded yet
-# try:
-#     from CIP.logic.SlicerUtil import SlicerUtil
-# except Exception as ex:
-#     currentpath = os.path.dirname(os.path.realpath(__file__))
-#     # We assume that CIP_Common is in the development structure
-#     path = os.path.normpath(currentpath + '/../CIP_Common')
-#     if not os.path.exists(path):
-#         # We assume that CIP is a subfolder (Slicer behaviour)
-#         path = os.path.normpath(currentpath + '/CIP')
-#     sys.path.append(path)
-#     print("The following path was manually added to the PythonPath in CIP_PAARatio: " + path)
-#     from CIP.logic.SlicerUtil import SlicerUtil
+import vtk, qt, ctk, slicer
+from slicer.ScriptedLoadableModule import *
+
 from CIP.logic.SlicerUtil import SlicerUtil
 from CIP.logic import Util
 from CIP.ui import CaseReportsWidget
-
-
-# class CIP_PAARatio(ScriptedLoadableModule):
-#     def __init__(self, parent):
-#         ScriptedLoadableModule.__init__(self, parent)
-#         self.parent.title = "PAA Ratio"
-#         self.parent.categories = "CIP"
-#         self.parent.dependencies = ["CIP_Common"]
 
 #
 # CIP_PAARatio
@@ -63,7 +40,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
     """
     @property
     def moduleName(self):
-        return "CIP_PAARatio"
+        return os.path.basename(__file__).replace(".py", "")
 
     def __init__(self, parent):
         ScriptedLoadableModuleWidget.__init__(self, parent)
