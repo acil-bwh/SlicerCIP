@@ -53,7 +53,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
             self.parent = parent
         self.logic = None
         self.CTNode = None
-        self.CTlabelNode = None
+        self.labelNode = None
         # self.expNode = None
         # self.explabelNode = None
         self.fileName = None
@@ -63,7 +63,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
             self.setup()
             self.CTSelector.setMRMLScene(slicer.mrmlScene)
             # self.expSelector.setMRMLScene(slicer.mrmlScene)
-            self.CTlabelSelector.setMRMLScene(slicer.mrmlScene)
+            self.labelSelector.setMRMLScene(slicer.mrmlScene)
             # self.explabelSelector.setMRMLScene(slicer.mrmlScene)
             self.parent.show()
 
@@ -98,29 +98,29 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         #
         # the CT label volume selector
         #
-        self.CTlabelSelectorFrame = qt.QFrame()
-        self.CTlabelSelectorFrame.setLayout(qt.QHBoxLayout())
-        self.parent.layout().addWidget(self.CTlabelSelectorFrame)
+        self.labelSelectorFrame = qt.QFrame()
+        self.labelSelectorFrame.setLayout(qt.QHBoxLayout())
+        self.parent.layout().addWidget(self.labelSelectorFrame)
 
-        self.CTlabelSelectorLabel = qt.QLabel()
-        self.CTlabelSelectorLabel.setText("Select the CT Label Map: ")
-        self.CTlabelSelectorFrame.layout().addWidget(self.CTlabelSelectorLabel)
+        self.labelSelectorLabel = qt.QLabel()
+        self.labelSelectorLabel.setText("Select the CT Label Map: ")
+        self.labelSelectorFrame.layout().addWidget(self.labelSelectorLabel)
 
-        self.CTlabelSelector = slicer.qMRMLNodeComboBox()
-        # self.CTlabelSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
-        # self.CTlabelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", "1" )
-        self.CTlabelSelector.nodeTypes = ("vtkMRMLLabelMapVolumeNode", "")
+        self.labelSelector = slicer.qMRMLNodeComboBox()
+        # self.labelSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
+        # self.labelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", "1" )
+        self.labelSelector.nodeTypes = ("vtkMRMLLabelMapVolumeNode", "")
 
         # todo addAttribute
-        self.CTlabelSelector.selectNodeUponCreation = False
-        self.CTlabelSelector.addEnabled = False
-        self.CTlabelSelector.noneEnabled = True
-        self.CTlabelSelector.removeEnabled = False
-        self.CTlabelSelector.showHidden = False
-        self.CTlabelSelector.showChildNodeTypes = False
-        self.CTlabelSelector.setMRMLScene(slicer.mrmlScene)
-        self.CTlabelSelector.setToolTip("CT label map")
-        self.CTlabelSelectorFrame.layout().addWidget(self.CTlabelSelector)
+        self.labelSelector.selectNodeUponCreation = False
+        self.labelSelector.addEnabled = False
+        self.labelSelector.noneEnabled = True
+        self.labelSelector.removeEnabled = False
+        self.labelSelector.showHidden = False
+        self.labelSelector.showChildNodeTypes = False
+        self.labelSelector.setMRMLScene(slicer.mrmlScene)
+        self.labelSelector.setToolTip("CT label map")
+        self.labelSelectorFrame.layout().addWidget(self.labelSelector)
 
         # Image filtering section
         self.preProcessingWidget = PreProcessingWidget(self.moduleName, parentWidget=self.parent)
@@ -260,7 +260,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
         self.CTSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onCTSelect)
-        self.CTlabelSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onCTLabelSelect)
+        self.labelSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onLabelSelect)
 
         self.GlobalHistCheckBox.connect('clicked()', self.onHistogram)
         self.RightHistCheckBox.connect('clicked()', self.onHistogram)
@@ -279,38 +279,38 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
     def onCTSelect(self, node):
         self.CTNode = node
-        self.applyButton.enabled = bool(self.CTNode)  # and bool(self.CTlabelNode)
+        self.applyButton.enabled = bool(self.CTNode)  # and bool(self.labelNode)
         self.preProcessingWidget.enableFilteringFrame(bool(self.CTNode))
-        self.preProcessingWidget.enableLMFrame(bool(not self.CTlabelNode))
+        self.preProcessingWidget.enableLMFrame(bool(not self.labelNode))
 
-    def onCTLabelSelect(self, node):
-        self.CTlabelNode = node
-        self.applyButton.enabled = bool(self.CTNode)  # and bool(self.CTlabelNode)
+    def onLabelSelect(self, node):
+        self.labelNode = node
+        self.applyButton.enabled = bool(self.CTNode)  # and bool(self.labelNode)
         self.preProcessingWidget.enableFilteringFrame(bool(self.CTNode))
-        self.preProcessingWidget.enableLMFrame(bool(not self.CTlabelNode))
+        self.preProcessingWidget.enableLMFrame(bool(not self.labelNode))
         SlicerUtil.changeLabelmapOpacity(0.5)
 
     def inputVolumesAreValid(self):
         """Verify that volumes are compatible with label calculation
         algorithm assumptions"""
-        if not self.CTNode:  # or not self.CTlabelNode:
+        if not self.CTNode:  # or not self.labelNode:
             qt.QMessageBox.warning(slicer.util.mainWindow(),
                                    "Parenchyma Analysis", "Please select a CT Input Volume.")
             return False
-        if not self.CTNode.GetImageData():  # or not self.CTlabelNode.GetImageData():
+        if not self.CTNode.GetImageData():  # or not self.labelNode.GetImageData():
             qt.QMessageBox.warning(slicer.util.mainWindow(),
                                    "Parenchyma Analysis", "Please select a CT Input Volume.")
             return False
-        if not self.CTlabelNode or not self.CTlabelNode.GetImageData():
+        if not self.labelNode or not self.labelNode.GetImageData():
             warning = self.preProcessingWidget.warningMessageForLM()
             if warning == 16384:
                 self.createLungLabelMap()
             else:
                 qt.QMessageBox.warning(slicer.util.mainWindow(),
-                                       "Parenchyma Analysis", "Please select a CT Label Map.")
+                                       "Parenchyma Analysis", "Please select a Lung Label Map.")
                 return False
             return True
-        if self.CTNode.GetImageData().GetDimensions() != self.CTlabelNode.GetImageData().GetDimensions():
+        if self.CTNode.GetImageData().GetDimensions() != self.labelNode.GetImageData().GetDimensions():
             qt.QMessageBox.warning(slicer.util.mainWindow(),
                                    "Parenchyma Analysis", "Input Volumes do not have the same geometry.")
             return False
@@ -348,7 +348,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.preProcessingWidget.createPartialLM(inputNode, self.labelNode)
 
         SlicerUtil.changeLabelmapOpacity(0.5)
-        self.CTlabelSelector.setCurrentNode(self.labelNode)
+        self.labelSelector.setCurrentNode(self.labelNode)
 
     def downsampleCT(self):
         oldSpacing = self.CTNode.GetSpacing()
@@ -405,7 +405,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.applyButton.repaint()
         slicer.app.processEvents()
 
-        self.logic = CIP_ParenchymaAnalysisLogic(self.CTNode, self.CTlabelNode)
+        self.logic = CIP_ParenchymaAnalysisLogic(self.CTNode, self.labelNode)
         self.populateStats()
         self.logic.createHistogram()
         for i in xrange(len(self.histogramCheckBoxes)):
@@ -425,6 +425,9 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         self.applyButton.enabled = True
         self.applyButton.text = "Apply"
+        
+        for color in ['Red', 'Yellow', 'Green']:
+            slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(self.CTNode.GetID())
 
     def onHistogram(self):
         """Histogram of the selected region
@@ -440,7 +443,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         """chart the parenchyma analysis
         """
         valueToPlot = self.chartOptions[self.chartOption.currentIndex]
-        self.logic.createStatsChart(self.CTlabelNode, valueToPlot)
+        self.logic.createStatsChart(self.labelNode, valueToPlot)
 
     def onSaveReport(self):
         """ Save the current values in a persistent csv file
@@ -453,7 +456,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
     def populateStats(self):
         if not self.logic:
             return
-        displayNode = self.CTlabelNode.GetDisplayNode()
+        displayNode = self.labelNode.GetDisplayNode()
         colorNode = displayNode.GetColorNode()
         lut = colorNode.GetLookupTable()
         self.items = []
@@ -500,7 +503,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
     """
     __preventDialogs__ = False
 
-    def __init__(self, CTNode, CTlabelNode, fileName=None):
+    def __init__(self, CTNode, labelNode, fileName=None):
         self.keys = ["LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "Mean", "Std", "Kurtosis", "Skewness",
                      "Volume"]
 
@@ -510,7 +513,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         self.regionValues = [(1, 14), (2, 2), (4, 6), (12, 14), (3, 3), (7, 11), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8),
                              (9, 9), (10, 10), (11, 11), (12, 12), (13, 13), (14, 14)]
         self.valuesDictionary = {}
-        cubicMMPerVoxel = reduce(lambda x, y: x * y, CTlabelNode.GetSpacing())
+        cubicMMPerVoxel = reduce(lambda x, y: x * y, labelNode.GetSpacing())
         litersPerCubicMM = 0.000001
 
         # TODO: progress and status updates
@@ -518,14 +521,14 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
 
         ## Call CLI to compute parenchyma phenotypes
         ## CT scan
-        # GenerateRegionHistogramsAndParenchymaPhenotypes --max 0 --min -1200 --op CTpheno.csv --oh CThisto.csv -l CTlabelNode -c CTNode
+        # GenerateRegionHistogramsAndParenchymaPhenotypes --max 0 --min -1200 --op CTpheno.csv --oh CThisto.csv -l labelNode -c CTNode
         CTPhenoFile = '/var/tmp/CTpheno.csv'
         CTHistoFile = '/var/tmp/CThisto.csv'
 
         parameters = dict()
         parameters['max'] = 0
         parameters['min'] = -1200
-        parameters['ipl'] = CTlabelNode.GetID()
+        parameters['ipl'] = labelNode.GetID()
         parameters['ic'] = CTNode.GetID()
         parameters['op'] = CTPhenoFile
         parameters['oh'] = CTHistoFile
@@ -540,7 +543,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         self.regionHists = {}
         self.regionBins = {}
 
-        datalabel_arr = vtk.util.numpy_support.vtk_to_numpy(CTlabelNode.GetImageData().GetPointData().GetScalars())
+        datalabel_arr = vtk.util.numpy_support.vtk_to_numpy(labelNode.GetImageData().GetPointData().GetScalars())
         data_arr = vtk.util.numpy_support.vtk_to_numpy(CTNode.GetImageData().GetPointData().GetScalars())
 
         for value, tag in zip(self.regionValues, rTags):

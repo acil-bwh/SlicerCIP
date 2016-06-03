@@ -284,6 +284,8 @@ class PreProcessingWidget():
         if self.FastOption.checked:
             speed = 'Fast'
         self.logic.generatePartialLungLabelMap(inputCT,labelMap,speed)
+        for color in ['Red', 'Yellow', 'Green']:
+            slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(inputCT.GetID())
         
     def warningMessageForLM(self):
         answer = qt.QMessageBox.question(slicer.util.mainWindow(),self.__moduleName__, 'Do you want to create a lung label map?', qt.QMessageBox.Yes | qt.QMessageBox.No)
@@ -348,9 +350,6 @@ class PreProcessingLogic(object):
         if speed=='Fast':
             label_map = self.upsampleLabel(label_map)
             slicer.mrmlScene.RemoveNode(inputNode)
-        
-        for color in ['Red', 'Yellow', 'Green']:
-            slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(inputNode.GetID())
         
     def downsampleCT(self, input_image):
         """Downsample input image by factor 2

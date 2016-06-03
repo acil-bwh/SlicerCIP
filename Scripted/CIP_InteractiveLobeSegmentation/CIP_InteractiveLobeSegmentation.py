@@ -25,7 +25,6 @@ class CIP_InteractiveLobeSegmentation(ScriptedLoadableModule):
         parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
         self.parent = parent
 
-
 #
 # CIP_InteractiveLobeSegmentationWidget
 #
@@ -100,7 +99,8 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         self.outputSelector.showChildNodeTypes = True
         self.outputSelector.setMRMLScene(slicer.mrmlScene)
         self.outputSelector.setToolTip("Pick the output to the algorithm.")
-        parametersFormLayout.addRow("Output Volume: ", self.outputSelector)
+        self.outputSelector.baseName = 'Fissures Segmentation Volume'
+        parametersFormLayout.addRow("Fissures Volume: ", self.outputSelector)
         
         self.preProcessingWidget = PreProcessingWidget(self.moduleName, parentWidget=self.parent)
         self.preProcessingWidget.setup()
@@ -140,6 +140,7 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         fourUpIcon = qt.QIcon(":/Icons/LayoutFourUpView.png")
         self.fourUpButton.setIcon(fourUpIcon)
         self.buttonGroupBox.layout().addWidget(self.fourUpButton)
+        
         #
         # Red Slice Button
         #
@@ -203,8 +204,7 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         self.greenViewButton.connect('clicked()', self.onGreenViewButton)
 
         #
-        # Fiducials Area
-        #
+        # Fiducials Area        #
 
         self.groupBox = qt.QFrame()
         self.groupBox.setLayout(qt.QHBoxLayout())
@@ -349,12 +349,27 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
                red_cn = red_logic.GetSliceCompositeNode()
                volumeID = red_cn.GetBackgroundVolumeID()
                CTNode = slicer.util.getNode(volumeID)
+
+               labelNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLLabelMapVolumeNode())
+               labelNode.SetName(CTNode.GetName() + '_partialLungLabelMap')               
+               
                if not CTNode:
+                   self.applyButton.enabled = True
                    return False
                if self.preProcessingWidget.filterOnRadioButton.checked:
-                   self.filterInputCT(CTNode)
-               self.createLungLabelMap(CTNode)
+                   volumesLogic = slicer.modules.volumes.logic()
+                   clonedCTNode = volumesLogic.CloneVolume(slicer.mrmlScene, CTNode, 'Cloned Volume')
+                   self.filterInputCT(clonedCTNode)
+                   self.createLungLabelMap(clonedCTNode,labelNode)
+                   slicer.mrmlScene.RemoveNode(clonedCTNode)
+                   for color in ['Red', 'Yellow', 'Green']:
+                       slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(CTNode.GetID())
+               else:
+                   self.createLungLabelMap(CTNode,labelNode)
+               
            else:
+               qt.QMessageBox.warning(slicer.util.mainWindow(),
+                                       "Parenchyma Analysis", "Please select a Lung Label Map.")
                self.applyButton.enabled = True
                return False
            
@@ -372,30 +387,34 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
             traceback.print_exc()
             qt.QMessageBox.warning(slicer.util.mainWindow(),
                                    "Running", 'Exception!\n\n' + str(e) + "\n\nSee Python Console for Stack Trace")
+        
+        SlicerUtil.changeLabelmapOpacity(0.5)
+        for color in ['Red', 'Yellow', 'Green']:
+                       slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(CTNode.GetID())
         self.onFourUpButton()
+        self.applyButton.text = "Apply"
+        self.applyButton.repaint()
+        slicer.app.processEvents()
         
     def filterInputCT(self, input_node):
-        self.applyButton.enabled = False
+#        self.applyButton.enabled = False
         self.applyButton.text = "Filtering..."
         self.applyButton.repaint()
         slicer.app.processEvents()
 
         self.preProcessingWidget.filterInputCT(input_node)
         
-    def createLungLabelMap(self, input_node):
+    def createLungLabelMap(self, input_node, label_node):
         """Create the lung label map
         """
         self.applyButton.text = "Creating Label Map..."
         self.applyButton.repaint()
         slicer.app.processEvents()
 
-        labelNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLLabelMapVolumeNode())
-        labelNode.SetName(input_node.GetName() + '_partialLungLabelMap')
-
-        self.preProcessingWidget.createPartialLM(input_node, labelNode)
+        self.preProcessingWidget.createPartialLM(input_node, label_node)
 
         SlicerUtil.changeLabelmapOpacity(0.5)
-        self.labelSelector.setCurrentNode(labelNode)        
+        self.labelSelector.setCurrentNode(label_node)        
 
     def updateList(self):
         """Observe the mrml scene for changes that we wish to respond to."""
@@ -939,11 +958,11 @@ class CIP_InteractiveLobeSegmentationLogic(ScriptedLoadableModuleLogic):
             msgBox.exec_()
             return False
 
-        self.delayDisplay('Running the algorithm')
+#        self.delayDisplay('Running the algorithm')
         slicer.cli.run(slicer.modules.segmentlunglobes, None, parameters, wait_for_completion=True)
         selectionNode = slicer.app.applicationLogic().GetSelectionNode()
         selectionNode.SetReferenceActiveLabelVolumeID(outputVolume.GetID())
-        outputVolume.SetName(labelVolume.GetName().replace("_partialLungLabelMap", "_iteractiveLobeSegmenation"))
+        outputVolume.SetName(labelVolume.GetName().replace("_partialLungLabelMap", "_interactiveLobeSegmenation"))
         slicer.app.applicationLogic().PropagateLabelVolumeSelection(0)
         return True
 
