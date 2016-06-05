@@ -350,45 +350,6 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         SlicerUtil.changeLabelmapOpacity(0.5)
         self.labelSelector.setCurrentNode(self.labelNode)
 
-    def downsampleCT(self):
-        oldSpacing = self.CTNode.GetSpacing()
-
-        newSpacing = []
-        newSpacing.append(oldSpacing[0] * 2)
-        newSpacing.append(oldSpacing[1] * 2)
-        newSpacing.append(oldSpacing[2])
-
-        resamplescalarvolume = slicer.modules.resamplescalarvolume
-        outputNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLScalarVolumeNode())
-
-        parameters = {
-            "outputPixelSpacing": newSpacing,
-            "InputVolume": self.CTNode.GetID(),
-            "OutputVolume": outputNode.GetID(),
-        }
-        slicer.cli.run(resamplescalarvolume, None, parameters, wait_for_completion=True)
-
-        return outputNode
-
-    def upsampleLabel(self, labelMap):
-        oldSpacing = labelMap.GetSpacing()
-
-        newSpacing = []
-        newSpacing.append(oldSpacing[0] / 2)
-        newSpacing.append(oldSpacing[1] / 2)
-        newSpacing.append(oldSpacing[2])
-
-        resamplescalarvolume = slicer.modules.resamplescalarvolume
-
-        parameters = {
-            "outputPixelSpacing": newSpacing,
-            "InputVolume": labelMap.GetID(),
-            "OutputVolume": labelMap.GetID(),
-        }
-        slicer.cli.run(resamplescalarvolume, None, parameters, wait_for_completion=True)
-
-        return labelMap
-
     def onApply(self):
         """Calculate the parenchyma analysis
         """
