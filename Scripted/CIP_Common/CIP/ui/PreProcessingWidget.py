@@ -35,7 +35,7 @@ class PreProcessingWidget():
     
         radioButtonsGroup = qt.QGroupBox()
         radioButtonsGroup.setLayout(qt.QHBoxLayout())
-        radioButtonsGroup.setFixedWidth(100)
+        radioButtonsGroup.setFixedWidth(120)
         radioButtonsGroup.setObjectName('radioButtonsGroup')
         radioButtonsGroup.setStyleSheet('#radioButtonsGroup {border: 1px solid white; color: black; }')   
     
@@ -66,7 +66,7 @@ class PreProcessingWidget():
         
         filterOptionsGroup = qt.QGroupBox()
         filterOptionsGroup.setLayout(qt.QHBoxLayout())
-        filterOptionsGroup.setFixedWidth(200)
+        filterOptionsGroup.setFixedWidth(220)
         filterOptionsGroup.setObjectName('filterOptionsGroup')
         filterOptionsGroup.setStyleSheet('#filterOptionsGroup {border: 1px solid white; color: black; }')
     
@@ -170,7 +170,7 @@ class PreProcessingWidget():
             
         self.DownSamplingGroupBox = qt.QGroupBox()
         self.DownSamplingGroupBox.setLayout(qt.QHBoxLayout())
-        self.DownSamplingGroupBox.setFixedWidth(120)
+        self.DownSamplingGroupBox.setFixedWidth(130)
         self.DownSamplingGroupBox.setObjectName('DownSamplingGroupBox')
         self.DownSamplingGroupBox.setStyleSheet('#DownSamplingGroupBox {border: 1px solid white; color: black; }')
         self.DownSamplingGroupBox.setToolTip('Choose between fast and slow label map creation.')
