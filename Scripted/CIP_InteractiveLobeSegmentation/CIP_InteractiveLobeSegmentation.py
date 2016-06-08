@@ -273,10 +273,7 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
 
     def onSelect(self):
         self.layoutCollapsibleButton.setChecked(True)
-#        if self.outputSelector.currentNode() != None:
-#            self.visualizationWidget.enableApplyButton = True
         if self.labelSelector.currentNode():
-#            self.visualizationWidget.enableApplyButton = True
             SlicerUtil.changeLabelmapOpacity(0.5)
             self.preProcessingWidget.enableFilteringFrame(False)
             self.preProcessingWidget.enableLMFrame(False)
@@ -379,7 +376,7 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         
         self.applyButton.text = "Segmenting Lobes..."
         self.applyButton.repaint()
-        slicer.app.processEvents()
+#        slicer.app.processEvents()
 
         logic = CIP_InteractiveLobeSegmentationLogic()
         fissureVolume = None
@@ -391,14 +388,16 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
             qt.QMessageBox.warning(slicer.util.mainWindow(),
                                    "Running", 'Exception!\n\n' + str(e) + "\n\nSee Python Console for Stack Trace")
         
-        self.outputSelector.setCurrentNode(fissureVolume)
+        if fissureVolume != False:            
+            self.outputSelector.setCurrentNode(fissureVolume)
+
         SlicerUtil.changeLabelmapOpacity(0.5)
-#        for color in ['Red', 'Yellow', 'Green']:
-#                       slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(CTNode.GetID())
+
         self.onFourUpButton()
         self.applyButton.text = "Apply"
         self.applyButton.repaint()
-        slicer.app.processEvents()
+#        slicer.app.processEvents()
+        self.applyButton.enabled = True
         applicationLogic = slicer.app.applicationLogic()
         interactionNode = applicationLogic.GetInteractionNode()
         interactionNode.Reset(None)
@@ -481,7 +480,6 @@ class ILSVisualizationWidget(ILSpqWidget):
         self.logic = logic
         self.applyButton = applyButton
         self.fiducialButtonsList = buttonsList
-#        self.enableApplyButton = False
 
         self.widget = qt.QWidget()
         self.layout = qt.QFormLayout(self.widget)
@@ -611,6 +609,18 @@ class ILSVisualizationWidget(ILSpqWidget):
         elif self.rightHorizontalRow >= self.leftRow and self.rightHorizontalRow >= self.rightObliqueRow:
             self.tableWidget.setRowCount(self.rightHorizontalRow)
         self.updateScene()
+        
+        listsInScene = slicer.util.getNodes('vtkMRMLMarkupsFiducialNode*')
+        name = ['leftObliqueFiducial', 'rightObliqueFiducial', 'rightHorizontalFiducial']
+
+        if (listsInScene):
+            for fiducialList in listsInScene.values():
+                if fiducialList.GetName() == name[0] and fiducialList.GetNumberOfFiducials() > 0:
+                    self.applyButton.enabled = True
+                elif fiducialList.GetName() == name[1] and fiducialList.GetNumberOfFiducials() > 0:
+                    self.applyButton.enabled = True
+                elif fiducialList.GetName() == name[2] and fiducialList.GetNumberOfFiducials() > 0:
+                    self.applyButton.enabled = True       
 
     def onRightClick(self):
         menu = qt.QMenu()
@@ -715,7 +725,6 @@ class ILSVisualizationWidget(ILSpqWidget):
         if originalActiveList:
             if originalActiveList.GetNumberOfFiducials() > 0:
                 self.updateTable()
-#                if self.enableApplyButton == True:
                 self.applyButton.enabled = True
         self.addFiducialObservers()
 
@@ -945,7 +954,6 @@ class CIP_InteractiveLobeSegmentationLogic(ScriptedLoadableModuleLogic):
             slicer.mrmlScene.AddNode(outputVolume)
 
         parameters = {
-            # "GrayScaleInput": inputVolume.GetID(),
             "inLabelMapFileName": labelVolume.GetID(),
             "outLabelMapFileName": outputVolume.GetID(),
         }
@@ -960,7 +968,6 @@ class CIP_InteractiveLobeSegmentationLogic(ScriptedLoadableModuleLogic):
                 msgBox = qt.QMessageBox()
                 msgBox.setText("Please place fiducials on the right horizontal fissure.")
                 msgBox.exec_()
-                # print('Please place fiducials on the right horizontal fissure')
                 return False
         elif rightHorizontalFiducials:
             msgBox = qt.QMessageBox()
@@ -969,79 +976,9 @@ class CIP_InteractiveLobeSegmentationLogic(ScriptedLoadableModuleLogic):
             msgBox.exec_()
             return False
 
-#        self.delayDisplay('Running the algorithm')
         slicer.cli.run(slicer.modules.segmentlunglobes, None, parameters, wait_for_completion=True)
         selectionNode = slicer.app.applicationLogic().GetSelectionNode()
         selectionNode.SetReferenceActiveLabelVolumeID(outputVolume.GetID())
         outputVolume.SetName(labelVolume.GetName().replace("_partialLungLabelMap", "_interactiveLobeSegmenation"))        
         slicer.app.applicationLogic().PropagateLabelVolumeSelection(0)
         return outputVolume
-
-# class CIP_InteractiveLobeSegmentationTest(unittest.TestCase):
-#   """
-#   This is the test case for your scripted module.
-#   """
-#
-#   def delayDisplay(self,message,msec=1000):
-#     """This utility method displays a small dialog and waits.
-#     This does two things: 1) it lets the event loop catch up
-#     to the state of the test so that rendering and widget updates
-#     have all taken place before the test continues and 2) it
-#     shows the user/developer/tester the state of the test
-#     so that we'll know when it breaks.
-#     """
-#     print(message)
-#     self.info = qt.QDialog()
-#     self.infoLayout = qt.QVBoxLayout()
-#     self.info.setLayout(self.infoLayout)
-#     self.label = qt.QLabel(message,self.info)
-#     self.infoLayout.addWidget(self.label)
-#     qt.QTimer.singleShot(msec, self.info.close)
-#     self.info.exec_()
-#
-#   def setUp(self):
-#     """ Do whatever is needed to reset the state - typically a scene clear will be enough.
-#     """
-#     slicer.mrmlScene.Clear(0)
-#
-#   def runTest(self):
-#     """Run as few or as many tests as needed here.
-#     """
-#     self.setUp()
-#     self.test_CIP_InteractiveLobeSegmentation1()
-#
-#   def test_CIP_InteractiveLobeSegmentation1(self):
-#     """ Ideally you should have several levels of tests.  At the lowest level
-#     tests should exercise the functionality of the logic with different inputs
-#     (both valid and invalid).  At higher levels your tests should emulate the
-#     way the user would interact with your code and confirm that it still works
-#     the way you intended.
-#     One of the most important features of the tests is that it should alert other
-#     developers when their changes will have an impact on the behavior of your
-#     module.  For example, if a developer removes a feature that you depend on,
-#     your test should break so they know that the feature is needed.
-#     """
-#
-#     self.delayDisplay("Starting the test")
-#     #
-#     # first, get some data
-#     #
-#     import urllib
-#     downloads = (
-#         ('http://slicer.kitware.com/midas3/download?items=5767', 'FA.nrrd', slicer.util.loadVolume),
-#         )
-#
-#     for url,name,loader in downloads:
-#       filePath = slicer.app.temporaryPath + '/' + name
-#       if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-#         print('Requesting download %s from %s...\n' % (name, url))
-#         urllib.urlretrieve(url, filePath)
-#       if loader:
-#         print('Loading %s...\n' % (name,))
-#         loader(filePath)
-#     self.delayDisplay('Finished with download and loading\n')
-#
-#     volumeNode = slicer.util.getNode(pattern="FA")
-#     logic = CIP_InteractiveLobeSegmentationLogic()
-#     self.assertTrue( logic.hasImageData(volumeNode) )
-#     self.delayDisplay('Test passed!')
