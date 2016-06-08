@@ -343,7 +343,8 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         slicer.app.processEvents()
 
         self.labelNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLLabelMapVolumeNode())
-        self.labelNode.SetName(inputNode.GetName() + '_partialLungLabelMap')
+        name = inputNode.GetName() + '_partialLungLabelMap'
+        self.labelNode.SetName(slicer.mrmlScene.GenerateUniqueName(name))
 
         self.preProcessingWidget.createPartialLM(inputNode, self.labelNode)
 
@@ -474,7 +475,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         self.regionValues = [(1, 14), (2, 2), (4, 6), (12, 14), (3, 3), (7, 11), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8),
                              (9, 9), (10, 10), (11, 11), (12, 12), (13, 13), (14, 14)]
         self.valuesDictionary = {}
-        cubicMMPerVoxel = reduce(lambda x, y: x * y, labelNode.GetSpacing())
+        cubicMMPerVoxel = reduce(lambda x, y: x * y, CTNode.GetSpacing())
         litersPerCubicMM = 0.000001
 
         # TODO: progress and status updates

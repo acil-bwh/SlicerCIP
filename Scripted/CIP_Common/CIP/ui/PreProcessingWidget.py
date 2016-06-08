@@ -107,7 +107,7 @@ class PreProcessingWidget():
         self.Filt2DOption = qt.QPushButton()
         self.Filt2DOption.setText('2D')
         self.Filt2DOption.setCheckable(1)
-        self.Filt2DOption.setChecked(0)
+        self.Filt2DOption.setChecked(1)
         self.Filt2DOption.setAutoExclusive(1) 
         self.Filt2DOption.setFixedWidth(45)
         DimGroupBox.layout().addWidget(self.Filt2DOption)
@@ -115,7 +115,7 @@ class PreProcessingWidget():
         self.Filt3DOption = qt.QPushButton()
         self.Filt3DOption.setText('3D')
         self.Filt3DOption.setCheckable(1)
-        self.Filt3DOption.setChecked(1)
+        self.Filt3DOption.setChecked(0)
         self.Filt3DOption.setFixedWidth(45)
         self.Filt3DOption.setAutoExclusive(1)    
         DimGroupBox.layout().addWidget(self.Filt3DOption)
@@ -391,6 +391,7 @@ class PreProcessingLogic(object):
               "outputPixelSpacing": newSpacing,
               "InputVolume": labelMap.GetID(),
               "OutputVolume": labelMap.GetID(),
+              "interpolationType":'nearestNeighbor',
               }
         slicer.cli.run(resamplescalarvolume,None,parameters,wait_for_completion=True)
     
