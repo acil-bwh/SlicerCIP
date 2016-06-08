@@ -273,9 +273,11 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
 
     def onSelect(self):
         self.layoutCollapsibleButton.setChecked(True)
-        if self.outputSelector.currentNode() != None:
-            self.visualizationWidget.enableApplyButton = True
+#        if self.outputSelector.currentNode() != None:
+#            self.visualizationWidget.enableApplyButton = True
         if self.labelSelector.currentNode():
+#            self.visualizationWidget.enableApplyButton = True
+            SlicerUtil.changeLabelmapOpacity(0.5)
             self.preProcessingWidget.enableFilteringFrame(False)
             self.preProcessingWidget.enableLMFrame(False)
         else:
@@ -380,21 +382,26 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         slicer.app.processEvents()
 
         logic = CIP_InteractiveLobeSegmentationLogic()
+        fissureVolume = None
         try:
-            logic.run(self.labelSelector.currentNode(), self.outputSelector.currentNode())
+            fissureVolume = logic.run(self.labelSelector.currentNode(), self.outputSelector.currentNode())
         except Exception, e:
             import traceback
             traceback.print_exc()
             qt.QMessageBox.warning(slicer.util.mainWindow(),
                                    "Running", 'Exception!\n\n' + str(e) + "\n\nSee Python Console for Stack Trace")
         
+        self.outputSelector.setCurrentNode(fissureVolume)
         SlicerUtil.changeLabelmapOpacity(0.5)
-        for color in ['Red', 'Yellow', 'Green']:
-                       slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(CTNode.GetID())
+#        for color in ['Red', 'Yellow', 'Green']:
+#                       slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(CTNode.GetID())
         self.onFourUpButton()
         self.applyButton.text = "Apply"
         self.applyButton.repaint()
         slicer.app.processEvents()
+        applicationLogic = slicer.app.applicationLogic()
+        interactionNode = applicationLogic.GetInteractionNode()
+        interactionNode.Reset(None)
         
     def filterInputCT(self, input_node):
 #        self.applyButton.enabled = False
@@ -474,7 +481,7 @@ class ILSVisualizationWidget(ILSpqWidget):
         self.logic = logic
         self.applyButton = applyButton
         self.fiducialButtonsList = buttonsList
-        self.enableApplyButton = False
+#        self.enableApplyButton = False
 
         self.widget = qt.QWidget()
         self.layout = qt.QFormLayout(self.widget)
@@ -708,8 +715,8 @@ class ILSVisualizationWidget(ILSpqWidget):
         if originalActiveList:
             if originalActiveList.GetNumberOfFiducials() > 0:
                 self.updateTable()
-                if self.enableApplyButton == True:
-                    self.applyButton.enabled = True
+#                if self.enableApplyButton == True:
+                self.applyButton.enabled = True
         self.addFiducialObservers()
 
     def addFiducialObservers(self):
@@ -932,6 +939,10 @@ class CIP_InteractiveLobeSegmentationLogic(ScriptedLoadableModuleLogic):
                     rightObliqueFiducials = fiducialList
                 elif fiducialList.GetName() == name[2]:
                     rightHorizontalFiducials = fiducialList
+                    
+        if outputVolume == None:
+            outputVolume = slicer.vtkMRMLLabelMapVolumeNode()
+            slicer.mrmlScene.AddNode(outputVolume)
 
         parameters = {
             # "GrayScaleInput": inputVolume.GetID(),
@@ -962,9 +973,9 @@ class CIP_InteractiveLobeSegmentationLogic(ScriptedLoadableModuleLogic):
         slicer.cli.run(slicer.modules.segmentlunglobes, None, parameters, wait_for_completion=True)
         selectionNode = slicer.app.applicationLogic().GetSelectionNode()
         selectionNode.SetReferenceActiveLabelVolumeID(outputVolume.GetID())
-        outputVolume.SetName(labelVolume.GetName().replace("_partialLungLabelMap", "_interactiveLobeSegmenation"))
+        outputVolume.SetName(labelVolume.GetName().replace("_partialLungLabelMap", "_interactiveLobeSegmenation"))        
         slicer.app.applicationLogic().PropagateLabelVolumeSelection(0)
-        return True
+        return outputVolume
 
 # class CIP_InteractiveLobeSegmentationTest(unittest.TestCase):
 #   """
