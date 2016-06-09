@@ -287,8 +287,14 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.labelNode = node
         self.applyButton.enabled = bool(self.CTNode)  # and bool(self.labelNode)
         self.preProcessingWidget.enableFilteringFrame(bool(self.CTNode))
-        self.preProcessingWidget.enableLMFrame(bool(not self.labelNode))
+        self.preProcessingWidget.enableLMFrame(bool(not self.labelNode))        
         SlicerUtil.changeLabelmapOpacity(0.5)
+        if self.labelNode:
+            self.preProcessingWidget.filterApplication.setChecked(1)
+            self.preProcessingWidget.filterApplication.setEnabled(0)
+        else:
+            self.preProcessingWidget.filterApplication.setChecked(0)
+            self.preProcessingWidget.filterApplication.setEnabled(1)
 
     def inputVolumesAreValid(self):
         """Verify that volumes are compatible with label calculation
@@ -315,8 +321,8 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
                                    "Parenchyma Analysis", "Input Volumes do not have the same geometry.")
             return False
 
-        if self.preProcessingWidget.filterOnRadioButton.checked:
-            self.preProcessingWidget.filterApplication.setChecked(1)
+#        if self.preProcessingWidget.filterOnRadioButton.checked:
+#            self.preProcessingWidget.filterApplication.setChecked(1)
         return True
 
     def filterInputCT(self):
@@ -332,7 +338,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         """Create the lung label map
         """
         self.applyButton.enabled = False
-        if self.preProcessingWidget.filterOnRadioButton.checked and not self.preProcessingWidget.filterApplication.checked:
+        if self.preProcessingWidget.filterOnRadioButton.checked: # and not self.preProcessingWidget.filterApplication.checked:
             self.filterInputCT()
 
         inputNode = self.CTNode
@@ -347,9 +353,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.labelNode.SetName(slicer.mrmlScene.GenerateUniqueName(name))
 
         self.preProcessingWidget.createPartialLM(inputNode, self.labelNode)
-
         SlicerUtil.changeLabelmapOpacity(0.5)
-        self.labelSelector.setCurrentNode(self.labelNode)
 
     def onApply(self):
         """Calculate the parenchyma analysis
@@ -390,6 +394,8 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         
         for color in ['Red', 'Yellow', 'Green']:
             slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(self.CTNode.GetID())
+            
+        self.labelSelector.setCurrentNode(self.labelNode)
 
     def onHistogram(self):
         """Histogram of the selected region
@@ -530,7 +536,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
                 # Compute histograms
                 data = data[data < -350]
                 binContainers = numpy.arange(data.min(), data.max() + 2)
-                histogram, bins = numpy.histogram(data, bins=binContainers)
+                histogram, bins = numpy.histogram(data, bins=binContainers, density=True)
                 self.regionHists[tag] = histogram
                 self.regionBins[tag] = bins
 

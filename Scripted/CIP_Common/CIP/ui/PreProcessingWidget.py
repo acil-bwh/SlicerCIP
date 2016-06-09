@@ -60,7 +60,7 @@ class PreProcessingWidget():
         self.FilteringFrame.layout().addWidget(self.filterOptionsFrame)
         
         self.filterApplication = qt.QCheckBox()
-        self.filterApplication.setText('Only for Phenotype')
+        self.filterApplication.setText('Filter for Phenotype Analysis')
         self.filterApplication.setChecked(0)
         self.filterOptionsFrame.layout().addWidget(self.filterApplication)     
         
