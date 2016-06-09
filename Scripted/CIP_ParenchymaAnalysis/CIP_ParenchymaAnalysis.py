@@ -73,54 +73,43 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         #
         # the inps volume selector
         #
-        self.CTSelectorFrame = qt.QFrame(self.parent)
-        self.CTSelectorFrame.setLayout(qt.QHBoxLayout())
-        self.parent.layout().addWidget(self.CTSelectorFrame)
+        parametersCollapsibleButton = ctk.ctkCollapsibleButton()
+        parametersCollapsibleButton.text = "IO Volumes"
+        self.parent.layout().addWidget(parametersCollapsibleButton)
 
-        self.CTSelectorLabel = qt.QLabel("Input CT: ", self.CTSelectorFrame)
-        self.CTSelectorLabel.setToolTip("Select the input CT for parenchymal analysis")
-        self.CTSelectorFrame.layout().addWidget(self.CTSelectorLabel)
+        # Layout within the dummy collapsible button
+        parametersFormLayout = qt.QFormLayout(parametersCollapsibleButton)
+        parametersFormLayout.setVerticalSpacing(5)
 
-        self.CTSelector = slicer.qMRMLNodeComboBox(self.CTSelectorFrame)
+        self.CTSelector = slicer.qMRMLNodeComboBox()
         self.CTSelector.nodeTypes = (("vtkMRMLScalarVolumeNode"), "")
         self.CTSelector.addAttribute("vtkMRMLScalarVolumeNode", "LabelMap", 0)
         self.CTSelector.selectNodeUponCreation = False
         self.CTSelector.addEnabled = False
         self.CTSelector.removeEnabled = False
-        self.CTSelector.noneEnabled = True
+        self.CTSelector.noneEnabled = False
         self.CTSelector.showHidden = False
         self.CTSelector.showChildNodeTypes = False
         self.CTSelector.setMRMLScene(slicer.mrmlScene)
-        # TODO: need to add a QLabel
-        # self.CTSelector.SetLabelText( "Master Volume:" )
-        self.CTSelectorFrame.layout().addWidget(self.CTSelector)
+        self.CTSelector.setToolTip("Pick the CT image to work on.")
+        parametersFormLayout.addRow("Input CT Volume: ", self.CTSelector)
 
         #
-        # the CT label volume selector
+        # the label map volume selector
         #
-        self.labelSelectorFrame = qt.QFrame()
-        self.labelSelectorFrame.setLayout(qt.QHBoxLayout())
-        self.parent.layout().addWidget(self.labelSelectorFrame)
-
-        self.labelSelectorLabel = qt.QLabel()
-        self.labelSelectorLabel.setText("Select the CT Label Map: ")
-        self.labelSelectorFrame.layout().addWidget(self.labelSelectorLabel)
-
         self.labelSelector = slicer.qMRMLNodeComboBox()
-        # self.labelSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
-        # self.labelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", "1" )
-        self.labelSelector.nodeTypes = ("vtkMRMLLabelMapVolumeNode", "")
-
-        # todo addAttribute
-        self.labelSelector.selectNodeUponCreation = False
+        # self.labelSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+        # self.labelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 1 )
+        self.labelSelector.nodeTypes = (("vtkMRMLLabelMapVolumeNode"), "")
+        self.labelSelector.selectNodeUponCreation = True
         self.labelSelector.addEnabled = False
-        self.labelSelector.noneEnabled = True
         self.labelSelector.removeEnabled = False
+        self.labelSelector.noneEnabled = True
         self.labelSelector.showHidden = False
         self.labelSelector.showChildNodeTypes = False
         self.labelSelector.setMRMLScene(slicer.mrmlScene)
-        self.labelSelector.setToolTip("CT label map")
-        self.labelSelectorFrame.layout().addWidget(self.labelSelector)
+        self.labelSelector.setToolTip("Pick the label map to the algorithm.")
+        parametersFormLayout.addRow("Label Map Volume: ", self.labelSelector)
 
         # Image filtering section
         self.preProcessingWidget = PreProcessingWidget(self.moduleName, parentWidget=self.parent)
