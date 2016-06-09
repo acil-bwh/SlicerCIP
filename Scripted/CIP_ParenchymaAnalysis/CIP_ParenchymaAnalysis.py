@@ -66,6 +66,14 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
             self.labelSelector.setMRMLScene(slicer.mrmlScene)
             # self.explabelSelector.setMRMLScene(slicer.mrmlScene)
             self.parent.show()
+            
+    def enter(self):
+        if self.labelSelector.currentNode():
+            for color in ['Red', 'Yellow', 'Green']:
+                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID(self.labelSelector.currentNode().GetID())            
+    def exit(self):
+        for color in ['Red', 'Yellow', 'Green']:
+                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID('None')
 
     def setup(self):
         ScriptedLoadableModuleWidget.setup(self)
@@ -87,7 +95,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.CTSelector.selectNodeUponCreation = False
         self.CTSelector.addEnabled = False
         self.CTSelector.removeEnabled = False
-        self.CTSelector.noneEnabled = False
+        self.CTSelector.noneEnabled = True
         self.CTSelector.showHidden = False
         self.CTSelector.showChildNodeTypes = False
         self.CTSelector.setMRMLScene(slicer.mrmlScene)
@@ -271,6 +279,13 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.applyButton.enabled = bool(self.CTNode)  # and bool(self.labelNode)
         self.preProcessingWidget.enableFilteringFrame(bool(self.CTNode))
         self.preProcessingWidget.enableLMFrame(bool(not self.labelNode))
+        if self.CTNode:
+            for color in ['Red', 'Yellow', 'Green']:
+                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(self.CTNode.GetID())
+        else:
+            for color in ['Red', 'Yellow', 'Green']:
+                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID('None')
+            
 
     def onLabelSelect(self, node):
         self.labelNode = node
@@ -281,9 +296,13 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         if self.labelNode:
             self.preProcessingWidget.filterApplication.setChecked(1)
             self.preProcessingWidget.filterApplication.setEnabled(0)
+            for color in ['Red', 'Yellow', 'Green']:
+                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID(self.labelNode.GetID())
         else:
             self.preProcessingWidget.filterApplication.setChecked(0)
             self.preProcessingWidget.filterApplication.setEnabled(1)
+            for color in ['Red', 'Yellow', 'Green']:
+                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID('None')            
 
     def inputVolumesAreValid(self):
         """Verify that volumes are compatible with label calculation
