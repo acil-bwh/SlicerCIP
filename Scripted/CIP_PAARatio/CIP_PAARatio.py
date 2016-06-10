@@ -245,7 +245,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
         volumeId = self.volumeSelector.currentNodeID
         if volumeId:
-            SlicerUtil.setActiveVolumeId(volumeId)
+            SlicerUtil.displayBackgroundVolume(volumeId)
 
 
     def exit(self):

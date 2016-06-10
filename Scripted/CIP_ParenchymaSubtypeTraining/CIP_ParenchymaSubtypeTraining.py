@@ -326,7 +326,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
                 self.logic.loadFiducialsXml(newVolumeNode, fiducialsNavigatorFilePath)
 
         if newVolumeNode is not None:
-            SlicerUtil.setActiveVolumeId(newVolumeNode.GetID())
+            SlicerUtil.setActiveVolumeIds(newVolumeNode.GetID())
             SlicerUtil.setFiducialsCursorMode(True, True)
 
         self.currentVolumeLoaded = newVolumeNode
@@ -354,7 +354,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         SlicerUtil.setFiducialsCursorMode(True, True)
 
         if self.volumeSelector.currentNodeId != "":
-            SlicerUtil.setActiveVolumeId(self.volumeSelector.currentNodeId)
+            SlicerUtil.setActiveVolumeIds(self.volumeSelector.currentNodeId)
             self.currentVolumeLoaded = slicer.mrmlScene.GetNodeByID(self.volumeSelector.currentNodeId)
             self.updateState()
 
@@ -401,7 +401,9 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             displayNode = labelmapNode.GetDisplayNode()
             displayNode.SetAndObserveColorNodeID(colorNode.GetID())
             # Change Opacity
-            SlicerUtil.displayLabelmapVolume(labelmapNode.GetID(), 0.3)
+            SlicerUtil.displayLabelmapVolume(labelmapNode.GetID())
+            SlicerUtil.changeLabelmapOpacity(0.3)
+
 
     def __onCurrentNodeChanged__(self, volumeNode):
         self.__checkNewVolume__(volumeNode)
