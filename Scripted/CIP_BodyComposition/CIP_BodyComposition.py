@@ -329,19 +329,17 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
     def enter(self):
         """Method that is invoked when we switch to the module in slicer user interface"""
-        print "enter"
+        SlicerUtil.logDevelop("Enter", includePythonConsole=True)
         if self.nodeObserver is None:
             self.nodeObserver = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
         self.saveStateBeforeEnteringModule()
         self.checkMasterAndLabelMapNodes()
 
     def exit(self):
-        print ("exiting")
         # Remove the nodeAdded observer while we are not in the module
         slicer.mrmlScene.RemoveObserver(self.nodeObserver)
 
         # Remove any selected tools in the editor by "clicking in the arrow button"
-        print "reset editor interface"
         self.editorWidget.resetInterface()
         # widget = slicer.modules.cip_bodycomposition.widgetRepresentation()
         # if widget:
@@ -354,7 +352,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     def resetModuleState(self):
         """ Reset all the module state variables
         """
-        print "reset module state"
         self.savedVolumeID = None  # Active grayscale volume ID
         self.savedLabelmapID = None  # Active labelmap node ID
         self.savedLabelmapOpacity = None  # Labelmap opacity
@@ -365,66 +362,60 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         """Save the state of the module regarding labelmap, etc. This state will be saved/loaded when
         exiting/entering the module
         """
-        print "Save state before entering..."
+        SlicerUtil.logDevelop("Saving state...", includePythonConsole=True)
         if self.preventSavingState:
             # Avoid that the first time that the module loads, the state is saved twice
             self.preventSavingState = False
-            print "forced exit from saving"
+            SlicerUtil.logDevelop("State saving cancelled", includePythonConsole=False)
             return
 
         # Get the active volume (it it exists)
         activeVolumeId = SlicerUtil.getFirstActiveVolumeId()
+        SlicerUtil.logDevelop("Active volume: {}".format(activeVolumeId), includePythonConsole=True)
         if activeVolumeId is None:
             # Reset state
             self.resetModuleState()
         else:
-            # There is a Volume (and therefore a labelmap) loaded.
-            # Save state
+            # There is a Volume loaded. Save state
             try:
                 self.savedVolumeID = activeVolumeId
-                print "saved volume id: " + activeVolumeId
                 displayNode = slicer.util.getNode(activeVolumeId).GetDisplayNode()
                 self.savedContrastLevel = (displayNode.GetWindow(), displayNode.GetLevel())
 
                 activeLabelmapId = SlicerUtil.getFirstActiveLabelmapId()
                 self.savedLabelmapID = activeLabelmapId
+                SlicerUtil.logDevelop("Saved volume {} and labelmap {}".format(self.savedVolumeID, self.savedLabelmapID)
+                                      , includePythonConsole=True)
                 if activeLabelmapId is None:
-                    print "current saved labelmap is none"
                     self.savedLabelmapOpacity = None
                 else:
-                    print "current saved labelmap: " + self.savedLabelmapID
                     self.savedLabelmapOpacity = SlicerUtil.getLabelmapOpacity()
             except:
                 Util.print_last_exception()
                 # Not action really needed
                 pass
-            # Hide labelmap
-
 
 
     def restoreStateBeforeExitingModule(self):
         """Load the last state of the module when the user exited (labelmap, opacity, contrast window, etc.)
         """
-        print "restoring"
         try:
             if self.savedVolumeID:
                 # There is a previously saved valid state.
-                print "Restoring active volume: " + self.savedVolumeID
                 SlicerUtil.setActiveVolumeIds(self.savedVolumeID)
                 SlicerUtil.changeContrastWindow(self.savedContrastLevel[0], self.savedContrastLevel[1])
                 if self.savedLabelmapID:
-                    print "Restoring active labelmap: " + self.savedLabelmapID
                     # There was a valid labelmap. Restore it
                     SlicerUtil.setActiveVolumeIds(None, self.savedLabelmapID)
                     # Restore previous opacity
                     SlicerUtil.changeLabelmapOpacity(self.savedLabelmapOpacity)
                 else:
                     # Hide labelmap
-                    print "No labelmap saved. Hide all"
+                    SlicerUtil.logDevelop("Hiding labelmap", includePythonConsole=True)
                     SlicerUtil.displayLabelmapVolume(None)
             else:
                 # Hide labelmap
-                print "No volume saved. Hide labelmap"
+                SlicerUtil.logDevelop("No volume saved. Hiding labelmap", includePythonConsole=True)
                 SlicerUtil.displayLabelmapVolume(None)
 
         except:

@@ -42,6 +42,10 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
     def moduleName(self):
         return os.path.basename(__file__).replace(".py", "")
 
+    @property
+    def currentVolumeId(self):
+        return self.volumeSelector.currentNodeID
+
     def __init__(self, parent):
         ScriptedLoadableModuleWidget.__init__(self, parent)
 
@@ -89,15 +93,15 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
         self.mainAreaLayout.addWidget(self.volumeSelector, 0, 1)
 
-        self.placeDefaultRulersButton = ctk.ctkPushButton()
-        self.placeDefaultRulersButton.name = "placeDefaultRulersButton"
-        self.placeDefaultRulersButton.text = "Place default rulers"
-        # self.placeDefaultRulersSliceButton.toolTip = "Navigate to the best estimated slice to place the rulers"
-        self.placeDefaultRulersButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.placeDefaultRulersButton.setIconSize(qt.QSize(20, 20))
-        self.placeDefaultRulersButton.setStyleSheet("font-weight: bold;")
-        # self.placeDefaultRulersButton.setFixedWidth(140)
-        self.mainAreaLayout.addWidget(self.placeDefaultRulersButton, 1, 1)
+        self.jumptToTemptativeSliceButton = ctk.ctkPushButton()
+        self.jumptToTemptativeSliceButton.name = "jumptToTemptativeSliceButton"
+        self.jumptToTemptativeSliceButton.text = "Jump to temptative slice"
+        self.jumptToTemptativeSliceButton.toolTip = "Jump to the best estimated slice to place the rulers"
+        self.jumptToTemptativeSliceButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.jumptToTemptativeSliceButton.setIconSize(qt.QSize(20, 20))
+        self.jumptToTemptativeSliceButton.setStyleSheet("font-weight: bold;")
+        # self.jumptToTemptativeSliceButton.setFixedWidth(140)
+        self.mainAreaLayout.addWidget(self.jumptToTemptativeSliceButton, 1, 1)
 
         ### Structure Selector
         self.structuresGroupbox = qt.QGroupBox("Select the structure")
@@ -202,6 +206,13 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.reportsWidget = CaseReportsWidget("CIP_PAARatio", columnNames=self.storedColumnNames, parentWidget=self.reportsCollapsibleButton)
         self.reportsWidget.setup()
 
+        # Init state
+        self.resetModuleState()
+
+        self.preventSavingState = False
+        self.saveStateBeforeEnteringModule()
+        self.preventSavingState = True
+
         self.switchToRedView()
 
         #####
@@ -224,7 +235,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.observers = []
 
         self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelectorChanged)
-        self.placeDefaultRulersButton.connect('clicked()', self.oPlaceDefaultRulersClicked)
+        self.jumptToTemptativeSliceButton.connect('clicked()', self.onJumpToTemptativeSliceButtonClicked)
         self.placeRulersButton.connect('clicked()', self.onPlaceRulersClicked)
         self.moveUpButton.connect('clicked()', self.onMoveUpRulerClicked)
         self.moveDownButton.connect('clicked()', self.onMoveDownRulerClicked)
@@ -232,6 +243,12 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
         self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
 
+        # Init state
+        self.resetModuleState()
+
+        self.preventSavingState = False
+        self.saveStateBeforeEnteringModule()
+        self.preventSavingState = True
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
@@ -240,23 +257,116 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         #     self.volumeSelector.setCurrentNodeID(activeVolumeId)
         #     if activeVolumeId not in self.logic.currentVolumesLoaded:
         #         self.placeDefaultRulers(activeVolumeId)
-        # Start listening to scene events
+
+        # Save state
+        self.saveStateBeforeEnteringModule()
+
+        # Start listening again to scene events
         self.__addSceneObservables__()
 
         volumeId = self.volumeSelector.currentNodeID
         if volumeId:
             SlicerUtil.displayBackgroundVolume(volumeId)
+            # Show the current rulers (if existing)
+            self.logic.rulersVisible(volumeId, visible=True)
 
+        # This module always works in Axial
+        SlicerUtil.changeLayoutToAxial()
+
+        self.changeToDefaultContrastLevel()
 
     def exit(self):
         """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
         # Stop listening to Scene events
         self.__removeSceneObservables()
 
+        # Hide rulers
+        if self.currentVolumeId:
+            self.logic.rulersVisible(self.currentVolumeId, False)
+
+        # Load previous state
+        self.restoreStateBeforeExitingModule()
+
     def cleanup(self):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         self.__removeSceneObservables()
 
+    def saveStateBeforeEnteringModule(self):
+        """Save the state of the module regarding labelmap, etc. This state will be saved/loaded when
+        exiting/entering the module
+        """
+        if self.preventSavingState:
+            # Avoid that the first time that the module loads, the state is saved twice
+            self.preventSavingState = False
+            return
+
+        # Save existing layout
+        self.savedLayout = slicer.app.layoutManager().layout
+
+        # Get the active volume (it it exists)
+        activeVolumeId = SlicerUtil.getFirstActiveVolumeId()
+        if activeVolumeId is None:
+            # Reset state
+            self.resetModuleState()
+        else:
+            # There is a Volume loaded. Save state
+            try:
+                self.savedVolumeID = activeVolumeId
+                displayNode = slicer.util.getNode(activeVolumeId).GetDisplayNode()
+                self.savedContrastLevel = (displayNode.GetWindow(), displayNode.GetLevel())
+                # activeLabelmapId = SlicerUtil.getFirstActiveLabelmapId()
+                # self.savedLabelmapID = activeLabelmapId
+                # if activeLabelmapId is None:
+                #     self.savedLabelmapOpacity = None
+                # else:
+                #     self.savedLabelmapOpacity = SlicerUtil.getLabelmapOpacity()
+                #     # Hide any labelmap
+                #     SlicerUtil.displayLabelmapVolume(None)
+            except:
+                Util.print_last_exception()
+                # Not action really needed
+                pass
+
+    def restoreStateBeforeExitingModule(self):
+        """Load the last state of the module when the user exited (labelmap, opacity, contrast window, etc.)
+        """
+        try:
+            if self.savedVolumeID:
+                # There is a previously saved valid state.
+                SlicerUtil.setActiveVolumeIds(self.savedVolumeID)
+                SlicerUtil.changeContrastWindow(self.savedContrastLevel[0], self.savedContrastLevel[1])
+                # if self.savedLabelmapID:
+                #     print "Restoring active labelmap: " + self.savedLabelmapID
+                #     # There was a valid labelmap. Restore it
+                #     SlicerUtil.displayLabelmapVolume(self.savedLabelmapID)
+                #     # Restore previous opacity
+                #     SlicerUtil.changeLabelmapOpacity(self.savedLabelmapOpacity)
+                # else:
+                #     # Hide labelmap
+                #     print "No labelmap saved. Hide all"
+                #     SlicerUtil.displayLabelmapVolume(None)
+            # else:
+            #     # Hide labelmap
+            #     print "No volume saved. Hide labelmap"
+            #     SlicerUtil.displayLabelmapVolume(None)
+
+            # Restore layout
+            SlicerUtil.changeLayout(self.savedLayout)
+        except:
+            Util.print_last_exception()
+            pass
+
+    def resetModuleState(self):
+        """ Reset all the module state variables
+        """
+        self.savedVolumeID = None  # Active grayscale volume ID
+        self.savedLabelmapID = None  # Active labelmap node ID
+        self.savedLabelmapOpacity = None  # Labelmap opacity
+        self.savedContrastLevel = (None, None)  # Contrast window/level that the user had when entering the module
+
+    def changeToDefaultContrastLevel(self):
+        # Preferred contrast (TODO: set right level)
+        SlicerUtil.changeContrastWindow(1144, 447)
 
     def jumpToTemptativeSlice(self, volumeId):
         """ Jump the red window to a predefined slice based on the size of the volume
@@ -266,6 +376,19 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         aorta1, aorta2, pa1, pa2 = self.logic.getDefaultCoords(volumeId)
         # Set the display in the right slice
         self.moveRedWindowToSlice(aorta1[2])
+
+        redSliceNode = slicer.util.getFirstNodeByClassByName("vtkMRMLSliceNode", "Red")
+
+        # factor = 0.5
+        # newFOVx = redSliceNode.GetFieldOfView()[0] * factor
+        # newFOVy = redSliceNode.GetFieldOfView()[1] * factor
+        # newFOVz = redSliceNode.GetFieldOfView()[2]
+        # Move the camera up to fix the view
+        redSliceNode.SetXYZOrigin(0, 50, 0)
+        # Update the FOV (zoom in)
+        redSliceNode.SetFieldOfView(140, 140, 0.5)
+        # Refresh the data in the viewer
+        redSliceNode.UpdateMatrices()
 
     def placeDefaultRulers(self, volumeId):
         """ Set the Aorta and PA rulers to a default estimated position and jump to that slice
@@ -286,7 +409,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         # Place the rulers in the current slice
         self.placeRuler()
         # Add the current volume to the list of loaded volumes
-        self.logic.currentVolumesLoaded.add(volumeId)
+        #self.logic.currentVolumesLoaded.add(volumeId)
 
         # Modify the zoom of the Red slice
         redSliceNode = slicer.util.getFirstNodeByClassByName("vtkMRMLSliceNode", "Red")
@@ -396,11 +519,11 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.ratioTextBox.setStyleSheet(" QLineEdit { background-color: white; color: black}");
 
         volumeId = self.volumeSelector.currentNodeID
-        if volumeId not in self.logic.currentVolumesLoaded:
-            return
+        # if volumeId not in self.logic.currentVolumesLoaded:
+        #     return
 
         if volumeId:
-            self.logic.changeColor(volumeId, self.logic.defaultColor)
+            self.logic.changeActiveRulersColor(volumeId, self.logic.defaultColor)
         aorta = None
         pa = None
         if not reset:
@@ -414,18 +537,18 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             if rulerPA:
                 pa = rulerPA.GetDistanceMeasurement()
                 self.paTextBox.setText(str(pa))
-            if aorta is not None and aorta != 0:
+            if pa is not None and aorta is not None and aorta != 0:
                 try:
                     ratio = pa / aorta
                     self.ratioTextBox.setText(str(ratio))
-                    if ratio > 1:
+                    if ratio > 1.0:
                         # Switch colors ("alarm")
                         st = " QLineEdit {{ background-color: rgb({0}, {1}, {2}); color: white }}". \
                                                         format(int(self.logic.defaultWarningColor[0]*255),
                                                                 int(self.logic.defaultWarningColor[1]*255),
                                                                 int(self.logic.defaultWarningColor[2]*255))
                         self.ratioTextBox.setStyleSheet(st)
-                        self.logic.changeColor(volumeId, self.logic.defaultWarningColor)
+                        self.logic.changeActiveRulersColor(volumeId, self.logic.defaultWarningColor)
                 except Exception:
                     Util.print_last_exception()
 
@@ -467,6 +590,8 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         logging.info("Volume selector node changed: {0}".format(
             '(None)' if node is None else node.GetName()
         ))
+        # Preferred contrast (TODO: set right level)
+        SlicerUtil.changeContrastWindow(1144, 447)
         self.refreshTextboxes()
 
     def onStructureClicked(self, button):
@@ -484,12 +609,13 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             interactionNode = applicationLogic.GetInteractionNode()
             interactionNode.SwitchToSinglePlaceMode()
 
-    def oPlaceDefaultRulersClicked(self):
+    def onJumpToTemptativeSliceButtonClicked(self):
         volumeId = self.volumeSelector.currentNodeID
         if volumeId == '':
             self.showUnselectedVolumeWarningMessage()
             return
-        self.placeDefaultRulers(volumeId)
+        #self.placeDefaultRulers(volumeId)
+        self.jumpToTemptativeSlice(volumeId)
 
     def onRulerUpdated(self, node, event):
         self.refreshTextboxes()
@@ -559,7 +685,8 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         :param arg2:
         :return:
         """
-        self.logic.currentVolumesLoaded.clear()
+        #self.logic.currentVolumesLoaded.clear()
+        self.logic.currentActiveVolumeId = None
 
 
 # CIP_PAARatioLogic
@@ -590,7 +717,8 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
     defaultWarningColor = [1.0, 0.0, 0.0]
 
     def __init__(self):
-        self.currentVolumesLoaded = set()
+        self.currentActiveVolumeId = None
+        # self.currentVolumesLoaded = set()
 
     def getRootAnnotationsNode(self):
         """ Get the root annotations node global to the scene, creating it if necessary
@@ -672,12 +800,27 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         return node, isNewNode
 
     def hideAllRulers(self):
-        """ Hide all the ruler nodes
         """
-        for volume in self.currentVolumesLoaded:
-            rulersNode = self.getRulersListNode(volume, False)
-            if rulersNode:
-                print("Hiding " + rulersNode.GetID())
+        Hide all the current rulers in the scene
+        :return:
+        """
+        nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLAnnotationRulerNode")
+        for i in range(nodes.GetNumberOfItems()):
+            nodes.GetItemAsObject(i).SetDisplayVisibility(False)
+
+    def rulersVisible(self, volumeId, visible):
+        """ Show or hide all the ruler nodes
+        """
+        if volumeId is not None:
+            rulersListNode = self.getRulersListNode(volumeId, False)
+            if rulersListNode:
+                for i in range(rulersListNode.GetNumberOfChildrenNodes()):
+                    nodeWrapper = rulersListNode.GetNthChildNode(i)
+                    # nodeWrapper is also a HierarchyNode. We need to look for its only child that will be the rulerNode
+                    col = vtk.vtkCollection()
+                    nodeWrapper.GetChildrenDisplayableNodes(col)
+                    rulerNode = col.GetItemAsObject(0)
+                    rulerNode.SetDisplayVisibility(visible)
 
     def __changeColor__(self, node, color):
         for i in range(3):
@@ -692,7 +835,7 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
             # Refresh UI to repaint both rulers. Is this the best way? Who knows...
             layoutManager.sliceWidget("Red").sliceView().mrmlSliceNode().Modified()
 
-    def changeColor(self, volumeId, color):
+    def changeActiveRulersColor(self, volumeId, color):
         """ Change the color for all the rulers in this volume
         :param volumeId:
         :param color:
@@ -776,7 +919,7 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         rulerNode, newNode = self.getRulerNodeForVolumeAndStructure(volumeId, structureId, createIfNotExist=True)
 
         # Add the volume to the list of volumes that have some ruler
-        self.currentVolumesLoaded.add(volumeId)
+        # self.currentVolumesLoaded.add(volumeId)
 
         # Move the ruler
         self._placeRulerInSlice_(rulerNode, structureId, volumeId, newSlice)
@@ -910,7 +1053,7 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
         # Make sure that the right volume is selected
         volumeSelector = SlicerUtil.findChildren(widget=widget, name='paa_volumeSelector')[0]
         volumeSelector.setCurrentNode(volume)
-        button = SlicerUtil.findChildren(widget=widget, name='placeDefaultRulersButton')[0]
+        button = SlicerUtil.findChildren(widget=widget, name='jumptToTemptativeSliceButton')[0]
         # Place default rulers
         button.click()
         logging.info("Default rulers placed...OK")

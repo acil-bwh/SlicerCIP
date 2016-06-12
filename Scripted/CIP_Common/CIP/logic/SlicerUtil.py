@@ -294,6 +294,7 @@ class SlicerUtil:
             if widget.visible:
                 volumeId = SlicerUtil.getActiveLabelmapIdInSlice(slice)
                 if volumeId:
+                    SlicerUtil.logDevelop("Found active labelmap {} in slice {}".format(volumeId, slice), includePythonConsole=True)
                     return volumeId
         return None
 
