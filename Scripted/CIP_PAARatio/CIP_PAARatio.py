@@ -365,8 +365,8 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.savedContrastLevel = (None, None)  # Contrast window/level that the user had when entering the module
 
     def changeToDefaultContrastLevel(self):
-        # Preferred contrast (TODO: set right level)
-        SlicerUtil.changeContrastWindow(1144, 447)
+        # Preferred contrast
+        SlicerUtil.changeContrastWindow(1000, 200)
 
     def jumpToTemptativeSlice(self, volumeId):
         """ Jump the red window to a predefined slice based on the size of the volume
@@ -379,14 +379,14 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
         redSliceNode = slicer.util.getFirstNodeByClassByName("vtkMRMLSliceNode", "Red")
 
-        # factor = 0.5
-        # newFOVx = redSliceNode.GetFieldOfView()[0] * factor
-        # newFOVy = redSliceNode.GetFieldOfView()[1] * factor
-        # newFOVz = redSliceNode.GetFieldOfView()[2]
+        factor = 0.5
+        newFOVx = redSliceNode.GetFieldOfView()[0] * factor
+        newFOVy = redSliceNode.GetFieldOfView()[1] * factor
+        newFOVz = redSliceNode.GetFieldOfView()[2]
         # Move the camera up to fix the view
         redSliceNode.SetXYZOrigin(0, 50, 0)
         # Update the FOV (zoom in)
-        redSliceNode.SetFieldOfView(140, 140, 0.5)
+        redSliceNode.SetFieldOfView(newFOVx, newFOVy, newFOVz)
         # Refresh the data in the viewer
         redSliceNode.UpdateMatrices()
 

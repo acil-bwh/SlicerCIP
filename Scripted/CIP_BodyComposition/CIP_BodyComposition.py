@@ -385,7 +385,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                 activeLabelmapId = SlicerUtil.getFirstActiveLabelmapId()
                 self.savedLabelmapID = activeLabelmapId
                 SlicerUtil.logDevelop("Saved volume {} and labelmap {}".format(self.savedVolumeID, self.savedLabelmapID)
-                                      , includePythonConsole=True)
+                                      , includePythonConsole=False)
                 if activeLabelmapId is None:
                     self.savedLabelmapOpacity = None
                 else:
@@ -406,22 +406,25 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                 SlicerUtil.changeContrastWindow(self.savedContrastLevel[0], self.savedContrastLevel[1])
                 if self.savedLabelmapID:
                     # There was a valid labelmap. Restore it
-                    SlicerUtil.setActiveVolumeIds(None, self.savedLabelmapID)
-                    # Restore previous opacity
+                    # SlicerUtil.setActiveVolumeIds(None, self.savedLabelmapID)
+                    # Restore previous labelmap opacity
                     SlicerUtil.changeLabelmapOpacity(self.savedLabelmapOpacity)
-                else:
-                    # Hide labelmap
-                    SlicerUtil.logDevelop("Hiding labelmap", includePythonConsole=True)
-                    SlicerUtil.displayLabelmapVolume(None)
-            else:
-                # Hide labelmap
-                SlicerUtil.logDevelop("No volume saved. Hiding labelmap", includePythonConsole=True)
-                SlicerUtil.displayLabelmapVolume(None)
+                # else:
+                #     # Hide labelmap
+                #     SlicerUtil.logDevelop("Hiding labelmap", includePythonConsole=True)
+                #     SlicerUtil.displayLabelmapVolume(None)
+            # else:
+            #     # Hide labelmap
+            #     SlicerUtil.logDevelop("No volume saved. Hiding labelmap", includePythonConsole=True)
+            #     SlicerUtil.displayLabelmapVolume(None)
 
+            # Always hide labelmap. Slicer seems to display a labelmap even without noone saying it!
+            # Maybe it's related with the Editor behavior, but just in case we force it and leave the other modules
+            # to activate their own labelmaps when needed
+            # SlicerUtil.displayLabelmapVolume(None)
         except:
             Util.print_last_exception()
             pass
-
 
 
 
