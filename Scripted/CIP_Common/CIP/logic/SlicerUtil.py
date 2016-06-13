@@ -46,6 +46,9 @@ class SlicerUtil:
     ALIGNMENT_VERTICAL_BOTTOM = 0x0040
     ALIGNMENT_VERTICAL_CENTER = 0x0080
 
+    # Preferred window selection order
+    preferredWidgetKeysOrder = ("Red", "Yellow", "Green")
+
 
     #######################################
     #### Environment internals
@@ -127,12 +130,20 @@ class SlicerUtil:
     #### Volumes
     #######################################
     @staticmethod
-    def setActiveVolumeId(volumeId, labelmapId=None):
-        selectionNode = slicer.app.applicationLogic().GetSelectionNode()
-        if volumeId is not None and volumeId != "":
-            selectionNode.SetReferenceActiveVolumeID(volumeId)
-        if labelmapId is not None and labelmapId != "":
-            selectionNode.SetReferenceActiveLabelVolumeID(labelmapId)
+    def setActiveVolumeIds(volumeId, labelmapId=None):
+        """
+        Display the volume and labelmap specified
+        :param volumeId:
+        :param labelmapId:
+        :return:
+        """
+        SlicerUtil.displayBackgroundVolume(volumeId)
+        SlicerUtil.displayLabelmapVolume(labelmapId)
+        # selectionNode = slicer.app.applicationLogic().GetSelectionNode()
+        # if volumeId is not None and volumeId != "":
+        #     selectionNode.SetReferenceActiveVolumeID(volumeId)
+        # if labelmapId is not None and labelmapId != "":
+        #     selectionNode.SetReferenceActiveLabelVolumeID(labelmapId)
         slicer.app.applicationLogic().PropagateVolumeSelection(0)
 
     @staticmethod
@@ -255,6 +266,39 @@ class SlicerUtil:
         node.SetName(nodeName)
         return node
 
+
+    @staticmethod
+    def getFirstActiveVolumeId():
+        """
+        Return the first active volume id in a visible window (following SlicerUtil.preferredWidgetKeysOrder)
+        @return: volume id or None if there is no active volume
+        """
+        lm = slicer.app.layoutManager()
+        for slice in SlicerUtil.preferredWidgetKeysOrder:
+            widget = lm.sliceWidget(slice)
+            if widget.visible:
+                volumeId = SlicerUtil.getActiveVolumeIdInSlice(slice)
+                if volumeId:
+                    return volumeId
+        return None
+
+    @staticmethod
+    def getFirstActiveLabelmapId():
+        """
+        Return the first active labelmap id (searching in Red, Yellow and Green windows)
+        @return: labelmap id or None if there is no active labelmap
+        """
+        lm = slicer.app.layoutManager()
+        for slice in SlicerUtil.preferredWidgetKeysOrder:
+            widget = lm.sliceWidget(slice)
+            if widget.visible:
+                volumeId = SlicerUtil.getActiveLabelmapIdInSlice(slice)
+                if volumeId:
+                    SlicerUtil.logDevelop("Found active labelmap {} in slice {}".format(volumeId, slice), includePythonConsole=True)
+                    return volumeId
+        return None
+
+
     @staticmethod
     def getActiveVolumeIdInSlice(sliceName):
         """ Get the active volume in a 2D Slice (background if possible, foreground otherwise)
@@ -269,6 +313,16 @@ class SlicerUtil:
         # If background is None, try foreground
         node = compositeNode.GetForegroundVolumeID()
         return node
+
+    @staticmethod
+    def getActiveLabelmapIdInSlice(sliceName):
+        """ Get the active labelmap in a 2D Slice
+        :param sliceName: typically "Red", "Green" or "Yellow"
+        :return: labelmap node id or None
+        """
+        layoutManager = slicer.app.layoutManager()
+        compositeNode = layoutManager.sliceWidget(sliceName).mrmlSliceCompositeNode()
+        return compositeNode.GetLabelVolumeID()
 
     @staticmethod
     def getActiveVolumeIdInRedSlice():
@@ -528,6 +582,16 @@ class SlicerUtil:
             lm.sliceWidget(sliceView).sliceLogic().FitSliceToAll()
 
     @staticmethod
+    def displayBackgroundVolume(volumeNodeId):
+        """
+        Set an active scalar volume in the background
+        :param volumeNodeId:
+        """
+        compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
+        for compNode in compNodes.itervalues():
+            compNode.SetBackgroundVolumeID(volumeNodeId)
+
+    @staticmethod
     def displayForegroundVolume(volumeNodeId, opacity=1.0):
         """ Display a scalar or a labelmap in all the 2D windows as Foreground with an optional opacity
         :param volumeNodeId: scalar node or labelmap id
@@ -539,15 +603,14 @@ class SlicerUtil:
             compNode.SetForegroundOpacity(opacity)
 
     @staticmethod
-    def displayLabelmapVolume(labelmapNodeId, opacity=1.0):
+    def displayLabelmapVolume(labelmapNodeId):
         """ Display a labelmap in all the 2D windows with an optional opacity
         :param volumeNodeId: labelmap id
-        :param opacity: 0.0-1.0 value
         """
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
         for compNode in compNodes.itervalues():
             compNode.SetLabelVolumeID(labelmapNodeId)
-            compNode.SetLabelOpacity(opacity)
+
 
     @staticmethod
     def changeLabelmapOpacity(opacity):
@@ -558,6 +621,22 @@ class SlicerUtil:
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
         for compNode in compNodes.itervalues():
             compNode.SetLabelOpacity(opacity)
+
+    @staticmethod
+    def getLabelmapOpacity():
+        """ Get the current labelmap opacity using the first visible compositeNode following SlicerUtil.preferredWidgetKeysOrder
+        @return:
+            Labelmap opacity of the first visible compositeNode or None if there is any unexpected problem
+        """
+        try:
+            lm = slicer.app.layoutManager()
+            for slice in SlicerUtil.preferredWidgetKeysOrder:
+                widget = lm.sliceWidget(slice)
+                if widget.visible:
+                    return widget.mrmlSliceCompositeNode().GetLabelOpacity()
+            return None
+        except:
+            return None
 
     @staticmethod
     def takeSnapshot(fullFileName, type=-1):

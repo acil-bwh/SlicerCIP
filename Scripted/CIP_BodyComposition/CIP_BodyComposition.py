@@ -15,21 +15,23 @@ from slicer.ScriptedLoadableModule import *
 import logging
 
 # Add the CIP common library to the path if it has not been loaded yet
-# try:
-#     from CIP.logic.SlicerUtil import SlicerUtil
-# except Exception as ex:
-#     currentpath = os.path.dirname(os.path.realpath(__file__))
-#     # We assume that CIP_Common is in the development structure
-#     path = os.path.normpath(currentpath + '/../CIP_Common')
-#     if not os.path.exists(path):
-#         print("Path not found: " + path)
-#         # We assume that CIP is a subfolder (Slicer behaviour)
-#         path = os.path.normpath(currentpath + '/CIP')
-#     sys.path.append(path)
-#     print("The following path was manually added to the PythonPath in CIP_BodyComposition: " + path)
-#     from CIP.logic.SlicerUtil import SlicerUtil
+# This is needed because alphabetically CIP_BodyComposition < CIP_Common, and only in Development.
+# This is not needed if ACIL modules are added to Slicer
+try:
+    from CIP.logic.SlicerUtil import SlicerUtil
+except Exception as ex:
+    currentpath = os.path.dirname(os.path.realpath(__file__))
+    # We assume that CIP_Common is in the development structure
+    path = os.path.normpath(currentpath + '/../CIP_Common')
+    if not os.path.exists(path):
+        print("Path not found: " + path)
+        # We assume that CIP is a subfolder (Slicer behaviour)
+        path = os.path.normpath(currentpath + '/CIP')
+    sys.path.append(path)
+    print("The following path was manually added to the PythonPath in CIP_BodyComposition: " + path)
+    from CIP.logic.SlicerUtil import SlicerUtil
 
-from CIP.logic.SlicerUtil import SlicerUtil
+# from CIP.logic.SlicerUtil import SlicerUtil
 from CIP.logic import Util
 from CIP.logic import file_conventions
 from CIP_BodyComposition_logic import BodyCompositionParameters
@@ -102,14 +104,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.storedColumnNames = ["date", "caseId", "regionType", "label", "count", "area",
                                   "min", "max", "mean", "std", "median", "numSlices"]
 
-    def enter(self):
-        """Method that is invoked when we switch to the module in slicer user interface"""
-        if self.nodeObserver is None:
-            self.nodeObserver = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
-        self.checkMasterAndLabelMapNodes()
-
-    def exit(self):
-        slicer.mrmlScene.RemoveObserver(self.nodeObserver)
 
     def setup(self):
         """Init the widget """
@@ -302,6 +296,13 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         # Load the correct values for the types combo box
         self.__loadTypesComboBox__(self.logic.getRegionStringCodeItem(self.logic.getAllowedCombinations()[0]))
 
+        # Init state
+        self.resetModuleState()
+
+        self.preventSavingState = False
+        self.saveStateBeforeEnteringModule()
+        self.preventSavingState = True
+
         # Try to select the default volume
         self.checkMasterAndLabelMapNodes()
 
@@ -325,6 +326,107 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.refreshGUI()
 
         self.__setupCompositeNodes__()
+
+    def enter(self):
+        """Method that is invoked when we switch to the module in slicer user interface"""
+        SlicerUtil.logDevelop("Enter", includePythonConsole=True)
+        if self.nodeObserver is None:
+            self.nodeObserver = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
+        self.saveStateBeforeEnteringModule()
+        self.checkMasterAndLabelMapNodes()
+
+    def exit(self):
+        # Remove the nodeAdded observer while we are not in the module
+        slicer.mrmlScene.RemoveObserver(self.nodeObserver)
+
+        # Remove any selected tools in the editor by "clicking in the arrow button"
+        self.editorWidget.resetInterface()
+        # widget = slicer.modules.cip_bodycomposition.widgetRepresentation()
+        # if widget:
+        #     SlicerUtil.findChild(widget=widget, name="DefaultToolToolButton").click()
+
+        # Restore the state that was active when the user entered the module
+        self.restoreStateBeforeExitingModule()
+
+
+    def resetModuleState(self):
+        """ Reset all the module state variables
+        """
+        self.savedVolumeID = None  # Active grayscale volume ID
+        self.savedLabelmapID = None  # Active labelmap node ID
+        self.savedLabelmapOpacity = None  # Labelmap opacity
+        self.savedContrastLevel = (None, None)  # Contrast window/level that the user had when entering the module
+        self.editorWidget.resetInterface()
+
+    def saveStateBeforeEnteringModule(self):
+        """Save the state of the module regarding labelmap, etc. This state will be saved/loaded when
+        exiting/entering the module
+        """
+        SlicerUtil.logDevelop("Saving state...", includePythonConsole=True)
+        if self.preventSavingState:
+            # Avoid that the first time that the module loads, the state is saved twice
+            self.preventSavingState = False
+            SlicerUtil.logDevelop("State saving cancelled", includePythonConsole=False)
+            return
+
+        # Get the active volume (it it exists)
+        activeVolumeId = SlicerUtil.getFirstActiveVolumeId()
+        SlicerUtil.logDevelop("Active volume: {}".format(activeVolumeId), includePythonConsole=True)
+        if activeVolumeId is None:
+            # Reset state
+            self.resetModuleState()
+        else:
+            # There is a Volume loaded. Save state
+            try:
+                self.savedVolumeID = activeVolumeId
+                displayNode = slicer.util.getNode(activeVolumeId).GetDisplayNode()
+                self.savedContrastLevel = (displayNode.GetWindow(), displayNode.GetLevel())
+
+                activeLabelmapId = SlicerUtil.getFirstActiveLabelmapId()
+                self.savedLabelmapID = activeLabelmapId
+                SlicerUtil.logDevelop("Saved volume {} and labelmap {}".format(self.savedVolumeID, self.savedLabelmapID)
+                                      , includePythonConsole=False)
+                if activeLabelmapId is None:
+                    self.savedLabelmapOpacity = None
+                else:
+                    self.savedLabelmapOpacity = SlicerUtil.getLabelmapOpacity()
+            except:
+                Util.print_last_exception()
+                # Not action really needed
+                pass
+
+
+    def restoreStateBeforeExitingModule(self):
+        """Load the last state of the module when the user exited (labelmap, opacity, contrast window, etc.)
+        """
+        try:
+            if self.savedVolumeID:
+                # There is a previously saved valid state.
+                SlicerUtil.setActiveVolumeIds(self.savedVolumeID)
+                SlicerUtil.changeContrastWindow(self.savedContrastLevel[0], self.savedContrastLevel[1])
+                if self.savedLabelmapID:
+                    # There was a valid labelmap. Restore it
+                    # SlicerUtil.setActiveVolumeIds(None, self.savedLabelmapID)
+                    # Restore previous labelmap opacity
+                    SlicerUtil.changeLabelmapOpacity(self.savedLabelmapOpacity)
+                # else:
+                #     # Hide labelmap
+                #     SlicerUtil.logDevelop("Hiding labelmap", includePythonConsole=True)
+                #     SlicerUtil.displayLabelmapVolume(None)
+            # else:
+            #     # Hide labelmap
+            #     SlicerUtil.logDevelop("No volume saved. Hiding labelmap", includePythonConsole=True)
+            #     SlicerUtil.displayLabelmapVolume(None)
+
+            # Always hide labelmap. Slicer seems to display a labelmap even without noone saying it!
+            # Maybe it's related with the Editor behavior, but just in case we force it and leave the other modules
+            # to activate their own labelmaps when needed
+            # SlicerUtil.displayLabelmapVolume(None)
+        except:
+            Util.print_last_exception()
+            pass
+
+
 
     def __setupCompositeNodes__(self):
         """Init the CompositeNodes so that the first one (typically Red) listen to events when the node is modified,
@@ -457,25 +559,28 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
             # There is no any volume node that the user is watching
             return
 
-        scene = slicer.mrmlScene
         self.disableEvents = True
 
+        labelmapName = "{0}{1}".format(masterNode.GetName(), self.labelmapNodeNameExtension)
         labelMapNode = self.editorWidget.labelmapVolume
-        if not labelMapNode:
+        if labelMapNode and labelMapNode.GetName() == labelmapName:
+            print("DEBUG: changing to labelmap " + labelmapName)
+        else:
             # First, try to search for an exact pattern "MASTER_bodycomposition"
-            ext = "{0}{1}".format(masterNode.GetName(), self.labelmapNodeNameExtension)
-            nodes = slicer.util.getNodes(ext)
-            # If not found, search for a label map with a pattern "MASTER_bodycomposition[X]"
-            if len(nodes) == 0:
-                nodes = slicer.util.getNodes("{0}*".format(ext))
-            if len(nodes) > 0:
-                labelMapNode = nodes.values()[0]
-            else:
-                # Create new label map
-                labelMapNode = slicer.modules.volumes.logic().CreateAndAddLabelVolume(scene, masterNode,
-                                                                                      "{0}{1}".format(
-                                                                                          masterNode.GetName(),
-                                                                                          self.labelmapNodeNameExtension))
+            # nodes = slicer.util.getNodes(ext)
+            # # If not found, search for a label map with a pattern "MASTER_bodycomposition[X]"
+            # if len(nodes) == 0:
+            #     nodes = slicer.util.getNodes("{0}*".format(ext))
+            # if len(nodes) > 0:
+            #     labelMapNode = nodes.values()[0]
+            # else:
+            # Create new label map
+            labelMapNode = slicer.modules.volumes.logic().CreateAndAddLabelVolume(slicer.mrmlScene, masterNode, labelmapName)
+            # Make sure the name of the labelmap is correct
+            labelMapNode.SetName(labelmapName)
+            # Make sure the labelmap is the active one
+            SlicerUtil.setActiveVolumeIds(masterNode.GetID(), labelMapNode.GetID())
+
         # Collapse the labelmaps panel and expand the editor tools
         self.editorWidget.volumes.collapsed = True
         self.editorWidget.editLabelMapsFrame.collapsed = False
@@ -1102,6 +1207,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         """
         # Reset the region/type comboboxes to be adjusted properly with the next volume
         self.regionComboBox.currentIndex = 0
+        self.resetModuleState()
 
 
 #

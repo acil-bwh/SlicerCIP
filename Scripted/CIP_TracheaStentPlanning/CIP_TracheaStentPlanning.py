@@ -356,7 +356,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
             labelmapId = None
             if self.logic.currentLabelmapResults is not None:
                 labelmapId = self.logic.currentLabelmapResults.GetID()
-            SlicerUtil.setActiveVolumeId(volumeId, labelmapId)
+            SlicerUtil.setActiveVolumeIds(volumeId, labelmapId)
             SlicerUtil.centerAllVolumes()
 
     def exit(self):
@@ -558,7 +558,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
                 return
         if node is not None:
             self.logic.setActiveVolume(node.GetID(), self.__onFiducialModified__, self.__onFiducialAdded__)
-            SlicerUtil.setActiveVolumeId(node.GetID())
+            SlicerUtil.setActiveVolumeIds(node.GetID())
             SlicerUtil.setFiducialsCursorMode(True, keepFiducialsModeOn=True)
             self.logic.setActiveFiducialListNode(self.currentStentType, self.segmentTypesRadioButtonGroup.checkedId())
             self.stentTypesRadioButtonGroup.buttons()[0].setChecked(True)
