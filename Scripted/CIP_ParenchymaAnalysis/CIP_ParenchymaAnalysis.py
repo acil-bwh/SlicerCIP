@@ -544,7 +544,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
                 # Compute histograms
                 data = data[data < -350]
                 binContainers = numpy.arange(data.min(), data.max() + 2)
-                histogram, bins = numpy.histogram(data, bins=binContainers, density=True)
+                histogram, bins = numpy.histogram(data, bins=binContainers, density=False)
                 self.regionHists[tag] = histogram
                 self.regionBins[tag] = bins
 
