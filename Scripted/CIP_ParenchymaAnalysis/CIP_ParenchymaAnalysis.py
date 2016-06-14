@@ -41,7 +41,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         self.chartOptions = (
         "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "Mean", "Std", "Kurtosis", "Skewness", "Volume")
-        self.storedColumnNames = ["Region", "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "Mean", "Std",
+        self.storedColumnNames = ["Volume Name", "Region", "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "Mean", "Std",
                                   "Kurtosis", "Skewness", "Volume"]
         self.rTags = (
         "Global", "Right", "Left", "RUL", "RLL", "RML", "LUL", "LLL", "LUT", "LMT", "LLT", "RUT", "RMT", "RLT")
@@ -424,7 +424,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
     def onSaveReport(self):
         """ Save the current values in a persistent csv file
         """
-        self.logic.statsAsCSV(self.reportsWidget)
+        self.logic.statsAsCSV(self.reportsWidget, self.CTNode)
 
     def onFileSelected(self, fileName):
         self.logic.saveStats(fileName)
@@ -618,13 +618,14 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         denom = stdDev ** 3  # avoid losing precision with np.sqrt call
         return num / denom
 
-    def statsAsCSV(self, repWidget):
+    def statsAsCSV(self, repWidget, CTNode):
         if self.labelStats is None:
             qt.QMessageBox.warning(slicer.util.mainWindow(), "Data not existing", "No statistics calculated")
             return
 
         for tag in self.regionTags:
             e = {}
+            e['Volume Name'] = CTNode.GetName()
             e['Region'] = tag
             for k in self.keys:
                 e[k] = self.labelStats[k, tag]
