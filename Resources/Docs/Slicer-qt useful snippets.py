@@ -65,6 +65,9 @@ self.typesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.onty
 ...
 selectedId = self.typesRadioButtonGroup.checkedId()
 
+# To find later the id of a button:
+id = self.typesRadioButtonGroup.id(self.typesRadioButtonGroup.buttons()[0])
+
 #####################################################
 # Combo box with key-values
 self.cbRegion = qt.QComboBox(self.structuresCollapsibleButton)        

@@ -4,7 +4,6 @@ class SubtypingParameters(object):
     """ Class that stores the structure required for Chest Subtyping training
     """
     # MAIN TYPES (Label, abbreviation, color)
-    """ Allowed region types """
     __types__ = OrderedDict()
     __types__[84] = ["ILD", "ILD", (1, 0.525, 0)]
     __types__[4] = ["Emphysema", "Emphysema", (0.24, 0.74, 1)]
@@ -16,10 +15,10 @@ class SubtypingParameters(object):
 
     @property
     def mainTypes(self):
+        """"All the allowed main types"""
         return self.__types__
 
     # SUBTYPES
-    """ Allowed tissue types """
     __subtypes__ = OrderedDict()
     __subtypes__[0]  = ("Any", "")
     # ILD
@@ -51,6 +50,13 @@ class SubtypingParameters(object):
     __subtypes__[78] = ("Not bronchiectatic", "non-BE")
     __subtypes__[41] = ("Airway Gen.3", "A3")
     __subtypes__[42] = ("Airway Gen.4", "A4")
+    __subtypes__[43] = ("Airway Gen.5", "A5")
+    __subtypes__[44] = ("Airway Gen.6", "A6")
+    __subtypes__[45] = ("Airway Gen.7", "A7")
+    __subtypes__[46] = ("Airway Gen.8", "A8")
+    __subtypes__[47] = ("Airway Gen.9", "A9")
+    __subtypes__[48] = ("Airway Gen.10", "A10")
+
     # Vessel
     __subtypes__[50] = ("Artery", "Art")
     __subtypes__[51] = ("Vein", "Vein")
@@ -59,15 +65,34 @@ class SubtypingParameters(object):
     __subtypes__[59] = ("Vessel Gen. 3", "VG3")
     __subtypes__[60] = ("Vessel Gen. 4", "VG4")
 
+
+
     # Nodule
     __subtypes__[87] = ("Benign nodule", "BN")
     __subtypes__[88] = ("Malign nodule", "Tumor")
 
+    @property
+    def subtypes(self):
+        """All the allowed possible subtypes"""
+        return self.__subtypes__
+
+
+    # REGIONS
+    __regions__ = OrderedDict()
+    __regions__[0] = ("Any", "")
+
+    # ILD, Emphysema, Vessel, Nodule
+    __regions__[4] = ("Right Superior Lobe", "RSL")
+    __regions__[5] = ("Right Middle Lobe", "RML")
+    __regions__[6] = ("Right Inferior Lobe", "RIL")
+    __regions__[7] = ("Left Superior Lobe", "LSL")
+    __regions__[8] = ("Left Inferior Lobe", "LIL")
 
 
     @property
-    def subtypes(self):
-        return self.__subtypes__
+    def regions(self):
+        """All the allowed possible regions"""
+        return self.__regions__
 
     # ARTIFACTS
     __artifacts__ = OrderedDict()
@@ -79,13 +104,11 @@ class SubtypingParameters(object):
     def artifacts(self):
         return self.__artifacts__
 
+    # Allowed type combinations
+    TYPE_INDEX = 0                           # Type (0-255)
+    SUBTYPE_OR_REGION_INDEX = 1              # Subtype or region (0-255)
 
-
-    """ Allowed combinations"""
-    TYPE_ID = 0                 # Type (0-255)
-    SUBTYPE_ID = 1              # Subtype (0-255)
-
-    __allowedCombinations__ = ( \
+    __allowedCombinationsTypes__ = ( \
         # ILD
         (84, 0),
         (84, 85),
@@ -118,6 +141,12 @@ class SubtypingParameters(object):
         (2, 78),
         (2, 41),
         (2, 42),
+        (2, 43),
+        (2, 44),
+        (2, 45),
+        (2, 46),
+        (2, 47),
+        (2, 48),
         # VESSEL
         (3, 0),
         (3, 50),
@@ -135,7 +164,25 @@ class SubtypingParameters(object):
         # NORMAL
         (1, 0))
 
+    # Allowed region combinations (not necessary at the moment)
+    # __allowedCombinationsRegions__ = ( \
+    #     # ILD
+    #     (84, 0),
+    #     (84, 7),
+    #     # AIRWAY
+    #     (2, 0),
+    #     # VESSEL
+    #     (3, 0),
+    #     (3, 7),
+    #     # NODULE
+    #     (86, 0),
+    #     # MESOTHELIOMA
+    #     (91, 0),
+    #     # NORMAL
+    #     (1, 0))
 
+
+    ## MAIN TYPES
     def getMainTypes(self):
         """ Return all the main types
         :return: Ordered dict of main types
@@ -164,14 +211,15 @@ class SubtypingParameters(object):
         return self.mainTypes[typeId][2]
 
 
+    ## SUBTYPES
     def getSubtypes(self, typeId):
         """ Return the subtypes allowed for a concrete type
-        :param type: type id
+        :param typeId: type id
         :return: Dictionary with Key=subtype_id and Value=tuple with subtype features
         """
         d = OrderedDict()
-        for item in (item for item in self.__allowedCombinations__ if item[self.TYPE_ID] == typeId):
-            d[item[self.SUBTYPE_ID]] = self.__subtypes__[item[self.SUBTYPE_ID]]
+        for item in (item for item in self.__allowedCombinationsTypes__ if item[self.TYPE_INDEX] == typeId):
+            d[item[self.SUBTYPE_OR_REGION_INDEX]] = self.__subtypes__[item[self.SUBTYPE_OR_REGION_INDEX]]
         return d
 
     def getMainTypeForSubtype(self, subtypeId):
@@ -179,7 +227,7 @@ class SubtypingParameters(object):
         :param subtypeId:
         :return:
         """
-        for comb in self.__allowedCombinations__:
+        for comb in self.__allowedCombinationsTypes__:
             if comb[1] == subtypeId: return comb[0]
         return None
 
@@ -195,13 +243,44 @@ class SubtypingParameters(object):
     def getSubtypeAbbreviation(self, subtypeId):
         """ Get the abbreviation for this subtype.
         :param subtypeId:
-        :return:
+        :return: string
         """
         if subtypeId == 0:
             return ""
         return self.subtypes[subtypeId][1]
 
 
+    ## REGIONS
+    # def getRegions(self, typeId):
+    #     """ Return the regions allowed for a concrete type
+    #     :param typeId: type id
+    #     :return: Dictionary with Key=region_id and Value=tuple with region features
+    #     """
+    #     d = OrderedDict()
+    #     for item in (item for item in self.__allowedCombinationsRegions__ if item[self.TYPE_INDEX] == typeId):
+    #         d[item[self.SUBTYPE_OR_REGION_INDEX]] = self.__regions__[item[self.SUBTYPE_OR_REGION_INDEX]]
+    #     return d
+
+    def getRegionLabel(self, regionId):
+        """ Get regions like "Region (ABR)" with the description and abbreviation
+        :param regionId: region id
+        :return: string
+        """
+        if regionId == 0:
+            return self.__subtypes__[0][0]
+        return "{0} ({1})".format(self.__regions__[regionId][0], self.__regions__[regionId][1])
+
+    def getRegionAbbreviation(self, regionId):
+        """ Get the abbreviation for this region.
+        :param regionId:
+        :return:
+        """
+        if regionId == 0:
+            return ""
+        return self.__regions__[regionId][1]
+
+
+    ## ARTIFACTS
     def getArtifactLabel(self, artifactId):
         """ At the moment just the description (it may change if we include useful abbreviations)
             :param artifactId:
@@ -211,8 +290,7 @@ class SubtypingParameters(object):
 
     def getArtifactAbbreviation(self, artifactId):
         """ Get the abbreviation for this artifact.
-            :param subtypeId:
-            :return:
+            :return: string
         """
         return self.artifacts[artifactId][1]
 
@@ -220,14 +298,8 @@ class SubtypingParameters(object):
     def getColor(self, typeId, artifactId):
         """ Get a  3-tuple color for this type and/or artifact
         :param typeId:
-        :return:
+        :return: 3-color tuple (each color in the 0-1 range)
         """
         if artifactId != 0:
             return (1, 0, 0)       # Mark all artifacts as red
         return self.getMainTypeColor(typeId)
-        # if typeId == 84: return (1, 0.525, 0)     # ILD
-        # if typeId == 4: return (0.24, 0.74, 1)     # Emphysema
-        # if typeId == 2: return (0.44, 0.42, 0.2)     # Airway
-        # # if typeId == 95: return (1, 0, 0)     # Artifact
-        # if typeId == 1: return (0.28, 0.77, 0.22)     # Normal
-        # raise Exception("Unknown color for type {0}".format(typeId))

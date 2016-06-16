@@ -10,6 +10,7 @@ set(modules
   CIP_LesionModel
   CIP_MIPViewer
   CIP_PAARatio
+  CIP_PointsLabelling
   CIP_ParenchymaSubtypeTraining
   CIP_TracheaStentPlanning
   )

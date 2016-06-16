@@ -1,32 +1,15 @@
-import os, sys
-import logging
-from shutil import copyfile
-import time
+import os
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 
-
-# Add the CIP common library to the path if it has not been loaded yet
-# try:
-#     from CIP.logic.SlicerUtil import SlicerUtil
-# except Exception as ex:
-#     currentpath = os.path.dirname(os.path.realpath(__file__))
-#     # We assume that CIP_Common is in the development structure
-#     path = os.path.normpath(currentpath + '/../CIP_Common')
-#     if not os.path.exists(path):
-#         # We assume that CIP is a subfolder (Slicer behaviour)
-#         path = os.path.normpath(currentpath + '/CIP')
-#     sys.path.append(path)
-#     print("The following path was manually added to the PythonPath in CIP_ParenchymaSubtypeTraining: " + path)
-#     from CIP.logic.SlicerUtil import SlicerUtil
 from CIP.logic.SlicerUtil import SlicerUtil
-from CIP.logic import SubtypingParameters, Util
-from CIP.logic import geometry_topology_data as GTD
+from CIP_PointsLabelling import CIP_PointsLabelling, CIP_PointsLabellingWidget, CIP_PointsLabellingLogic
+from CIP_ParenchymaSubtypeTrainingLogic.SubtypingParameters import SubtypingParameters
 
 #
 # CIP_ParenchymaSubtypeTraining
-#
-class CIP_ParenchymaSubtypeTraining(ScriptedLoadableModule):
+
+class CIP_ParenchymaSubtypeTraining(CIP_PointsLabelling):
     """Uses ScriptedLoadableModule base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
@@ -43,7 +26,7 @@ class CIP_ParenchymaSubtypeTraining(ScriptedLoadableModule):
 #
 # CIP_ParenchymaSubtypeTrainingWidget
 #
-class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
+class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
@@ -51,70 +34,30 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
     def moduleName(self):
         return "CIP_ParenchymaSubtypeTraining"
 
-
     def __init__(self, parent):
-        ScriptedLoadableModuleWidget.__init__(self, parent)
+        CIP_PointsLabellingWidget.__init__(self, parent)
 
-        from functools import partial
-        def __onNodeAddedObserver__(self, caller, eventId, callData):
-            """Node added to the Slicer scene"""
-            if callData.GetClassName() == 'vtkMRMLScalarVolumeNode' \
-                    and slicer.util.mainWindow().moduleSelector().selectedModule == self.moduleName:
-                self.__onNewVolumeLoaded__(callData)
-            # elif callData.GetClassName() == 'vtkMRMLLabelMapVolumeNode':
-            #     self.__onNewLabelmapLoaded__(callData)
-
-
-        self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
-        self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
-
+    def _initLogic_(self):
+        """Create a new logic object for the plugin"""
+        self.logic = CIP_ParenchymaSubtypeTrainingLogic()
 
     def setup(self):
         """This is called one time when the module GUI is initialized
         """
-        ScriptedLoadableModuleWidget.setup(self)
+        CIP_PointsLabellingWidget.setup(self)
 
-        # Create objects that can be used anywhere in the module. Example: in most cases there should be just one
-        # object of the logic class
-        self.logic = CIP_ParenchymaSubtypeTrainingLogic()
-        self.currentVolumeLoaded = None
-        self.blockNodeEvents = False
-
-        ##########
-        # Main area
-        self.mainAreaCollapsibleButton = ctk.ctkCollapsibleButton()
-        self.mainAreaCollapsibleButton.text = "Main area"
-        self.layout.addWidget(self.mainAreaCollapsibleButton, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
-        self.mainLayout = qt.QGridLayout(self.mainAreaCollapsibleButton)
-
-        # Node selector
-        volumeLabel = qt.QLabel("Active volume: ")
-        volumeLabel.setStyleSheet("margin-left:5px")
-        self.mainLayout.addWidget(volumeLabel, 0, 0)
-        self.volumeSelector = slicer.qMRMLNodeComboBox()
-        self.volumeSelector.nodeTypes = ("vtkMRMLScalarVolumeNode", "")
-        self.volumeSelector.selectNodeUponCreation = True
-        self.volumeSelector.autoFillBackground = True
-        self.volumeSelector.addEnabled = False
-        self.volumeSelector.noneEnabled = False
-        self.volumeSelector.removeEnabled = False
-        self.volumeSelector.showHidden = False
-        self.volumeSelector.showChildNodeTypes = False
-        self.volumeSelector.setMRMLScene(slicer.mrmlScene)
-        self.volumeSelector.setFixedWidth(250)
-        self.volumeSelector.setStyleSheet("margin: 15px 0")
-        #self.volumeSelector.selectNodeUponCreation = False
-        self.mainLayout.addWidget(self.volumeSelector, 0, 1, 1, 3)
-
-        labelsStyle = "font-weight: bold; margin: 0 0 5px 5px;"
-        # Types Radio Buttons
-        typesLabel = qt.QLabel("Select the type")
-        typesLabel.setStyleSheet(labelsStyle)
-        typesLabel.setFixedHeight(15)
-        self.mainLayout.addWidget(typesLabel, 1, 0)
+        # Part of the GUI will be inherited. We just fill the radio buttons area
+        # Radio buttons frame
+        self.radioButtonsLayout = qt.QHBoxLayout(self.radioButtonsFrame)
         self.typesFrame = qt.QFrame()
+        self.radioButtonsLayout.addWidget(self.typesFrame)
         self.typesLayout = qt.QVBoxLayout(self.typesFrame)
-        self.mainLayout.addWidget(self.typesFrame, 2, 0, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
+
+        labelsStyle = "font-weight: bold; margin: 0 0 10px 0px;"
+        # Types Radio Buttons
+        typesLabel = qt.QLabel("Select type")
+        typesLabel.setStyleSheet(labelsStyle)
+        self.typesLayout.addWidget(typesLabel)
         self.typesRadioButtonGroup = qt.QButtonGroup()
         for key in self.logic.params.mainTypes.iterkeys():
             rbitem = qt.QRadioButton(self.logic.params.getMainTypeLabel(key))
@@ -123,104 +66,69 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         self.typesRadioButtonGroup.buttons()[0].setChecked(True)
 
         # Subtypes Radio buttons
-        subtypesLabel = qt.QLabel("Select the subtype")
-        subtypesLabel.setStyleSheet(labelsStyle)
-        subtypesLabel.setFixedHeight(15)
-        self.mainLayout.addWidget(subtypesLabel, 1, 1)
-        self.subtypesRadioButtonGroup = qt.QButtonGroup()
-        self.subtypesFrame = qt.QFrame()
-        self.subtypesFrame.setMinimumHeight(275)
-        self.subtypesLayout = qt.QVBoxLayout(self.subtypesFrame)
-        self.subtypesLayout.setAlignment(SlicerUtil.ALIGNMENT_VERTICAL_TOP)
-        self.subtypesLayout.setStretch(0, 0)
-        self.mainLayout.addWidget(self.subtypesFrame, 2, 1, SlicerUtil.ALIGNMENT_VERTICAL_TOP)     # Put the frame in the top
         # The content will be loaded dynamically every time the main type is modified
+        self.subtypesFrame = qt.QFrame()
+        self.radioButtonsLayout.addWidget(self.subtypesFrame)
+        self.subtypesLayout = qt.QVBoxLayout(self.subtypesFrame)
+        subtypesLabel = qt.QLabel("Select subtype")
+        subtypesLabel.setStyleSheet(labelsStyle)
+        self.subtypesLayout.addWidget(subtypesLabel)
+        self.subtypesLayout.setAlignment(SlicerUtil.ALIGNMENT_VERTICAL_TOP)
+        self.subtypesRadioButtonGroup = qt.QButtonGroup()
+        # Add all the subtypes (we will filter later in "updateState" function)
+        for key in self.logic.params.subtypes.iterkeys():
+            # Build the description
+            rbitem = qt.QRadioButton(self.logic.params.getSubtypeLabel(key))
+            self.subtypesRadioButtonGroup.addButton(rbitem, key)
+            self.subtypesLayout.addWidget(rbitem, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
+        self.subtypesLayout.addStretch()
 
-        # Artifact radio buttons
-        self.artifactsLabel = qt.QLabel("Artifact")
+        # Region radio buttons
+        self.regionsFrame = qt.QFrame()
+        self.radioButtonsLayout.addWidget(self.regionsFrame)
+        self.regionsLayout = qt.QVBoxLayout(self.regionsFrame)
+        regionsLabel = qt.QLabel("Select region")
+        regionsLabel.setStyleSheet(labelsStyle)
+        self.regionsLayout.addWidget(regionsLabel)
+        self.regionsLayout.setAlignment(SlicerUtil.ALIGNMENT_VERTICAL_TOP)
+        self.regionsLayout.setStretch(0, 0)
+        self.regionsRadioButtonGroup = qt.QButtonGroup()
+        self.regionsFrame = qt.QFrame()
+        # Add all the regions
+        for key in self.logic.params.regions.iterkeys():
+            # Build the description
+            rbitem = qt.QRadioButton(self.logic.params.getRegionLabel(key))
+            self.regionsRadioButtonGroup.addButton(rbitem, key)
+            self.regionsLayout.addWidget(rbitem, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
+        self.regionsLayout.addStretch()
+        self.regionsRadioButtonGroup.buttons()[0].setChecked(True)
+
+        # Artifact radio buttons (Add them to the same layout as the type)
+        self.separatorLabel = qt.QLabel("------------")
+        labelsStyle = "margin: 5px 0 5px 0;"
+        self.separatorLabel.setStyleSheet(labelsStyle)
+        self.typesLayout.addWidget(self.separatorLabel)
+        self.artifactsLabel = qt.QLabel("Select artifact")
+        labelsStyle =  "font-weight: bold; margin: 15px 0 10px 0;"
         self.artifactsLabel.setStyleSheet(labelsStyle)
-        self.artifactsLabel.setFixedHeight(15)
-        self.mainLayout.addWidget(self.artifactsLabel, 1, 2)
-        #self.mainLayout.addWidget(qt.QLabel("Select the artifact"), 1, 1)
-        self.artifactsRadioButtonGroup = qt.QButtonGroup()
-        self.artifactsFrame = qt.QFrame()
-        self.artifactsLayout = qt.QVBoxLayout(self.artifactsFrame)
-        self.mainLayout.addWidget(self.artifactsFrame, 2, 2, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
+        self.typesLayout.addWidget(self.artifactsLabel)
         self.artifactsRadioButtonGroup = qt.QButtonGroup()
         for artifactId in self.logic.params.artifacts.iterkeys():
             rbitem = qt.QRadioButton(self.logic.params.getArtifactLabel(artifactId))
             self.artifactsRadioButtonGroup.addButton(rbitem, artifactId)
-            self.artifactsLayout.addWidget(rbitem)
+            self.typesLayout.addWidget(rbitem)
         self.artifactsRadioButtonGroup.buttons()[0].setChecked(True)
 
-        # Load caselist button
-        self.loadButton = ctk.ctkPushButton()
-        self.loadButton.text = "Load fiducials file"
-        self.loadButton.setIcon(qt.QIcon("{0}/open_file.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.loadButton.setIconSize(qt.QSize(20, 20))
-        self.loadButton.setFixedWidth(135)
-        self.mainLayout.addWidget(self.loadButton, 3, 0)
-
-        # Remove fiducial button
-        self.removeLastFiducialButton = ctk.ctkPushButton()
-        self.removeLastFiducialButton.text = "Remove last fiducial"
-        self.removeLastFiducialButton.toolTip = "Remove the last fiducial added"
-        self.removeLastFiducialButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.removeLastFiducialButton.setIconSize(qt.QSize(20, 20))
-        self.removeLastFiducialButton.setFixedWidth(200)
-        self.mainLayout.addWidget(self.removeLastFiducialButton, 3, 1)
-
-        # Save results button
-        self.saveResultsButton = ctk.ctkPushButton()
-        self.saveResultsButton.setText("Save markups")
-        self.saveResultsButton.toolTip = "Save the markups in the specified directory"
-        self.saveResultsButton.setIcon(qt.QIcon("{0}/Save.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.saveResultsButton.setIconSize(qt.QSize(20,20))
-        self.mainLayout.addWidget(self.saveResultsButton, 4, 0)
-
-        # Save results directory button
-        defaultPath = os.path.join(SlicerUtil.getSettingsDataFolder(self.moduleName), "results")     # Assign a default path for the results
-        path = SlicerUtil.settingGetOrSetDefault(self.moduleName, "SaveResultsDirectory", defaultPath)
-        self.saveResultsDirectoryButton = ctk.ctkDirectoryButton()
-        self.saveResultsDirectoryButton.directory = path
-        self.saveResultsDirectoryButton.setMaximumWidth(375)
-        self.mainLayout.addWidget(self.saveResultsDirectoryButton, 4, 1, 1, 2)
-
-        #####
-        # Case navigator
-        self.caseNavigatorWidget = None
-        if SlicerUtil.isSlicerACILLoaded():
-            caseNavigatorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
-            caseNavigatorAreaCollapsibleButton.text = "Case navigator"
-            self.layout.addWidget(caseNavigatorAreaCollapsibleButton, 0x0020)
-            # caseNavigatorLayout = qt.QVBoxLayout(caseNavigatorAreaCollapsibleButton)
-
-            # Add a case list navigator
-            from ACIL.ui import CaseNavigatorWidget
-            self.caseNavigatorWidget = CaseNavigatorWidget(self.moduleName, caseNavigatorAreaCollapsibleButton)
-            self.caseNavigatorWidget.setup()
-            # Listen for the event of loading a new labelmap
-            self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_LABELMAP_LOADED, self.__onNewILDClassificationLabelmapLoaded__)
-
-        self.layout.addStretch()
-
-        self.updateState()
+        self.typesLayout.setAlignment(SlicerUtil.ALIGNMENT_VERTICAL_TOP)
+        self.typesLayout.addStretch()
 
         # Connections
         self.typesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onTypesRadioButtonClicked__)
-        self.subtypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSubtypesRadioButtonClicked__)
-        self.artifactsRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSubtypesRadioButtonClicked__)
+        self.subtypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSecondaryRadioButtonClicked__)
+        self.regionsRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSecondaryRadioButtonClicked__)
+        self.artifactsRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSecondaryRadioButtonClicked__)
 
-        self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onCurrentNodeChanged__)
-        self.loadButton.connect('clicked()', self.openFiducialsFile)
-        self.removeLastFiducialButton.connect('clicked()', self.__onRemoveLastFiducialButtonClicked__)
-        # self.saveResultsOpenDirectoryDialogButton.connect('clicked()', self.onOpenDirectoryDialogButtonClicked)
-        self.saveResultsDirectoryButton.connect("directoryChanged (QString)", self.__onSaveResultsDirectoryChanged__)
-        self.saveResultsButton.connect('clicked()', self.__onSaveResultsButtonClicked__)
-
-        self.observers = []
-        self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__))
-        self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__))
+        self.updateState()
 
     def updateState(self):
         """ Refresh the markups state, activate the right fiducials list node (depending on the
@@ -229,114 +137,27 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         """
         # Load the subtypes for this type
         subtypesDict = self.logic.getSubtypes(self.typesRadioButtonGroup.checkedId())
-        # Remove all the existing buttons
+
+        # Hide/Show the subtypes for this type
         for b in self.subtypesRadioButtonGroup.buttons():
-            b.hide()
-            b.delete()
-        # Add all the subtypes with the full description
-        for subtype in subtypesDict.iterkeys():
-            rbitem = qt.QRadioButton(self.logic.getSubtypeFullDescription(subtype))
-            self.subtypesRadioButtonGroup.addButton(rbitem, subtype)
-            self.subtypesLayout.addWidget(rbitem, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
+            id = self.subtypesRadioButtonGroup.id(b)
+            if id in subtypesDict:
+                b.show()
+            else:
+                b.hide()
         # Check first element by default
         self.subtypesRadioButtonGroup.buttons()[0].setChecked(True)
 
         # Set the correct state for fiducials
         if self.currentVolumeLoaded is not None:
-            self.logic.setActiveFiducialsListNode(self.currentVolumeLoaded,
-                self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId(), self.artifactsRadioButtonGroup.checkedId())
-
-    def saveResultsCurrentNode(self):
-        """ Get current active node and save the xml fiducials file
-        """
-        try:
-            d = self.saveResultsDirectoryButton.directory
-            if not os.path.isdir(d):
-                # Ask the user if he wants to create the folder
-                if qt.QMessageBox.question(slicer.util.mainWindow(), "Create directory?",
-                    "The directory '{0}' does not exist. Do you want to create it?".format(d),
-                                           qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
-                    try:
-                        os.makedirs(d)
-                        # Make sure that everybody has write permissions (sometimes there are problems because of umask)
-                        os.chmod(d, 0777)
-                    except:
-                        qt.QMessageBox.warning(slicer.util.mainWindow(), 'Directory incorrect',
-                            'The folder "{0}" could not be created. Please select a valid directory'.format(d))
-                        return
-                    self.logic.saveCurrentFiducials(d, self.caseNavigatorWidget, self.uploadFileResult)
-                    qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved', "The results have been saved succesfully")
-            else:
-                self.logic.saveCurrentFiducials(d, self.caseNavigatorWidget, self.uploadFileResult)
-                qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved',
-                    "The results have been saved succesfully")
-        except:
-            Util.print_last_exception()
-            qt.QMessageBox.critical(slicer.util.mainWindow(), "Error when saving the results",
-                                    "Error when saving the results. Please review the console for additional info")
-
-    def uploadFileResult(self, result):
-        if result != Util.OK:
-            qt.QMessageBox.warning(slicer.util.mainWindow(), "Error when uploading fiducials",
-                "There was an error when uploading the fiducials file. This doesn't mean that your file wasn't saved locally!\n" +
-                "Please review the console for more information")
-
-    def openFiducialsFile(self):
-        volumeNode = self.volumeSelector.currentNode()
-        if volumeNode is None:
-            qt.QMessageBox.warning(slicer.util.mainWindow(), 'Select a volume',
-                                       'Please load a volume first')
-            return
-
-        f = qt.QFileDialog.getOpenFileName()
-        if f:
-            self.logic.loadFiducialsXml(volumeNode, f)
-            self.saveResultsDirectoryButton.directory = os.path.dirname(f)
-            qt.QMessageBox.information(slicer.util.mainWindow(), "File loaded", "File loaded successfully")
-
-    ## PRIVATE METHODS
-    def __checkNewVolume__(self, newVolumeNode):
-        """ New volume loaded in the scene in some way.
-        If it's really a new volume, try to save and close the current one
-        @param newVolumeNode:
-        """
-        if self.blockNodeEvents:
-            return
-        self.blockNodeEvents = True
-        volume = self.currentVolumeLoaded
-        if volume is not None and newVolumeNode is not None \
-                and newVolumeNode.GetID() != volume.GetID()  \
-                and not self.logic.isVolumeSaved(volume.GetName()):
-            # Ask the user if he wants to save the previously loaded volume
-            if qt.QMessageBox.question(slicer.util.mainWindow(), "Save results?",
-                    "The fiducials for the volume '{0}' have not been saved. Do you want to save them?"
-                    .format(volume.GetName()),
-                    qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
-                self.saveResultsCurrentNode()
-        # Remove all the previously existing nodes
-        if self.currentVolumeLoaded is not None and newVolumeNode != self.currentVolumeLoaded:
-            # Remove previously existing node
-            self.logic.removeMarkupsAndNode(self.currentVolumeLoaded)
-        if self.caseNavigatorWidget is not None and newVolumeNode is not None:
-            # Try to load a previously existing fiducials file downloaded with the ACIL case navigator
-            fiducialsFileName = newVolumeNode.GetName() + Util.file_conventions_extensions["ParenchymaTrainingFiducialsXml"]
-            fiducialsNavigatorFilePath = self.caseNavigatorWidget.logic.getFilePath(fiducialsFileName)
-            if os.path.exists(fiducialsNavigatorFilePath):
-                # The fiducials file was downloaded with the navigator
-                self.logic.loadFiducialsXml(newVolumeNode, fiducialsNavigatorFilePath)
-
-        if newVolumeNode is not None:
-            SlicerUtil.setActiveVolumeIds(newVolumeNode.GetID())
-            SlicerUtil.setFiducialsCursorMode(True, True)
-
-        self.currentVolumeLoaded = newVolumeNode
-        self.updateState()
-        self.blockNodeEvents = False
+            typesList = (self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId()
+                        , self.regionsRadioButtonGroup.checkedId(), self.artifactsRadioButtonGroup.checkedId())
+            self.logic.setActiveFiducialsListNode(self.currentVolumeLoaded, typesList)
 
 
-    def __getColorTable__(self):
+    def _getColorTable_(self):
         """ Color table for this module for a better labelmap visualization.
-        This method is optimized for ILD classification, but it can easily be extended for different visualizations"""
+        This must be implemented by child classes"""
         colorTableNode = slicer.util.getNode("CIP_ILDClassification_ColorMap*")
         if colorTableNode is None:
             # Load the node from disk
@@ -344,73 +165,18 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
             colorTableNode = slicer.modules.colors.logic().LoadColorFile(p)
         return colorTableNode
 
-    ## EVENTS
-    def enter(self):
-        """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
-        self.blockNodeEvents = False
-        # if len(self.observers) == 0:
-        #     self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__))
-        #     self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__))
-        SlicerUtil.setFiducialsCursorMode(True, True)
-
-        if self.volumeSelector.currentNodeId != "":
-            SlicerUtil.setActiveVolumeIds(self.volumeSelector.currentNodeId)
-            self.currentVolumeLoaded = slicer.mrmlScene.GetNodeByID(self.volumeSelector.currentNodeId)
-            self.updateState()
-
-    def exit(self):
-        """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
-        try:
-            self.blockNodeEvents = True
-            SlicerUtil.setFiducialsCursorMode(False)
-            # for observer in self.observers:
-            #     slicer.mrmlScene.RemoveObserver(observer)
-            #     self.observers.remove(observer)
-        except:
-            pass
-
-    def cleanup(self):
-        """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
-        try:
-            for observer in self.observers:
-                slicer.mrmlScene.RemoveObserver(observer)
-                self.observers.remove(observer)
-        except:
-            pass
-
-    def __onNewVolumeLoaded__(self, newVolumeNode):
-        """ Added a new node in the scene
-        :param newVolumeNode:
-        :return:
-        """
-        # Filter the name of the volume to remove possible suffixes added by Slicer
-        filteredName = SlicerUtil.filterVolumeName(newVolumeNode.GetName())
-        newVolumeNode.SetName(filteredName)
-        self.__checkNewVolume__(newVolumeNode)
-        self.blockNodeEvents = True
-        self.volumeSelector.setCurrentNode(newVolumeNode)
-        self.blockNodeEvents = False
-
     def __onNewILDClassificationLabelmapLoaded__(self, labelmapNode, split1, split2):
         """ Load a new ILD classification labelmap volume.
         If the labelmap is a known labelmap type, set the right colors and opacity
         @param labelmapNode:
         """
         if SlicerUtil.isExtensionMatch(labelmapNode, "ILDClassificationLabelmap"):
-            colorNode = self.__getColorTable__()
+            colorNode = self._getColorTable_()
             displayNode = labelmapNode.GetDisplayNode()
             displayNode.SetAndObserveColorNodeID(colorNode.GetID())
             # Change Opacity
             SlicerUtil.displayLabelmapVolume(labelmapNode.GetID())
             SlicerUtil.changeLabelmapOpacity(0.3)
-
-
-    def __onCurrentNodeChanged__(self, volumeNode):
-        self.__checkNewVolume__(volumeNode)
-        # if volumeNode:
-        #     #self.logic.reset(volumeNode)
-        #     SlicerUtil.setActiveVolumeId(volumeNode.GetID())
-        #     self.updateState()
 
 
     def __onTypesRadioButtonClicked__(self, button):
@@ -420,60 +186,54 @@ class CIP_ParenchymaSubtypeTrainingWidget(ScriptedLoadableModuleWidget):
         """
         self.updateState()
 
-    def __onSubtypesRadioButtonClicked__(self, button):
+    def __onSecondaryRadioButtonClicked__(self, button):
         """ One of the subtype radio buttons has been pressed
         :param button:
         :return:
         """
         selectedVolume = self.volumeSelector.currentNode()
         if selectedVolume is not None:
-            self.logic.setActiveFiducialsListNode(selectedVolume,
-                    self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId(), self.artifactsRadioButtonGroup.checkedId())
+            typesList = (self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId(),
+                         self.regionsRadioButtonGroup.checkedId(), self.artifactsRadioButtonGroup.checkedId())
+            self.logic.setActiveFiducialsListNode(selectedVolume, typesList)
 
-    def __onRemoveLastFiducialButtonClicked__(self):
-       self.logic.removeLastMarkup()
 
-    def __onSaveResultsDirectoryChanged__(self, directory):
-        # f = qt.QFileDialog.getExistingDirectory()
-        # if f:
-        #     self.saveResultsDirectoryText.setText(f)
-        SlicerUtil.setSetting(self.moduleName, "SaveResultsDirectory", directory)
-
-    def __onSaveResultsButtonClicked__(self):
-        self.saveResultsCurrentNode()
-
-    def __onSceneClosed__(self, arg1, arg2):
-        self.currentVolumeLoaded = None
-        self.logic = CIP_ParenchymaSubtypeTrainingLogic()
-#
 # CIP_ParenchymaSubtypeTrainingLogic
 #
-class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
+class CIP_ParenchymaSubtypeTrainingLogic(CIP_PointsLabellingLogic):
     def __init__(self):
-        ScriptedLoadableModuleLogic.__init__(self)
-        self.params = SubtypingParameters.SubtypingParameters()
-        self.markupsLogic = slicer.modules.markups.logic()
+        CIP_PointsLabellingLogic.__init__(self)
+        self._params_ = SubtypingParameters()
 
-        self.currentVolumeId = None
-        self.currentTypeId = -1
-        self.currentSubtypeId = -1
-        self.currentArtifactId = 0
-        self.savedVolumes = {}
-        self.currentGeometryTopologyData = None
+    @property
+    def _xmlFileExtensionKey_(self):
+        """Overrriden. Key of the dictionary of file conventions that will be used in this module"""
+        return "ParenchymaTrainingFiducialsXml"
+
+    @property
+    def params(self):
+        """Overrriden. Params manager object"""
+        if self._params_ is None:
+            raise NotImplementedError("Object _params_ should be initialized in a child class")
+        return self._params_
 
     def getSubtypes(self, typeId):
         """ Get all the subtypes for the specified type
         :param typeId: type id
-        :return: List of tuples with (Key, Description) with the subtypes """
+        :return: Dictionary with Key=subtype_id and Value=tuple with subtypes features """
         return self.params.getSubtypes(typeId)
 
-    def getSubtypeFullDescription(self, subtypeId):
-        """ Get the subtype description including the abbreviation in parenthesis.
-        Ex: Subpleural line (SpL)
-        :param subtypeId:
-        :return:
-        """
-        return self.params.getSubtypeLabel(subtypeId)
+    def getTypeId(self, typesList):
+        return typesList[0]
+
+    def getSubtypeId(self, typesList):
+        return typesList[1]
+
+    def getRegionId(self, typesList):
+        return typesList[2]
+
+    def getArtifactId(self, typesList):
+        return typesList[3]
 
     def getEffectiveType(self, typeId, subtypeId):
         """ Return the subtype id unless it's 0. In this case, return the main type id
@@ -483,252 +243,139 @@ class CIP_ParenchymaSubtypeTrainingLogic(ScriptedLoadableModuleLogic):
         """
         return typeId if subtypeId == 0 else subtypeId
 
-
-    def _createFiducialsListNode_(self, nodeName, typeId, artifactId):
-        """ Create a fiducials list node for this volume and this type. Depending on the type, the color will be different
-        :param nodeName: Full name of the fiducials list node
-        :param typeId: type id that will modify the color of the fiducial
-        :param artifactId: type id that will modify the color and tag of the fiducial
+    def _createFiducialsListNode_(self, nodeName, typesList):
+        """ Overrriden. Create a fiducials node based on the types list specified.
+        Depending on the child class, the number of types-subtypes will change, so every child class should
+        have its own implementation
+        :param nodeName: name of the fiducial node, created like Subtype_Region_Artifact  (Subtype could be a Main type)
+        :param typesList: list of types
         :return: fiducials list node
         """
         fidListID = self.markupsLogic.AddNewFiducialNode(nodeName, slicer.mrmlScene)
         fidNode = slicer.mrmlScene.GetNodeByID(fidListID)
         displayNode = fidNode.GetDisplayNode()
+        typeId = self.getTypeId(typesList)
+        artifactId = self.getArtifactId(typesList)
+        # The color will be based just in the main type and if it's an artifact
         displayNode.SetSelectedColor(self.params.getColor(typeId, artifactId))
         displayNode.SetTextScale(1.5)
-        # print("DEBUG: Type Id = {0}. Color for the fiducial: ".format(typeId), self.params.getColor(typeId))
 
         # Add an observer when a new markup is added
         fidNode.AddObserver(fidNode.MarkupAddedEvent, self.onMarkupAdded)
 
         return fidNode
 
-    def setActiveFiducialsListNode(self, volumeNode, typeId, subtypeId, artifactId, createIfNotExists=True):
-        """ Get the vtkMRMLMarkupsFiducialNode node associated with this volume and this type.
+    def setActiveFiducialsListNode(self, volumeNode, typesList, createIfNotExists=True):
+        """ Overrriden. Create a fiducials list node corresponding to this volume and this type list.
+        In this case
         :param volumeNode: Scalar volume node
-        :param typeId: main type id
-        :param subtypeId: subtype id
-        :param artifactId: artifact id
-        :param createIfNotExists: create the node if it doesn't exist yet
+        :param typesList: list of types-subtypes. It can be a region-type-artifact or any other combination
+        :param createIfNotExists: create the fiducials node if it doesn't exist yet for this subtype list
         :return: fiducials volume node
         """
+        typeId = self.getTypeId(typesList)
+        artifactId = self.getArtifactId(typesList)
+        regionId = self.getRegionId(typesList)
         if volumeNode is not None:
             if artifactId == -1:
                 # No artifact
-                nodeName = "{0}_fiducials_{1}".format(volumeNode.GetName(), typeId)
+                nodeName = "{}_fiducials_{}_{}".format(volumeNode.GetName(), typeId, regionId)
             else:
                 # Artifact. Add the type of artifact to the node name
-                nodeName = "{0}_fiducials_{1}_{2}".format(volumeNode.GetName(), typeId, artifactId)
+                nodeName = "{}_fiducials_{}_{}_{}".format(volumeNode.GetName(), typeId, regionId, artifactId)
             fid = slicer.util.getNode(nodeName)
             if fid is None and createIfNotExists:
-                # print("DEBUG: creating a new fiducials node: " + nodeName)
-                fid = self._createFiducialsListNode_(nodeName, typeId, artifactId)
+                SlicerUtil.logDevelop("DEBUG: creating a new fiducials node: " + nodeName)
+                fid = self._createFiducialsListNode_(nodeName , typesList)
                 # Add the volume to the list of "managed" cases
                 self.savedVolumes[volumeNode.GetName()] = False
+
             self.currentVolumeId = volumeNode.GetID()
-            self.currentTypeId = typeId
-            self.currentSubtypeId = subtypeId
-            self.currentArtifactId = artifactId
+            self.currentTypesList = typesList
             # Mark the node list as the active one
             self.markupsLogic.SetActiveListID(fid)
             return fid
 
-
-    def getMarkupLabel(self, typeId, subtypeId, artifactId):
-        """ Get the text that will be displayed in the fiducial
-        :param typeId:
-        :param subtypeId:
-        :param artifactId:
-        :return: test
+    def getPointMetadataFromFiducialDescription(self, description):
         """
+        Overriden. Get the main metadata for a GeometryTopologyObject Point object (region, type, feature, description)
+        from a fiducial description
+        :param description: fiducial description
+        :return: (region, type, feature, description) tuple for a point initialization
+        """
+        spl = description.split("_")
+        typeId = int(spl[0])
+        regionId = int(spl[1])
+        artifactId = int(spl[2])
+        # Point description will not be used
+        return (regionId, typeId, artifactId, None)
+
+
+    def getMarkupLabel(self, typesList):
+        """
+        Overriden. Get the text that will be displayed in the fiducial for the corresponding types-subtypes combination.
+        The format is:
+        TypeAbbreviation[-RegionAbbreviation][-Artifact]
+        :param typesList: tuple (type-subtype-region-artifact)
+        :return: label string for this fiducial
+        """
+        typeId = self.getTypeId(typesList)
+        subtypeId = self.getSubtypeId(typesList)
+        regionId = self.getRegionId(typesList)
+        artifactId = self.getArtifactId(typesList)
+
         if subtypeId == 0:
             # No subtype. Just add the general type description
-            label = self.params.getMainTypeAbbreviation(typeId)
+            typeLabel = self.params.getMainTypeAbbreviation(typeId)
         else:
             # Initials of the subtype
-            label = self.params.getSubtypeAbbreviation(subtypeId)
+            typeLabel = self.params.getSubtypeAbbreviation(subtypeId)
 
-        if artifactId != 0:
-            # There is artifact
-            return "{0}-{1}".format(label, self.params.getArtifactAbbreviation(artifactId))
-        # No artifact
-        return label
+        regionLabel = "-{}".format(self.params.getRegionAbbreviation(regionId)) if regionId != 0 else ""
+        artifactLabel = "-{}".format(self.params.getArtifactAbbreviation(artifactId)) if artifactId != 0 else ""
+        return typeLabel + regionLabel + artifactLabel
 
+    def getTypesListFromXmlPoint(self, geometryTopologyDataPoint):
+        """
+        Overriden. Get a list of types that the module will use to operate from a Point object in a GeometryTopologyData object
+        :param geometryTopologyDataPoint: GeometryTopologyData.Point object
+        :return: tuple (typeId, subtypeId, artifactId)
+        """
+        subtype = geometryTopologyDataPoint.chest_type
+        if subtype in self.params.mainTypes.keys():
+            # Main type. The subtype will be "Any"
+            mainType = subtype
+            subtype = 0
+        else:
+            mainType = self.params.getMainTypeForSubtype(subtype)
+
+        return (mainType, subtype, geometryTopologyDataPoint.chest_region, geometryTopologyDataPoint.feature_type)
 
     def onMarkupAdded(self, markupListNode, event):
-        """ New markup node added. It will be renamed based on the type-subtype
-        :param nodeAdded: Markup LIST Node that was added
+        """
+        New markup node added. It will be renamed based on the type-subtype
+        :param markupListNode: Markup LIST Node that was added
         :param event:
         :return:
         """
-        label = self.getMarkupLabel(self.currentTypeId, self.currentSubtypeId, self.currentArtifactId)
+        label = self.getMarkupLabel(self.currentTypesList)
         # Get the last added markup (there is no index in the event!)
         n = markupListNode.GetNumberOfFiducials()
         # Change the label
-        markupListNode.SetNthMarkupLabel(n-1, label)
+        markupListNode.SetNthMarkupLabel(n - 1, label)
         # Use the description to store the type of the fiducial that will be saved in
         # the GeometryTopolyData object
-        markupListNode.SetNthMarkupDescription(n-1,
-            "{0}_{1}".format(self.getEffectiveType(self.currentTypeId, self.currentSubtypeId), self.currentArtifactId))
+        currentTypeId = self.getTypeId(self.currentTypesList)
+        currentSubTypeId = self.getSubtypeId(self.currentTypesList)
+        currentRegionId = self.getRegionId(self.currentTypesList)
+        currentArtifactId = self.getArtifactId(self.currentTypesList)
+        markupListNode.SetNthMarkupDescription(n - 1,
+                                               "{}_{}_{}".format(
+                                                   self.getEffectiveType(currentTypeId, currentSubTypeId),
+                                                   currentRegionId,
+                                                   currentArtifactId))
         # Markup added. Mark the current volume as state modified
-        # if self.currentVolumeId in self.savedVolumes:
-        #     self.savedVolumes.remove(self.currentVolumeId)
         self.savedVolumes[self.currentVolumeId] = False
-
-
-    def loadFiducialsXml(self, volumeNode, fileName):
-        """ Load from disk a list of fiducials for a particular volume node
-        :param volumeNode: Volume (scalar node)
-        :param fileName: full path of the file to load the fiducials where
-        """
-        with open(fileName, "r") as f:
-            xml = f.read()
-
-        self.currentGeometryTopologyData = GTD.GeometryTopologyData.from_xml(xml)
-        for point in self.currentGeometryTopologyData.points:
-            subtype = point.chest_type
-            if subtype in self.params.mainTypes.keys():
-                # Main type. The subtype will be "Any"
-                mainType = subtype
-                subtype = 0
-            else:
-                mainType = self.params.getMainTypeForSubtype(subtype)
-            # Activate the current fiducials list based on the main type
-            fidListNode = self.setActiveFiducialsListNode(volumeNode, mainType, subtype, point.feature_type)
-            # Check if the coordinate system is RAS (and make the corresponding transform otherwise)
-            if self.currentGeometryTopologyData.coordinate_system == self.currentGeometryTopologyData.LPS:
-                coord = Util.lps_to_ras(point.coordinate)
-            elif self.currentGeometryTopologyData.coordinate_system == self.currentGeometryTopologyData.IJK:
-                coord = Util.ijk_to_ras(volumeNode, point.coordinate)
-            else:
-                # Try default mode (RAS)
-                coord = point.coordinate
-            # Add the fiducial
-            fidListNode.AddFiducial(coord[0], coord[1], coord[2], self.getMarkupLabel(mainType, subtype, point.feature_type))
-            # Bind the fiducial to the point to keep track of which points were loaded from the file
-            #self.currentPoints[point.get_hash()] = point
-
-
-
-    def saveCurrentFiducials(self, directory, caseNavigatorWidget=None, callbackFunction=None):
-        """ Save all the fiducials for the current volume.
-        The name of the file will be VolumeName_parenchymaTraining.xml"
-        :param volume: scalar node
-        :param directory: destination directory
-        """
-        volume = slicer.mrmlScene.GetNodeByID(self.currentVolumeId)
-        fileName = volume.GetName() + Util.file_conventions_extensions["ParenchymaTrainingFiducialsXml"]
-        # If there is already a xml file in the results directory, make a copy.
-        fiducialsLocalFilePath = os.path.join(directory, fileName)
-        if os.path.isfile(fiducialsLocalFilePath):
-            # Make a copy of the file for history purposes
-            copyfile(fiducialsLocalFilePath, fiducialsLocalFilePath + "." + time.strftime("%Y%m%d.%H%M%S"))
-
-        # Iterate over all the fiducials list nodes
-        pos = [0,0,0]
-        geometryTopologyData = GTD.GeometryTopologyData()
-        geometryTopologyData.coordinate_system = geometryTopologyData.LPS
-        # Get the transformation matrix LPS-->IJK
-        matrix = Util.get_lps_to_ijk_transformation_matrix(volume)
-        geometryTopologyData.lps_to_ijk_transformation_matrix = Util.convert_vtk_matrix_to_list(matrix)
-        # Get the hashtable and seed from previously loaded GeometryTopologyData object (if available)
-        if self.currentGeometryTopologyData is None:
-            hashTable = {}
-        else:
-            hashTable = self.currentGeometryTopologyData.get_hashtable()
-            geometryTopologyData.id_seed = self.currentGeometryTopologyData.id_seed
-
-        # Get a timestamp that will be used for all the points
-        timestamp = GTD.GeometryTopologyData.get_timestamp()
-
-        for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volume.GetName())).itervalues():
-            # Get all the markups
-            for i in range(fidListNode.GetNumberOfMarkups()):
-                fidListNode.GetNthFiducialPosition(i, pos)
-                # Get the type from the description (region will always be 0)
-                desc = fidListNode.GetNthMarkupDescription(i)
-                typeId = int(desc.split("_")[0])
-                artifactId = int(desc.split("_")[1])
-                # Switch coordinates from RAS to LPS
-                lps_coords = Util.ras_to_lps(list(pos))
-                p = GTD.Point(0, typeId, artifactId, lps_coords)
-                key = p.get_hash()
-                if hashTable.has_key(key):
-                    # Add previously existing point
-                    geometryTopologyData.add_point(hashTable[key], fill_auto_fields=False)
-                else:
-                    # Add a new point with a precalculated timestamp
-                    geometryTopologyData.add_point(p, fill_auto_fields=True)
-                    p.timestamp = timestamp
-
-        # Get the xml content file
-        xml = geometryTopologyData.to_xml()
-        # Save the file
-        with open(fiducialsLocalFilePath, 'w') as f:
-            f.write(xml)
-
-        # Use the new object as the current GeometryTopologyData
-        self.currentGeometryTopologyData = geometryTopologyData
-
-        # Upload to MAD if we are using the ACIL case navigator
-        if caseNavigatorWidget is not None:
-             caseNavigatorWidget.uploadFile(fiducialsLocalFilePath, callbackFunction=callbackFunction)
-
-        # Mark the current volume as saved
-        self.savedVolumes[volume.GetName()] = True
-
-
-    def removeLastMarkup(self):
-        """ Remove the last markup that was added to the scene. It will remove all the markups if the user wants
-        """
-        fiducialsList = slicer.mrmlScene.GetNodeByID(self.markupsLogic.GetActiveListID())
-        if fiducialsList is not None:
-            # Remove the last fiducial
-            fiducialsList.RemoveMarkup(fiducialsList.GetNumberOfMarkups()-1)
-        # Markup removed. Mark the current volume as state modified
-        # if self.currentVolumeId in self.savedVolumes:
-        #     self.savedVolumes.remove(self.currentVolumeId)
-        self.savedVolumes[self.currentVolumeId] = False
-
-    def isVolumeSaved(self, volumeName):
-        """ True if there are no markups unsaved for this volume
-        :param volumeName:
-        :return:
-        """
-        if not self.savedVolumes.has_key(volumeName):
-            raise Exception("Volume {0} is not in the list of managed volumes".format(volumeName))
-        return self.savedVolumes[volumeName]
-
-
-    # def reset(self, volumeToKeep=None):
-    #     """ Remove a volume node and all its associated fiducials """
-    #     if volumeToKeep is None:
-    #         # Just clear the scene
-    #         slicer.mrmlScene.Clear(False)
-    #     else:
-    #         # Remove scalarNodes
-    #         nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLScalarVolumeNode")
-    #         nodes.InitTraversal()
-    #         node = nodes.GetNextItemAsObject()
-    #         while node is not None:
-    #             if node.GetID() != volumeToKeep.GetID():
-    #                 slicer.mrmlScene.RemoveNode(node)
-    #             node = nodes.GetNextItemAsObject()
-    #
-    #         # Remove fiducials
-    #         nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLMarkupsFiducialNode")
-    #         nodes.InitTraversal()
-    #         node = nodes.GetNextItemAsObject()
-    #         while node is not None:
-    #             slicer.mrmlScene.RemoveNode(node)
-    #             node = nodes.GetNextItemAsObject()
-
-    def removeMarkupsAndNode(self, volume):
-        nodes = slicer.util.getNodes(volume.GetName() + "_*")
-        for node in nodes.itervalues():
-            slicer.mrmlScene.RemoveNode(node)
-        slicer.mrmlScene.RemoveNode(volume)
-        self.currentGeometryTopologyData = None
 
 
 
