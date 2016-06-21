@@ -178,7 +178,7 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeAirwayWall(vtkImageData* sliceI
     }
 
   this->WallSolver->SetMethod(method);
-  this->WallSolver->SetDelta(0.1);
+  this->WallSolver->SetDelta(0.5);
   this->WallSolver->SetWallThreshold(node->GetThreshold());
 
   std::string methodTag;
