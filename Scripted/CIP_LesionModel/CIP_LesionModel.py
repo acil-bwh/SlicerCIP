@@ -163,6 +163,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def setup(self):
         """This is called one time when the module GUI is initialized
         """
+        ScriptedLoadableModuleWidget.setup(self)
         self.semaphoreOpen = False      # To prevent duplicate events
         # self.timer = qt.QTimer()
         # self.timer.timeout.connect(self.checkAndRefreshModels)

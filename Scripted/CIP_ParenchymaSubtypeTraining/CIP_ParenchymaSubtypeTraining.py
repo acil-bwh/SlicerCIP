@@ -6,6 +6,7 @@ from CIP.logic.SlicerUtil import SlicerUtil
 from CIP_PointsLabelling import CIP_PointsLabelling, CIP_PointsLabellingWidget, CIP_PointsLabellingLogic
 from CIP_ParenchymaSubtypeTrainingLogic.SubtypingParameters import SubtypingParameters
 
+
 #
 # CIP_ParenchymaSubtypeTraining
 
@@ -13,12 +14,14 @@ class CIP_ParenchymaSubtypeTraining(CIP_PointsLabelling):
     """Uses ScriptedLoadableModule base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
+
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
         self.parent.title = "Parenchyma Subtype Training"
         self.parent.categories = SlicerUtil.CIP_ModulesCategory
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
-        self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory", "Brigham and Women's Hospital"]
+        self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory",
+                                    "Brigham and Women's Hospital"]
         self.parent.helpText = """Training for a subtype of emphysema done quickly by an expert"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
@@ -30,6 +33,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
+
     @property
     def moduleName(self):
         return "CIP_ParenchymaSubtypeTraining"
@@ -109,7 +113,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
         self.separatorLabel.setStyleSheet(labelsStyle)
         self.typesLayout.addWidget(self.separatorLabel)
         self.artifactsLabel = qt.QLabel("Select artifact")
-        labelsStyle =  "font-weight: bold; margin: 15px 0 10px 0;"
+        labelsStyle = "font-weight: bold; margin: 15px 0 10px 0;"
         self.artifactsLabel.setStyleSheet(labelsStyle)
         self.typesLayout.addWidget(self.artifactsLabel)
         self.artifactsRadioButtonGroup = qt.QButtonGroup()
@@ -124,9 +128,11 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
 
         # Connections
         self.typesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onTypesRadioButtonClicked__)
-        self.subtypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSecondaryRadioButtonClicked__)
+        self.subtypesRadioButtonGroup.connect("buttonClicked (QAbstractButton*)",
+                                              self.__onSecondaryRadioButtonClicked__)
         self.regionsRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSecondaryRadioButtonClicked__)
-        self.artifactsRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onSecondaryRadioButtonClicked__)
+        self.artifactsRadioButtonGroup.connect("buttonClicked (QAbstractButton*)",
+                                               self.__onSecondaryRadioButtonClicked__)
 
         self.updateState()
 
@@ -151,9 +157,8 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
         # Set the correct state for fiducials
         if self.currentVolumeLoaded is not None:
             typesList = (self.typesRadioButtonGroup.checkedId(), self.subtypesRadioButtonGroup.checkedId()
-                        , self.regionsRadioButtonGroup.checkedId(), self.artifactsRadioButtonGroup.checkedId())
+                         , self.regionsRadioButtonGroup.checkedId(), self.artifactsRadioButtonGroup.checkedId())
             self.logic.setActiveFiducialsListNode(self.currentVolumeLoaded, typesList)
-
 
     def _getColorTable_(self):
         """ Color table for this module for a better labelmap visualization.
@@ -161,7 +166,8 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
         colorTableNode = slicer.util.getNode("CIP_ILDClassification_ColorMap*")
         if colorTableNode is None:
             # Load the node from disk
-            p = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Resources/CIP_ILDClassification_ColorMap.ctbl")
+            p = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             "Resources/CIP_ILDClassification_ColorMap.ctbl")
             colorTableNode = slicer.modules.colors.logic().LoadColorFile(p)
         return colorTableNode
 
@@ -177,7 +183,6 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
             # Change Opacity
             SlicerUtil.displayLabelmapVolume(labelmapNode.GetID())
             SlicerUtil.changeLabelmapOpacity(0.3)
-
 
     def __onTypesRadioButtonClicked__(self, button):
         """ One of the radio buttons has been pressed
@@ -286,7 +291,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(CIP_PointsLabellingLogic):
             fid = slicer.util.getNode(nodeName)
             if fid is None and createIfNotExists:
                 SlicerUtil.logDevelop("DEBUG: creating a new fiducials node: " + nodeName)
-                fid = self._createFiducialsListNode_(nodeName , typesList)
+                fid = self._createFiducialsListNode_(nodeName, typesList)
                 # Add the volume to the list of "managed" cases
                 self.savedVolumes[volumeNode.GetName()] = False
 
@@ -309,7 +314,6 @@ class CIP_ParenchymaSubtypeTrainingLogic(CIP_PointsLabellingLogic):
         artifactId = int(spl[2])
         # Point description will not be used
         return (regionId, typeId, artifactId, None)
-
 
     def getMarkupLabel(self, typesList):
         """
@@ -376,7 +380,6 @@ class CIP_ParenchymaSubtypeTrainingLogic(CIP_PointsLabellingLogic):
                                                    currentArtifactId))
         # Markup added. Mark the current volume as state modified
         self.savedVolumes[self.currentVolumeId] = False
-
 
 
 class CIP_ParenchymaSubtypeTrainingTest(ScriptedLoadableModuleTest):
