@@ -29,6 +29,8 @@ self.btnGoToPreviousStructure.iconAlignment = 0x0001    # Align the icon to the 
 self.btnGoToPreviousStructure.buttonTextAlignment = (0x0081) # Aling the text to the left and vertical center
 self.btnGoToPreviousStructure.enabled = False
 
+# To get the button that provoked the event in the connect signal:
+self.btnGoToPreviousStructure.clicked.connect(lambda: self.onButtonClicked(self.btnGoToPreviousStructure))
 
 #####################################################
 # Checkbox
