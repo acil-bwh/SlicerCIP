@@ -694,7 +694,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         if forceRefresh or self.lastRefreshValue != self.distanceLevelSlider.value:
             # Refresh slides
             # print("DEBUG: updating labelmaps with value:", float(self.distanceLevelSlider.value)/100)
-            self.logic.updateModels(float(self.distanceLevelSlider.value) / 100)
+            self.logic.updateModels(self.currentVolume, self.currentNoduleIndex, float(self.distanceLevelSlider.value) / 100)
             self.lastRefreshValue = self.distanceLevelSlider.value
 
             # Refresh visible windows
@@ -1831,10 +1831,10 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         """ Modify the threshold for the current volume (update the model)
         @param newThreshold: new threshold (all the voxels below this threshold will be considered nodule)
         """
-        thresholdFilter = self.thresholdFilters[(currentVolume, noduleIndex)]
+        thresholdFilter = self.thresholdFilters[(currentVolume.GetID(), noduleIndex)]
         thresholdFilter.ThresholdByUpper(newThreshold)
         thresholdFilter.Update()
-        marchingCubesFilter = self.marchingCubesFilters[(currentVolume, noduleIndex)]
+        marchingCubesFilter = self.marchingCubesFilters[(currentVolume.GetID(), noduleIndex)]
         marchingCubesFilter.SetValue(0, newThreshold)
         marchingCubesFilter.Update()
         # self.currentLabelmapArray = slicer.util.array(self.currentLabelmap.GetName())
@@ -1950,7 +1950,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         annotationsLogic.AddHierarchy()
         return slicer.util.getNode(annotationsLogic.GetActiveHierarchyNodeID())
 
-    def __onNoduleSegmentationCLIStateUpdated__(self, caller, currentVolume, noduleIndex, callbackFunction=None):
+    def __onNoduleSegmentationCLIStateUpdated__(self, caller, currentVolume, noduleIndex, callbackFunctionWhenFinished=None):
         """ Event triggered when the CLI status changes
         @param caller: CommandLineModule
         @param noduleIndex: index of the nodule that was segmented
@@ -1960,7 +1960,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
                 and not self.invokedCLI:  # Semaphore to avoid duplicated events
             if caller.GetStatus() == caller.Completed:
                 self.invokedCLI = True
-                self.__processNoduleSegmentationCLIResults__(currentVolume, noduleIndex, callbackFunction=callbackFunction)
+                self.__processNoduleSegmentationCLIResults__(currentVolume, noduleIndex, callbackFunction=callbackFunctionWhenFinished)
             elif caller.GetStatus() == caller.CompletedWithErrors:
                 # TODO: print current parameters with caller.GetParameterDefault()
                 raise Exception("The Nodule Segmentation CLI failed")
@@ -2015,9 +2015,9 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
 
         if callbackFunction is not None:
             # Delegate the responsibility of updating the models with a chosen threshold (regular case)
-            callbackFunction(currentVolume.GetID(), noduleIndex)
+            callbackFunction(currentVolume, noduleIndex)
         else:
-            self.updateModels(currentVolume.GetID(), noduleIndex, self.defaultThreshold)  # Use default threshold value
+            self.updateModels(currentVolume, noduleIndex, self.defaultThreshold)  # Use default threshold value
 
         if newNode:
             # Align the model with the segmented labelmap applying a transformation
