@@ -916,7 +916,8 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         :return: tuple with ruler node and a boolean indicating if the node was just created
         """
         # Get the correct ruler
-        rulerNode, newNode = self.getRulerNodeForVolumeAndStructure(volumeId, structureId, createIfNotExist=True)
+        rulerNode, newNode = self.getRulerNodeForVolumeAndStructure(volumeId, structureId,
+                                    createIfNotExist=True, callbackWhenRulerModified=callbackWhenUpdated)
 
         # Add the volume to the list of volumes that have some ruler
         # self.currentVolumesLoaded.add(volumeId)
