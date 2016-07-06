@@ -394,6 +394,28 @@ class SlicerUtil:
         return None
 
     @staticmethod
+    def getNodesByClass(className, includeSubclasses=False):
+        """
+        Get a list with all the "className" nodes available in the scene.
+        Just a more convenient way of using the GetNodesByClass method
+        @param className: name of the class
+        @param includeSubclasses: include also the subclasses
+        @return:
+        """
+        l = []
+        col = slicer.mrmlScene.GetNodesByClass(className)
+        for i in range(col.GetNumberOfItems()):
+            item = col.GetItemAsObject(i)
+            if includeSubclasses:
+                # Always append (subclasses included)
+                l.append(item)
+            else:
+                # Make sure that the node is not a subclass
+                if item.GetClassName() == className:
+                    l.append(item)
+        return l
+
+    @staticmethod
     def isExtensionMatch(labelmapNode, key):
         """ Check if a labelmap node meets one of the ACIL given labelmap conventions
         @param labelmapNode:

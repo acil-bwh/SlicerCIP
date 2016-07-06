@@ -231,7 +231,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.noduleSegmentationLayout.addWidget(qt.QLabel("Select nodule: "), row, 0)
 
         self.nodulesComboBox = qt.QComboBox()
-        self.nodulesComboBox.connect("currentIndexChanged (int)", self.__onNodulesComboboxCurrentIndexChanged__)
         self.noduleSegmentationLayout.addWidget(self.nodulesComboBox, row, 1, 1, 2)
 
         self.addNewNoduleButton = ctk.ctkPushButton()
@@ -257,7 +256,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.addFiducialButton.setFixedSize(qt.QSize(115, 30))
         self.noduleSegmentationLayout.addWidget(self.addFiducialButton, row, 1, 1, 3)
         # self.addFiducialButton.connect('clicked(bool)', self.__onAddFiducialButtonClicked__)
-        self.addFiducialButton.clicked.connect(lambda: self.__onAddFiducialButtonClicked__(self.addFiducialButton))
 
         # Show/Hide calipers
         showCalipersButton = ctk.ctkPushButton()
@@ -340,7 +338,14 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.segmentButton.setStyleSheet(
             "font-weight:bold; font-size:12px; color: white; background-color:#274EE2; margin-top:10px;")
         self.segmentButton.setFixedHeight(40)
-        self.noduleSegmentationLayout.addWidget(self.segmentButton, row, 1, 1, 2)
+        self.noduleSegmentationLayout.addWidget(self.segmentButton, row, 2, 1, 2)
+
+        self.removeNoduleButton = ctk.ctkPushButton()
+        self.removeNoduleButton.text = "Remove nodule"
+        self.removeNoduleButton.toolTip = "Remove the active nodule"
+        self.removeNoduleButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.removeNoduleButton.setIconSize(qt.QSize(20, 20))
+        self.noduleSegmentationLayout.addWidget(self.removeNoduleButton, row, 0)
 
         # CLI progress bar
         row += 1
@@ -560,9 +565,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # Connections
         self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onInputVolumeChanged__)
         #self.noduleLabelmapSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onNoduleLabelmapChanged__)
+        self.nodulesComboBox.connect("currentIndexChanged (int)", self.__onNodulesComboboxCurrentIndexChanged__)
         self.enhanceVisualizationCheckbox.connect("stateChanged(int)", self.__onEnhanceVisualizationCheckChanged__)
+        self.addFiducialButton.clicked.connect(lambda: self.__onAddSeedButtonClicked__(self.addFiducialButton))
         self.segmentButton.connect('clicked()', self.__onSegmentButtonClicked__)
         self.distanceLevelSlider.connect('sliderReleased()', self.checkAndRefreshModels)
+        self.removeNoduleButton.connect('clicked()', self.__onRemoveNoduleButtonClicked__)
 
         self.showSpheresButtonGroup.connect("buttonClicked(int)", self.__onShowSphereCheckboxClicked__)
         # runAnalysisButton.connect("clicked()", self.__onRunAnalysisButtonClicked__)
@@ -668,18 +676,19 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         markupsLogic = slicer.modules.markups.logic()
         # Hide first all the current markups
         for node in self.logic.getAllFiducialNodes(self.currentVolume):
+            # print("DEBUG: hiding " + node.GetID())
             markupsLogic.SetAllMarkupsVisibility(node, False)
         markupNode = self.logic.getNthFiducialsListNode(self.currentVolume, noduleIndex)
         markupsLogic.SetActiveListID(markupNode)
         # Show markups
+        # print("DEBUG: showing " + markupNode.GetID())
         markupsLogic.SetAllMarkupsVisibility(markupNode, True)
 
         # Set active Rulers node
         annotationsLogic = slicer.modules.annotations.logic()
         # Hide first all the rulers
-        col = slicer.mrmlScene.GetNodesByClass("vtkMRMLAnnotationRulerNode")
-        for i in range(col.GetNumberOfItems()):
-            node = col.GetItemAsObject(i)
+        for node in SlicerUtil.getNodesByClass("vtkMRMLAnnotationRulerNode"):
+            print("DEBUG: hiding " + node.GetID())
             node.SetDisplayVisibility(False)
         annotationsLogic.SetActiveHierarchyNodeID(
             self.logic.getNthRulersListNode(self.currentVolume, noduleIndex).GetID())
@@ -689,29 +698,39 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         rulerNodeParent.GetAllChildren(col)
         for i in range(col.GetNumberOfItems()):
             node = col.GetItemAsObject(i)
+            print("DEBUG: showing " + node.GetID())
             node.SetDisplayVisibility(True)
 
         # Show Nodule Labelmap (if it exists)
-        self._activateCurrentLabelmap_()
-        # Nodule Model (if it exists)
-        modelsLogic = slicer.modules.models.logic()
-        modelsLogic.SetActiveModelNode(self.logic.getNthNoduleModelNode(self.currentVolume, noduleIndex))
+        self._showCurrentLabelmap_()
 
-    def setAddSeedsMode(self, enabled, position):
+        # Nodule Model (if it exists).
+        # Hide all the models first
+        for node in SlicerUtil.getNodesByClass("vtkMRMLModelNode"):
+            print("DEBUG: hiding " + node.GetID())
+            node.SetDisplayVisibility(False)
+        model = self.logic.getNthNoduleModelNode(self.currentVolume, noduleIndex)
+        if model:
+            modelsLogic = slicer.modules.models.logic()
+            print("DEBUG: showing " + model.GetID())
+            modelsLogic.SetActiveModelNode(model)
+            model.SetDisplayVisibility(True)
+
+
+    def setAddSeedsMode(self, enabled):
         """ When enabled, the cursor will be enabled to add new fiducials that will be used for the segmentation
         @param enabled: boolean
         """
         applicationLogic = slicer.app.applicationLogic()
         if enabled:
-            # print("DEBUG: entering __setAddSeedsMode__ - after enabled")
             if self.__validateInputVolumeSelection__():
                 # Get the fiducials node
-                fiducialsNodeList = self.logic.getNthFiducialsListNode(self.currentVolume, position)
+                fiducialsNodeList = self.logic.getNthFiducialsListNode(self.currentVolume, self.currentNoduleIndex)
                 # Set the cursor to draw fiducials
                 markupsLogic = slicer.modules.markups.logic()
                 markupsLogic.SetActiveListID(fiducialsNodeList)
                 selectionNode = applicationLogic.GetSelectionNode()
-                selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLMarkupsFiducialNode")
+                #selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLMarkupsFiducialNode")
 
                 # Enable fiducials mode
                 SlicerUtil.setFiducialsCursorMode(True, False)
@@ -1036,6 +1055,27 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         else:
             self.timer.stop()
 
+    def removeNodule(self, currentVolume, noduleIndex):
+        """
+        Remove nodule and all the associated nodes
+        @param currentVolume:
+        @param noduleIndex:
+        @return: True if the module was removed or False otherwise
+        """
+        if currentVolume is None:
+            return False
+        node = self.getNthNoduleFolder(currentVolume, noduleIndex)
+        if not node:
+            return False
+        # Avoid confirmation message when removing the node. This shouldn't be this way, but I couldn' find a better approach
+        prevValue = SlicerUtil.settingGetOrSetDefault("SubjectHierarchy", "AutoDeleteSubjectHierarchyChildren")
+        SlicerUtil.setSetting("SubjectHierarchy", "AutoDeleteSubjectHierarchyChildren", 'true')
+        # Remove the node
+        slicer.mrmlScene.removeNode(node)
+        # Restore setting
+        SlicerUtil.setSetting("SubjectHierarchy", "AutoDeleteSubjectHierarchyChildren", prevValue)
+        return True
+
     def resetGUI(self):
         """ Reset the GUI
         """
@@ -1094,12 +1134,14 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.refreshUI()
 
 
-    def _activateCurrentLabelmap_(self):
+    def _showCurrentLabelmap_(self):
         """ Display the right labelmap for the current background node if it exists"""
         # Set the current labelmap active
         selectionNode = slicer.app.applicationLogic().GetSelectionNode()
         selectionNode.SetReferenceActiveVolumeID(self.currentVolume.GetID())
         labelmap = self.logic.getNthNoduleLabelmapNode(self.currentVolume, self.currentNoduleIndex)
+        if labelmap:
+            print("DEBUG: showing labelmap " + labelmap.GetID())
         selectionNode.SetReferenceActiveLabelVolumeID(labelmap.GetID() if labelmap is not None else "")
         slicer.app.applicationLogic().PropagateVolumeSelection(0)
 
@@ -1184,17 +1226,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         d[keyName]["LesionType"] = self.lesionType
         d[keyName]["Seeds_LPS"] = coordsList.__str__()
 
-    def getButtonPosition(self, button):
-        """
-        Return the position number of a button based on its object name (ex: getButtonPosition(btnAddSeed_0) = 0))
-        @param button: PushButton
-        @return: int position
-        """
-        name = button.objectName
-        if not name:
-            return None
-        return int(name.split("_")[-1])
-
 
     ############
     # Events
@@ -1259,9 +1290,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             # Reset layout. Force the cursor state because it changes to seeds mode for some unexplained reason!
             SlicerUtil.setFiducialsCursorMode(False)
 
-
-
-    def __onAddFiducialButtonClicked__(self, button):
+    def __onAddSeedButtonClicked__(self, button):
         """ Click the add fiducial button so that we set the cursor in fiducial mode
         @param button:
         """
@@ -1270,8 +1299,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             button.checked = False
             return
         self.lastAddSeedButtonChecked = button
-        position = self.getButtonPosition(button)
-        self.setAddSeedsMode(button.checked, position)
+        self.setAddSeedsMode(button.checked)
 
     def __onShowCalipersButtonClicked__(self, button):
         """
@@ -1290,7 +1318,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         @param nodeID: Current fiducials node id
         @param event:
         """
-        print("DEBUG: Fiducials node modified.", nodeID)
         self.addFiducialRow(nodeID)
         self.refreshUI()
 
@@ -1315,7 +1342,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         @param noduleIndex: index of the nodule that was segmented
         """
         self.distanceLevelSlider.value = self.logic.defaultThreshold  # default
-        self._activateCurrentLabelmap_()
+        self._showCurrentLabelmap_()
         cliOutputScalarNode = self.logic.getNthAlgorithmSegmentationNode(currentVolume, noduleIndex)
         r = cliOutputScalarNode.GetImageData().GetScalarRange()
 
@@ -1359,6 +1386,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
     def __onAnalyzeButtonClicked__(self):
         self.runAnalysis()
+
+    def __onRemoveNoduleButtonClicked__(self):
+        self.logic.removeNodule(self.currentVolume, self.currentNoduleIndex)
 
     def __onSceneClosed__(self, arg1, arg2):
         # self.timer.stop()
@@ -2035,7 +2065,12 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         rootHierarchyNode = SlicerUtil.getRootAnnotationsNode()
         annotationsLogic.SetActiveHierarchyNodeID(rootHierarchyNode.GetID())
         annotationsLogic.AddHierarchy()
-        return slicer.util.getNode(annotationsLogic.GetActiveHierarchyNodeID())
+
+        # Add an event so that when a ruler is added to the hierarchy, the SubjectHierarchyNode is properly updated
+        hierarchyNode = slicer.util.getNode(annotationsLogic.GetActiveHierarchyNodeID())
+        hierarchyNode.AddObserver("ModifiedEvent", self.__onAnnotationsHierarchyNodeModified__)
+
+        return hierarchyNode
 
     def __onNoduleSegmentationCLIStateUpdated__(self, caller, currentVolume, noduleIndex, callbackFunctionWhenFinished=None):
         """ Event triggered when the CLI status changes
@@ -2147,6 +2182,23 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         displayNode.SetAndObserveColorNodeID(colorNode.GetID())
         return node
 
+    def __onAnnotationsHierarchyNodeModified__(self, vtkMRMLAnnotationHierarchyNode, event):
+        """ Observe when a new ruler has been added to the hierarchy and place it in the right
+        position in the SubjectHiearchyTree
+        @param caller:
+        @param event:
+        @return:
+        """
+        children = vtk.vtkCollection()
+        vtkMRMLAnnotationHierarchyNode.GetAllChildren(children)
+        for i in range(children.GetNumberOfItems()):
+            rulerNode = children.GetItemAsObject(i)
+            # Get the SHN corresponding to the ruler node
+            rulerSHNode = SlicerUtil.getSubjectHierarchyNodeAssociatedToNode(rulerNode.GetID())
+            # Get the SHN for the Hierarchy
+            parentSHNode = SlicerUtil.getSubjectHierarchyNodeAssociatedToNode(vtkMRMLAnnotationHierarchyNode.GetID())
+            # Set the parent
+            rulerSHNode.SetParentNodeID(parentSHNode.GetID())
 
 #############################
 # CIP_LesionModel
