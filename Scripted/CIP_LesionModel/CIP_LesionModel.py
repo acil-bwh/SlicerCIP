@@ -633,8 +633,69 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.saveSeedsButton.visible = self.loadSeedsButton.visible = self.__evaluateSegmentationModeOn__
         self.reportsWidget.showSaveButton(self.__evaluateSegmentationModeOn__)
 
+    def addNewNodule(self):
+        # TODO: add new row to the nodules table
+        # Add the new hierarchy node to the scene
+        hierNode = self.logic.addNewNodule(self.currentVolume)
+        # Get the index of the nodule node
+        index = int(hierNode.GetName())
+        # Add it to the combobox saving the index (we can't just use the combobox index because the user can remove elems)
+        # Disable signals because we don't want the nodule to be active until we build all the required objects
+        self.nodulesComboBox.blockSignals(True)
+        self.nodulesComboBox.addItem("Nodule {}".format(index))
+        self.nodulesComboBox.setItemData(self.nodulesComboBox.count - 1, index)
+        self.nodulesComboBox.currentIndex = self.nodulesComboBox.count - 1
 
+        # Add a listener to the fiducials node to know when the user added a new seed and register it
+        fiducialsNode = self.logic.getNthFiducialsListNode(self.currentVolume, index)
+        fiducialsNode.AddObserver("ModifiedEvent", self.__onFiducialsNodeModified__)
 
+        # Enable signals again
+        self.nodulesComboBox.blockSignals(False)
+        # Activate nodule
+        self.setActiveNodule(index)
+        # Set the cursor in Crosshair+fiducials mode
+        SlicerUtil.setCrosshairCursor(True)
+        SlicerUtil.setFiducialsCursorMode(True)
+
+    def setActiveNodule(self, noduleIndex):
+        """
+        Set the specified nodule as active, setting the right Fiducials Node, Rulers Node, Model, etc.
+        @param noduleIndex: nodule index (different from the combobox index!)
+        @return:
+        """
+        # Set active Fiducials node
+        markupsLogic = slicer.modules.markups.logic()
+        # Hide first all the current markups
+        for node in self.logic.getAllFiducialNodes(self.currentVolume):
+            markupsLogic.SetAllMarkupsVisibility(node, False)
+        markupNode = self.logic.getNthFiducialsListNode(self.currentVolume, noduleIndex)
+        markupsLogic.SetActiveListID(markupNode)
+        # Show markups
+        markupsLogic.SetAllMarkupsVisibility(markupNode, True)
+
+        # Set active Rulers node
+        annotationsLogic = slicer.modules.annotations.logic()
+        # Hide first all the rulers
+        col = slicer.mrmlScene.GetNodesByClass("vtkMRMLAnnotationRulerNode")
+        for i in range(col.GetNumberOfItems()):
+            node = col.GetItemAsObject(i)
+            node.SetDisplayVisibility(False)
+        annotationsLogic.SetActiveHierarchyNodeID(
+            self.logic.getNthRulersListNode(self.currentVolume, noduleIndex).GetID())
+        # Show the rulers for this nodule
+        rulerNodeParent = self.logic.getNthRulersListNode(self.currentVolume, noduleIndex)
+        col = vtk.vtkCollection()
+        rulerNodeParent.GetAllChildren(col)
+        for i in range(col.GetNumberOfItems()):
+            node = col.GetItemAsObject(i)
+            node.SetDisplayVisibility(True)
+
+        # Show Nodule Labelmap (if it exists)
+        self._activateCurrentLabelmap_()
+        # Nodule Model (if it exists)
+        modelsLogic = slicer.modules.models.logic()
+        modelsLogic.SetActiveModelNode(self.logic.getNthNoduleModelNode(self.currentVolume, noduleIndex))
 
     def setAddSeedsMode(self, enabled, position):
         """ When enabled, the cursor will be enabled to add new fiducials that will be used for the segmentation
@@ -956,6 +1017,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         pass
 
 
+
     def zoomToSeed(self):
         """ Dynamic zoom to the center of the current view in all the 2D windows
         @return:
@@ -1032,13 +1094,13 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.refreshUI()
 
 
-    def __activateCurrentLabelmap__(self):
+    def _activateCurrentLabelmap_(self):
         """ Display the right labelmap for the current background node if it exists"""
         # Set the current labelmap active
         selectionNode = slicer.app.applicationLogic().GetSelectionNode()
         selectionNode.SetReferenceActiveVolumeID(self.currentVolume.GetID())
-        selectionNode.SetReferenceActiveLabelVolumeID(self.logic.getNthNoduleLabelmapNode(self.currentVolume,
-                                                                                    self.currentNoduleIndex).GetID())
+        labelmap = self.logic.getNthNoduleLabelmapNode(self.currentVolume, self.currentNoduleIndex)
+        selectionNode.SetReferenceActiveLabelVolumeID(labelmap.GetID() if labelmap is not None else "")
         slicer.app.applicationLogic().PropagateVolumeSelection(0)
 
     def __validateInputVolumeSelection__(self):
@@ -1174,9 +1236,13 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         #     self.logic.placeMarkupsFiducialsNode(subjectHierarchyNode)
         pass
 
+    def __onAddNoduleButtonClicked__(self):
+        self.addNewNodule()
+
     def __onNodulesComboboxCurrentIndexChanged__(self, index):
-        #self.currentNoduleIndex = self.nodulesComboBox.itemData(index)
-        pass
+        if index is not None and index >= 0:
+            #self.currentNoduleIndex = self.nodulesComboBox.itemData(index)
+            self.setActiveNodule(self.nodulesComboBox.itemData(index))
 
     # def __onNoduleLabelmapChanged__(self, node):
     #     self.logic.currentLabelmap = node
@@ -1193,22 +1259,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             # Reset layout. Force the cursor state because it changes to seeds mode for some unexplained reason!
             SlicerUtil.setFiducialsCursorMode(False)
 
-    def __onAddNoduleButtonClicked__(self):
-        # TODO: add new row to the nodules table
-        # Add the new hierarchy node to the scene
-        hierNode = self.logic.addNewNodule(self.currentVolume)
-        # Get the index of the nodule node
-        index = int(hierNode.GetName())
-        # Add it to the combobox saving the index (we can't just use the combobox index because the user can remove elems)
-        self.nodulesComboBox.addItem("Nodule {}".format(index))
-        self.nodulesComboBox.setItemData(self.nodulesComboBox.count - 1, index)
-        self.nodulesComboBox.currentIndex = self.nodulesComboBox.count - 1
-
-        # Add a listener to the fiducials node to know when the user added a new seed and register it
-        fiducialsNode = self.logic.getNthFiducialsListNode(self.currentVolume, index)
-        fiducialsNode.AddObserver("ModifiedEvent", self.__onFiducialsNodeModified__)
-        SlicerUtil.setCrosshairCursor(True)
-        SlicerUtil.setFiducialsCursorMode(True)
 
 
     def __onAddFiducialButtonClicked__(self, button):
@@ -1265,7 +1315,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         @param noduleIndex: index of the nodule that was segmented
         """
         self.distanceLevelSlider.value = self.logic.defaultThreshold  # default
-        self.__activateCurrentLabelmap__()
+        self._activateCurrentLabelmap_()
         cliOutputScalarNode = self.logic.getNthAlgorithmSegmentationNode(currentVolume, noduleIndex)
         r = cliOutputScalarNode.GetImageData().GetScalarRange()
 
@@ -1498,16 +1548,12 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         fidNode = self._createFiducialsListNode_()
         # Move it to the right place in the hierarchy
         self.setNthFiducialsListNode(vtkMRMLScalarVolumeNode, noduleIndex, fidNode)
-        # Get the corresponding SHN for the created fiducials node
-        # fiducialsHN = SlicerUtil.getSubjectHierarchyNodeAssociatedToNode(fidNodeID)
-        # # Move it to the corresponding Nodule folder
-        # fiducialsHN.SetParentNodeID(hierNoduleFolder.GetID())
 
         # Create the Annotations Ruler hierarchy for the three rulers
         annotRulersNode = self._createRulersNode_()
         # Create a folder that will be associated with the rulers hierarchy
         rulersHN = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, hierNoduleFolder,
-                           slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), "Rulers")
+                           slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), "Rulers_{}".format(noduleIndex))
         # Associate the folder to the rulers hierarchy node
         rulersHN.SetAssociatedNodeID(annotRulersNode.GetID())
         # Move it to the right place
@@ -1568,9 +1614,13 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if noduleFolder is None:
             return None
         for i in range(noduleFolder.GetNumberOfChildrenNodes()):
-            n = noduleFolder.GetNthChildNode(i).GetAssociatedNode()
-            if n is not None and n.GetName() == nodeName:
-                return n
+            # Use this method instead of simply noduleFolder.GetNthChildNode(i).GetAssociatedNode() because of a bug in the
+            # SubjectHierarchyNode when the node is associated to a vtkMRMLAnnotationHierarchyNode
+            id = noduleFolder.GetNthChildNode(i).GetAssociatedNodeID()
+            if id:
+                n = slicer.util.getNode(id)
+                if n is not None and n.GetName() == nodeName:
+                    return n
         return None
 
     def _setNthSubjectHierarchyNode_(self, vtkMRMLScalarVolumeNode, noduleIndex, node):
@@ -1633,7 +1683,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param noduleIndex: int number of nodule (starting at 1)
         @return: vtkMRMLMarkupsFiducialNode (or None if not found)
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "Fiducials")
+        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "Fiducials_{}".format(noduleIndex))
 
     def setNthFiducialsListNode(self, vtkMRMLScalarVolumeNode, noduleIndex, vtkMRMLMarkupsFiducialNode):
         """
@@ -1643,7 +1693,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param vtkMRMLMarkupsFiducialNode: markups node to set
         @return: True if everything went fine
         """
-        vtkMRMLMarkupsFiducialNode.SetName("Fiducials")
+        vtkMRMLMarkupsFiducialNode.SetName("Fiducials_{}".format(noduleIndex))
         return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, vtkMRMLMarkupsFiducialNode)
 
     def getNthRulersListNode(self, vtkMRMLScalarVolumeNode, noduleIndex):
@@ -1653,7 +1703,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param noduleIndex:  number of nodule (starting at 1)
         @return: vtkMRMLAnnotationHierarchyNode
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "Rulers")
+        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "Rulers_{}".format(noduleIndex))
 
     def setNthRulersListNode(self, vtkMRMLScalarVolumeNode, noduleIndex, vtkMRMLAnnotationHierarchyNode):
         """
@@ -1663,7 +1713,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param vtkMRMLAnnotationHierarchyNode: rulers node to set
         @return: True (everything ok) or False
         """
-        vtkMRMLAnnotationHierarchyNode.SetName("Rulers")
+        vtkMRMLAnnotationHierarchyNode.SetName("Rulers_{}".format(noduleIndex))
         return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, vtkMRMLAnnotationHierarchyNode)
 
     def getNthNoduleLabelmapNode(self, vtkMRMLScalarVolumeNode, noduleIndex):
@@ -1673,7 +1723,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param noduleIndex:  number of nodule (starting at 1)
         @return: vtkMRMLAnnotationHierarchyNode
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "NoduleLabelmap")
+        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "NoduleLabelmap_{}".format(noduleIndex))
 
 
     def setNthNoduleLabelmapNode(self, vtkMRMLScalarVolumeNode, noduleIndex, labelmapNode):
@@ -1684,7 +1734,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param vtkMRMLMarkupsFiducialNode: markups node to set
         @return: True if everything went fine
         """
-        labelmapNode.SetName("NoduleLabelmap")
+        labelmapNode.SetName("NoduleLabelmap_{}".format(noduleIndex))
         return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, labelmapNode)
 
 
@@ -1695,7 +1745,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param noduleIndex:  number of nodule (starting at 1)
         @return: vtkMRMLAnnotationHierarchyNode
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "NoduleAlgorithmSegmentation")
+        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "NoduleAlgorithmSegmentation_{}".format(noduleIndex))
 
     def setNthAlgorithmSegmentationNode(self, vtkMRMLScalarVolumeNode, noduleIndex, node):
         """
@@ -1704,7 +1754,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param volumeID: markups node to set
         @return: True if everything went fine
         """
-        node.SetName("NoduleAlgorithmSegmentation")
+        node.SetName("NoduleAlgorithmSegmentation_{}".format(noduleIndex))
         return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, node)
 
     def getNthNoduleModelNode(self, vtkMRMLScalarVolumeNode, noduleIndex):
@@ -1714,7 +1764,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param noduleIndex:  number of nodule (starting at 1)
         @return: vtkMRMLAnnotationHierarchyNode
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "NoduleModel")
+        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "NoduleModel_{}".format(noduleIndex))
 
     def setNthNoduleModelNode(self, vtkMRMLScalarVolumeNode, noduleIndex, modelNode):
         """
@@ -1723,7 +1773,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param modelNode: model node to set
         @return: True if everything went fine
         """
-        modelNode.SetName("NoduleModel")
+        modelNode.SetName("NoduleModel_{}".format(noduleIndex))
         return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, modelNode)
 
     def getNthSphereLabelmapNode(self, vtkMRMLScalarVolumeNode, noduleIndex, sphereRadius):
@@ -1733,9 +1783,10 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param noduleIndex:  number of nodule (starting at 1)
         @return: vtkMRMLAnnotationHierarchyNode
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "SphereLabelmap_r{0}".format(sphereRadius))
+        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
+                                                 "SphereLabelmap_r{0}_{1}".format(sphereRadius, noduleIndex))
 
-    def setNthSphereLabelmapNoduleModelNode(self, vtkMRMLScalarVolumeNode, noduleIndex, modelNode, sphereRadius):
+    def setNthSphereLabelmapNode(self, vtkMRMLScalarVolumeNode, noduleIndex, modelNode, sphereRadius):
         """
         @param vtkMRMLScalarVolumeNode: volume node
         @param noduleIndex: int number of nodule (starting at 1)
@@ -1743,7 +1794,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param sphereRadius: radius of the sphere
         @return: True if everything went fine
         """
-        modelNode.SetName("SphereLabelmap_r{0}".format(sphereRadius))
+        modelNode.SetName("SphereLabelmap_r{0}_{1}".format(sphereRadius, noduleIndex))
         return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, modelNode)
 
 
@@ -1772,6 +1823,42 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
 
     # def getCurrentFiducialsNode(self):
     #     return self.getNthCurrentFiducialsListNode(self.currentVolume.GetID())
+
+    def getAllFiducialNodes(self, currentVolume):
+        """
+        Get a list of Markup nodes for all the current nodules
+        @return: list of markup nodes
+        """
+        nodulesParent = self.getRootNodulesFolderSubjectHierarchyNode(currentVolume, createIfNotExist=False)
+        numberOfNodules = nodulesParent.GetNumberOfChildrenNodes()
+        fidNodes = []
+        for i in range(numberOfNodules):
+            # Get the node folder
+            node = nodulesParent.GetNthChildNode(i)
+            # Loop over the nodule folder children
+            for j in range(node.GetNumberOfChildrenNodes()):
+                if isinstance(node.GetNthChildNode(j).GetAssociatedNode(), slicer.vtkMRMLMarkupsFiducialNode):
+                    fidNodes.append(node.GetNthChildNode(j).GetAssociatedNode())
+        return fidNodes
+
+    def getAllRulerChildNodes(self, currentVolume):
+        """
+        Get a list of Ruler nodes for all the current nodules.
+        Please note that this method will return the parents (vtkMRMLAnnotationHierarchyNode), not the children
+        ruler nodes (vtkMRMLAnnotationRulerNodes)
+        @return: list of vtkMRMLAnnotationHierarchyNode nodes
+        """
+        nodulesParent = self.getRootNodulesFolderSubjectHierarchyNode(currentVolume, createIfNotExist=False)
+        numberOfNodules = nodulesParent.GetNumberOfChildrenNodes()
+        rulerNodes = []
+        for i in range(numberOfNodules):
+            # Get the node folder
+            node = nodulesParent.GetNthChildNode(i)
+            # Loop over the nodule folder children
+            for j in range(node.GetNumberOfChildrenNodes()):
+                if isinstance(node.GetNthChildNode(j).GetAssociatedNode(), slicer.vtkMRMLAnnotationHierarchyNode):
+                    rulerNodes.append(node.GetNthChildNode(j).GetAssociatedNode())
+        return rulerNodes
 
     def getNumberOfFiducials(self, volumeId, noduleIndex):
         """ Get the number of fiducials currently set for this volume
@@ -1897,7 +1984,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         labelmapArray = slicer.util.array(labelmapNodule.GetID())
         array[labelmapArray == 1] = 0
         # Save the result
-        self.setNthSphereLabelmapNoduleModelNode(currentVolume, noduleIndex, newSphereLabelmap)
+        self.setNthSphereLabelmapNode(currentVolume, noduleIndex, newSphereLabelmap)
         # self.spheresLabelmaps[radius] = array
         # Create a mrml labelmap node for sphere visualization purposes (this step could be skipped)
         # self.__createLabelmapSphereVolume__(array, radius)
