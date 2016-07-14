@@ -10,8 +10,8 @@ from . import *
 import FeatureExtractionLib
 
 class FeatureExtractionLogic:
-    def __init__(self, volumeNode, volumeNodeArray, labelmapROIArray, featureCategoriesKeys, featureKeys,
-                 additionalProgressbarDesc="", labelmapWholeVolumeArray = None):
+    def __init__(self, volumeNode, labelmapROIArray, featureCategoriesKeys, featureKeys, additionalProgressbarDesc="",
+                 labelmapWholeVolumeArray=None):
         """
         :param volumeNode: VTK intensities volume node
         :param volumeNodeArray: numpy array that represents volumeNode
@@ -25,7 +25,7 @@ class FeatureExtractionLogic:
         :return:
         """
         self.volumeNode = volumeNode
-        self.volumeNodeArray = volumeNodeArray
+        self.volumeNodeArray = slicer.util.array(self.volumeNode.GetID())
         self.labelmapROIArray = labelmapROIArray
         self.featureCategoriesKeys = featureCategoriesKeys
         self.featureKeys = featureKeys

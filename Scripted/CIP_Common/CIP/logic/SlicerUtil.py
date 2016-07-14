@@ -370,13 +370,50 @@ class SlicerUtil:
         return name
 
     @staticmethod
-    def get_case_name_from_labelmap(labelmap_name):
+    def getCaseNameFromLabelmap(labelmap_name):
         """ Get the case name from a labelmap
         @param labelmap_name:
         @return: case name
         """
         name = SlicerUtil.filterVolumeName(labelmap_name)
         return Util.get_case_name_from_labelmap(name)
+
+    @staticmethod
+    def getSubjectHierarchyNodeAssociatedToNode(nodeID):
+        """ Get the SubjectHierarchyNode associated to a node (if it exists).
+        None if the node is not found
+        @param nodeID:
+        @return:
+        """
+        if not nodeID:
+            return None
+        col = slicer.mrmlScene.GetNodesByClass("vtkMRMLSubjectHierarchyNode")
+        for i in range(col.GetNumberOfItems()):
+            if col.GetItemAsObject(i).GetAssociatedNodeID() == nodeID:
+                return col.GetItemAsObject(i)
+        return None
+
+    @staticmethod
+    def getNodesByClass(className, includeSubclasses=False):
+        """
+        Get a list with all the "className" nodes available in the scene.
+        Just a more convenient way of using the GetNodesByClass method
+        @param className: name of the class
+        @param includeSubclasses: include also the subclasses
+        @return:
+        """
+        l = []
+        col = slicer.mrmlScene.GetNodesByClass(className)
+        for i in range(col.GetNumberOfItems()):
+            item = col.GetItemAsObject(i)
+            if includeSubclasses:
+                # Always append (subclasses included)
+                l.append(item)
+            else:
+                # Make sure that the node is not a subclass
+                if item.GetClassName() == className:
+                    l.append(item)
+        return l
 
     @staticmethod
     def isExtensionMatch(labelmapNode, key):
@@ -421,11 +458,9 @@ class SlicerUtil:
         This is useful as a starting point to add rulers to the scene
         :return: "All Annotations" vtkMRMLAnnotationHierarchyNode
         """
-        rootHierarchyNode = slicer.util.getNode('All Annotations')
-        if rootHierarchyNode is None:
-            # Create root annotations node
-            rootHierarchyNode = slicer.modules.annotations.logic().GetActiveHierarchyNode()
-        return rootHierarchyNode
+        annotationsLogic = slicer.modules.annotations.logic()
+        rootHierarchyNodeId = annotationsLogic.GetTopLevelHierarchyNodeID()
+        return slicer.util.getNode(rootHierarchyNodeId)
 
     @staticmethod
     def __setMarkupsMode__(isFiducialsMode, fiducialClass, keepFiducialsModeOn):
