@@ -12,7 +12,7 @@ import os
 import platform
 import time
 
-class GeometryTopologyData:
+class GeometryTopologyData(object):
     # Coordinate System Constants
     UNKNOWN = 0
     IJK = 1
@@ -115,7 +115,8 @@ class GeometryTopologyData:
         if self.lps_to_ijk_transformation_matrix is not None:
             output += self.__write_transformation_matrix__(self.lps_to_ijk_transformation_matrix)
 
-        # Concatenate points
+        # Concatenate points (sort first)
+        self.points.sort(key=lambda p: p.__id__)
         points = "".join(map(lambda i:i.to_xml(), self.points))
         # Concatenate bounding boxes
         bounding_boxes = "".join(map(lambda i:i.to_xml(), self.bounding_boxes))
