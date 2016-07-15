@@ -83,8 +83,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.__featureClasses__ = None
         self.__storedColumnNames__ = None
         self.__analyzedSpheres__ = set()
+        self.__showRadiomics__ = False
 
-        # Timer for dynamic zooming
+        # Timer for dynamic zooming (DEPRECATED)
         self.timer = qt.QTimer()
         self.timer.setInterval(150)
         self.timer.timeout.connect(self.zoomToSeed)
@@ -325,7 +326,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # Show/Hide calipers
         self.showAxisButton = ctk.ctkPushButton()
         self.showAxisButton.checkable = True
-        self.showAxisButton.setIcon(qt.QIcon(":/Icons/AnnotationVisibility.png"))
+        self.showAxisButton.setIcon(SlicerUtil.getIcon("rulers.png"))
+        self.showAxisButton.setIconSize(qt.QSize(16, 16))
         self.showAxisButton.toolTip = "Set nodule axis manually"
         self.showAxisButton.setFixedWidth(25)
         self.noduleFrameLayout.addWidget(self.showAxisButton, noduleRow, 3)
@@ -532,18 +534,21 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.sphereRadiusFrameLayout.addWidget(self.otherRadiusShowSphereRadioButton, r, 2)
         self.showSpheresButtonGroup.addButton(self.otherRadiusShowSphereRadioButton, sp_id)
 
-        r += 1
-        # HeterogeneityCAD Apply Button
+        self.radiomicsLayout.addWidget(self.sphereRadiusFrame)
+
+        # Run Analysis
         self.runAnalysisButton = qt.QPushButton("Analyze!")
         self.runAnalysisButton.toolTip = "Run all the checked analysis"
         self.runAnalysisButton.setIcon(qt.QIcon("{0}/analyze.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.runAnalysisButton.setIconSize(qt.QSize(24, 24))
         self.runAnalysisButton.setFixedWidth(150)
         self.runAnalysisButton.setStyleSheet("font-weight:bold; font-size:12px; color: white; background-color:#274EE2")
-        # self.reportsFrame.layout().addWidget(self.runAnalysisButton)
-        self.sphereRadiusFrameLayout.addWidget(self.runAnalysisButton, r, 0)
 
-        self.radiomicsLayout.addWidget(self.sphereRadiusFrame)
+        self.analyzeAllNodulesCheckbox = qt.QCheckBox()
+        self.analyzeAllNodulesCheckbox.text = "Analyze all nodules"
+        self.analyzeAllNodulesCheckbox.setStyleSheet("margin:10px 0 0 8px; font-weight: bold")
+
+        self.radiomicsLayout.addRow(self.runAnalysisButton, self.analyzeAllNodulesCheckbox)
 
         # Reports widget
         self.analysisResultsCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -601,7 +606,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.removeNoduleButton.connect('clicked()', self.__onRemoveNoduleButtonClicked__)
         self.lesionTypeRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onLesionTypeChanged__)
         self.showSpheresButtonGroup.connect("buttonClicked(int)", self.__onShowSphereCheckboxClicked__)
-        self.runAnalysisButton.connect('clicked()', self.__onAnalyzeButtonClicked__)
+        self.runAnalysisButton.connect('clicked()', self.__onRunAnalysisButtonClicked__)
 
         # self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.forceSaveReport)
         self.evaluateSegmentationCheckbox.connect("clicked()", self.refreshGUI)
@@ -644,7 +649,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Level slider, Features Selection and radiomics section active after running the segmentation algorithm
         self.selectThresholdLabel.visible = self.distanceLevelSlider.visible = \
-            self.radiomicsCollapsibleButton.visible = \
             self.logic.getNthAlgorithmSegmentationNode(self.currentVolume, self.currentNoduleIndex) is not None
 
         # Show only sphere buttons for this working mode
@@ -662,9 +666,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             showOther = self.logic.getNthAlgorithmSegmentationNode(self.currentVolume, self.currentNoduleIndex) is not None
             self.otherRadiusCheckbox.setVisible(showOther)
             self.otherRadiusShowSphereRadioButton.setVisible(showOther)
+
         #self.progressBar.visible = self.distanceLevelSlider.enabled
         self.saveSeedsButton.visible = self.loadSeedsButton.visible = self.__evaluateSegmentationModeOn__
         self.reportsWidget.showSaveButton(self.__evaluateSegmentationModeOn__)
+        self.radiomicsCollapsibleButton.visible = self.__showRadiomics__
 
     def addNewNodule(self):
         """
@@ -734,18 +740,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             node.SetDisplayVisibility(False)
         annotationsLogic.SetActiveHierarchyNodeID(
             self.logic.getNthRulersListNode(self.currentVolume, noduleIndex).GetID())
-        # Show the rulers for this nodule
-        # rulerNodeParent = self.logic.getNthRulersListNode(self.currentVolume, noduleIndex)
-        # col = vtk.vtkCollection()
-        # rulerNodeParent.GetAllChildren(col)
-        # if col.GetNumberOfItems() == 0:
-        #     # The axis have not been placed yet.
-        #     self.showAxisButton.setVisible(False)
-        # else:
-        #     # Show axis and show axis button
-        #     self.showAxis(self.currentVolume, self.currentNoduleIndex, True)
-        #     self.showAxisButton.setVisible(True)
-        #     self.showAxisButton.setChecked(True)
 
         # Show Nodule Labelmap (if it exists)
         self._showCurrentLabelmap_()
@@ -759,6 +753,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             modelsLogic = slicer.modules.models.logic()
             modelsLogic.SetActiveModelNode(model)
             model.SetDisplayVisibility(True)
+
+        # Jump to the central seed (if it exist)
+        if markupNode.GetNumberOfMarkups() > 0:
+            pos = [0,0,0]
+            markupNode.GetNthFiducialPosition(0, pos)
+            SlicerUtil.jumpToSeed(pos)
 
 
     def setAddSeedsMode(self, enabled):
@@ -871,11 +871,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             qt.QMessageBox.warning(slicer.util.mainWindow(), "Select a volume",
                                    "Please select and segment an input volume")
             return
-        currentLabelmap = self.logic.getNthNoduleLabelmapNode(volume, noduleIndex)
-        if currentLabelmap is None:
-            qt.QMessageBox.warning(slicer.util.mainWindow(), "Nodule not segmented",
-                                   "The current nodule has not being segmented yet")
-            return
+        # currentLabelmap = self.logic.getNthNoduleLabelmapNode(volume, noduleIndex)
+        # if currentLabelmap is None:
+        #     qt.QMessageBox.warning(slicer.util.mainWindow(), "Nodule not segmented",
+        #                            "The current nodule has not being segmented yet")
+        #     return
         if len(self.selectedFeatureKeys) == 0:
             qt.QMessageBox.information(slicer.util.mainWindow(), "Select a feature",
                                        "Please select at least one feature from the menu to calculate")
@@ -1123,18 +1123,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # Clean fiducials area
         self.__removeFiducialsFrames__()
         self.nodulesComboBox.clear()
-        # if self.logic.currentVolume is not None:
-        #     # TODO: replace this with the subject Hierarchy node
-        #     pass
-            # fidNode = self.logic.getNthFiducialsListNode(self.logic.currentVolume.GetID())
-            # if fidNode is not None:
-            #     slicer.mrmlScene.RemoveNode(fidNode)
-        # if self.logic.currentLabelmap is not None:
-        #     slicer.mrmlScene.RemoveNode(self.logic.currentLabelmap)
-        # if self.logic.currentModelNode is not None:
-        #     slicer.mrmlScene.RemoveNode(self.logic.currentModelNode)
-        # if self.logic.cliOutputScalarNode is not None:
-        #     slicer.mrmlScene.RemoveNode(self.logic.cliOutputScalarNode)
 
         # Uncheck MIP
         self.enhanceVisualizationCheckbox.setChecked(False)
@@ -1144,11 +1132,13 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.showAxisButton.setChecked(False)
 
         # Free resources
-        del self.logic
-        # Recreate logic
-        self.logic = CIP_LesionModelLogic()
-        self.logic.printTiming = self.__printTimeCost__
-        self.__analyzedSpheres__.clear()
+        # del self.logic
+        # # Recreate logic
+        # self.logic = CIP_LesionModelLogic()
+        # self.logic.printTiming = self.__printTimeCost__
+        # self.__analyzedSpheres__.clear()
+
+        self.__showRadiomics__ = False
         self.refreshGUI()
 
     ############
@@ -1182,6 +1172,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.maximumRadiusSpinbox.value = self.logic.getMaxRadius(self.currentVolume)
             # Disable volumes combobox so that the user cannot switch between different volumes
             self.inputVolumeSelector.enabled = False
+
         # self.logic = CIP_LesionModelLogic()
         # self.logic.printTiming = self.__printTimeCost__
         # elif self.timer.isActive():
@@ -1264,11 +1255,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         fidNode = self.logic.getNthFiducialsListNode(volume, noduleIndex)
         coordsList = []
         for i in range(fidNode.GetNumberOfMarkups()):
-            if fidNode.GetNthFiducialVisibility(i):
-                coords = [0,0,0]
-                fidNode.GetNthFiducialPosition(i, coords)
-                coords = Util.ras_to_lps(coords)
-                coordsList.append(coords)
+            coords = [0,0,0]
+            fidNode.GetNthFiducialPosition(i, coords)
+            coords = Util.ras_to_lps(coords)
+            coordsList.append(coords)
         if isTiming:
             d = self.analysisResultsTiming
             d[keyName]["CaseId"] = keyName + "_timing"
@@ -1433,6 +1423,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 break
         SlicerUtil.jumpToSeed(coords)
         self.segmentButton.setEnabled(True)
+
+        # Show the radiomics section as soon as ANY nodule has been segmented, as
+        # the user has the option to analyze all nodules in batch mode
+        self.__showRadiomics__ = True
+
         self.refreshGUI()
 
         # Change the layout to a regular 3D view (without MIP)
@@ -1466,8 +1461,16 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def __onSaveTimeCostCheckboxClicked__(self, checked):
         self.logic.printTiming = (checked == 2)
 
-    def __onAnalyzeButtonClicked__(self):
-        self.runAnalysis(self.currentVolume, self.currentNoduleIndex)
+    def __onRunAnalysisButtonClicked__(self):
+        if self.analyzeAllNodulesCheckbox.isChecked():
+            if qt.QMessageBox.question(slicer.util.mainWindow(), "Analyze all nodules",
+                                "Are you sure you want to analyze ALL the available nodules?",
+                                qt.QMessageBox.Yes | qt.QMessageBox.No) == qt.QMessageBox.Yes:
+                for nodule in self.logic.getAllNoduleKeys(self.currentVolume):
+                    if self.logic.getNthNoduleLabelmapNode(self.currentVolume, nodule) is not None:
+                        self.runAnalysis(self.currentVolume, nodule)
+        else:
+            self.runAnalysis(self.currentVolume, self.currentNoduleIndex)
 
     def __onRemoveNoduleButtonClicked__(self):
         if  qt.QMessageBox.question(slicer.util.mainWindow(), "Remove nodule?",
