@@ -321,21 +321,21 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
 
         #####
         # Case navigator
-        if SlicerUtil.isSlicerACILLoaded():
-            caseNavigatorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
-            caseNavigatorAreaCollapsibleButton.text = "Case navigator"
-            self.layout.addWidget(caseNavigatorAreaCollapsibleButton, 0x0020)
-            # caseNavigatorLayout = qt.QVBoxLayout(caseNavigatorAreaCollapsibleButton)
-
-            # Add a case list navigator
-            from ACIL.ui import CaseNavigatorWidget
-
-            self.caseNavigatorWidget = CaseNavigatorWidget(self.moduleName, caseNavigatorAreaCollapsibleButton)
-            self.caseNavigatorWidget.setup()
-            #self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_PRE_VOLUME_LOAD,
-                                                  # self.__onPreVolumeLoad__)
-
-
+        # if SlicerUtil.isSlicerACILLoaded():
+        #     caseNavigatorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
+        #     caseNavigatorAreaCollapsibleButton.text = "Case navigator"
+        #     self.layout.addWidget(caseNavigatorAreaCollapsibleButton, 0x0020)
+        #     # caseNavigatorLayout = qt.QVBoxLayout(caseNavigatorAreaCollapsibleButton)
+        #
+        #     # Add a case list navigator
+        #     from ACIL.ui import CaseNavigatorWidget
+        #
+        #     self.caseNavigatorWidget = CaseNavigatorWidget(self.moduleName, caseNavigatorAreaCollapsibleButton)
+        #     self.caseNavigatorWidget.setup()
+        #     #self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_PRE_VOLUME_LOAD,
+        #                                           # self.__onPreVolumeLoad__)
+        #
+        #
 
 
         # Connections
@@ -782,7 +782,7 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
         @param event:
         """
         centerRAS=self.coordCenter(self.currentNoduleIndex)
-        axisWidth,axisHeight, axisDepth = self.lesionProgressLogic.drawAxes(self.currentVolume, self.currentNoduleIndex, centerRAS, self.onRefreshModel(vtk.vtkCommand.ModifiedEvent))
+        axisWidth,axisHeight, axisDepth = self.lesionProgressLogic.drawAxes(self.currentVolume, self.currentNoduleIndex, centerRAS, self.onRulerModified)
 
 
         SlicerUtil.setFiducialsCursorMode(False)
@@ -828,7 +828,14 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
                  # Remove the item from the combobox
                 self.nodulesComboBox.removeItem(self.nodulesComboBox.currentIndex)
 
-    def onRefreshModel(self,event):  # width,height,depth):
+
+    def onRulerModified(self, object, event):
+        print "Ruler modified"
+        print event
+        print object
+
+
+    def onRefreshModel(self, event):  # width,height,depth):
         #self.modifyModel()
         pass
 
@@ -863,6 +870,7 @@ class CIP_LesionProgressLogic(ScriptedLoadableModuleLogic):
     def __init__(self):                                        # workingMode=WORKING_MODE_HUMAN):
         ScriptedLoadableModuleLogic.__init__(self)
         self.lesionModelLogic = CIP_LesionModelLogic()
+
 
 
     def drawAxes(self,vtkMRMLScalarVolumeNode, noduleIndex, coordCenter, callbackWhenRulerModified):
