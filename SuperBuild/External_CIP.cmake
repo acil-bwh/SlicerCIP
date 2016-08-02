@@ -24,8 +24,11 @@ endif()
 #   endif()
 # endif()
 
-if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
+# Get the Python that Slicer is using
+get_filename_component(SLICER_PARENT_DIR ${Slicer_DIR} PATH)
+set (SLICER_PYTHON ${SLICER_PARENT_DIR}/python-install)
 
+if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
   if(NOT DEFINED git_protocol)
     set(git_protocol "git")
   endif()
@@ -69,9 +72,7 @@ ExternalProject_Add(${proj}
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DBUILD_TESTING:BOOL=OFF
       -DCMAKE_CXX_FLAGS:STRING=${CIP_CMAKE_CXX_FLAGS}
-      -DUSE_CYTHON:BOOL=OFF
-      # Temporal to FIX bug. Remove when the name is shorter
-      -DBUILD_GENERATEREGIONHISTOGRAMANDPARENCHYMAPHENOTYPES:BOOL=OFF
+      -DCIP_PYTHON_DIR:PATH=${SLICER_PYTHON}
 
     #CONFIGURE_COMMAND ${CMAKE_COMMAND}
     #-E echo
