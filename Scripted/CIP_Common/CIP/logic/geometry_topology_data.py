@@ -322,7 +322,7 @@ class Structure(object):
         timestamp = xml_node.find("Timestamp")
         if timestamp is not None:
             timestamp = timestamp.text
-        user_name = xml_node.find("Username")
+        user_name = xml_node.find("UserName")
         if user_name is not None:
             user_name = user_name.text
         machine_name = xml_node.find("MachineName")

@@ -160,14 +160,32 @@ def upload_to_MAD(input_folder):
     """ Upload all the xml files to the corresponding MAD folder
     @param input_folder:
     """
+    total = ""
     for file_name in os.listdir(input_folder):
         if file_name.endswith("_parenchymaTraining.xml"):
-            s = "scp {} copd@mad-replicated1.research.partners.org:Processed/COPDGene/{}/{}".format(
+            study = file_name.split("_")[-2]
+            if study == "COPD":
+                study = "COPDGene"
+            elif study.startswith("DECAMP"):
+                study = "DECAMP"
+            s = "scp {} copd@mad-replicated1.research.partners.org:Processed/{}/{}/{}".format(
                 os.path.join(input_folder, file_name),
+                study,
                 file_name.split("_")[0],
                 file_name.replace("_parenchymaTraining.xml", "")
             )
 
             print s
-# upload_to_MAD("/Data/jonieva/tempdata/George/")
+            total += s + "\n"
 
+    return total
+
+s = upload_to_MAD("/Users/jonieva/Projects/acil/parenchymaTraining/")
+with open("/Users/jonieva/Desktop/upload.sh", 'wb') as f:
+    f.write(s)
+
+# with open ("/Users/jonieva/Desktop/modified.txt", 'r') as f:
+#     l = f.readlines()
+#
+# for i in range(len(l)):
+#     l[i] = l[i].replace("parenchymaTraining/", "").strip()

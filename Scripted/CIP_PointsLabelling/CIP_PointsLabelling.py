@@ -172,6 +172,7 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
             self.caseNavigatorWidget.setup()
             # Listen for the event of loading a new labelmap
             # self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_LABELMAP_LOADED, self.__onNewILDClassificationLabelmapLoaded__)
+            self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_BUNDLE_CASE_FINISHED, self.__onFinishCaseBundleLoad__)
 
         self.layout.addStretch()
 
@@ -274,13 +275,6 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
         if self.currentVolumeLoaded is not None and newVolumeNode != self.currentVolumeLoaded:
             # Remove previously existing node
             self.logic.removeMarkupsAndNode(self.currentVolumeLoaded)
-        if self.caseNavigatorWidget is not None and newVolumeNode is not None:
-            # Try to load a previously existing fiducials file downloaded with the ACIL case navigator
-            fiducialsFileName = newVolumeNode.GetName() + Util.file_conventions_extensions[self.logic._xmlFileExtensionKey_]
-            fiducialsNavigatorFilePath = self.caseNavigatorWidget.logic.getFilePath(fiducialsFileName)
-            if os.path.exists(fiducialsNavigatorFilePath):
-                # The fiducials file was downloaded with the navigator
-                self.logic.loadFiducialsXml(newVolumeNode, fiducialsNavigatorFilePath)
 
         if newVolumeNode is not None:
             SlicerUtil.setActiveVolumeIds(newVolumeNode.GetID())
@@ -343,6 +337,20 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
 
     def __onCurrentNodeChanged__(self, volumeNode):
         self._checkNewVolume_(volumeNode)
+
+    def __onFinishCaseBundleLoad__(self, result, id, ids, additionalFilePaths):
+        """
+        Event triggered after a volume and the additional files have been loaded for a case.
+        In this case, it is important to load a previously existing xml file
+        @param result:
+        @param id:
+        @param ids:
+        @param additionalFilePaths:
+        @return:
+        """
+        if result == Util.OK and additionalFilePaths and os.path.exists(additionalFilePaths[0]):
+            # Try to load a previously existing fiducials file downloaded with the ACIL case navigator
+            self.logic.loadFiducialsXml(slicer.util.getNode(id), additionalFilePaths[0])
 
     def __onRemoveLastFiducialButtonClicked__(self):
        self.logic.removeLastFiducial()
