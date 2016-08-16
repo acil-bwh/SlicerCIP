@@ -30,10 +30,13 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
     set(git_protocol "git")
   endif()
   message(STATUS ${VTK_DIR})
-ExternalProject_Add(${proj}
+
+  get_filename_component(Slicer_PYTHON_DIR ${SlicerExecutionModel_DIR} PATH)
+
+  ExternalProject_Add(${proj}
     ${${proj}_EP_ARGS}
     GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
-    GIT_TAG develop # Develop
+    GIT_TAG develop
     SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
     #DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
     #SOURCE_DIR ../CIP
@@ -69,9 +72,7 @@ ExternalProject_Add(${proj}
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DBUILD_TESTING:BOOL=OFF
       -DCMAKE_CXX_FLAGS:STRING=${CIP_CMAKE_CXX_FLAGS}
-      -DUSE_CYTHON:BOOL=OFF
-      # Temporal to FIX bug. Remove when the name is shorter
-      -DBUILD_GENERATEREGIONHISTOGRAMANDPARENCHYMAPHENOTYPES:BOOL=OFF
+      -DCIP_PYTHON_DIR:PATH=${Slicer_PYTHON_DIR}/python-install
 
     #CONFIGURE_COMMAND ${CMAKE_COMMAND}
     #-E echo
