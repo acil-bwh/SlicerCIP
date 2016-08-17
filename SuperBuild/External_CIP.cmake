@@ -31,8 +31,6 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
   endif()
   message(STATUS ${VTK_DIR})
 
-  get_filename_component(Slicer_PYTHON_DIR ${SlicerExecutionModel_DIR} PATH)
-
   ExternalProject_Add(${proj}
     ${${proj}_EP_ARGS}
     GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
@@ -53,8 +51,9 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DBUILD_GENERATEMODEL:BOOL=OFF
       -DBUILD_GENERATESIMPLELUNGMASK:BOOL=OFF # temporarily off due to lack of VtkGlue
       -DBUILD_ComputeAirwayWallFromParticles:BOOL=OFF # temporarily off due to lack of VtkGlue
-      -DCIP_BUILD_TESTING_PYTHON:BOOL=OFF # to exclude cip_python from CIP build
       -DSLICER_PYTHON_CMD:FILEPATH=${PYTHON_EXECUTABLE}
+      -DCIP_PYTHON_DIR:PATH=${PYTHON_EXECUTABLE}    # To parse the convention files
+      -DCIP_BUILD_TESTING_PYTHON:BOOL=OFF
       -DSlicerExecutionModel_DIR:STRING=${SlicerExecutionModel_DIR}
       -DSlicer_BUILD_CLI:BOOL=ON
       -DSlicer_BUILD_CLI_SUPPORT:BOOL=ON
@@ -72,7 +71,7 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DBUILD_TESTING:BOOL=OFF
       -DCMAKE_CXX_FLAGS:STRING=${CIP_CMAKE_CXX_FLAGS}
-      -DCIP_PYTHON_DIR:PATH=${Slicer_PYTHON_DIR}/python-install
+
 
     #CONFIGURE_COMMAND ${CMAKE_COMMAND}
     #-E echo
