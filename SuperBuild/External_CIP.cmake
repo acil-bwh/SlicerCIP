@@ -52,7 +52,7 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DBUILD_GENERATESIMPLELUNGMASK:BOOL=OFF # temporarily off due to lack of VtkGlue
       -DBUILD_ComputeAirwayWallFromParticles:BOOL=OFF # temporarily off due to lack of VtkGlue
       -DSLICER_PYTHON_CMD:FILEPATH=${PYTHON_EXECUTABLE}
-      -DCIP_PYTHON_DIR:PATH=${PYTHON_EXECUTABLE}    # To parse the convention files
+      -DCIP_PYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXECUTABLE}    # To parse the convention files
       -DCIP_BUILD_TESTING_PYTHON:BOOL=OFF
       -DSlicerExecutionModel_DIR:STRING=${SlicerExecutionModel_DIR}
       -DSlicer_BUILD_CLI:BOOL=ON
