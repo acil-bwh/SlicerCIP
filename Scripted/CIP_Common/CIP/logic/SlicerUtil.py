@@ -672,6 +672,16 @@ class SlicerUtil:
             return None
         except:
             return None
+    @staticmethod
+    def is3DViewVisible():
+        """
+        True if there is at least a 3D view currently visible
+        @return: Boolean
+        """
+        lm = slicer.app.layoutManager()
+        if lm.threeDViewCount == 0:
+            return False
+        return lm.threeDWidget(0).visible
 
     @staticmethod
     def takeSnapshot(fullFileName, type=-1):

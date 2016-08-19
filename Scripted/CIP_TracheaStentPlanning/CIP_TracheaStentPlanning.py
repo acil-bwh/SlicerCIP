@@ -600,8 +600,8 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.__refreshMeasurementsTables__()
         self.__refreshUI__()
         # Change to conventional layout if 3D view is not visible to show the 3D model
-        if not SlicerUtil.is3DViewVisible():
-            SlicerUtil.changeLayout(1)
+        # if not SlicerUtil.is3DViewVisible():
+        #     SlicerUtil.changeLayout(1)
 
     def __onApplyThreshold__(self, val):
         """ Fine tuning of the segmentation
@@ -624,7 +624,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.__refreshUI__()
 
 
-#
+
 # CIP_TracheaStentPlanningLogic
 #
 class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
