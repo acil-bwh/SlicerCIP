@@ -1,6 +1,7 @@
 import sys
 import os
 import CIP.logic.geometry_topology_data as gtd
+import glob
 
 sys.path.append('/Users/jonieva/Projects/SlicerCIP/Scripted/CIP_ParenchymaSubtypeTraining')
 sys.path.append('/Users/jonieva/Projects/SlicerCIP/Scripted/CIP_Common')
@@ -24,10 +25,9 @@ def get_points_type(root_folder, study_name, typeId):
     subtypes = s.getSubtypes(typeId)
     subtypes[typeId] = 0
 
-    print "Subtypes: ", subtypes
-
     for file_name in os.listdir(root_folder):
         if study_name in file_name:
+            print ("Analyzing file " + file_name)
             geom = gtd.GeometryTopologyData.from_xml_file(os.path.join(root_folder, file_name))
             p = gtd.Point
             for point in geom.points:
@@ -120,7 +120,6 @@ def merge_directory(d1, d2, dout):
     @return:
     """
     # Get the common files
-    import glob
     import filecmp
     import shutil
 
@@ -152,14 +151,83 @@ def merge_directory(d1, d2, dout):
     print "Total number of merged files: {}. New files: {}".format(merged, len(snew))
 
 
+def remove_points_type(root_folder, types_delete, types_replace=[], study=None):
+    """
+    Substitute all the points of one type with another type.
+    If types_replace is empty, we will delete the points
+    @param types_delete: list of types to delete
+    @param types_replace:
+    @param study: filter by this study
+    @return:
+    """
+    for file_name in glob.glob(root_folder + "/*_parenchymaTraining.xml"):
+        if study is None or study in file_name:
+            geom = gtd.GeometryTopologyData.from_xml_file(file_name)
+            points = []
+            changes_made = False
+            for p in geom.points:
+                remove_point = False
+                for i in range(len(types_delete)):
+                    if p.chest_type == types_delete[i]:
+                        if len(types_replace) >= i + 1:
+                            # Replace the point
+                            p.chest_type = types_replace[i]
+                            changes_made = True
+                        else:
+                            # Delete the point.
+                            print "Removing point %i" % p.id
+                            remove_point = True
+                            changes_made = True
+                        break
+                if not remove_point:
+                    points.append(p)
+
+            if changes_made:
+                # Overwrite the file
+                geom.points = points
+                print("Overwriting file " + file_name)
+                geom.to_xml_file(file_name)
+            else:
+                print ("No changes in file " + file_name)
+
+
+
+def upload_to_MAD(input_folder):
+    """ Upload all the xml files to the corresponding MAD folder
+    @param input_folder:
+    """
+    total = ""
+    for file_name in os.listdir(input_folder):
+        if file_name.endswith("_parenchymaTraining.xml"):
+            study = file_name.split("_")[-2]
+            if study == "COPD":
+                study = "COPDGene"
+            elif study.startswith("DECAMP"):
+                study = "DECAMP"
+            s = "scp {} copd@mad-replicated1.research.partners.org:Processed/{}/{}/{}".format(
+                os.path.join(input_folder, file_name),
+                study,
+                file_name.split("_")[0],
+                file_name.replace("_parenchymaTraining.xml", "")
+            )
+
+            print s
+            total += s + "\n"
+
+    return total
+
+
+
 if  __name__ == "__main__":
-    # patients, points = get_points_type("/Users/jonieva/Projects/acil/parenchymaTraining/", "DECAMP", 2)
-    # print points
-    # print patients
-    # print len(patients)
-
     root_folder = "/Users/jonieva/Projects/acil/parenchymaTraining/"
-    #root_folder = "/Data/jonieva/tempdata/tmp/"
-    dups = remove_duplicated_points(root_folder)
-    print dups
+    #patients, points = get_points_type(root_folder, "PLuSS", 37)
+    #print points
+    #print patients
+    # print len(patients)
+    #remove_points_type(root_folder, [37], study="PLuSS")
 
+    #root_folder = "/Data/jonieva/tempdata/tmp/"
+    #dups = remove_duplicated_points(root_folder)
+
+    input_folder = "/Users/jonieva/tmp/upload/"
+    upload_to_MAD(input_folder)
