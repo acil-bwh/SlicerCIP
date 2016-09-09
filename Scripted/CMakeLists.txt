@@ -7,6 +7,7 @@ set(modules
   CIP_ParenchymaAnalysis
   CIP_Common
   CIP_BodyComposition
+  CIP_CalciumScoring
   CIP_LesionModel
   CIP_MIPViewer
   CIP_PAARatio
