@@ -699,6 +699,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         self.isup2 = 1
         self.isup3 = 0
         self.optim_params=dict()
+        self.currentCentroids=dict()
 
 
     def __initVars__(self):
@@ -1184,7 +1185,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         c2 = centroids[1]
         c3 = centroids[2]
         arguments = c1, c2, c3, trachea
-
+        self.currentCentroids=c1,c2,c3
         cons2 = ({'type': 'eq',
                   'fun': lambda parameters: np.array(
                       (c2[0] - c1[0]) * (parameters[2] - c1[1]) * (parameters[7] - c2[2]) + (c2[1] - c1[1]) * (
@@ -1241,7 +1242,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
                  )
 
         res2 = scipy_opt.minimize(self.minimum, parameters, args=(arguments), constraints=cons2, method='SLSQP',
-                                  options={'disp': True, 'ftol': 0.01, 'maxiter': 150})
+                                  options={'disp': True, 'ftol': 0.01, 'maxiter': 150}, callback=self.myfunc)
 
         # view=self.visualizacion(res2.x, c1,c2,c3,trachea)
         pm1=[res2.x[1], res2.x[2], res2.x[3]]
@@ -1253,6 +1254,21 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         print radiusVector
         self.updateCylindersRadius(self.STENT_Y, radiusVector[0],radiusVector[1],radiusVector[2])
         return pointsVector, radiusVector
+
+    def myfunc(self, params):
+        print "COPOOOOON ITERAAAAAAAATION"
+        print   params
+        pm1 = [params[1], params[2], params[3]]
+        pm2 = [params[5], params[6], params[7]]
+        pm3 = [params[9], params[10], params[11]]
+        #pointsVector = [c1, pm1, c2, pm2, c3, pm3]
+        radiusVector = [params[0], params[4], params[8]]
+        print radiusVector
+        pointsVector=[self.currentCentroids[0], pm1, self.currentCentroids[1],pm2, self.currentCentroids[2], pm3]
+        self.updateCylindersFromOptimizationParameters(self.STENT_Y, pointsVector, radiusVector)
+
+        slicer.app.processEvents()
+        SlicerUtil.refreshActiveWindows()
 
     def cylinderSurfaceArea(self, norm_vector, point, tracheaFilter):
         """
