@@ -68,7 +68,8 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             self.parent.show()
 
         self.calcinationType = 0
-        self.Threshold = 10.0
+        self.ThresholdMin = 100.0
+        self.ThresholdMax = 500.0
         self.croppedVolumeNode = slicer.vtkMRMLScalarVolumeNode()
         self.threshImage = vtk.vtkImageData()
         
@@ -113,12 +114,14 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         parametersFormLayout.addRow("Calcination Region", self.calcinationTypeBox)
         self.calcinationTypeBox.connect("currentIndexChanged(int)", self.onTypeChanged)
 
-        self.ThresholdSlider = ctk.ctkSliderWidget()
-        #self.ThresholdSlider.setMinimum(-100)
-        #self.ThresholdSlider.setMaximum(200)
-        self.ThresholdSlider.setValue(self.Threshold)
-        parametersFormLayout.addRow("Threshold Value", self.ThresholdSlider)
-        self.ThresholdSlider.connect("valueChanged(double)", self.onThresholdChanged)
+        self.ThresholdRange = ctk.ctkRangeWidget()
+        self.ThresholdRange.minimum = 0
+        self.ThresholdRange.maximum = 600
+        self.ThresholdRange.setMinimumValue(self.ThresholdMin)
+        self.ThresholdRange.setMaximumValue(self.ThresholdMax)
+        parametersFormLayout.addRow("Threshold Value", self.ThresholdRange)
+        self.ThresholdRange.connect("minimumValueChanged(double)", self.onThresholdMinChanged)
+        self.ThresholdRange.connect("maximumValueChanged(double)", self.onThresholdMaxChanged)
 
         #
         # ROI Area
@@ -178,8 +181,12 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             self.roiNode.SetDisplayVisibility(0)
         self.createModels()
 
-    def onThresholdChanged(self, value):
-        self.Threshold = value
+    def onThresholdMinChanged(self, value):
+        self.ThresholdMin = value
+        self.createModels()
+
+    def onThresholdMaxChanged(self, value):
+        self.ThresholdMax = value
         self.createModels()
 
     def onROIChangedEvent(self, observee, event):
@@ -191,7 +198,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
 
             slicer.vtkSlicerCropVolumeLogic().CropVoxelBased(self.roiNode, self.volumeNode, self.croppedNode)
             cii= sitk.ReadImage( sitkUtils.GetSlicerITKReadWriteAddress(self.croppedNode.GetName()))
-            ti=sitk.BinaryThreshold(cii,self.Threshold, 2000, 1, 0)
+            ti=sitk.BinaryThreshold(cii,self.ThresholdMin, self.ThresholdMax, 1, 0)
             cci=sitk.ConnectedComponent(ti, True)
             if cci.GetPixelID() != sitk.sitkInt16:
                 cci = sitk.Cast( cci, sitk.sitkInt16 )
