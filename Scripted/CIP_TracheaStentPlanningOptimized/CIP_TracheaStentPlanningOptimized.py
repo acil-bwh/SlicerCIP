@@ -211,6 +211,9 @@ class CIP_TracheaStentPlanningOptimizedWidget(ScriptedLoadableModuleWidget):
             rbitem = qt.QRadioButton(key)
             self.segmentTypesRadioButtonGroup.addButton(rbitem, id)
             self.fiducialTypesLayout.addWidget(rbitem)
+            if key == "Middle":
+                rbitem.visible = False
+
         self.segmentTypesRadioButtonGroup.buttons()[0].setChecked(True)
 
         #
@@ -241,7 +244,7 @@ class CIP_TracheaStentPlanningOptimizedWidget(ScriptedLoadableModuleWidget):
         self.thresholdLevelSlider.setTickPosition(2)
         self.thresholdLevelSlider.minimum = 1
         self.thresholdLevelSlider.maximum = 200
-        self.thresholdLevelSlider.setValue(100)
+        self.thresholdLevelSlider.setValue(150)
         self.thresholdLevelSlider.setSingleStep(1)
         self.thresholdLevelSlider.enabled = True
         self.thresholdLevelSlider.setTracking(False)
@@ -507,7 +510,7 @@ class CIP_TracheaStentPlanningOptimizedWidget(ScriptedLoadableModuleWidget):
         :return:
         """
         # self.__updateFiducialsState__(fiducialsNode)
-        self.__moveForwardStentType__()
+        #self.__moveForwardStentType__()
         self.removeInvisibleFiducialsTimer.start()
         if self.isSegmentationExecuted:
             self.__refreshMeasurementsTables__()
@@ -598,12 +601,37 @@ class CIP_TracheaStentPlanningOptimizedWidget(ScriptedLoadableModuleWidget):
     def __onRunSegmentationButton__(self):
         self.thresholdLevelSlider.setValue(100)
         self.logic.runSegmentationPipeline(self.currentStentType)
+
+
         self.isSegmentationExecuted = True
+
+        self.updateSliders()
+
         self.__refreshMeasurementsTables__()
         self.__refreshUI__()
         # Change to conventional layout if 3D view is not visible to show the 3D model
         # if not SlicerUtil.is3DViewVisible():
         #     SlicerUtil.changeLayout(1)
+
+    def updateSliders(self):
+        print "DEBUG: aqui actualiza los valores de los radios"
+        self.radiusLevelSlider1.blockSignals(True)
+        print self.radiusLevelSlider1.value
+        self.radiusLevelSlider1.setValue(self.logic.optim_params[1][0]*10)
+        print self.radiusLevelSlider1.value
+        self.radiusLevelSlider1.blockSignals(False)
+
+        self.radiusLevelSlider2.blockSignals(True)
+        print self.radiusLevelSlider2.value
+        self.radiusLevelSlider2.setValue(self.logic.optim_params[1][1]*10)
+        print self.radiusLevelSlider2.value
+        self.radiusLevelSlider2.blockSignals(False)
+
+        self.radiusLevelSlider3.blockSignals(True)
+        print self.radiusLevelSlider3.value
+        self.radiusLevelSlider3.setValue(self.logic.optim_params[1][2]*10)
+        print self.radiusLevelSlider3.value
+        self.radiusLevelSlider3.blockSignals(False)
 
     def __onApplyThreshold__(self, val):
         """ Fine tuning of the segmentation
@@ -614,6 +642,12 @@ class CIP_TracheaStentPlanningOptimizedWidget(ScriptedLoadableModuleWidget):
             self.logic.tracheaLabelmapThreshold(val / 100.0)
 
     def __onStentRadiusChange__(self):
+        #if self.radiusLevelSlider1.value==50 and self.radiusLevelSlider2.value==50 and self.radiusLevelSlider3.value==50:
+           # print "DEBUG: esta entrando aqui"
+           # self.radiusLevelSlider1.setValue(80)
+           # self.radiusLevelSlider2.setValue(80)
+           # self.radiusLevelSlider3.setValue(80)
+            #print self.radiusLevelSlider1.value
         self.logic.updateCylindersRadius(self.currentStentType,
                                          self.radiusLevelSlider1.value / 10.0,
                                          self.radiusLevelSlider2.value / 10.0,
@@ -664,6 +698,8 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         # Variables needed by the optimization algorithm
         self.isup2 = 1
         self.isup3 = 0
+        self.optim_params=dict()
+
 
     def __initVars__(self):
         """ Init all the variables that are going to be used to perform all the operations
@@ -671,6 +707,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         """
         self.currentVolumeId = None  # Active volume
         self.currentStentType = self.STENT_Y
+
 
         # Fiducial nodes
         self.currentFiducialsListNodes = {self.STENT_Y: None, self.STENT_T: None}  # Dictionary of fiducial nodes
@@ -775,6 +812,12 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
                     displayNode = fiducialsNode.GetDisplayNode()
                     displayNode.SetSelectedColor(self.getFiducialListColor(stentType))
                     displayNode.SetGlyphScale(2)
+
+                    if fiducialType == "Middle":
+                        fiducialsNode.AddFiducial(0,0,0)
+                        displayNode.SetOpacity(0)
+
+
                     fiducialsNode.AddObserver("ModifiedEvent", onNodeModifiedCallback)
                     fiducialsNode.AddObserver(fiducialsNode.MarkupAddedEvent, onMarkupAddedCallback)
                 # else:
@@ -849,17 +892,17 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         pos1 = Util.ras_to_ijk(activeNode, f1, convert_to_int=True)
         pos2 = Util.ras_to_ijk(activeNode, f2, convert_to_int=True)
         # Get distance (use RAS coordinates to have in mind spacing)
-        dd01 = (
+        dd01 = 1.5*(
                    (f0[0] - f1[0]) ** 2
                    + (f0[1] - f1[1]) ** 2
                    + (f0[2] - f1[2]) ** 2
                ) ** (1.0 / 2)
-        dd02 = (
+        dd02 = 1.5*(
                    (f0[0] - f2[0]) ** 2
                    + (f0[1] - f2[1]) ** 2
                    + (f0[2] - f2[2]) ** 2
                ) ** (1.0 / 2)
-        dd12 = (
+        dd12 = 1.5*(
                    (f2[0] - f1[0]) ** 2
                    + (f2[1] - f1[1]) ** 2
                    + (f2[2] - f1[2]) ** 2
@@ -1011,6 +1054,8 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         fiducialNodes[2].GetNthFiducialPosition(0, left)
         fiducialNodes[3].GetNthFiducialPosition(0, right)
 
+
+
         # Cylinder 0 (vertical)
         line_top_middle = vtk.vtkLineSource()
         line_top_middle.SetPoint1(top)
@@ -1063,8 +1108,10 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         self.currentTracheaModel.ApplyTransformMatrix(transformMatrix)
 
         # Automatic optimization
-        optim_params = self.automaticOptimizationYStent(top, left, right)
-        self.updateCylindersFromOptimizationParameters(self.STENT_Y,optim_params[0],optim_params[1])
+        self.optim_params = self.automaticOptimizationYStent(top, left, right)
+        self.updateCylindersFromOptimizationParameters(self.STENT_Y,self.optim_params[0],self.optim_params[1])
+
+
 
     def automaticOptimizationYStent(self,p1, p2,p3):
         """
@@ -1101,6 +1148,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
             centr = self.centroide(self.polygon(inter))
             print ("DEBUG: automaticOptimizationYStent. Centroid: ", centr)
             rad = self.radius(centr, inter)
+            #rad=self.radius2(self.area(self.polygon(inter),normal_vector.x))
             print ("DEBUG: automaticOptimizationYStent. Radius: ", rad)
             norm = (normal_vector.x)
             centroids.append(centr)
@@ -1201,6 +1249,9 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         pm3=[res2.x[9], res2.x[10],res2.x[11]]
         pointsVector=[c1,pm1,c2,pm2,c3,pm3]
         radiusVector=[res2.x[0], res2.x[4], res2.x[8]]
+        print pointsVector
+        print radiusVector
+        self.updateCylindersRadius(self.STENT_Y, radiusVector[0],radiusVector[1],radiusVector[2])
         return pointsVector, radiusVector
 
     def cylinderSurfaceArea(self, norm_vector, point, tracheaFilter):
@@ -1324,6 +1375,8 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         closest = np.array(curve.GetOutput().GetPoints().GetPoint(Idclosest))
         radius = np.sqrt(np.sum((closest[0:3] - centroid[0:3]) ** 2))
         return radius
+    def radius2(self, area):
+        return np.sqrt(area/np.pi)
 
     def polygon(self, intersection):
         """
@@ -1448,8 +1501,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         variables[11] = mediumPoints[2][2]
         return variables
 
-    def homologous(self, traq,
-                   p_cil):  ##deuelve para cada punto del cilindro, el valor de la traquea mas cercano y lo mete en un polydata.
+    def homologous(self, traq, p_cil):  ##deuelve para cada punto del cilindro, el valor de la traquea mas cercano y lo mete en un polydata.
         """
         calculates the points of the trachea that correspond to the given points of the cylinder
         :param traq: trachuea
@@ -1567,6 +1619,8 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         fiducialNodes[1].GetNthFiducialPosition(0, p1)
         fiducialNodes[2].GetNthFiducialPosition(0, p2)
         fiducialNodes[3].GetNthFiducialPosition(0, p3)
+        print "DEBUG: valores de los fiducials cuando se tocan"
+        print fiducialNodes[1]
 
         # Cylinder 0 (vertical, top)
         line_top_middle = self.currentLines[stentType][0]
@@ -1615,6 +1669,21 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         self.currentCylindersVtkFilters[stentType][1].SetRadius(radiusVector[1])
         self.currentCylindersVtkFilters[stentType][2].SetRadius(radiusVector[2])
         self.cylindersVtkAppendPolyDataFilter[stentType].Update()
+
+
+
+        fiducialNodes = self.currentFiducialsListNodes[stentType]
+        print "DEBUG: ESTO VALE EL FIDUCIAL ANTES DE ACTUALIZARLO"
+        print fiducialNodes[1]
+        fiducialNodes[0].SetNthFiducialPosition(0, pointsVector[0][0],pointsVector[0][1],pointsVector[0][2])
+        fiducialNodes[1].SetNthFiducialPosition(0, pointsVector[1][0],pointsVector[1][1],pointsVector[1][2])
+        fiducialNodes[2].SetNthFiducialPosition(0, pointsVector[2][0],pointsVector[2][1],pointsVector[2][2])
+        fiducialNodes[3].SetNthFiducialPosition(0, pointsVector[4][0],pointsVector[4][1],pointsVector[4][2])
+        print"DEBUG: ESTO ESTA ACTUALIZANDO LOS FIDUCIALS"
+        print fiducialNodes[1]
+        fiducialNodes[1].GetDisplayNode().SetOpacity(1)
+        self.updateCylindersPositionFromFiducials(self.STENT_Y)
+
 
         # self.currentCylindersModel[stentKey].GetDisplayNode().Modified()
         self.getMRML3DModel(stentType).GetDisplayNode().Modified()
