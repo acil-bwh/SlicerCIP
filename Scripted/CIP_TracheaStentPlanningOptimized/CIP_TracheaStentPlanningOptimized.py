@@ -614,23 +614,17 @@ class CIP_TracheaStentPlanningOptimizedWidget(ScriptedLoadableModuleWidget):
         #     SlicerUtil.changeLayout(1)
 
     def updateSliders(self):
-        print "DEBUG: aqui actualiza los valores de los radios"
+
         self.radiusLevelSlider1.blockSignals(True)
-        print self.radiusLevelSlider1.value
         self.radiusLevelSlider1.setValue(self.logic.optim_params[1][0]*10)
-        print self.radiusLevelSlider1.value
         self.radiusLevelSlider1.blockSignals(False)
 
         self.radiusLevelSlider2.blockSignals(True)
-        print self.radiusLevelSlider2.value
         self.radiusLevelSlider2.setValue(self.logic.optim_params[1][1]*10)
-        print self.radiusLevelSlider2.value
         self.radiusLevelSlider2.blockSignals(False)
 
         self.radiusLevelSlider3.blockSignals(True)
-        print self.radiusLevelSlider3.value
         self.radiusLevelSlider3.setValue(self.logic.optim_params[1][2]*10)
-        print self.radiusLevelSlider3.value
         self.radiusLevelSlider3.blockSignals(False)
 
     def __onApplyThreshold__(self, val):
@@ -642,12 +636,7 @@ class CIP_TracheaStentPlanningOptimizedWidget(ScriptedLoadableModuleWidget):
             self.logic.tracheaLabelmapThreshold(val / 100.0)
 
     def __onStentRadiusChange__(self):
-        #if self.radiusLevelSlider1.value==50 and self.radiusLevelSlider2.value==50 and self.radiusLevelSlider3.value==50:
-           # print "DEBUG: esta entrando aqui"
-           # self.radiusLevelSlider1.setValue(80)
-           # self.radiusLevelSlider2.setValue(80)
-           # self.radiusLevelSlider3.setValue(80)
-            #print self.radiusLevelSlider1.value
+
         self.logic.updateCylindersRadius(self.currentStentType,
                                          self.radiusLevelSlider1.value / 10.0,
                                          self.radiusLevelSlider2.value / 10.0,
@@ -1127,7 +1116,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         print ("DEBUG: automaticOptimizationYStent")
         trachea = self.buildTracheaButterflySubdivisionFilter(self.currentTracheaModel)
         # First call. Start in user seed
-        print ("debug a ver si la traquea es un polydata", trachea.GetOutput())
+
 
 
         points = [p1, p2, p3]
@@ -1149,7 +1138,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
             centr = self.centroide(self.polygon(inter))
             print ("DEBUG: automaticOptimizationYStent. Centroid: ", centr)
             rad = self.radius(centr, inter)
-            #rad=self.radius2(self.area(self.polygon(inter),normal_vector.x))
+            #rad = self.radius2(self.cylinderSurfaceArea(normal_vector.x, centr, trachea))
             print ("DEBUG: automaticOptimizationYStent. Radius: ", rad)
             norm = (normal_vector.x)
             centroids.append(centr)
@@ -1167,20 +1156,33 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
             norm = [1, 0, 1]
             cons = ({'type': 'eq', 'fun': lambda n: np.array(np.sqrt(sum((n[0:3]) ** 2)) - 1),
                      'jac': lambda n: np.array(n[0:3] / np.sqrt(sum((n[0:3]) ** 2)))})
+            print ("DEBUG: automaticOptimizationYStent. Calling optimize with: ", point)
             normal_vector = scipy_opt.minimize(self.cylinderSurfaceArea, norm, args=(point, trachea), constraints=cons,
                                                method='SLSQP',
                                                options={'disp': True})
             inter = self.intersection(trachea, self.plane(normal_vector.x, point), point)
+            print ("DEBUG: automaticOptimizationYStent. Intersection: ", inter)
             centr = self.centroide(self.polygon(inter))
+            print ("DEBUG: automaticOptimizationYStent. Centroid: ", centr)
             rad = self.radius(centr, inter)
+            #rad = self.radius2(self.cylinderSurfaceArea(normal_vector.x,centr, trachea))
+            print ("DEBUG: automaticOptimizationYStent. Radius: ", rad)
             norm = (normal_vector.x)
             centroids.append(centr)
             norms.append(norm)
             rads.append(rad)
 
         mediumPoints = self.dist_ort(centroids)
+        print "DEBUG: radios"
+        print rads
+        mediumrads=np.zeros(3)
+        mediumrads[0]=(rads[0]+rads[3])/2
+        mediumrads[1] = (rads[1] + rads[4]) / 2
+        mediumrads[2] = (rads[2] + rads[5]) / 2
+        print "DEBUG: medium rads"
+        print mediumrads
 
-        parameters = self.init_values(mediumPoints, rads)
+        parameters = self.init_values(mediumPoints, mediumrads)
         c1 = centroids[0]
         c2 = centroids[1]
         c3 = centroids[2]
@@ -1250,23 +1252,16 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         pm3=[res2.x[9], res2.x[10],res2.x[11]]
         pointsVector=[c1,pm1,c2,pm2,c3,pm3]
         radiusVector=[res2.x[0], res2.x[4], res2.x[8]]
-        print pointsVector
-        print radiusVector
         self.updateCylindersRadius(self.STENT_Y, radiusVector[0],radiusVector[1],radiusVector[2])
         return pointsVector, radiusVector
 
     def myfunc(self, params):
-        print "COPOOOOON ITERAAAAAAAATION"
-        print   params
         pm1 = [params[1], params[2], params[3]]
         pm2 = [params[5], params[6], params[7]]
         pm3 = [params[9], params[10], params[11]]
-        #pointsVector = [c1, pm1, c2, pm2, c3, pm3]
         radiusVector = [params[0], params[4], params[8]]
-        print radiusVector
         pointsVector=[self.currentCentroids[0], pm1, self.currentCentroids[1],pm2, self.currentCentroids[2], pm3]
         self.updateCylindersFromOptimizationParameters(self.STENT_Y, pointsVector, radiusVector)
-
         slicer.app.processEvents()
         SlicerUtil.refreshActiveWindows()
 
@@ -1293,16 +1288,13 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         :param tracheaModel: traquea segmentation model
         :return: filter
         """
-        print ("a ver si aqui hay puntos", tracheaModel.GetPolyData().GetNumberOfPoints())
         triangles = vtk.vtkTriangleFilter()
         triangles.SetInputConnection(tracheaModel.GetPolyDataConnection())
         triangles.Update()
-        print ('triangulos', triangles.GetOutput().GetNumberOfPoints())
         tr2 = vtk.vtkLinearSubdivisionFilter()
         #tr2.SetNumberOfSubdivisions(3)
         tr2.SetInputConnection(triangles.GetOutputPort())
         tr2.Update()
-        print ("DEBUG: butterfly", tr2.GetOutput().GetNumberOfPoints())
         return tr2
         #return triangles
     def plane(self, N, p):
@@ -1328,15 +1320,14 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         :param p: point
         :return: intersection
         """
-        print ("DEBUG: intersection. Trachea: ", tr, "pp:", pp, "p:", p)
+
         ii = vtk.vtkCutter()
         ii.SetCutFunction(pp)
         ii.SetInputConnection(tr.GetOutputPort())
 
         ii.Update()
         n=ii.GetOutput().GetNumberOfPoints()
-        print ("DEBUG: intersection.intersection", n)
-        print ("DEBUG: intersection", tr.GetOutput())
+
         cc = vtk.vtkConnectivityFilter()
         cc.SetInputConnection(ii.GetOutputPort())
         cc.SetExtractionModeToClosestPointRegion()
@@ -1635,8 +1626,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         fiducialNodes[1].GetNthFiducialPosition(0, p1)
         fiducialNodes[2].GetNthFiducialPosition(0, p2)
         fiducialNodes[3].GetNthFiducialPosition(0, p3)
-        print "DEBUG: valores de los fiducials cuando se tocan"
-        print fiducialNodes[1]
+
 
         # Cylinder 0 (vertical, top)
         line_top_middle = self.currentLines[stentType][0]
@@ -1685,18 +1675,20 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         self.currentCylindersVtkFilters[stentType][1].SetRadius(radiusVector[1])
         self.currentCylindersVtkFilters[stentType][2].SetRadius(radiusVector[2])
         self.cylindersVtkAppendPolyDataFilter[stentType].Update()
-
-
+        middlePoint=np.zeros(3)
+        middlePoint[0]=(pointsVector[5][0]+pointsVector[3][0])/2
+        middlePoint[1] = (pointsVector[5][1] + pointsVector[3][1])/2
+        middlePoint[2] = (pointsVector[5][2] + pointsVector[3][2])/2
 
         fiducialNodes = self.currentFiducialsListNodes[stentType]
-        print "DEBUG: ESTO VALE EL FIDUCIAL ANTES DE ACTUALIZARLO"
-        print fiducialNodes[1]
+
+
         fiducialNodes[0].SetNthFiducialPosition(0, pointsVector[0][0],pointsVector[0][1],pointsVector[0][2])
-        fiducialNodes[1].SetNthFiducialPosition(0, pointsVector[1][0],pointsVector[1][1],pointsVector[1][2])
+        #fiducialNodes[1].SetNthFiducialPosition(0, middlePoint[0], middlePoint[1], middlePoint[2])
+        fiducialNodes[1].SetNthFiducialPosition(0, pointsVector[1][0], pointsVector[1][1], pointsVector[1][2])
         fiducialNodes[2].SetNthFiducialPosition(0, pointsVector[2][0],pointsVector[2][1],pointsVector[2][2])
         fiducialNodes[3].SetNthFiducialPosition(0, pointsVector[4][0],pointsVector[4][1],pointsVector[4][2])
-        print"DEBUG: ESTO ESTA ACTUALIZANDO LOS FIDUCIALS"
-        print fiducialNodes[1]
+
         fiducialNodes[1].GetDisplayNode().SetOpacity(1)
         self.updateCylindersPositionFromFiducials(self.STENT_Y)
 

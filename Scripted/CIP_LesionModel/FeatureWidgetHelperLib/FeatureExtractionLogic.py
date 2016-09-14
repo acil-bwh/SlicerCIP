@@ -257,6 +257,7 @@ class FeatureExtractionLogic:
         self.checkStopProcess()
         self.progressBar.labelText = 'Calculating %s: %s' % (nodeName, nextFeatureString)
         self.progressBar.setValue(totalSteps)
+        slicer.app.processEvents()
 
     def checkStopProcess(self):
         slicer.app.processEvents()
