@@ -673,7 +673,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         # [Fiducials list, Fiducials Color, 3D Model Color, 3D Model Opacity]
         self.stentTypes = OrderedDict()
         self.stentTypes = {
-            self.STENT_Y: (("Upper", "Middle", "Bottom_Left", "Bottom_Right"), (1, 0, 0), (0, 1, 0), 0.8),
+            self.STENT_Y: (("Upper", "Middle", "Bottom_Left", "Bottom_Right"), (1, 0, 0), (0, 1, 0), 1),
             self.STENT_T: (("Bottom ", "Lower", "Middle", "Outside"), (0, 1, 0), (0, 0, 1), 0.8)
         }
         # self.fiducialList = {
@@ -689,6 +689,10 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         self.isup3 = 0
         self.optim_params=dict()
         self.currentCentroids=dict()
+
+        # initialize Progress Bar
+        self.progressBar = qt.QProgressDialog(slicer.util.mainWindow())
+        self.progressBar.minimumDuration = 0
 
 
     def __initVars__(self):
@@ -838,7 +842,12 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         #             "Please make sure that you have added all the required points for the selected stent type")
         #     return
         # TODO: allow segmentation with T stent?
+        self.progressBar.show()
+        self.progressBar.setValue(0)
+        self.progressBar.setMaximum(6)
+        self.progressBar.labelText = "INITIALIZING OPTIMIZATION, PLEASE WAIT"
         if self.__segmentTracheaFromYStentPoints__():
+
             self.drawTrachea()
             self.drawYStent()
 
@@ -1024,6 +1033,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         displayNode.SetOpacity(0.5)
         displayNode.SetColor((1, 0, 0))
         marchingCubesFilter.Update()
+        self.updateProgressBar(1)
 
     def drawYStent(self):
         """ Create a labelmap with the Y stent based on the user points
@@ -1124,8 +1134,9 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         centroids = []
         norms = []
         rads = []
-
+        i=1
         for point in points:
+            i=i+1
             norm = [1, 0, 1]
             cons = ({'type': 'eq', 'fun': lambda n: np.array(np.sqrt(sum((n[0:3]) ** 2)) - 1),
                      'jac': lambda n: np.array(n[0:3] / np.sqrt(sum((n[0:3]) ** 2)))})
@@ -1144,6 +1155,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
             centroids.append(centr)
             norms.append(norm)
             rads.append(rad)
+            self.updateProgressBar(i)
 
         # Second call. Calculate a plane close to the first one
 
@@ -1153,6 +1165,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
 
         points2 = [p12, p22, p32]
         for point in points2:
+            i=i+1
             norm = [1, 0, 1]
             cons = ({'type': 'eq', 'fun': lambda n: np.array(np.sqrt(sum((n[0:3]) ** 2)) - 1),
                      'jac': lambda n: np.array(n[0:3] / np.sqrt(sum((n[0:3]) ** 2)))})
@@ -1171,6 +1184,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
             centroids.append(centr)
             norms.append(norm)
             rads.append(rad)
+            self.updateProgressBar(i)
 
         mediumPoints = self.dist_ort(centroids)
         print "DEBUG: radios"
@@ -1188,6 +1202,8 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         c3 = centroids[2]
         arguments = c1, c2, c3, trachea
         self.currentCentroids=c1,c2,c3
+        self.progressBar.close()
+        self.progressBar = None
         cons2 = ({'type': 'eq',
                   'fun': lambda parameters: np.array(
                       (c2[0] - c1[0]) * (parameters[2] - c1[1]) * (parameters[7] - c2[2]) + (c2[1] - c1[1]) * (
@@ -1246,7 +1262,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         res2 = scipy_opt.minimize(self.minimum, parameters, args=(arguments), constraints=cons2, method='SLSQP',
                                   options={'disp': True, 'ftol': 0.01, 'maxiter': 150}, callback=self.myfunc)
 
-        # view=self.visualizacion(res2.x, c1,c2,c3,trachea)
+
         pm1=[res2.x[1], res2.x[2], res2.x[3]]
         pm2=[res2.x[5], res2.x[6], res2.x[7]]
         pm3=[res2.x[9], res2.x[10],res2.x[11]]
@@ -1256,6 +1272,14 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         return pointsVector, radiusVector
 
     def myfunc(self, params):
+        """
+        Updates Cylinder values during the optimization process
+        Args:
+            params: Cylinder parameters (points and radius)
+
+        Returns:
+
+        """
         pm1 = [params[1], params[2], params[3]]
         pm2 = [params[5], params[6], params[7]]
         pm3 = [params[9], params[10], params[11]]
@@ -1292,11 +1316,10 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         triangles.SetInputConnection(tracheaModel.GetPolyDataConnection())
         triangles.Update()
         tr2 = vtk.vtkLinearSubdivisionFilter()
-        #tr2.SetNumberOfSubdivisions(3)
         tr2.SetInputConnection(triangles.GetOutputPort())
         tr2.Update()
         return tr2
-        #return triangles
+
     def plane(self, N, p):
         """
         calculates the plane with N normal vector and point P
@@ -1306,10 +1329,10 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         """
         pp = vtk.vtkPlane()
         pp.SetOrigin(p)
-        denominador = np.sqrt(sum((N[:]) ** 2))
+        denominator = np.sqrt(sum((N[:]) ** 2))
         v = np.zeros(3)
-        v[:] = (N[:] / denominador)
-        pp.SetNormal(v[0], v[1], v[2])  # normal al plano
+        v[:] = (N[:] / denominator)
+        pp.SetNormal(v[0], v[1], v[2])
         return pp
 
     def intersection(self, tr, pp, p):
@@ -1347,17 +1370,17 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         total = np.zeros(3, )
         if poly.GetNumberOfPoints() == 0:
             return 1000
-        for i in range(aa.GetNumberOfCells()):  ##bucle para todas las lineas
-            p_idx = vtk.vtkIdList()  # lista de Ids de los puntos de cada linea
-            aa.GetNextCell(p_idx)  ##siguiente elemento de la lista
-            p1_idx = p_idx.GetId(0)  # id del punto 1 de la linea
-            p2_idx = p_idx.GetId(1)  # id del punto 2 de la linea
-            p1 = np.array(poly.GetPoints().GetPoint(p1_idx))  # saca el valor de P1
-            p2 = np.array(poly.GetPoints().GetPoint(p2_idx))  # saca el valor de p2
+        for i in range(aa.GetNumberOfCells()):
+            p_idx = vtk.vtkIdList()
+            aa.GetNextCell(p_idx)
+            p1_idx = p_idx.GetId(0)
+            p2_idx = p_idx.GetId(1)
+            p1 = np.array(poly.GetPoints().GetPoint(p1_idx))
+            p2 = np.array(poly.GetPoints().GetPoint(p2_idx))
             total = total + np.cross(p1, p2)
         result = np.dot(total, n / np.linalg.norm(n))
-        resultado = abs(result / 2)
-        return resultado
+        Result = abs(result / 2)
+        return Result
 
     def centroide(self, intersection):
         """
@@ -1376,13 +1399,21 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         :return: radius
         """
         loc = vtk.vtkPointLocator()
-        loc.SetDataSet(curve.GetOutput())  ##revisar
+        loc.SetDataSet(curve.GetOutput())
         loc.BuildLocator()
         Idclosest = loc.FindClosestPoint(centroid)
         closest = np.array(curve.GetOutput().GetPoints().GetPoint(Idclosest))
         radius = np.sqrt(np.sum((closest[0:3] - centroid[0:3]) ** 2))
         return radius
     def radius2(self, area):
+        """
+        Not used. Calculates the equivalent radius of a determined area.
+        Args:
+            area: Area value
+
+        Returns:
+
+        """
         return np.sqrt(area/np.pi)
 
     def polygon(self, intersection):
@@ -1391,7 +1422,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         :param intersection:
         :return: polygon
         """
-        #self.interTemp = intersection
+
         polygon = np.zeros([intersection.GetOutput().GetNumberOfPoints(), 3])
         for i in xrange(intersection.GetOutput().GetNumberOfPoints()):
             polygon[i] = intersection.GetOutput().GetPoints().GetPoint(i)
@@ -1411,30 +1442,30 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
             zf = zf1
         else:
             zf = zf2
-        rango = np.linspace(zi, zf, 200)
+        values_range = np.linspace(zi, zf, 200)
 
         pm2 = [0, 0, 0]
         pm3 = [0, 0, 0]
 
         x1 = (
-        (((centroids[3][0] - centroids[0][0]) * (rango - centroids[0][2])) / (centroids[3][2] - centroids[0][2])) +
+        (((centroids[3][0] - centroids[0][0]) * (values_range - centroids[0][2])) / (centroids[3][2] - centroids[0][2])) +
         centroids[0][0])
         y1 = (
-        (((centroids[3][1] - centroids[0][1]) * (rango - centroids[0][2])) / (centroids[3][2] - centroids[0][2])) +
+        (((centroids[3][1] - centroids[0][1]) * (values_range - centroids[0][2])) / (centroids[3][2] - centroids[0][2])) +
         centroids[0][1])
 
         x2 = (
-        (((centroids[4][0] - centroids[1][0]) * (rango - centroids[1][2])) / (centroids[4][2] - centroids[1][2])) +
+        (((centroids[4][0] - centroids[1][0]) * (values_range - centroids[1][2])) / (centroids[4][2] - centroids[1][2])) +
         centroids[1][0])
         y2 = (
-        (((centroids[4][1] - centroids[1][1]) * (rango - centroids[1][2])) / (centroids[4][2] - centroids[1][2])) +
+        (((centroids[4][1] - centroids[1][1]) * (values_range - centroids[1][2])) / (centroids[4][2] - centroids[1][2])) +
         centroids[1][1])
 
         x3 = (
-        (((centroids[5][0] - centroids[2][0]) * (rango - centroids[2][2])) / (centroids[5][2] - centroids[2][2])) +
+        (((centroids[5][0] - centroids[2][0]) * (values_range - centroids[2][2])) / (centroids[5][2] - centroids[2][2])) +
         centroids[2][0])
         y3 = (
-        (((centroids[5][1] - centroids[2][1]) * (rango - centroids[2][2])) / (centroids[5][2] - centroids[2][2])) +
+        (((centroids[5][1] - centroids[2][1]) * (values_range - centroids[2][2])) / (centroids[5][2] - centroids[2][2])) +
         centroids[2][1])
 
         xa = x2 - x1
@@ -1443,28 +1474,28 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         yb = y3 - y1
 
         dist1 = np.sqrt(xa ** 2 + ya ** 2)
-        indice = 0
-        for i in range(len(dist1)):
+        index = 0
+        for i in range(len(dist1)-1):
             if dist1[i] < dist1[i + 1]:
                 break
-            indice = indice + 1
-        pm2[0] = ((((centroids[3][0] - centroids[0][0]) * (rango[indice] - centroids[0][2])) / (
+            index = index + 1
+        pm2[0] = ((((centroids[3][0] - centroids[0][0]) * (values_range[index] - centroids[0][2])) / (
         centroids[3][2] - centroids[0][2])) + centroids[0][0])
-        pm2[1] = ((((centroids[3][1] - centroids[0][1]) * (rango[indice] - centroids[0][2])) / (
+        pm2[1] = ((((centroids[3][1] - centroids[0][1]) * (values_range[index] - centroids[0][2])) / (
         centroids[3][2] - centroids[0][2])) + centroids[0][1])
-        pm2[2] = rango[indice]
+        pm2[2] = values_range[index]
 
         dist2 = np.sqrt(xb ** 2 + yb ** 2)
-        indice = 0
+        index = 0
         for i in range(len(dist2) - 1):
             if dist2[i] < dist2[i + 1]:
                 break
-            indice = indice + 1
-        pm3[0] = ((((centroids[3][0] - centroids[0][0]) * (rango[indice] - centroids[0][2])) / (
+            index = index + 1
+        pm3[0] = ((((centroids[3][0] - centroids[0][0]) * (values_range[index] - centroids[0][2])) / (
         centroids[3][2] - centroids[0][2])) + centroids[0][0])
-        pm3[1] = ((((centroids[3][1] - centroids[0][1]) * (rango[indice] - centroids[0][2])) / (
+        pm3[1] = ((((centroids[3][1] - centroids[0][1]) * (values_range[index] - centroids[0][2])) / (
         centroids[3][2] - centroids[0][2])) + centroids[0][1])
-        pm3[2] = rango[indice]
+        pm3[2] = values_range[index]
 
         d2 = np.sqrt(np.sum(((centroids[0][0:2] - pm2[0:2]) ** 2)))
         d3 = np.sqrt(np.sum(((centroids[0][0:2] - pm3[0:2]) ** 2)))
@@ -1475,15 +1506,27 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
 
         return pm1, pm2, pm3
 
-    def cylinder(self, Pi, Pf, Radio, Lambda, Fi):
+    def cylinder(self, Pi, Pf, Radius, Lambda, Fi):
+        """
+        Calculates cilinder surface points given initial an final axis points and radius
+        Args:
+            Pi: Initial axis point
+            Pf: Final axis point
+            Radius: Cilinder radius
+            Lambda: Ecuation parameter. distance
+            Fi: Ecuation parameter. Angle
+
+        Returns:
+
+        """
         Alpha1 = np.arctan2((np.sqrt(np.sum(((Pf[0:2] - Pi[0:2]) ** 2)))), (Pf[2] - Pi[2]))
         Alpha2 = np.arctan2((Pf[0] - Pi[0]), (Pf[1] - Pi[1]))
         X = np.zeros([len(Lambda), 3])
-        X[:, 0] = np.cos(Alpha2) * Radio * np.cos(Fi) + Radio * np.sin(Fi) * np.cos(Alpha1) * np.sin(
+        X[:, 0] = np.cos(Alpha2) * Radius * np.cos(Fi) + Radius * np.sin(Fi) * np.cos(Alpha1) * np.sin(
             Alpha2) + Lambda * np.sin(Alpha1) * np.sin(Alpha2) + Pi[0]
-        X[:, 1] = (-1) * Radio * np.cos(Fi) * np.sin(Alpha2) + Radio * np.sin(Fi) * np.cos(Alpha1) * np.cos(
+        X[:, 1] = (-1) * Radius * np.cos(Fi) * np.sin(Alpha2) + Radius * np.sin(Fi) * np.cos(Alpha1) * np.cos(
             Alpha2) + Lambda * np.sin(Alpha1) * np.cos(Alpha2) + Pi[1]
-        X[:, 2] = -Radio * np.sin(Fi) * np.sin(Alpha1) + Lambda * np.cos(Alpha1) + Pi[2]
+        X[:, 2] = -Radius * np.sin(Fi) * np.sin(Alpha1) + Lambda * np.cos(Alpha1) + Pi[2]
         return X
 
     def init_values(self, mediumPoints, rads):
@@ -1508,7 +1551,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         variables[11] = mediumPoints[2][2]
         return variables
 
-    def homologous(self, traq, p_cil):  ##deuelve para cada punto del cilindro, el valor de la traquea mas cercano y lo mete en un polydata.
+    def homologous(self, traq, p_cil):
         """
         calculates the points of the trachea that correspond to the given points of the cylinder
         :param traq: trachuea
@@ -1551,7 +1594,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
             suma = suma + (np.sqrt(np.sum((punto[0:2] - cilind[0:2]) ** 2)))
         return suma
 
-    def minimum(self, parameters, centroide1, centroide2, centroide3, traq):
+    def minimum(self, parameters, centroid1, centroid2, centroid3, traq):
         """
         calculates the medium square error of the distances between cylinder and trachea
         :param parameters: initial parameters (points and radius)
@@ -1569,8 +1612,8 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         pm3[0] = parameters[9]
         pm3[1] = parameters[10]
         pm3[2] = parameters[11]
-        d2 = np.sqrt(np.sum(((centroide1[0:2] - pm2[0:2]) ** 2)))
-        d3 = np.sqrt(np.sum(((centroide1[0:2] - pm3[0:2]) ** 2)))
+        d2 = np.sqrt(np.sum(((centroid1[0:2] - pm2[0:2]) ** 2)))
+        d3 = np.sqrt(np.sum(((centroid1[0:2] - pm3[0:2]) ** 2)))
         if d2 < d3:
             pm1 = pm2
             self.isup2 = 1
@@ -1579,20 +1622,20 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
             pm1 = pm3
             self.isup2 = 0
             self.isup3 = 1
-        longitud1 = np.sqrt(np.sum((pm1[0:3] - centroide1[0:3]) ** 2))
+        longitud1 = np.sqrt(np.sum((pm1[0:3] - centroid1[0:3]) ** 2))
         ll1 = np.linspace(0, longitud1, 50)
         ff = np.linspace(0, 200 * np.pi, 50)
-        longitud2 = np.sqrt(np.sum((pm2[0:3] - centroide2[0:3]) ** 2))
+        longitud2 = np.sqrt(np.sum((pm2[0:3] - centroid2[0:3]) ** 2))
         ll2 = np.linspace(0, longitud2, 50)
-        longitud3 = np.sqrt(np.sum((pm3[0:3] - centroide3[0:3]) ** 2))
+        longitud3 = np.sqrt(np.sum((pm3[0:3] - centroid3[0:3]) ** 2))
         ll3 = np.linspace(0, longitud3, 50)
-        puntos_cil1 = self.cylinder(centroide1, pm1, rad1, ll1, ff)
-        puntos_cil2 = self.cylinder(centroide2, pm2, rad2, ll2, ff)
-        puntos_cil3 = self.cylinder(centroide3, pm3, rad3, ll3, ff)
-        hom1 = self.homologous(traq, puntos_cil1)
-        hom2 = self.homologous(traq, puntos_cil2)
-        hom3 = self.homologous(traq, puntos_cil3)
-        error = self.functional(puntos_cil1, puntos_cil2, puntos_cil3, hom1, hom2, hom3)
+        points_cil1 = self.cylinder(centroid1, pm1, rad1, ll1, ff)
+        points_cil2 = self.cylinder(centroid2, pm2, rad2, ll2, ff)
+        points_cil3 = self.cylinder(centroid3, pm3, rad3, ll3, ff)
+        hom1 = self.homologous(traq, points_cil1)
+        hom2 = self.homologous(traq, points_cil2)
+        hom3 = self.homologous(traq, points_cil3)
+        error = self.functional(points_cil1, points_cil2, points_cil3, hom1, hom2, hom3)
         return error
 
     def updateCylindersRadius(self, stentKey, newRadius1, newRadius2, newRadius3):
@@ -1607,7 +1650,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         self.currentCylindersVtkFilters[stentKey][2].SetRadius(newRadius3)
         self.cylindersVtkAppendPolyDataFilter[stentKey].Update()
 
-        # self.currentCylindersModel[stentKey].GetDisplayNode().Modified()
+
         self.getMRML3DModel(stentKey).GetDisplayNode().Modified()
         self.__calculateMeasurements__()
 
@@ -1737,6 +1780,26 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         alpha_right = 180 / np.pi * np.arccos(np.dot(v_right, v1))
         self.currentAngles[stentType] = (alpha_left, alpha_right)
 
+    def updateProgressBar(self, value):
+        """
+        Updates progress bar
+        Args:
+            value: Percentage of execution
+
+        """
+        self.checkStopProcess()
+        self.progressBar.setValue(value)
+        slicer.app.processEvents()
+
+    def checkStopProcess(self):
+        """
+        Checks if the process is stopped
+
+        """
+        slicer.app.processEvents()
+        if self.progressBar.wasCanceled:
+            self.progressBar.deleteLater()
+            raise StopIteration("Progress cancelled!!!")
     def reset(self):
         """ Delete all the posible objects that have been used and init them back
         """
