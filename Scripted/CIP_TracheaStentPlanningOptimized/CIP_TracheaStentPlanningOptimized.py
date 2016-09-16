@@ -845,7 +845,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         self.progressBar.show()
         self.progressBar.setValue(0)
         self.progressBar.setMaximum(6)
-        self.progressBar.labelText = "INITIALIZING OPTIMIZATION, PLEASE WAIT"
+        self.progressBar.labelText = "Initializing optimization, please wait"
         if self.__segmentTracheaFromYStentPoints__():
 
             self.drawTrachea()
@@ -1107,6 +1107,10 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         self.currentLabelmapResults.GetIJKToRASMatrix(transformMatrix)
         self.currentTracheaModel.ApplyTransformMatrix(transformMatrix)
 
+        layoutManager = slicer.app.layoutManager()
+        threeDWidget = layoutManager.threeDWidget(0)
+        threeDView = threeDWidget.threeDView()
+        threeDView.resetFocalPoint()
         # Automatic optimization
         self.optim_params = self.automaticOptimizationYStent(top, left, right)
         self.updateCylindersFromOptimizationParameters(self.STENT_Y,self.optim_params[0],self.optim_params[1])
@@ -1203,7 +1207,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         arguments = c1, c2, c3, trachea
         self.currentCentroids=c1,c2,c3
         self.progressBar.close()
-        self.progressBar = None
+        #self.progressBar = None
         cons2 = ({'type': 'eq',
                   'fun': lambda parameters: np.array(
                       (c2[0] - c1[0]) * (parameters[2] - c1[1]) * (parameters[7] - c2[2]) + (c2[1] - c1[1]) * (
@@ -1269,6 +1273,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         pointsVector=[c1,pm1,c2,pm2,c3,pm3]
         radiusVector=[res2.x[0], res2.x[4], res2.x[8]]
         self.updateCylindersRadius(self.STENT_Y, radiusVector[0],radiusVector[1],radiusVector[2])
+        qt.QMessageBox.information(slicer.util.mainWindow(), "The optimization is completed", "The optimization is completed, You can now change the stent position and radius.")
         return pointsVector, radiusVector
 
     def myfunc(self, params):
