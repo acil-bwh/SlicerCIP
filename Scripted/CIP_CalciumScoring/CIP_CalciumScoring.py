@@ -68,16 +68,25 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             self.parent.show()
 
         self.calcinationType = 0
-        self.ThresholdMin = 100.0
-        self.ThresholdMax = 500.0
+        self.ThresholdMin = 130.0
+        self.ThresholdMax = 2000.0
+        self.MinimumLesionSize = 20
         self.croppedVolumeNode = slicer.vtkMRMLScalarVolumeNode()
         self.threshImage = vtk.vtkImageData()
-        
+        self.marchingCubes = vtk.vtkDiscreteMarchingCubes()
+        self.transformPolyData = vtk.vtkTransformPolyDataFilter()
+
     def setup(self):
         # Instantiate and connect widgets ...
         ScriptedLoadableModuleWidget.setup(self)
 
         #self.logic = CIP_CalciumScoringLogic()
+
+        self.modelNode = slicer.vtkMRMLModelNode()
+        slicer.mrmlScene.AddNode(self.modelNode)
+        dnode = slicer.vtkMRMLModelDisplayNode()
+        slicer.mrmlScene.AddNode(dnode)
+        self.modelNode.AddAndObserveDisplayNodeID(dnode.GetID())
 
         #
         # Parameters Area
@@ -116,12 +125,21 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
 
         self.ThresholdRange = ctk.ctkRangeWidget()
         self.ThresholdRange.minimum = 0
-        self.ThresholdRange.maximum = 600
+        self.ThresholdRange.maximum = 3000
         self.ThresholdRange.setMinimumValue(self.ThresholdMin)
         self.ThresholdRange.setMaximumValue(self.ThresholdMax)
         parametersFormLayout.addRow("Threshold Value", self.ThresholdRange)
         self.ThresholdRange.connect("minimumValueChanged(double)", self.onThresholdMinChanged)
         self.ThresholdRange.connect("maximumValueChanged(double)", self.onThresholdMaxChanged)
+        self.ThresholdRange.setMinimumValue(self.ThresholdMin)
+        self.ThresholdRange.setMaximumValue(self.ThresholdMax)
+
+        self.minLesionSizeSlider = ctk.ctkSliderWidget()
+        self.minLesionSizeSlider.minimum = 2
+        self.minLesionSizeSlider.maximum = 500
+        self.minLesionSizeSlider.setValue(self.MinimumLesionSize)
+        self.minLesionSizeSlider.connect("valueChanged(double)", self.onMinSizeChanged)
+        parametersFormLayout.addRow("Minimum Lesion Size (voxels)", self.minLesionSizeSlider)
 
         #
         # ROI Area
@@ -150,8 +168,8 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         self.croppedNode=slicer.vtkMRMLScalarVolumeNode()
         self.croppedNode.SetHideFromEditors(1)
         slicer.mrmlScene.AddNode(self.croppedNode)
-        self.connectedLabelsNode=slicer.vtkMRMLLabelMapVolumeNode()
-        slicer.mrmlScene.AddNode(self.connectedLabelsNode)
+        self.labelsNode=slicer.vtkMRMLLabelMapVolumeNode()
+        slicer.mrmlScene.AddNode(self.labelsNode)
         
         if self.inputSelector.currentNode():
             self.onVolumeChanged(self.inputSelector.currentNode())
@@ -181,6 +199,10 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             self.roiNode.SetDisplayVisibility(0)
         self.createModels()
 
+    def onMinSizeChanged(self, value):
+        self.MinimumLesionSize = value
+        self.createModels()
+
     def onThresholdMinChanged(self, value):
         self.ThresholdMin = value
         self.createModels()
@@ -197,12 +219,38 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             print 'in Heart Create Models'
 
             slicer.vtkSlicerCropVolumeLogic().CropVoxelBased(self.roiNode, self.volumeNode, self.croppedNode)
-            cii= sitk.ReadImage( sitkUtils.GetSlicerITKReadWriteAddress(self.croppedNode.GetName()))
-            ti=sitk.BinaryThreshold(cii,self.ThresholdMin, self.ThresholdMax, 1, 0)
-            cci=sitk.ConnectedComponent(ti, True)
-            if cci.GetPixelID() != sitk.sitkInt16:
-                cci = sitk.Cast( cci, sitk.sitkInt16 )
-            sitk.WriteImage( cci, sitkUtils.GetSlicerITKReadWriteAddress(self.connectedLabelsNode.GetName()))
+            croppedImage    = sitk.ReadImage( sitkUtils.GetSlicerITKReadWriteAddress(self.croppedNode.GetName()))
+            thresholdImage  = sitk.BinaryThreshold(croppedImage,self.ThresholdMin, self.ThresholdMax, 1, 0)
+            connectedCompImage  =sitk.ConnectedComponent(thresholdImage, True)
+            relabelImage  =sitk.RelabelComponent(connectedCompImage)
+            labelStatFilter =sitk.LabelStatisticsImageFilter()
+            labelStatFilter.Execute(croppedImage, relabelImage)
+            if relabelImage.GetPixelID() != sitk.sitkInt16:
+                relabelImage = sitk.Cast( relabelImage, sitk.sitkInt16 )
+            sitk.WriteImage( relabelImage, sitkUtils.GetSlicerITKReadWriteAddress(self.labelsNode.GetName()))
+
+            nLabels = labelStatFilter.GetNumberOfLabels()
+            print "Number of labels = ", nLabels
+            for n in range(0,nLabels):
+                max = labelStatFilter.GetMaximum(n);
+                size = labelStatFilter.GetCount(n)
+                print "label = ", n, "  max = ", max, " voxels = ", size
+                if size < self.MinimumLesionSize:
+                    nLabels = n+1
+                    break
+            self.marchingCubes.SetInputData(self.labelsNode.GetImageData())
+            self.marchingCubes.GenerateValues(nLabels, 0, nLabels-1)
+            self.marchingCubes.Update()
+
+            self.transformPolyData.SetInputData(self.marchingCubes.GetOutput())
+            mat = vtk.vtkMatrix4x4()
+            self.labelsNode.GetIJKToRASMatrix(mat)
+            trans = vtk.vtkTransform()
+            trans.SetMatrix(mat)
+            self.transformPolyData.SetTransform(trans)
+            self.transformPolyData.Update()
+
+            self.modelNode.SetAndObservePolyData(self.transformPolyData.GetOutput())
             #a = slicer.util.array(tn.GetID())
             #sa = sitk.GetImageFromArray(a)
         else:
