@@ -82,11 +82,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
 
         #self.logic = CIP_CalciumScoringLogic()
 
-        self.modelNode = slicer.vtkMRMLModelNode()
-        slicer.mrmlScene.AddNode(self.modelNode)
-        dnode = slicer.vtkMRMLModelDisplayNode()
-        slicer.mrmlScene.AddNode(dnode)
-        self.modelNode.AddAndObserveDisplayNodeID(dnode.GetID())
+        self.modelNodes = []
 
         #
         # Parameters Area
@@ -214,7 +210,15 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
     def onROIChangedEvent(self, observee, event):
         self.createModels()
 
+    def deleteModels(self):
+        for m in self.modelNodes:
+            m.SetAndObservePolyData(None)
+            slicer.mrmlScene.RemoveNode(m.GetDisplayNode())
+            slicer.mrmlScene.RemoveNode(m)
+        self.modelNodes = []
+
     def createModels(self):
+        self.deleteModels()
         if self.calcinationType == 0 and self.volumeNode and self.roiNode:
             print 'in Heart Create Models'
 
@@ -238,24 +242,38 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
                 if size < self.MinimumLesionSize:
                     nLabels = n+1
                     break
-            self.marchingCubes.SetInputData(self.labelsNode.GetImageData())
-            self.marchingCubes.GenerateValues(nLabels, 0, nLabels-1)
-            self.marchingCubes.Update()
+                else:
+                    self.marchingCubes.SetInputData(self.labelsNode.GetImageData())
+                    self.marchingCubes.SetValue(0, n)
+                    self.marchingCubes.Update()
+                    
+                    self.transformPolyData.SetInputData(self.marchingCubes.GetOutput())
+                    mat = vtk.vtkMatrix4x4()
+                    self.labelsNode.GetIJKToRASMatrix(mat)
+                    trans = vtk.vtkTransform()
+                    trans.SetMatrix(mat)
+                    self.transformPolyData.SetTransform(trans)
+                    self.transformPolyData.Update()
+                    poly = vtk.vtkPolyData()
+                    poly.DeepCopy(self.transformPolyData.GetOutput())
+                    
+                    modelNode = slicer.vtkMRMLModelNode()
+                    slicer.mrmlScene.AddNode(modelNode)
+                    dnode = slicer.vtkMRMLModelDisplayNode()
+                    slicer.mrmlScene.AddNode(dnode)
+                    modelNode.AddAndObserveDisplayNodeID(dnode.GetID())
+                    modelNode.SetAndObservePolyData(poly)
 
-            self.transformPolyData.SetInputData(self.marchingCubes.GetOutput())
-            mat = vtk.vtkMatrix4x4()
-            self.labelsNode.GetIJKToRASMatrix(mat)
-            trans = vtk.vtkTransform()
-            trans.SetMatrix(mat)
-            self.transformPolyData.SetTransform(trans)
-            self.transformPolyData.Update()
+                    ct=slicer.mrmlScene.GetNodeByID('vtkMRMLColorTableNodeLabels')
+                    rgb = [0,0,0]
+                    ct.GetLookupTable().GetColor(n,rgb)
+                    dnode.SetColor(rgb)
+                    self.modelNodes.append(modelNode)
 
-            self.modelNode.SetAndObservePolyData(self.transformPolyData.GetOutput())
-            #a = slicer.util.array(tn.GetID())
-            #sa = sitk.GetImageFromArray(a)
+                    #a = slicer.util.array(tn.GetID())
+                    #sa = sitk.GetImageFromArray(a)
         else:
             print "not implemented"
-
 
 #
 # CIP_CalciumScoringLogic
