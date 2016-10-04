@@ -104,9 +104,10 @@ void qSlicerAirwayInspectorModuleWidget::setup()
 
   statsLabels = QString("Mean;Std;Min;Max").split(";");
   valuesLabels = QString("Inner Radius (mm);Outer Radius (mm);Wall Thickness (mm);" \
-          "Wall Intensity (HU);Peak WI (HU);Inner WI (HU);Outer WI (HU);WA%;Pi (mm);" \
-           "sqrt(WA) (mm);Ai (mm^2);Ao (mm^2);Vessel Intensity (HU);RL Inner Diam (mm);" \
-           "RL Outer Diam (mm);AP Inner Diam (mm);AP Outer Diam (mm);Lumen I (HU);Parenchyma I (HU);Energy;Power").split(";");
+          "Wall Intensity (HU);WA%;Pi (mm);sqrt(WA) (mm);Ai (mm^2);Ao (mm^2);" \
+          "Peak WI (HU);Inner WI (HU);Outer WI (HU);Vessel Intensity (HU);" \
+           "RL Inner Diam (mm);RL Outer Diam (mm);AP Inner Diam (mm);AP Outer Diam (mm);" \
+           "Lumen I (HU);Parenchyma I (HU);Energy;Power").split(";");
 
   d->ThresholdSpinBox->setRange(-1000, -300);
   d->ThresholdSpinBox->setValue(-850);
