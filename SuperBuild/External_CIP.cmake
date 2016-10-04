@@ -30,10 +30,11 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
     set(git_protocol "git")
   endif()
   message(STATUS ${VTK_DIR})
-ExternalProject_Add(${proj}
+
+  ExternalProject_Add(${proj}
     ${${proj}_EP_ARGS}
     GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
-    GIT_TAG develop # Develop
+    GIT_TAG develop
     SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
     #DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
     #SOURCE_DIR ../CIP
@@ -50,8 +51,9 @@ ExternalProject_Add(${proj}
       -DBUILD_GENERATEMODEL:BOOL=OFF
       -DBUILD_GENERATESIMPLELUNGMASK:BOOL=OFF # temporarily off due to lack of VtkGlue
       -DBUILD_ComputeAirwayWallFromParticles:BOOL=OFF # temporarily off due to lack of VtkGlue
-      -DCIP_BUILD_TESTING_PYTHON:BOOL=OFF # to exclude cip_python from CIP build
       -DSLICER_PYTHON_CMD:FILEPATH=${PYTHON_EXECUTABLE}
+      -DCIP_PYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXECUTABLE}    # To parse the convention files
+      -DCIP_BUILD_TESTING_PYTHON:BOOL=OFF
       -DSlicerExecutionModel_DIR:STRING=${SlicerExecutionModel_DIR}
       -DSlicer_BUILD_CLI:BOOL=ON
       -DSlicer_BUILD_CLI_SUPPORT:BOOL=ON
@@ -69,9 +71,7 @@ ExternalProject_Add(${proj}
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DBUILD_TESTING:BOOL=OFF
       -DCMAKE_CXX_FLAGS:STRING=${CIP_CMAKE_CXX_FLAGS}
-      -DUSE_CYTHON:BOOL=OFF
-      # Temporal to FIX bug. Remove when the name is shorter
-      -DBUILD_GENERATEREGIONHISTOGRAMANDPARENCHYMAPHENOTYPES:BOOL=OFF
+
 
     #CONFIGURE_COMMAND ${CMAKE_COMMAND}
     #-E echo
