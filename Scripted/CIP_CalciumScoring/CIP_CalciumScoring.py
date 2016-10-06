@@ -7,6 +7,23 @@ import sitkUtils
 
 from slicer.ScriptedLoadableModule import *
 
+# Add the CIP common library to the path if it has not been loaded yet
+# This is needed because alphabetically CIP_BodyComposition < CIP_Common, and only in Development.
+# This is not needed if ACIL modules are added to Slicer
+try:
+    from CIP.logic.SlicerUtil import SlicerUtil
+except Exception as ex:
+    currentpath = os.path.dirname(os.path.realpath(__file__))
+    # We assume that CIP_Common is in the development structure
+    path = os.path.normpath(currentpath + '/../CIP_Common')
+    if not os.path.exists(path):
+        print("Path not found: " + path)
+        # We assume that CIP is a subfolder (Slicer behaviour)
+        path = os.path.normpath(currentpath + '/CIP')
+    sys.path.append(path)
+    print("The following path was manually added to the PythonPath in CIP_BodyComposition: " + path)
+    from CIP.logic.SlicerUtil import SlicerUtil
+
 #
 # CompareVolumes
 #
@@ -14,23 +31,13 @@ from slicer.ScriptedLoadableModule import *
 class CIP_CalciumScoring(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        parent.title = "CalciumScoring"
-        parent.categories = ["CIP"]
-        parent.dependencies = []
-        parent.contributors = ["Alex Yarmarkovich"]  # replace with "Firstname Lastname (Org)"
-        parent.helpText = """
-    """
-        parent.helpText = string.Template("""
-    This module helps organize layouts and volume compositing to help compare images
-
-Please refer to <a href=\"$a/Documentation/$b.$c/Modules/CalciumScoring\"> the documentation</a>.
-
-    """).substitute({'a': parent.slicerWikiUrl, 'b': slicer.app.majorVersion, 'c': slicer.app.minorVersion})
-        parent.acknowledgementText = """
-    This file was originally developed by Alex Yarmarkovich.
-    It was partially funded by NIH grant 9999999
-"""  # replace with organization, grant and thanks.
         self.parent = parent
+        self.parent.title = "Calcium Scoring"
+        self.parent.categories = SlicerUtil.CIP_ModulesCategory
+        self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
+        self.parent.contributors = ["Alex Yarmarkovich", "Applied Chest Imaging Laboratory",
+                                    "Brigham and Women's Hospital"]
+        self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
         # Add this test to the SelfTest module's list for discovery when the module
         # is created.  Since this module may be discovered before SelfTests itself,
