@@ -298,7 +298,7 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeAirwayWall(vtkImageData* sliceI
      }
      tmp->SetWeights(weights);
      tmp->Update();
-     double wt = tmp->GetStatsMean()->GetComponent(4,0);
+     double wt = tmp->GetStatsMean()->GetComponent(2,0);
      tmp->Delete();
      weights->Delete();
      double ml;
@@ -337,10 +337,10 @@ void vtkSlicerAirwayInspectorModuleLogic::ComputeAirwayWall(vtkImageData* sliceI
    // Collect results and assign them to polydata
    for (int c = 0; c < this->WallSolver->GetNumberOfQuantities();c++)
    {
-     mean->SetComponent(0,c,this->WallSolver->GetStatsMean()->GetComponent(2*c,0));
-     std->SetComponent(0,c,this->WallSolver->GetStatsMean()->GetComponent((2*c)+1,0));
-     min->SetComponent(0,c,this->WallSolver->GetStatsMinMax()->GetComponent(2*c,0));
-     max->SetComponent(0,c,this->WallSolver->GetStatsMinMax()->GetComponent((2*c)+1,0));
+     mean->SetComponent(0,c,this->WallSolver->GetStatsMean()->GetComponent(c,0));
+     std->SetComponent(0,c,this->WallSolver->GetStatsStd()->GetComponent(c,0));
+     min->SetComponent(0,c,this->WallSolver->GetStatsMin()->GetComponent(c,0));
+     max->SetComponent(0,c,this->WallSolver->GetStatsMax()->GetComponent(c,0));
    }
 
    double resolution = node->GetResolution();
