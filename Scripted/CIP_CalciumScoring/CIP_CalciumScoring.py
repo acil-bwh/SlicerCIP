@@ -8,8 +8,46 @@ import sitkUtils
 from slicer.ScriptedLoadableModule import *
 
 #
-# CompareVolumes
+# Calc Scoring
 #
+
+class MouseInteractorActor(vtk.vtkInteractorStyleTrackballCamera):
+    def __init__(self):
+        self.AddObserver('LeftButtonPressEvent', self.onLeftButtonPressEvent)
+        self.AddObserver('MouseMoveEvent', self.onMouseMoveEvent)
+        self.AddObserver('LeftButtonReleaseEvent', self.onLeftButtonReleaseEvent)
+        self._lastPickedActor = None
+        self._lastPickedProperty = vtk.vtkProperty()
+        self._mouseMoved = False
+    def lastPickedActor(self):
+        return self._lastPickedActor() if self._lastPickedActor else None
+    def onLeftButtonPressEvent(self, obj, evt):
+        self._mouseMoved = False
+        self.OnLeftButtonDown()
+    def onMouseMoveEvent(self, obj, evt):
+        self._mouseMoved = True
+        self.OnMouseMove()
+    def onLeftButtonReleaseEvent(self, obj, evt):
+        if not self._mouseMoved:
+            clickPos = self.GetInteractor().GetEventPosition()
+            #Pick from this location
+            picker = vtk.vtkPropPicker()
+            picker.Pick(clickPos[0], clickPos[1], 0, self.GetDefaultRenderer())
+            #If we picked something before, reset its property
+            if self.lastPickedActor():
+                self.lastPickedActor().GetProperty().DeepCopy(self._lastPickedProperty)
+            self._lastPickedActor = picker.GetActor() if picker.GetActor() else None
+            if self.lastPickedActor():
+                #Save the property of the picked actor
+                self._lastPickedProperty.DeepCopy(self.lastPickedActor().GetProperty())
+                #Highlight the picked actor
+                self.lastPickedActor().GetProperty().SetColor(1.0, 0.0, 0.0)
+                self.lastPickedActor().GetProperty().SetDiffuse(1.0)
+                self.lastPickedActor().GetProperty().SetSpecular(0.0)
+            else:
+                print 'No actor get pickered'
+        #Call parent member
+        self.OnLeftButtonUp()
 
 class CIP_CalciumScoring(ScriptedLoadableModule):
     def __init__(self, parent):
@@ -67,6 +105,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             self.setup()
             self.parent.show()
 
+        self.priority = 2
         self.calcinationType = 0
         self.ThresholdMin = 130.0
         self.ThresholdMax = 2000.0
@@ -76,13 +115,31 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         self.marchingCubes = vtk.vtkDiscreteMarchingCubes()
         self.transformPolyData = vtk.vtkTransformPolyDataFilter()
 
+        self.selectedLableList = []
+        self.labelScores = []
+        self.selectedLables = {}
+        self.modelNodes = []
+        
+        self.observerTags = []
+        self.xy = []
+
+        self.totalScore = 0
+
+    def __del__(self):
+        for observee,tag in self.observerTags:
+            observee.RemoveObserver(tag)
+        self.observerTags = []
+
+    def enter(self):
+        print "Enter"
+    def exit(self):
+        print "Exit"
+
     def setup(self):
         # Instantiate and connect widgets ...
         ScriptedLoadableModuleWidget.setup(self)
 
         #self.logic = CIP_CalciumScoringLogic()
-
-        self.modelNodes = []
 
         #
         # Parameters Area
@@ -137,11 +194,26 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         self.minLesionSizeSlider.connect("valueChanged(double)", self.onMinSizeChanged)
         parametersFormLayout.addRow("Minimum Lesion Size (voxels)", self.minLesionSizeSlider)
 
+        self.scoreField = qt.QLineEdit()
+        self.scoreField.setText(self.totalScore)
+        parametersFormLayout.addRow("Total Score", self.scoreField)
+        
+        #
+        # Select table
+        #
+        self.selectLabels = qt.QTableWidget()
+        self.selectLabels.horizontalHeader().hide()
+        self.selectLabels.verticalHeader().hide()
+        self.selectLabels.setColumnCount(2)
+        self.selectLabels.itemClicked.connect(self.handleItemClicked)
+        parametersFormLayout.addRow("", self.selectLabels)
+
         #
         # ROI Area
         #
         self.roiCollapsibleButton = ctk.ctkCollapsibleButton()
         self.roiCollapsibleButton.text = "Heart ROI"
+        self.roiCollapsibleButton.setChecked(False)
         self.layout.addWidget(self.roiCollapsibleButton)
 
         # Layout within the dummy collapsible button
@@ -170,6 +242,66 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         if self.inputSelector.currentNode():
             self.onVolumeChanged(self.inputSelector.currentNode())
             self.createModels()
+
+    def addLabel(self, row, rgb, val):
+        print "add row", row, rgb
+        self.selectLabels.setRowCount(row+1)
+
+        item0 = qt.QTableWidgetItem('')
+        item0.setFlags(qt.Qt.ItemIsUserCheckable | qt.Qt.ItemIsEnabled)
+        item0.setCheckState(qt.Qt.Unchecked)
+        self.selectLabels.setItem(row,0,item0)
+
+        item1 = qt.QTableWidgetItem('')
+        color=qt.QColor()
+        color.setRgbF(rgb[0],rgb[1],rgb[2])
+        item1.setData(qt.Qt.BackgroundRole,color)
+        item1.setText(val)
+        self.selectLabels.setItem(row,1,item1)
+
+    def handleItemClicked(self, item):
+        if item.checkState() == qt.Qt.Checked:
+            self.selectedLableList[item.row()] = 1
+        else:
+            self.selectedLableList[item.row()] = 0
+        self.computeTotalScore()
+
+    def computeTotalScore(self):
+        self.totalScore = 0
+        for n in self.selectedLableList:
+            if self.selectedLableList[n] > 0:
+                self.totalScore = self.totalScore + self.labelScores[n]
+
+        self.scoreField.setText(self.totalScore)
+
+    def setInteractor(self):
+        self.renderWindow = slicer.app.layoutManager().threeDWidget(0).threeDView().renderWindow()
+        self.iren = self.renderWindow.GetInteractor()
+        lm = slicer.app.layoutManager()
+        for v in range(lm.threeDViewCount):
+            td = lm.threeDWidget(v)
+            ms = vtk.vtkCollection()
+            td.getDisplayableManagers(ms)
+            for i in range(ms.GetNumberOfItems()):
+                m = ms.GetItemAsObject(i)
+                if m.GetClassName() == "vtkMRMLModelDisplayableManager":
+                    self.dispManager = m
+                    break
+
+        self.propPicker = vtk.vtkPropPicker()
+        self.iren.SetPicker(self.propPicker)
+        #self.propPicker.AddObserver("EndPickEvent", self.PickProp)
+        #self.propPicker.AddObserver("PickEvent", self.PickProp)
+        self.renderer = slicer.app.layoutManager().threeDWidget(0).threeDView().renderWindow().GetRenderers().GetFirstRenderer()
+        tag = self.iren.AddObserver("LeftButtonReleaseEvent", self.processEvent, self.priority)
+        self.observerTags.append([self.iren,tag])
+        tag = self.iren.AddObserver("MouseMoveEvent", self.processEvent, self.priority)
+        self.observerTags.append([self.iren,tag])
+
+        self.mouseInteractor = MouseInteractorActor()
+        self.mouseInteractor.SetDefaultRenderer(self.renderer)
+        self.iterStyleSave = iren.GetInteractorStyle()
+        self.iren.SetInteractorStyle(self.mouseInteractor)
 
     def onVolumeChanged(self, value):
         self.volumeNode = self.inputSelector.currentNode()
@@ -216,6 +348,36 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             slicer.mrmlScene.RemoveNode(m.GetDisplayNode())
             slicer.mrmlScene.RemoveNode(m)
         self.modelNodes = []
+        self.selectedLables = {}
+
+    def PickProp(self, object, event):  
+        print "PICK"
+        pickedActor = self.propPicker.GetActor()
+        poly = pickedActor.GetMapper().GetInput()
+        label = self.selectedLables[poly]
+        print "picked label = ", label
+
+    def processEvent(self,observee,event):
+        print "PICK EVENT", event
+        self.xy = self.iren.GetEventPosition()
+        self.propPicker.PickProp(self.xy[0], self.xy[1], self.renderer)
+        pickedActor = self.propPicker.GetActor()
+        if pickedActor:
+            poly = pickedActor.GetMapper().GetInput()
+            label = self.selectedLables[poly]
+            print "picked label = ", label
+
+    def computeScore(self, d):
+        score = 0
+        if d > 129 and d < 200:
+            score = 1
+        elif d < 300:
+            score = 2
+        elif d < 400:
+            score = 3
+        else:
+            score = 4
+        return score
 
     def createModels(self):
         self.deleteModels()
@@ -235,14 +397,18 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
 
             nLabels = labelStatFilter.GetNumberOfLabels()
             print "Number of labels = ", nLabels
+            self.totalScore = 0
             for n in range(0,nLabels):
                 max = labelStatFilter.GetMaximum(n);
                 size = labelStatFilter.GetCount(n)
+                score = self.computeScore(max)
                 print "label = ", n, "  max = ", max, " voxels = ", size
                 if size < self.MinimumLesionSize:
                     nLabels = n+1
                     break
                 else:
+                    self.labelScores.append(score)
+                    self.selectedLableList.append(0)
                     self.marchingCubes.SetInputData(self.labelsNode.GetImageData())
                     self.marchingCubes.SetValue(0, n)
                     self.marchingCubes.Update()
@@ -266,14 +432,19 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
 
                     ct=slicer.mrmlScene.GetNodeByID('vtkMRMLColorTableNodeLabels')
                     rgb = [0,0,0]
-                    ct.GetLookupTable().GetColor(n,rgb)
+                    ct.GetLookupTable().GetColor(n+1,rgb)
                     dnode.SetColor(rgb)
-                    self.modelNodes.append(modelNode)
 
+                    self.addLabel(n+1, rgb, score)
+
+                    self.modelNodes.append(modelNode)
+                    self.selectedLables[poly] = n
                     #a = slicer.util.array(tn.GetID())
                     #sa = sitk.GetImageFromArray(a)
+            self.scoreField.setText(self.totalScore)
         else:
             print "not implemented"
+
 
 #
 # CIP_CalciumScoringLogic
