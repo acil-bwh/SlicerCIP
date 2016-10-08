@@ -1,4 +1,4 @@
-import os, string
+import os, sys, string
 import unittest
 import vtk, qt, ctk, slicer
 import numpy as np
@@ -10,6 +10,7 @@ from slicer.ScriptedLoadableModule import *
 # Add the CIP common library to the path if it has not been loaded yet
 # This is needed because alphabetically CIP_BodyComposition < CIP_Common, and only in Development.
 # This is not needed if ACIL modules are added to Slicer
+CIP_FOUND = True
 try:
     from CIP.logic.SlicerUtil import SlicerUtil
 except Exception as ex:
@@ -21,8 +22,8 @@ except Exception as ex:
         # We assume that CIP is a subfolder (Slicer behaviour)
         path = os.path.normpath(currentpath + '/CIP')
     sys.path.append(path)
+    CIP_FOUND = False
     print("The following path was manually added to the PythonPath in CIP_BodyComposition: " + path)
-    from CIP.logic.SlicerUtil import SlicerUtil
 
 #
 # Calc Scoring
@@ -71,11 +72,12 @@ class CIP_CalciumScoring(ScriptedLoadableModule):
         ScriptedLoadableModule.__init__(self, parent)
         self.parent = parent
         self.parent.title = "Calcium Scoring"
-        self.parent.categories = SlicerUtil.CIP_ModulesCategory
-        self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
         self.parent.contributors = ["Alex Yarmarkovich", "Applied Chest Imaging Laboratory",
                                     "Brigham and Women's Hospital"]
-        self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
+        if CIP_FOUND:
+            self.parent.categories = SlicerUtil.CIP_ModulesCategory
+            self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
+            self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
         # Add this test to the SelfTest module's list for discovery when the module
         # is created.  Since this module may be discovered before SelfTests itself,
@@ -271,12 +273,13 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             self.selectedLableList[item.row()] = 1
         else:
             self.selectedLableList[item.row()] = 0
+        print "LIST=", self.selectedLableList
         self.computeTotalScore()
 
     def computeTotalScore(self):
         self.totalScore = 0
-        for n in self.selectedLableList:
-            if self.selectedLableList[n] > 0:
+        for n in range(0, len(self.selectedLableList)):
+            if self.selectedLableList[n] == 1:
                 self.totalScore = self.totalScore + self.labelScores[n]
 
         self.scoreField.setText(self.totalScore)
@@ -388,6 +391,8 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
 
     def createModels(self):
         self.deleteModels()
+        self.labelScores = []
+        self.selectedLableList = []
         if self.calcinationType == 0 and self.volumeNode and self.roiNode:
             print 'in Heart Create Models'
 
@@ -409,7 +414,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
                 max = labelStatFilter.GetMaximum(n);
                 size = labelStatFilter.GetCount(n)
                 score = self.computeScore(max)
-                print "label = ", n, "  max = ", max, " voxels = ", size
+                print "label = ", n, "  max = ", max, " score = ", score, " voxels = ", size
                 if size < self.MinimumLesionSize:
                     nLabels = n+1
                     break
@@ -442,7 +447,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
                     ct.GetLookupTable().GetColor(n+1,rgb)
                     dnode.SetColor(rgb)
 
-                    self.addLabel(n+1, rgb, score)
+                    self.addLabel(n, rgb, score)
 
                     self.modelNodes.append(modelNode)
                     self.selectedLables[poly] = n
