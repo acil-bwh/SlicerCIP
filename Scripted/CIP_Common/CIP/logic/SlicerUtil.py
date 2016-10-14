@@ -525,6 +525,7 @@ class SlicerUtil:
     @staticmethod
     def refreshActiveWindows():
         """ Refresh all the windows currently visible to the user"""
+        slicer.app.processEvents()
         lm = slicer.app.layoutManager()
         for windowName in lm.sliceViewNames():
             slice = lm.sliceWidget(windowName)
