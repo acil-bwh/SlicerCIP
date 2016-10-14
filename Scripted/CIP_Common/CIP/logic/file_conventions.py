@@ -1,5 +1,8 @@
 # TODO: complete these conventions
 file_conventions_extensions = {
+    # Regular CTs
+    "NoiseStabilizationNoise": "_noiseNoiseStabilization.nrrd",
+    "NoiseStabilizationSignal": "_signalNoiseStabilization.nrrd",
     # Labelmaps
     "PartialLungLabelMap": "_partialLungLabelMap.nrrd",
     "BodyCompositionLabelMap": "_bodyComposition.nrrd",

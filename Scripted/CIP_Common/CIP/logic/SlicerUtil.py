@@ -110,7 +110,7 @@ class SlicerUtil:
         :return: True if the module is found
         """
         try:
-            m = slicer.modules.acil_common
+            m = slicer.modules.acil_
         except:
             return False
         return True
