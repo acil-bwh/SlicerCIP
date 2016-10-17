@@ -14,6 +14,7 @@ class BodyCompositionParameters(object):
     regionTypes["LIVER"] = (25, "Liver")
     regionTypes["PARAVERTEBRAL"] = (28, "Paravertebral")
     regionTypes["SPLEEN"] = (26, "Spleen")
+    regionTypes["SKELETON"] = (31, "Skeleton")
 
     """Allowed tissue types"""
     chestTypes = OrderedDict()
@@ -63,7 +64,8 @@ class BodyCompositionParameters(object):
          ("RIGHT", "PECTORALISMINOR", 0.65, 0.24, 0.24, -50, 90, 140, 20, 1, "PaintEffect", 5),
          ("LEFT", "SUBCUTANEOUSFAT", 0.78, 0.96, 1, -200, 0, 1300, -550, 1, "RectangleEffect", 8),
          ("LIVER", "UNDEFINEDTYPE", 0.79, 0.87, 0.06, -INF, INF, 140, 20, 0, "PaintEffect", 8),
-         ("SPLEEN", "UNDEFINEDTYPE", 0.61, 0.42, 0.64, -INF, INF, 140, 20, 0, "PaintEffect", 8))
+         ("SPLEEN", "UNDEFINEDTYPE", 0.61, 0.42, 0.64, -INF, INF, 140, 20, 0, "PaintEffect", 8),
+         ("SKELETON", "MUSCLE", 0, 0, 0, -29, 150, 179, 61, 0, "PaintEffect", 8))
 
     def __init__(self):
         self.loadParameters()

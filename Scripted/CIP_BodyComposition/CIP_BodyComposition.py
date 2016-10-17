@@ -329,7 +329,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
     def enter(self):
         """Method that is invoked when we switch to the module in slicer user interface"""
-        SlicerUtil.logDevelop("Enter", includePythonConsole=True)
         if self.nodeObserver is None:
             self.nodeObserver = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
         self.saveStateBeforeEnteringModule()
@@ -564,7 +563,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         labelmapName = "{0}{1}".format(masterNode.GetName(), self.labelmapNodeNameExtension)
         labelMapNode = self.editorWidget.labelmapVolume
         if labelMapNode and labelMapNode.GetName() == labelmapName:
-            print("DEBUG: changing to labelmap " + labelmapName)
+            SlicerUtil.logDevelop("DEBUG: changing to labelmap " + labelmapName, includePythonConsole=True)
         else:
             # First, try to search for an exact pattern "MASTER_bodycomposition"
             # nodes = slicer.util.getNodes(ext)
