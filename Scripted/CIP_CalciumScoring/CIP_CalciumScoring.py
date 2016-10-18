@@ -118,7 +118,8 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         self.calcinationType = 0
         self.ThresholdMin = 130.0
         self.ThresholdMax = 2000.0
-        self.MinimumLesionSize = 20
+        self.MinimumLesionSize = 1
+        self.MaximumLesionSize = 2000
         self.croppedVolumeNode = slicer.vtkMRMLScalarVolumeNode()
         self.threshImage = vtk.vtkImageData()
         self.marchingCubes = vtk.vtkDiscreteMarchingCubes()
@@ -128,7 +129,8 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         self.labelScores = []
         self.selectedLables = {}
         self.modelNodes = []
-        
+        self.voxelVolume = 1
+        self.selectedRGB = [1,0,0]
         self.observerTags = []
         self.xy = []
 
@@ -190,18 +192,22 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         self.ThresholdRange.maximum = 3000
         self.ThresholdRange.setMinimumValue(self.ThresholdMin)
         self.ThresholdRange.setMaximumValue(self.ThresholdMax)
-        parametersFormLayout.addRow("Threshold Value", self.ThresholdRange)
         self.ThresholdRange.connect("minimumValueChanged(double)", self.onThresholdMinChanged)
         self.ThresholdRange.connect("maximumValueChanged(double)", self.onThresholdMaxChanged)
+        parametersFormLayout.addRow("Threshold Value", self.ThresholdRange)
         self.ThresholdRange.setMinimumValue(self.ThresholdMin)
         self.ThresholdRange.setMaximumValue(self.ThresholdMax)
 
-        self.minLesionSizeSlider = ctk.ctkSliderWidget()
-        self.minLesionSizeSlider.minimum = 2
-        self.minLesionSizeSlider.maximum = 500
-        self.minLesionSizeSlider.setValue(self.MinimumLesionSize)
-        self.minLesionSizeSlider.connect("valueChanged(double)", self.onMinSizeChanged)
-        parametersFormLayout.addRow("Minimum Lesion Size (voxels)", self.minLesionSizeSlider)
+        self.LesionSizeRange= ctk.ctkRangeWidget()
+        self.LesionSizeRange.minimum = 1
+        self.LesionSizeRange.maximum = 1000
+        self.LesionSizeRange.setMinimumValue(self.MinimumLesionSize)
+        self.LesionSizeRange.setMaximumValue(self.MaximumLesionSize)
+        self.LesionSizeRange.connect("minimumValueChanged(double)", self.onMinSizeChanged)
+        self.LesionSizeRange.connect("maximumValueChanged(double)", self.onMaxSizeChanged)
+        parametersFormLayout.addRow("Lesion Size (mm^3)", self.LesionSizeRange)
+        self.LesionSizeRange.setMinimumValue(self.MinimumLesionSize)
+        self.LesionSizeRange.setMaximumValue(self.MaximumLesionSize)
 
         self.scoreField = qt.QLineEdit()
         self.scoreField.setText(self.totalScore)
@@ -253,7 +259,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             self.createModels()
 
     def addLabel(self, row, rgb, val):
-        print "add row", row, rgb
+        #print "add row", row, rgb
         self.selectLabels.setRowCount(row+1)
 
         item0 = qt.QTableWidgetItem('')
@@ -273,8 +279,9 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             self.selectedLableList[item.row()] = 1
         else:
             self.selectedLableList[item.row()] = 0
-        print "LIST=", self.selectedLableList
+        #print "LIST=", self.selectedLableList
         self.computeTotalScore()
+        self.updateModels()
 
     def computeTotalScore(self):
         self.totalScore = 0
@@ -283,6 +290,18 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
                 self.totalScore = self.totalScore + self.labelScores[n]
 
         self.scoreField.setText(self.totalScore)
+
+    def updateModels(self):
+        for n in range(0, len(self.selectedLableList)):
+            model = self.modelNodes[n]
+            dnode = model.GetDisplayNode()
+            rgb = [1,0,0]
+            if self.selectedLableList[n] == 1:
+                rgb = self.selectedRGB
+            else:
+                ct=slicer.mrmlScene.GetNodeByID('vtkMRMLColorTableNodeLabels')
+                ct.GetLookupTable().GetColor(n+1,rgb)
+            dnode.SetColor(rgb)
 
     def setInteractor(self):
         self.renderWindow = slicer.app.layoutManager().threeDWidget(0).threeDView().renderWindow()
@@ -322,6 +341,8 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             xyz[:]=[x*0.2 for x in xyz]
             self.roiNode.SetXYZ(c)
             self.roiNode.SetRadiusXYZ(xyz)
+            sp = self.volumeNode.GetSpacing()
+            self.voxelVolume = sp[0]*sp[1]*sp[2]
         self.createModels()
 
     def onTypeChanged(self, value):
@@ -339,6 +360,10 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
 
     def onMinSizeChanged(self, value):
         self.MinimumLesionSize = value
+        self.createModels()
+
+    def onMaxSizeChanged(self, value):
+        self.MaximumLesionSize = value
         self.createModels()
 
     def onThresholdMinChanged(self, value):
@@ -394,7 +419,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         self.labelScores = []
         self.selectedLableList = []
         if self.calcinationType == 0 and self.volumeNode and self.roiNode:
-            print 'in Heart Create Models'
+            #print 'in Heart Create Models'
 
             slicer.vtkSlicerCropVolumeLogic().CropVoxelBased(self.roiNode, self.volumeNode, self.croppedNode)
             croppedImage    = sitk.ReadImage( sitkUtils.GetSlicerITKReadWriteAddress(self.croppedNode.GetName()))
@@ -408,51 +433,57 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             sitk.WriteImage( relabelImage, sitkUtils.GetSlicerITKReadWriteAddress(self.labelsNode.GetName()))
 
             nLabels = labelStatFilter.GetNumberOfLabels()
-            print "Number of labels = ", nLabels
+            #print "Number of labels = ", nLabels
             self.totalScore = 0
+            count = 0
             for n in range(0,nLabels):
                 max = labelStatFilter.GetMaximum(n);
                 size = labelStatFilter.GetCount(n)
                 score = self.computeScore(max)
-                print "label = ", n, "  max = ", max, " score = ", score, " voxels = ", size
-                if size < self.MinimumLesionSize:
+
+                if size*self.voxelVolume > self.MaximumLesionSize:
+                    continue
+
+                if size*self.voxelVolume < self.MinimumLesionSize:
                     nLabels = n+1
                     break
-                else:
-                    self.labelScores.append(score)
-                    self.selectedLableList.append(0)
-                    self.marchingCubes.SetInputData(self.labelsNode.GetImageData())
-                    self.marchingCubes.SetValue(0, n)
-                    self.marchingCubes.Update()
+                
+                #print "label = ", n, "  max = ", max, " score = ", score, " voxels = ", size
+                self.labelScores.append(score)
+                self.selectedLableList.append(0)
+                self.marchingCubes.SetInputData(self.labelsNode.GetImageData())
+                self.marchingCubes.SetValue(0, n)
+                self.marchingCubes.Update()
                     
-                    self.transformPolyData.SetInputData(self.marchingCubes.GetOutput())
-                    mat = vtk.vtkMatrix4x4()
-                    self.labelsNode.GetIJKToRASMatrix(mat)
-                    trans = vtk.vtkTransform()
-                    trans.SetMatrix(mat)
-                    self.transformPolyData.SetTransform(trans)
-                    self.transformPolyData.Update()
-                    poly = vtk.vtkPolyData()
-                    poly.DeepCopy(self.transformPolyData.GetOutput())
+                self.transformPolyData.SetInputData(self.marchingCubes.GetOutput())
+                mat = vtk.vtkMatrix4x4()
+                self.labelsNode.GetIJKToRASMatrix(mat)
+                trans = vtk.vtkTransform()
+                trans.SetMatrix(mat)
+                self.transformPolyData.SetTransform(trans)
+                self.transformPolyData.Update()
+                poly = vtk.vtkPolyData()
+                poly.DeepCopy(self.transformPolyData.GetOutput())
                     
-                    modelNode = slicer.vtkMRMLModelNode()
-                    slicer.mrmlScene.AddNode(modelNode)
-                    dnode = slicer.vtkMRMLModelDisplayNode()
-                    slicer.mrmlScene.AddNode(dnode)
-                    modelNode.AddAndObserveDisplayNodeID(dnode.GetID())
-                    modelNode.SetAndObservePolyData(poly)
+                modelNode = slicer.vtkMRMLModelNode()
+                slicer.mrmlScene.AddNode(modelNode)
+                dnode = slicer.vtkMRMLModelDisplayNode()
+                slicer.mrmlScene.AddNode(dnode)
+                modelNode.AddAndObserveDisplayNodeID(dnode.GetID())
+                modelNode.SetAndObservePolyData(poly)
 
-                    ct=slicer.mrmlScene.GetNodeByID('vtkMRMLColorTableNodeLabels')
-                    rgb = [0,0,0]
-                    ct.GetLookupTable().GetColor(n+1,rgb)
-                    dnode.SetColor(rgb)
+                ct=slicer.mrmlScene.GetNodeByID('vtkMRMLColorTableNodeLabels')
+                rgb = [0,0,0]
+                ct.GetLookupTable().GetColor(count+1,rgb)
+                dnode.SetColor(rgb)
 
-                    self.addLabel(n, rgb, score)
+                self.addLabel(count, rgb, score)
 
-                    self.modelNodes.append(modelNode)
-                    self.selectedLables[poly] = n
-                    #a = slicer.util.array(tn.GetID())
-                    #sa = sitk.GetImageFromArray(a)
+                self.modelNodes.append(modelNode)
+                self.selectedLables[poly] = n
+                count = count+1
+                #a = slicer.util.array(tn.GetID())
+                #sa = sitk.GetImageFromArray(a)
             self.scoreField.setText(self.totalScore)
         else:
             print "not implemented"
