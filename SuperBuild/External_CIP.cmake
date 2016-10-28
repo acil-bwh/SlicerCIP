@@ -33,11 +33,11 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
 
   ExternalProject_Add(${proj}
     ${${proj}_EP_ARGS}
-    #GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
-    #GIT_TAG develop
-    #SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
-    DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
-    SOURCE_DIR ../CIP
+    GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
+    GIT_TAG develop
+    SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
+    #DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
+    #SOURCE_DIR ../CIP
     BINARY_DIR ${proj}-build
     CMAKE_CACHE_ARGS
       -DCIP_SUPERBUILD:BOOL=OFF
