@@ -33,11 +33,11 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
 
   ExternalProject_Add(${proj}
     ${${proj}_EP_ARGS}
-    GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
-    GIT_TAG develop
-    SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
-    #DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
-    #SOURCE_DIR ../CIP
+    #GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
+    #GIT_TAG develop
+    #SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
+    DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
+    SOURCE_DIR ../CIP
     BINARY_DIR ${proj}-build
     CMAKE_CACHE_ARGS
       -DCIP_SUPERBUILD:BOOL=OFF
@@ -48,6 +48,8 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DTeem_DIR:PATH=${Teem_DIR}
       -DLIBXML2_INCLUDE_DIR:PATH=${vtklibxml2_INCLUDE_DIRS}
       -DLIBXML2_LIBRARIES:PATH=${vtklibxml2_LIBRARIES}
+      -DJsonCpp_INCLUDE_DIR:PATH=${vtkjsoncpp_INCLUDE_DIRS}
+      -DJsonCpp_LIBRARY:PATH=${vtkjsoncpp_LIBRARIES}
       -DBUILD_GENERATEMODEL:BOOL=OFF
       -DBUILD_GENERATESIMPLELUNGMASK:BOOL=OFF # temporarily off due to lack of VtkGlue
       -DBUILD_ComputeAirwayWallFromParticles:BOOL=OFF # temporarily off due to lack of VtkGlue
