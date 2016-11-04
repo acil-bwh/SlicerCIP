@@ -171,6 +171,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # self.timer.timeout.connect(self.checkAndRefreshModels)
         self.lastRefreshValue = -5000  # Just a value out of range
 
+        if not self._checkSubjectHierarchySettingsEnabled():
+            SlicerUtil.logDevelop("The module will be disabled until the SubjectHierarchy setting 'Auto create hiearchy' is enabled",
+                                  includePythonConsole=True)
+            return  # Module disabled
+
         #######################
         # Case selector area
         self.caseSeletorCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -671,6 +676,28 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.saveSeedsButton.visible = self.loadSeedsButton.visible = self.__evaluateSegmentationModeOn__
         self.reportsWidget.showSaveButton(self.__evaluateSegmentationModeOn__)
         self.radiomicsCollapsibleButton.visible = self.__showRadiomics__
+
+    def _checkSubjectHierarchySettingsEnabled(self):
+        """
+        Make sure that the SubjectHierarchy/AutoCreateSubjectHierarchy is enabled. Otherwise the module won't work!
+        @return:
+        """
+        setting = "SubjectHierarchy/AutoCreateSubjectHierarchy"
+        val = slicer.app.settings().value(setting)
+
+        if not val == 'true':
+            if qt.QMessageBox.question(slicer.util.mainWindow(), "Activate SubjectHierarchy",
+                "This module needs to activate the SubjectHierarchy 'Automatically create subject hierarchy'\n" +
+                "Do you want to activate it? (Slicer will be restarted)\n" +
+                "You can always modify the value of this setting under Edit/Application settings/Subject hiearchy"
+                , qt.QMessageBox.Yes | qt.QMessageBox.No) == qt.QMessageBox.Yes:
+                    slicer.app.settings().setValue(setting, 'true')
+                    slicer.app.restart()
+            else:
+                return False    # Module will be disabled
+        return True
+
+
 
     def addNewNodule(self):
         """
