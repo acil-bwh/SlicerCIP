@@ -250,6 +250,34 @@ class SlicerUtil:
             scene.AddNode(clonedVolume)
         return clonedVolume
 
+    # @staticmethod
+    # def createVolumeFromScratch(volumeName, imageSize, imageSpacing, isLabelmap=False):
+    #     # imageSize = [512, 512, 512]
+    #     # imageSpacing = [1.0, 1.0, 1.0]
+    #     voxelType = vtk.VTK_UNSIGNED_INT if isLabelmap else vtk.VTK_INT
+    #     # Create an empty image volume
+    #     imageData = vtk.vtkImageData()
+    #     imageData.SetDimensions(imageSize)
+    #     imageData.AllocateScalars(voxelType, 1)
+    #     thresholder = vtk.vtkImageThreshold()
+    #     thresholder.SetInputData(imageData)
+    #     thresholder.SetInValue(0)
+    #     thresholder.SetOutValue(0)
+    #     # Create volume node
+    #     volumeNode = slicer.vtkMRMLScalarVolumeNode()
+    #     volumeNode.SetName(volumeName)
+    #     volumeNode.SetSpacing(imageSpacing)
+    #     volumeNode.SetImageDataConnection(thresholder.GetOutputPort())
+    #     # Add volume to scene
+    #     slicer.mrmlScene.AddNode(volumeNode)
+    #     displayNode = slicer.vtkMRMLScalarVolumeDisplayNode()
+    #     slicer.mrmlScene.AddNode(displayNode)
+    #     colorNode = slicer.util.getNode('vtkMRMLColorTableNodeLabels') if isLabelmap else slicer.util.getNode('vtkMRMLColorTableNodeGrey')
+    #     displayNode.SetAndObserveColorNodeID(colorNode.GetID())
+    #     volumeNode.SetAndObserveDisplayNodeID(displayNode.GetID())
+    #     volumeNode.CreateDefaultStorageNode()
+    #     return volumeNode
+
     @staticmethod
     def getLabelmapFromScalar(vtkMRMLScalarVolumeNode, nodeName=""):
         """ Convert a vtkMRMLScalarVolumeNode node in an equivalent vtkMRMLLabelMapVolumeNode
