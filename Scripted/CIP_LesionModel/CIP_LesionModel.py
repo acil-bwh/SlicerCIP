@@ -64,17 +64,17 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """Widget constructor (existing module)"""
         ScriptedLoadableModuleWidget.__init__(self, parent)
         self.moduleName = "CIP_LesionModel"
-        from functools import partial
-        def onNodeAdded(self, caller, eventId, callData):
-            """Node added to the Slicer scene"""
-            if callData.GetClassName() == 'vtkMRMLScalarVolumeNode':
-                self.__onVolumeAddedToScene__(callData)
-            elif callData.GetClassName() == 'vtkMRMLSubjectHierarchyNode':
-                self.__onSubjectHierarchyNodeAddedToScene__(callData)
-
-        self.onNodeAdded = partial(onNodeAdded, self)
-        self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
-        slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
+        # from functools import partial
+        # def onNodeAdded(self, caller, eventId, callData):
+        #     """Node added to the Slicer scene"""
+        #     if callData.GetClassName() == 'vtkMRMLScalarVolumeNode':
+        #         self.__onVolumeAddedToScene__(callData)
+        #     elif callData.GetClassName() == 'vtkMRMLSubjectHierarchyNode':
+        #         self.__onSubjectHierarchyNodeAddedToScene__(callData)
+        #
+        # self.onNodeAdded = partial(onNodeAdded, self)
+        # self.onNodeAdded.CallDataType = vtk.VTK_OBJECT
+        # slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
 
         self.__initVars__()
 
@@ -85,10 +85,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.__analyzedSpheres__ = set()
         self.__showRadiomics__ = False
 
-        # Timer for dynamic zooming (DEPRECATED)
-        self.timer = qt.QTimer()
-        self.timer.setInterval(150)
-        self.timer.timeout.connect(self.zoomToSeed)
+        # Timer for dynamic zooming
+        self.zoomToSeedTimer = qt.QTimer()
+        self.zoomToSeedTimer.setInterval(150)
+        self.zoomToSeedTimer.timeout.connect(self.zoomToSeed)
 
 
     @property
@@ -264,6 +264,13 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.addNewNoduleButton.setStyleSheet("font-weight:bold; font-size:12px; color: white; background-color:#274EE2;")
         self.noduleSegmentationLayout.addWidget(self.addNewNoduleButton, row, 2)
 
+        self.jumpToNoduleButton = ctk.ctkPushButton()
+        self.jumpToNoduleButton.toolTip = "Jump to nodule slice"
+        self.jumpToNoduleButton.setIcon(qt.QIcon(":/Icons/ViewFeaturesVisible.png"))
+        self.jumpToNoduleButton.setIconSize(qt.QSize(20, 20))
+        self.jumpToNoduleButton.setFixedSize(qt.QSize(32, 32))
+        self.noduleSegmentationLayout.addWidget(self.jumpToNoduleButton, row, 3)
+
         # NODULE FRAME
         row += 1
         self.noduleFrame = qt.QFrame()
@@ -318,8 +325,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.removeSeedsButton.setIconSize(qt.QSize(16, 16))
         # self.removeSeedsButton.setStyleSheet("margin: 10px")
         self.removeSeedsButton.objectName = "RemoveSeed"
-        self.removeSeedsButton.toolTip = "Click in the button and add a new seed in the volume. " \
-                                         "You can use MIP proyection by clicking in \"Enhance visualization\" checkbox"
+        self.removeSeedsButton.toolTip = "Remove the selected seed/s"
         self.removeSeedsButton.setFixedWidth(25)
         # self.removeSeedsButton.setIcon(SlicerUtil.getIcon("WelcomeFiducialWithArrow-Original.png"))
         # self.removeSeedsButton.setIconSize(qt.QSize(16, 16))
@@ -361,24 +367,61 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.maximumRadiusSpinbox.toolTip = "Maximum radius for the tumor. Recommended: 30 mm for humans and 3 mm for small animals"
         self.noduleFrameLayout.addWidget(self.maximumRadiusSpinbox, noduleRow, 1)
 
+
+
+        # noduleRow += 1
+        self.loadNoduleSegmentationButton = qt.QPushButton()
+        # self.loadNoduleSegmentationButton.text = "Load nodule segmentation"
+        # self.loadNoduleSegmentationButton.toolTip = "Load a labelmap that contains the nodule already segmented"
+        # self.loadNoduleSegmentationButton.setIcon(qt.QIcon("{0}/Load.png".format(SlicerUtil.CIP_ICON_DIR)))
+        # self.loadNoduleSegmentationButton.setStyleSheet("margin-top:10px;")
+        # self.loadNoduleSegmentationButton.setIconSize(qt.QSize(15, 15))
+        # self.loadNoduleSegmentationButton.setMinimumHeight(35)
+        # self.noduleFrameLayout.addWidget(self.loadNoduleSegmentationButton, noduleRow, 0)
+
+
+
         noduleRow += 1
+
         self.segmentButton = qt.QPushButton()
         self.segmentButton.text = "Segment nodule"
         self.segmentButton.toolTip = "Run the segmentation algorithm"
         # self.segmentButton.setIcon(qt.QIcon("{0}/Reload.png".format(SlicerUtil.CIP_ICON_DIR)))
         # self.segmentButton.setIconSize(qt.QSize(20, 20))
-        self.segmentButton.setStyleSheet("font-weight:bold; font-size:12px; color: white; background-color:#274EE2; margin-top:10px;")
+        self.segmentButton.setStyleSheet(
+            "font-weight:bold; font-size:12px; color: white; background-color:#274EE2; margin-top:10px;")
         self.segmentButton.setFixedHeight(35)
         self.noduleFrameLayout.addWidget(self.segmentButton, noduleRow, 0)
 
+        label = qt.QLabel("Nodule labelmap")
+        label.setContentsMargins(30, 10, 20, 0)
+        self.noduleFrameLayout.addWidget(label, noduleRow, 1)
 
+        self.noduleLabelmapVolumeSelector = slicer.qMRMLNodeComboBox()
+        self.noduleLabelmapVolumeSelector.setContentsMargins(0, 10, 0, 0)
+        self.noduleLabelmapVolumeSelector.nodeTypes = ("vtkMRMLLabelMapVolumeNode", "")
+        self.noduleLabelmapVolumeSelector.selectNodeUponCreation = False
+        self.noduleLabelmapVolumeSelector.autoFillBackground = True
+        self.noduleLabelmapVolumeSelector.addEnabled = False
+        self.noduleLabelmapVolumeSelector.noneEnabled = False
+        self.noduleLabelmapVolumeSelector.removeEnabled = False
+        self.noduleLabelmapVolumeSelector.showHidden = False
+        self.noduleLabelmapVolumeSelector.showChildNodeTypes = False
+        self.noduleLabelmapVolumeSelector.setMRMLScene(slicer.mrmlScene)
+        # self.inputVolumeSelector.sortFilterProxyModel().setFilterRegExp(self.logic.INPUTVOLUME_FILTER_REGEXPR)
+        # self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
+        self.noduleFrameLayout.addWidget(self.noduleLabelmapVolumeSelector, noduleRow, 2, 1, 2)
+
+
+        noduleRow += 1
         self.removeNoduleButton = qt.QPushButton()
         self.removeNoduleButton.text = "Remove nodule"
         self.removeNoduleButton.toolTip = "Remove the active nodule"
         self.removeNoduleButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.removeNoduleButton.setStyleSheet("margin-top:10px;")
         self.removeNoduleButton.setIconSize(qt.QSize(20, 20))
-        self.noduleFrameLayout.addWidget(self.removeNoduleButton, noduleRow, 3)
+        self.removeNoduleButton.setMinimumSize(130, 40)
+        self.noduleFrameLayout.addWidget(self.removeNoduleButton, noduleRow, 0)
 
         # CLI progress bar
         noduleRow += 1
@@ -601,13 +644,16 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # Connections
         self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onInputVolumeChanged__)
         self.addNewNoduleButton.connect('clicked(bool)', self.__onAddNoduleButtonClicked__)
+        self.jumpToNoduleButton.connect('clicked(bool)', self.__onJumpToNoduleButtonClicked__)
         self.nodulesComboBox.connect("currentIndexChanged (int)", self.__onNodulesComboboxCurrentIndexChanged__)
+        self.noduleLabelmapVolumeSelector.connect("currentNodeChanged (vtkMRMLNode*)", self.__onLabelmapVolumeSelectorCurrentIndexChanged__)
         self.enhanceVisualizationCheckbox.connect("stateChanged(int)", self.__onEnhanceVisualizationCheckChanged__)
         self.addSeedButton.connect('clicked()', self.__onAddSeedButtonClicked__)
         self.removeSeedsButton.connect('clicked()', self.__onRemoveSeedsButtonClicked__)
         self.showAxisButton.connect('clicked()', self.__onShowAxisButtonClicked__)
         self.segmentButton.connect('clicked()', self.__onSegmentButtonClicked__)
         self.distanceLevelSlider.connect('sliderReleased()', self.__onThresholdSegmentationChanged__)
+        self.loadNoduleSegmentationButton.connect('clicked()', self.__onLoadNoduleSegmentationButtonClicked__)
         self.removeNoduleButton.connect('clicked()', self.__onRemoveNoduleButtonClicked__)
         self.lesionTypeRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onLesionTypeChanged__)
         self.showSpheresButtonGroup.connect("buttonClicked(int)", self.__onShowSphereCheckboxClicked__)
@@ -654,6 +700,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Level slider, Features Selection and radiomics section active after running the segmentation algorithm
         self.selectThresholdLabel.visible = self.distanceLevelSlider.visible = \
+            self.currentVolume is not None and \
             self.logic.getNthAlgorithmSegmentationNode(self.currentVolume, self.currentNoduleIndex) is not None
 
         # Show only sphere buttons for this working mode
@@ -667,10 +714,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 self.spheresButtonGroup.button(rad*10).setVisible(True)
                 if self.logic.getNthSphereLabelmapNode(self.currentVolume, self.currentNoduleIndex, rad):
                     self.showSpheresButtonGroup.button(rad*10).setVisible(True)
-            # Show the "other" buttons if the nodule has been segmented
-            showOther = self.logic.getNthAlgorithmSegmentationNode(self.currentVolume, self.currentNoduleIndex) is not None
-            self.otherRadiusCheckbox.setVisible(showOther)
-            self.otherRadiusShowSphereRadioButton.setVisible(showOther)
+
+            # Always show the "other" buttons 
+            self.otherRadiusCheckbox.setVisible(True)
+            self.otherRadiusShowSphereRadioButton.setVisible(True)
 
         #self.progressBar.visible = self.distanceLevelSlider.enabled
         self.saveSeedsButton.visible = self.loadSeedsButton.visible = self.__evaluateSegmentationModeOn__
@@ -781,6 +828,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             modelsLogic.SetActiveModelNode(model)
             model.SetDisplayVisibility(True)
 
+        self.noduleLabelmapVolumeSelector.setCurrentNode(self.logic.getNthNoduleLabelmapNode(self.currentVolume, noduleIndex))
+
         # Jump to the central seed (if it exist)
         if markupNode.GetNumberOfMarkups() > 0:
             pos = [0,0,0]
@@ -829,6 +878,18 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.addSeedButton.setChecked(False)
         SlicerUtil.setFiducialsCursorMode(False)
         self.refreshGUI()
+
+    def resetNodulesCheckboxes(self):
+        """
+        Remove all the seeds checkboxes for a nodule
+        @return:
+        """
+        layout = self.seedsContainerFrame.layout()
+        # Remove current nodules
+        for child in self.seedsContainerFrame.children():
+            if isinstance(child, qt.QCheckBox):
+                layout.removeWidget(child)
+
 
     def showAxis(self, volume, noduleIndex, show):
         """
@@ -1141,7 +1202,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             sliceNode.SetFieldOfView(fov[0] * 0.90,
                                      fov[1] * 0.90, fov[2])
         else:
-            self.timer.stop()
+            self.zoomToSeedTimer.stop()
 
 
     def resetGUI(self):
@@ -1171,43 +1232,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     ############
     # Private methods
     ############
-    def __startModule__(self):
-        # Make sure than resources are released
-        del self.logic
-        self.logic = CIP_LesionModelLogic()
-        if self.currentVolume is None:
-            self.inputVolumeSelector.enabled = True
-        else:
-            # Get the associated hierarchy node associated to this volume.
-            # subjectHierarchyNode = SlicerUtil.getSubjectHierarchyNodeAssociatedToNode(self.currentVolume.GetID())
-            # # It should always be present
-            # if subjectHierarchyNode is None:
-            #     raise EnvironmentError("SubjectHierarchyNode not found for node " + self.currentVolume.GetName())
-
-            # Create the initial structure if it does not exist yet
-            self.logic.getRootNodulesFolderSubjectHierarchyNode(self.currentVolume, createIfNotExist=True)
-
-            # Load the nodules combobox (if any nodule present)
-            nodules = self.logic.getAllNoduleKeys(self.currentVolume)
-            self.nodulesComboBox.blockSignals(True)
-            self.nodulesComboBox.clear()
-            for i in range(len(nodules)):
-                self.nodulesComboBox.addItem("Nodule {}".format(nodules[i]))
-                self.nodulesComboBox.setItemData(i, nodules[i])
-            self.nodulesComboBox.blockSignals(False)
-
-            self.maximumRadiusSpinbox.value = self.logic.getMaxRadius(self.currentVolume)
-            # Disable volumes combobox so that the user cannot switch between different volumes
-            self.inputVolumeSelector.enabled = False
-
-        # self.logic = CIP_LesionModelLogic()
-        # self.logic.printTiming = self.__printTimeCost__
-        # elif self.timer.isActive():
-        #     # Stop checking if there is no selected node
-        #     self.timer.stop()
-
-        self.refreshGUI()
-
 
     def _showCurrentLabelmap_(self):
         """ Display the right labelmap for the current background node if it exists"""
@@ -1320,15 +1344,41 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         self.refreshGUI()
 
-    def __onVolumeAddedToScene__(self, scalarNode):
-        if self.inputVolumeSelector.currentNode() is None:
-            self.inputVolumeSelector.setCurrentNode(scalarNode)
+    # def __onVolumeAddedToScene__(self, scalarNode):
+    #     if self.inputVolumeSelector.currentNode() is None:
+    #         self.inputVolumeSelector.setCurrentNode(scalarNode)
 
     def __onInputVolumeChanged__(self, node):
         """ Input volume selector changed. Create a new fiducials node if it doesn't exist yet
         @param node: selected node
         """
-        self.__startModule__()
+        if node is not None:
+            # Get the associated hierarchy node associated to this volume.
+            subjectHierarchyNode = SlicerUtil.getSubjectHierarchyNodeAssociatedToNode(node.GetID())
+            # It should always be present
+            if subjectHierarchyNode is None:
+                raise EnvironmentError("SubjectHierarchyNode not found for node " + node.GetName())
+
+            # Create the initial structure if it does not exist yet
+            self.logic.getRootNodulesFolderSubjectHierarchyNode(node, createIfNotExist=True)
+
+            # Load the nodules combobox (if any nodule present)
+            nodules = self.logic.getAllNoduleKeys(self.currentVolume)
+            self.nodulesComboBox.blockSignals(True)
+            self.nodulesComboBox.clear()
+            self.resetNodulesCheckboxes()
+            for i in range(len(nodules)):
+                self.nodulesComboBox.addItem("Nodule {}".format(nodules[i]))
+                self.nodulesComboBox.setItemData(i, nodules[i])
+            self.nodulesComboBox.blockSignals(False)
+            if len(nodules) > 0:
+                self.setActiveNodule(self.nodulesComboBox.itemData(0))
+
+            self.maximumRadiusSpinbox.value = self.logic.getMaxRadius(node)
+            # Display this volume in all the windows
+            SlicerUtil.setActiveVolumeIds(node.GetID())
+
+        self.refreshGUI()
 
     def __onSubjectHierarchyNodeAddedToScene__(self, subjectHierarchyNode):
         """
@@ -1344,13 +1394,32 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def __onAddNoduleButtonClicked__(self):
         self.addNewNodule()
 
+    def __onJumpToNoduleButtonClicked__(self):
+        """
+        Jump to the slice where the first seed of the current nodule is
+        """
+        if self.currentNoduleIndex:
+            fids = self.logic.getNthFiducialsListNode(self.currentVolume, self.currentNoduleIndex)
+            if fids and fids.GetNumberOfFiducials() > 0:
+                coords = [0,0,0]
+                fids.GetNthFiducialPosition(0, coords)
+                SlicerUtil.jumpToSeed(coords)
+                self.zoomToSeedTimer.start()
+
+
     def __onNodulesComboboxCurrentIndexChanged__(self, index):
+        self.resetNodulesCheckboxes()
         if index is not None and index >= 0:
-            #self.currentNoduleIndex = self.nodulesComboBox.itemData(index)
             self.setActiveNodule(self.nodulesComboBox.itemData(index))
 
-    # def __onPreVolumeLoad__(self, volume):
-    #     self.resetGUI()
+    def __onLabelmapVolumeSelectorCurrentIndexChanged__(self, node):
+        if node:
+            self.logic.setNthNoduleLabelmapNode(self.currentVolume, self.currentNoduleIndex, node)
+            # Make this labelmap the visible one
+            SlicerUtil.setActiveVolumeIds(self.currentVolume.GetID(), node.GetID())
+            # Show the radiomics the moment there is a labelmap for any of the nodules
+            self.__showRadiomics__ = True
+            self.refreshGUI()
 
     def __onEnhanceVisualizationCheckChanged__(self, state):
         active = self.enhanceVisualizationCheckbox.isChecked()
@@ -1382,6 +1451,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.addFiducialRow(vtkMRMLMarkupsFiducialNode, fiducialPosition)
         SlicerUtil.setFiducialsCursorMode(False)
         self.refreshGUI()
+        if SlicerUtil.isOtherVolumeVisible(self.currentVolume.GetID()):
+            slicer.util.warningDisplay("Please note that the input volume selected ({}) is different from the one "
+            "that you are actually watching".format(self.currentVolume.GetName()))
 
     def __onRemoveSeedsButtonClicked__(self):
         numSeeds = len(self.seedsContainerFrame.children())
@@ -1453,13 +1525,16 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Show the radiomics section as soon as ANY nodule has been segmented, as
         # the user has the option to analyze all nodules in batch mode
-        self.__showRadiomics__ = True
-
-        self.refreshGUI()
+        # self.__showRadiomics__ = True
+        #
+        # self.refreshGUI()
 
         # Change the layout to a regular 3D view (without MIP)
         self.enhanceVisualizationCheckbox.setChecked(False)
         SlicerUtil.changeLayout(1)
+
+        # Select the labelmap in the volume selector
+        self.noduleLabelmapVolumeSelector.setCurrentNode(self.logic.getNthNoduleLabelmapNode(currentVolume, noduleIndex))
 
         # TODO: Zoom to seed with the right zoom value
         #self.zoomToSeed()
@@ -1499,6 +1574,9 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         else:
             self.runAnalysis(self.currentVolume, self.currentNoduleIndex)
 
+    def __onLoadNoduleSegmentationButtonClicked__(self):
+        pass
+
     def __onRemoveNoduleButtonClicked__(self):
         if  qt.QMessageBox.question(slicer.util.mainWindow(), "Remove nodule?",
                     "Are you sure you want to remove this nodule?",
@@ -1510,7 +1588,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
     def __onSceneClosed__(self, arg1, arg2):
         # self.timer.stop()
         self.resetGUI()
-        self.__startModule__()
 
     def exit(self):
         """This is invoked every time that we switch to another module (not only when Slicer is closed)."""
@@ -1681,8 +1758,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         """
         root = SlicerUtil.getSubjectHierarchyNodeAssociatedToNode(vtkMRMLScalarVolumeNode.GetID())
         return slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(
-            slicer.mrmlScene, root,
-            slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), "Nodules")
+            slicer.mrmlScene, root, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(),
+            "{}_Nodules".format(vtkMRMLScalarVolumeNode.GetName()))
 
     def getLastNoduleIndex(self, vtkMRMLScalarVolumeNode):
         """
@@ -1718,8 +1795,9 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         nodulesFolder = self.getRootNodulesFolderSubjectHierarchyNode(vtkMRMLScalarVolumeNode)
         if nodulesFolder is None:
             # Create the folder for the different nodules
+            nodeName =  "{}_Nodules".format(vtkMRMLScalarVolumeNode.GetName())
             nodulesFolder = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, volumeRootFolder,
-                   slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), "Nodules")
+                                    slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), nodeName)
 
         # Add a new Nodule folder with the corresponding index number (starting at 1!, more intuitive for the user)
         noduleIndex = self.getLastNoduleIndex(vtkMRMLScalarVolumeNode) + 1
@@ -1727,7 +1805,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
           slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), str(noduleIndex))
 
         # Create the fiducials node
-        fidNode = self._createFiducialsListNode_()
+        fidNode = self._createFiducialsListNode_(vtkMRMLScalarVolumeNode, noduleIndex)
         # Move it to the right place in the hierarchy
         self.setNthFiducialsListNode(vtkMRMLScalarVolumeNode, noduleIndex, fidNode)
 
@@ -1735,7 +1813,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         annotRulersNode = self._createRulersNode_()
         # Create a folder that will be associated with the rulers hierarchy
         rulersHN = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, hierNoduleFolder,
-                           slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), "Rulers_{}".format(noduleIndex))
+                           slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(),
+                                                "{}_Rulers_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
         # Associate the folder to the rulers hierarchy node
         rulersHN.SetAssociatedNodeID(annotRulersNode.GetID())
         # Move it to the right place
@@ -1802,17 +1881,18 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         noduleFolder = self.getNthNoduleFolder(vtkMRMLScalarVolumeNode, noduleIndex)
         if noduleFolder is None:
             return None
+        suffix = slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyNodeNamePostfix()
         for i in range(noduleFolder.GetNumberOfChildrenNodes()):
             # Use this method instead of simply noduleFolder.GetNthChildNode(i).GetAssociatedNode() because of a bug in the
             # SubjectHierarchyNode when the node is associated to a vtkMRMLAnnotationHierarchyNode
-            id = noduleFolder.GetNthChildNode(i).GetAssociatedNodeID()
-            if id:
-                n = slicer.util.getNode(id)
-                if n is not None and n.GetName() == nodeName:
-                    return n
+            shn = noduleFolder.GetNthChildNode(i)
+            if shn.GetName() == (nodeName + suffix):
+                id = shn.GetAssociatedNodeID()
+                if id:
+                    return slicer.mrmlScene.GetNodeByID(id)
         return None
 
-    def _setNthSubjectHierarchyNode_(self, vtkMRMLScalarVolumeNode, noduleIndex, node):
+    def _setNthSubjectHierarchyNode_(self, vtkMRMLScalarVolumeNode, noduleIndex, node, nodeName):
         """
         Set and associate a node to a particular SubjectHierarchyNode that is a direct child of the nodule folder
         @param vtkMRMLScalarVolumeNode:
@@ -1834,13 +1914,33 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         parent = self.getNthNoduleFolder(vtkMRMLScalarVolumeNode, noduleIndex)
         if not parent:
             return False
+
+        # First, remove the possibly existing one
+        self._extractNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
+                              nodeName + slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyNodeNamePostfix())
+
         # Get the subject hierachy node associated to the node
         shn = SlicerUtil.getSubjectHierarchyNodeAssociatedToNode(node.GetID())
         if not shn:
             return False
         # Set the parent
         shn.SetParentNodeID(parent.GetID())
+        # Force the name for future searches
+        shn.SetName(nodeName + slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyNodeNamePostfix())
         return True
+
+    def _extractNthSubjectHierarchyNode_(self, vtkMRMLScalarVolumeNode, noduleIndex, shnNodeName):
+        if noduleIndex < 0:
+            return
+        noduleFolder = self.getNthNoduleFolder(vtkMRMLScalarVolumeNode, noduleIndex)
+        if noduleFolder is None:
+            return
+        for i in range(noduleFolder.GetNumberOfChildrenNodes()):
+            shn = noduleFolder.GetNthChildNode(i)
+            if shn.GetName() == shnNodeName:
+                # Disassociate the Subject Hierarchy Node from the nodule folder
+                shn.SetParentNodeID(None)
+                return
 
     # def _moveNodeToNodulesFolder_(self, vtkMRMLScalarVolumeRootNode, noduleIndex, node):
     #     """
@@ -1872,7 +1972,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param noduleIndex: int number of nodule (starting at 1)
         @return: vtkMRMLMarkupsFiducialNode (or None if not found)
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "Fiducials_{}".format(noduleIndex))
+        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
+                                                 "{}_Fiducials_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
 
     def setNthFiducialsListNode(self, vtkMRMLScalarVolumeNode, noduleIndex, vtkMRMLMarkupsFiducialNode):
         """
@@ -1882,8 +1983,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param vtkMRMLMarkupsFiducialNode: markups node to set
         @return: True if everything went fine
         """
-        vtkMRMLMarkupsFiducialNode.SetName("Fiducials_{}".format(noduleIndex))
-        return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, vtkMRMLMarkupsFiducialNode)
+        nodeName = "{}_Fiducials_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex)
+        return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, vtkMRMLMarkupsFiducialNode, nodeName)
 
     def getNthRulersListNode(self, vtkMRMLScalarVolumeNode, noduleIndex):
         """
@@ -1892,7 +1993,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param noduleIndex:  number of nodule (starting at 1)
         @return: vtkMRMLAnnotationHierarchyNode
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "Rulers_{}".format(noduleIndex))
+        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
+                                                 "{}_Rulers_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
 
     def setNthRulersListNode(self, vtkMRMLScalarVolumeNode, noduleIndex, vtkMRMLAnnotationHierarchyNode):
         """
@@ -1902,8 +2004,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param vtkMRMLAnnotationHierarchyNode: rulers node to set
         @return: True (everything ok) or False
         """
-        vtkMRMLAnnotationHierarchyNode.SetName("Rulers_{}".format(noduleIndex))
-        return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, vtkMRMLAnnotationHierarchyNode)
+        nodeName = "{}_Rulers_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex)
+        return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, vtkMRMLAnnotationHierarchyNode, nodeName)
 
     def getNthNoduleLabelmapNode(self, vtkMRMLScalarVolumeNode, noduleIndex):
         """
@@ -1912,7 +2014,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param noduleIndex:  number of nodule (starting at 1)
         @return: vtkMRMLAnnotationHierarchyNode
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "NoduleLabelmap_{}".format(noduleIndex))
+        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
+                                        "{}_NoduleLabelmap_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
 
 
     def setNthNoduleLabelmapNode(self, vtkMRMLScalarVolumeNode, noduleIndex, labelmapNode):
@@ -1923,8 +2026,10 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param vtkMRMLMarkupsFiducialNode: markups node to set
         @return: True if everything went fine
         """
-        labelmapNode.SetName("NoduleLabelmap_{}".format(noduleIndex))
-        return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, labelmapNode)
+        if vtkMRMLScalarVolumeNode is None or labelmapNode is None:
+            return False
+        nodeName = "{}_NoduleLabelmap_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex)
+        return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, labelmapNode, nodeName)
 
 
     def getNthAlgorithmSegmentationNode(self, vtkMRMLScalarVolumeNode, noduleIndex):
@@ -1934,17 +2039,18 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param noduleIndex:  number of nodule (starting at 1)
         @return: vtkMRMLAnnotationHierarchyNode
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "NoduleAlgorithmSegmentation_{}".format(noduleIndex))
+        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
+                             "{}_NoduleAlgorithmSegmentation_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
 
     def setNthAlgorithmSegmentationNode(self, vtkMRMLScalarVolumeNode, noduleIndex, node):
         """
         @param vtkMRMLScalarVolumeNode: volume node
         @param noduleIndex: int number of nodule (starting at 1)
-        @param volumeID: markups node to set
+        @param node: labelmap node to set
         @return: True if everything went fine
         """
-        node.SetName("NoduleAlgorithmSegmentation_{}".format(noduleIndex))
-        return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, node)
+        nodeName = "{}_NoduleAlgorithmSegmentation_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex)
+        return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, node, nodeName)
 
     def getNthNoduleModelNode(self, vtkMRMLScalarVolumeNode, noduleIndex):
         """
@@ -1953,7 +2059,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param noduleIndex:  number of nodule (starting at 1)
         @return: vtkMRMLAnnotationHierarchyNode
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, "NoduleModel_{}".format(noduleIndex))
+        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
+                                            "{}_NoduleModel_{}".format(vtkMRMLScalarVolumeNode.GetName(),noduleIndex))
 
     def setNthNoduleModelNode(self, vtkMRMLScalarVolumeNode, noduleIndex, modelNode):
         """
@@ -1962,8 +2069,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param modelNode: model node to set
         @return: True if everything went fine
         """
-        modelNode.SetName("NoduleModel_{}".format(noduleIndex))
-        return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, modelNode)
+        nodeName = "{}_NoduleModel_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex)
+        return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, modelNode, nodeName)
 
     def getAllSphereLabelmapNodes(self, vtkMRMLScalarVolumeNode, noduleIndex):
         """
@@ -1979,7 +2086,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             associatedID = folder.GetNthChildNode(i).GetAssociatedNodeID()
             if associatedID:
                 childNode = slicer.util.getNode(associatedID)
-                if childNode.GetName().startswith("SphereLabelmap"):
+                if "SphereLabelmap" in childNode.GetName():
                     nodes.append(childNode)
         return nodes
 
@@ -1992,7 +2099,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @return: vtkMRMLAnnotationHierarchyNode
         """
         return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
-                                                 "SphereLabelmap_r{0}_{1}".format(sphereRadius, noduleIndex))
+                                                 "{}_SphereLabelmap_r{}_{}".format(vtkMRMLScalarVolumeNode.GetName(),
+                                                                                     sphereRadius, noduleIndex))
 
     def setNthSphereLabelmapNode(self, vtkMRMLScalarVolumeNode, noduleIndex, modelNode, sphereRadius):
         """
@@ -2002,8 +2110,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param sphereRadius: radius of the sphere
         @return: True if everything went fine
         """
-        modelNode.SetName("SphereLabelmap_r{0}_{1}".format(sphereRadius, noduleIndex))
-        return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, modelNode)
+        nodeName = "{}_SphereLabelmap_r{}_{}".format(vtkMRMLScalarVolumeNode.GetName(), sphereRadius, noduleIndex)
+        return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, modelNode, nodeName)
 
 
     def getAllFiducialNodes(self, vtkMRMLScalarVolumeNode):
@@ -2071,12 +2179,11 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             cliOutputScalarNode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLScalarVolumeNode")
             # segmentedNodeName = self.__PREFIX_INPUTVOLUME__ + self.vtkMRMLScalarVolumeNode.GetID()
             slicer.mrmlScene.AddNode(cliOutputScalarNode)
-            cliOutputScalarNode.SetName("NoduleAlgorithmSegmentation")
+            cliOutputScalarNode.SetName("{}_NoduleAlgorithmSegmentation_{}".format(inputVolume.GetName(), noduleIndex))
             # Place it correctly in the hierarchy
             self.setNthAlgorithmSegmentationNode(inputVolume, noduleIndex, cliOutputScalarNode)
 
         parameters = {}
-        print("Calling CLI...")
         parameters["inputImage"] = inputVolumeID
         parameters["outputLevelSet"] = cliOutputScalarNode
         parameters["seedsFiducials"] = self.getNthFiducialsListNode(inputVolume, noduleIndex)
@@ -2157,7 +2264,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         # Otherwise, Init with the current segmented nodule labelmap
         # Create and save the labelmap in the Subject hierarchy
         labelmapNodule = self.getNthNoduleLabelmapNode(vtkMRMLScalarVolumeNode, noduleIndex)
-        newSphereLabelmap = SlicerUtil.cloneVolume(labelmapNodule, "SphereLabelmap_r{0}".format(radius))
+        newSphereLabelmap = SlicerUtil.cloneVolume(labelmapNodule,
+                        "{}_SphereLabelmap_r{}_{}".format(vtkMRMLScalarVolumeNode.GetName(), radius, noduleIndex))
         array = slicer.util.array(newSphereLabelmap.GetID())
         # Mask with the voxels that are inside the radius of the sphere
         dm = self.currentDistanceMaps[(vtkMRMLScalarVolumeNode.GetID(), noduleIndex)]
@@ -2299,14 +2407,14 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     ################
     # PROTECTED/PRIVATE METHODS
     ################
-    def _createFiducialsListNode_(self):
+    def _createFiducialsListNode_(self, vtkMRMLScalarVolumeNode, noduleIndex):
         """ Create a new fiducials list node for the current volume
         @param fiducialsNodeName: fiducials node name that will be created
         @param onModifiedCallback: function that will be connected to node's "ModifiedEvent"
         @return: Fiducials node
         """
-        fiducialsNodeName = "Fiducials"
         markupsLogic = slicer.modules.markups.logic()
+        fiducialsNodeName="{}_Fiducials_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex)
         fiducialsNodeID = markupsLogic.AddNewFiducialNode(fiducialsNodeName, slicer.mrmlScene)
         fiducialsNode = slicer.util.getNode(fiducialsNodeID)
         # Make the new fiducials node the active one
@@ -2377,7 +2485,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         labelmap = self.getNthNoduleLabelmapNode(vtkMRMLScalarVolumeNode, noduleIndex)
         if labelmap is None:
             # Create a labelmap with the same dimensions that the ct volume
-            labelmap = SlicerUtil.getLabelmapFromScalar(cliOutputScalarNode, "NoduleLabelmap")
+            labelmap = SlicerUtil.getLabelmapFromScalar(cliOutputScalarNode,
+                                            "{}_NoduleLabelmap_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
             labelmap.SetImageDataConnection(thresholdFilter.GetOutputPort())
             # Associate it to the right place in the Subject Hierarchy Tree
             self.setNthNoduleLabelmapNode(vtkMRMLScalarVolumeNode, noduleIndex, labelmap)
@@ -2397,6 +2506,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             # Create the result model node and connect it to the pipeline
             modelsLogic = slicer.modules.models.logic()
             currentModelNode = modelsLogic.AddModel(marchingCubesFilter.GetOutputPort())
+            currentModelNode.SetName("{}_NoduleModel_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
             # Set the model to the right subject hierarchy node
             self.setNthNoduleModelNode(vtkMRMLScalarVolumeNode, noduleIndex, currentModelNode)
             # Create a DisplayNode and associate it to the model, in order that transformations can work properly
@@ -2445,7 +2555,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @return: volume created
         """
         labelmap = self.getNthNoduleLabelmapNode(vtkMRMLScalarVolumeNode, noduleIndex)
-        node = SlicerUtil.cloneVolume(labelmap, "SphereLabelmap_r{0}".format(radius))
+        node = SlicerUtil.cloneVolume(labelmap, "{}_SphereLabelmap_r{0}".format(vtkMRMLScalarVolumeNode.GetName(), radius))
         arr = slicer.util.array(node.GetID())
         arr[:] = slicer.util.array(labelmap.GetID())
         node.GetImageData().Modified()

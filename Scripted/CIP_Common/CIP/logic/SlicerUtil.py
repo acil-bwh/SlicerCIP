@@ -144,7 +144,7 @@ class SlicerUtil:
         #     selectionNode.SetReferenceActiveVolumeID(volumeId)
         # if labelmapId is not None and labelmapId != "":
         #     selectionNode.SetReferenceActiveLabelVolumeID(labelmapId)
-        slicer.app.applicationLogic().PropagateVolumeSelection(0)
+        #slicer.app.applicationLogic().PropagateVolumeSelection(0)      # This line stopped working in Slicer 4.6
 
     @staticmethod
     def saveNewNode(vtkMRMLScalarVolumeNode, fileName):
@@ -380,6 +380,20 @@ class SlicerUtil:
         if nodes.GetNumberOfItems() > 0:
             return nodes.GetItemAsObject(0)
         return None
+
+    @staticmethod
+    def isOtherVolumeVisible(volumeId):
+        """
+        Check if there is a background volume visible in ANY of the VISIBLE slice widgets (Red, Yellow, Green) that is
+        different from the specified
+        :param volumeId:
+        :return: True if there is any volume visible that is not the passed one
+        """
+        layoutManager = slicer.app.layoutManager()
+        for slice in layoutManager.sliceViewNames():
+            if layoutManager.sliceWidget(slice).visible and SlicerUtil.getActiveVolumeIdInSlice(slice) != volumeId:
+                return True
+        return False
 
     @staticmethod
     def filterVolumeName(name):
