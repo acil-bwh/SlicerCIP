@@ -54,7 +54,7 @@ class ParenchymalVolume:
             return 0
 
         # Calculate total volume in the sphere for this emphysema type
-        sphereVolume = np.sum(self.parenchymaLabelmapArray[self.sphereWithoutTumorLabelmapArray] == code)
+        sphereVolume = np.sum(self.parenchymaLabelmapArray[self.sphereWithoutTumorLabelmapArray.astype(np.bool)] == code)
 
         # Result: SV / PV
         return float(sphereVolume) / totalVolume

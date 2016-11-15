@@ -367,22 +367,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.maximumRadiusSpinbox.toolTip = "Maximum radius for the tumor. Recommended: 30 mm for humans and 3 mm for small animals"
         self.noduleFrameLayout.addWidget(self.maximumRadiusSpinbox, noduleRow, 1)
 
-
-
-        # noduleRow += 1
-        self.loadNoduleSegmentationButton = qt.QPushButton()
-        # self.loadNoduleSegmentationButton.text = "Load nodule segmentation"
-        # self.loadNoduleSegmentationButton.toolTip = "Load a labelmap that contains the nodule already segmented"
-        # self.loadNoduleSegmentationButton.setIcon(qt.QIcon("{0}/Load.png".format(SlicerUtil.CIP_ICON_DIR)))
-        # self.loadNoduleSegmentationButton.setStyleSheet("margin-top:10px;")
-        # self.loadNoduleSegmentationButton.setIconSize(qt.QSize(15, 15))
-        # self.loadNoduleSegmentationButton.setMinimumHeight(35)
-        # self.noduleFrameLayout.addWidget(self.loadNoduleSegmentationButton, noduleRow, 0)
-
-
-
         noduleRow += 1
-
         self.segmentButton = qt.QPushButton()
         self.segmentButton.text = "Segment nodule"
         self.segmentButton.toolTip = "Run the segmentation algorithm"
@@ -653,7 +638,6 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.showAxisButton.connect('clicked()', self.__onShowAxisButtonClicked__)
         self.segmentButton.connect('clicked()', self.__onSegmentButtonClicked__)
         self.distanceLevelSlider.connect('sliderReleased()', self.__onThresholdSegmentationChanged__)
-        self.loadNoduleSegmentationButton.connect('clicked()', self.__onLoadNoduleSegmentationButtonClicked__)
         self.removeNoduleButton.connect('clicked()', self.__onRemoveNoduleButtonClicked__)
         self.lesionTypeRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onLesionTypeChanged__)
         self.showSpheresButtonGroup.connect("buttonClicked(int)", self.__onShowSphereCheckboxClicked__)
@@ -715,7 +699,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 if self.logic.getNthSphereLabelmapNode(self.currentVolume, self.currentNoduleIndex, rad):
                     self.showSpheresButtonGroup.button(rad*10).setVisible(True)
 
-            # Always show the "other" buttons 
+            # Always show the "other" buttons
             self.otherRadiusCheckbox.setVisible(True)
             self.otherRadiusShowSphereRadioButton.setVisible(True)
 
@@ -1413,7 +1397,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.setActiveNodule(self.nodulesComboBox.itemData(index))
 
     def __onLabelmapVolumeSelectorCurrentIndexChanged__(self, node):
-        if node:
+        if self.currentVolume and node:
             self.logic.setNthNoduleLabelmapNode(self.currentVolume, self.currentNoduleIndex, node)
             # Make this labelmap the visible one
             SlicerUtil.setActiveVolumeIds(self.currentVolume.GetID(), node.GetID())
