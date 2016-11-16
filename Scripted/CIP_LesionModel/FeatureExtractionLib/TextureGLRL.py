@@ -298,6 +298,10 @@ class TextureGLRL:
         return (P_out)
 
     def EvaluateFeatures(self, printTiming=False, checkStopProcessFunction=None):
+        # Remove all the keys that must not be evaluated
+        for key in set(self.textureFeaturesGLRL.keys()).difference(self.keys):
+            self.textureFeaturesGLRL[key] = None
+
         if not self.keys:
             if not printTiming:
                 return self.textureFeaturesGLRL

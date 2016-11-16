@@ -2243,7 +2243,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         # Try to get first the node from the subject hierarchy tree
         sphereLabelmap = self.getNthSphereLabelmapNode(vtkMRMLScalarVolumeNode, noduleIndex, radius)
         if sphereLabelmap is not None:
-            return sphereLabelmap
+            return slicer.util.array(sphereLabelmap.GetID())
 
         # Otherwise, Init with the current segmented nodule labelmap
         # Create and save the labelmap in the Subject hierarchy

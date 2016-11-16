@@ -61,6 +61,10 @@ class ParenchymalVolume:
 
     def EvaluateFeatures(self, printTiming = False, checkStopProcessFunction=None):
         # Evaluate dictionary elements corresponding to user-selected keys
+        # Remove all the keys that must not be evaluated
+        for key in set(self.parenchymalVolumeStatistics.keys()).difference(self.keys):
+            self.parenchymalVolumeStatistics[key] = None
+
         types = self.getAllEmphysemaTypes()
 
         if not printTiming:

@@ -92,8 +92,12 @@ class GeometricalMeasures:
 
     def EvaluateFeatures(self, printTiming=False, checkStopProcessFunction=None):
         # Evaluate dictionary elements corresponding to user-selected keys
+        # Remove all the keys that must not be evaluated
+        for key in set(self.GeometricalMeasures.keys()).difference(self.keys):
+            self.GeometricalMeasures[key] = None
+
         if not self.keys:
-            return (self.GeometricalMeasures)
+            return self.GeometricalMeasures
 
         if printTiming:
             import time

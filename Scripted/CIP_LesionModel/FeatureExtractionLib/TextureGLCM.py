@@ -384,11 +384,14 @@ class TextureGLCM:
         return (out)
 
     def EvaluateFeatures(self, printTiming=False, checkStopProcessFunction=None):
+        # Remove all the keys that must not be evaluated
+        for key in set(self.textureFeaturesGLCM.keys()).difference(self.keys):
+            self.textureFeaturesGLCM[key] = None
+
         if not self.keys:
             if not printTiming:
                 return self.textureFeaturesGLCM
             else:
-                self.textureFeaturesGLCMTiming.update
                 return self.textureFeaturesGLCM, self.textureFeaturesGLCMTiming
         # normalization step:
         self.CalculateCoefficients(printTiming)

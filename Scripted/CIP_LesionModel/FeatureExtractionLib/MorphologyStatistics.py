@@ -113,7 +113,8 @@ class MorphologyStatistics:
     def EvaluateFeatures(self, printTiming=False, checkStopProcessFunction=None):
         # Evaluate dictionary elements corresponding to user-selected keys
         if not self.keys:
-            return (self.morphologyStatistics)
+            return self.morphologyStatistics
+
         if len(self.matrixSA) == 0:
             for key in self.keys:
                 self.morphologyStatistics[key] = 0
@@ -130,6 +131,10 @@ class MorphologyStatistics:
                 t1 = time.time()
                 self.morphologyStatisticsTiming["Surface Area mm^2"] = time.time() - t1
 
+            # Remove all the keys that must not be evaluated
+            for key in set(self.morphologyStatistics.keys()).difference(self.keys):
+                self.morphologyStatistics[key] = None
+
             if printTiming:
                 for key in self.keys:
                     if isinstance(self.morphologyStatistics[key], basestring):
@@ -138,6 +143,9 @@ class MorphologyStatistics:
                         self.morphologyStatisticsTiming[key] = time.time() - t1
                         if checkStopProcessFunction is not None:
                             checkStopProcessFunction()
+                # Remove all the keys that must not be evaluated
+                for key in set(self.morphologyStatistics.keys()).difference(self.keys):
+                    self.morphologyStatistics[key] = None
                 return self.morphologyStatistics, self.morphologyStatisticsTiming
             else:
                 for key in self.keys:
@@ -145,4 +153,7 @@ class MorphologyStatistics:
                         self.morphologyStatistics[key] = eval(self.morphologyStatistics[key])
                         if checkStopProcessFunction is not None:
                             checkStopProcessFunction()
+                # Remove all the keys that must not be evaluated
+                for key in set(self.morphologyStatistics.keys()).difference(self.keys):
+                    self.morphologyStatistics[key] = None
                 return self.morphologyStatistics

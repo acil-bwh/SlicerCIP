@@ -23,6 +23,11 @@ class RenyiDimensions:
     def EvaluateFeatures(self, printTiming=False, checkStopProcessFunction=None):
         self.checkStopProcessFunction=checkStopProcessFunction
         keys = set(self.allKeys).intersection(self.renyiDimensions.keys())
+
+        # Remove all the keys that must not be evaluated
+        for key in set(self.renyiDimensions.keys()).difference(keys):
+            self.renyiDimensions[key] = None
+
         if not printTiming:
             if not keys:
                 return self.renyiDimensions
