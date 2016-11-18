@@ -124,9 +124,11 @@ class MorphologyStatistics:
                 import time
                 t1 = time.time()
             self.morphologyStatistics["Volume mm^3"] = eval(self.morphologyStatistics["Volume mm^3"])
+            self.keys.add("Volume mm^3")
             if printTiming:
                 self.morphologyStatisticsTiming["Volume mm^3"] = time.time() - t1
             self.morphologyStatistics["Surface Area mm^2"] = eval(self.morphologyStatistics["Surface Area mm^2"])
+            self.keys.add("Surface Area mm^2")
             if printTiming:
                 t1 = time.time()
                 self.morphologyStatisticsTiming["Surface Area mm^2"] = time.time() - t1
@@ -143,9 +145,6 @@ class MorphologyStatistics:
                         self.morphologyStatisticsTiming[key] = time.time() - t1
                         if checkStopProcessFunction is not None:
                             checkStopProcessFunction()
-                # Remove all the keys that must not be evaluated
-                for key in set(self.morphologyStatistics.keys()).difference(self.keys):
-                    self.morphologyStatistics[key] = None
                 return self.morphologyStatistics, self.morphologyStatisticsTiming
             else:
                 for key in self.keys:
@@ -153,7 +152,5 @@ class MorphologyStatistics:
                         self.morphologyStatistics[key] = eval(self.morphologyStatistics[key])
                         if checkStopProcessFunction is not None:
                             checkStopProcessFunction()
-                # Remove all the keys that must not be evaluated
-                for key in set(self.morphologyStatistics.keys()).difference(self.keys):
-                    self.morphologyStatistics[key] = None
+               
                 return self.morphologyStatistics

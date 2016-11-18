@@ -87,7 +87,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Timer for dynamic zooming
         self.zoomToSeedTimer = qt.QTimer()
-        self.zoomToSeedTimer.setInterval(150)
+        self.zoomToSeedTimer.setInterval(100)
         self.zoomToSeedTimer.timeout.connect(self.zoomToSeed)
 
 
@@ -1160,7 +1160,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             else:
                 index = noduleKeys[noduleKey]
             fidNode = self.logic.getNthFiducialsListNode(self.currentVolume, index)
-            position = Util.lps_to_ras(point.coordinate)
+            if geom.coordinate_system == geom.IJK:
+                position = Util.ijk_to_ras(point.coordinate)
+            elif geom.coordinate_system == geom.LPS:
+                position = Util.lps_to_ras(point.coordinate)
+            else:
+                position = point.coordinate
             fidNode.AddFiducial(*position)
         SlicerUtil.setCrosshairCursor(False)
         SlicerUtil.setFiducialsCursorMode(False)
