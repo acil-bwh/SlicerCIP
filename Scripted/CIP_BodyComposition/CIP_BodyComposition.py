@@ -968,7 +968,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     def jumpSlice(self, backwards=False):
         """Jump to the next slice for the selected label, being the origin the current visible slice in Red node.
         If backwards==True, we will go to the previous slice.
-        The navigation is continuous, so if we get to the beggining/end, we we will start in the other side"""
+        The navigation is continuous, so if we get to the beginning/end, we we will start in the other side"""
         # Get the current slice number (we will assume we are in Red Node)
         layoutManager = slicer.app.layoutManager()
         redWidget = layoutManager.sliceWidget('Red')
