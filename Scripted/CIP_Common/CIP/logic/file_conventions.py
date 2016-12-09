@@ -9,6 +9,7 @@ file_conventions_extensions = {
     "interactiveBodyCompositionLabelMap": "_interactiveBodyComposition.nrrd",
     "StructuresLabelMap": "_structuresLabelMap.nrrd",
     "ILDClassificationLabelmap": "_histogramParenchymaILDClassification.nrrd",
+    "CardiacMotionLabelMap": "_cardiacMotionLabelMap.nrrd",
     # Xmls
     "ParenchymaTrainingFiducialsXml": "_parenchymaTraining.xml",
     "StructuresXml": "_structures.xml",
