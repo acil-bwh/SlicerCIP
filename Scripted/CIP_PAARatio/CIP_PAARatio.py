@@ -55,6 +55,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             if callData.GetClassName() == 'vtkMRMLScalarVolumeNode' \
                     and slicer.util.mainWindow().moduleSelector().selectedModule == self.moduleName:    # Current module visible
                 self.volumeSelector.setCurrentNode(callData)
+                SlicerUtil.changeContrastWindow(350, 40)
 
         self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
         self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
@@ -363,6 +364,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.savedLabelmapID = None  # Active labelmap node ID
         self.savedLabelmapOpacity = None  # Labelmap opacity
         self.savedContrastLevel = (None, None)  # Contrast window/level that the user had when entering the module
+        SlicerUtil.changeContrastWindow(350, 40)
 
     def changeToDefaultContrastLevel(self):
         # Preferred contrast
