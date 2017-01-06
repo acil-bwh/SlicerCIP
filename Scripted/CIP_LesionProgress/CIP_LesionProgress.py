@@ -4,6 +4,7 @@ import os, sys
 import vtkSegmentationCorePython as vtkSegmentationCore
 from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
+import decimal as dec
 import collections
 import itertools
 
@@ -205,116 +206,153 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
         self.noduleSegmentationLayout.addWidget(self.selectNoduleLabel, row, 0)
 
         self.nodulesComboBox = qt.QComboBox()
-        self.noduleSegmentationLayout.addWidget(self.nodulesComboBox, row, 1, 1, 2)
+        self.noduleSegmentationLayout.addWidget(self.nodulesComboBox, row, 1,1,1)
 
         self.addNewNoduleButton = ctk.ctkPushButton()
-        self.addNewNoduleButton.text = "New"
-        self.noduleSegmentationLayout.addWidget(self.addNewNoduleButton, row, 3)
+        self.addNewNoduleButton.text = " New "
+        self.addNewNoduleButton.toolTip = "Add a new nodule"
+        self.addNewNoduleButton.setIcon(qt.QIcon("{0}/plus.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.addNewNoduleButton.setIconSize(qt.QSize(20, 20))
+        self.addNewNoduleButton.setFixedWidth(75)
+        self.addNewNoduleButton.setStyleSheet("font-weight:bold; font-size:12px; color: white; background-color:#e5385b;")
+        self.noduleSegmentationLayout.addWidget(self.addNewNoduleButton, row, 2)
         #self.addNewNoduleButton.connect('clicked(bool)', self.__onAddNoduleButtonClicked__)
 
+
+        self.zoomOnButton = ctk.ctkPushButton()
+        self.zoomOnButton.text = " "
+        self.zoomOnButton.setIcon(qt.QIcon("{0}/move_up.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.zoomOnButton.setIconSize(qt.QSize(15, 15))
+        self.zoomOnButton.toolTip = "Zoom Up"
+        self.zoomOnButton.setFixedWidth(25)
+        self.noduleSegmentationLayout.addWidget(self.zoomOnButton, row, 3)  # , SlicerUtil.ALIGNMENT_HORIZONTAL_LEFT)
+
+        self.zoomOffButton = ctk.ctkPushButton()
+        self.zoomOffButton.text = " "
+        self.zoomOffButton.setIcon(qt.QIcon("{0}/move_down.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.zoomOffButton.setIconSize(qt.QSize(15, 15))
+        self.zoomOffButton.toolTip = "Zoom Down"
+        self.zoomOffButton.setFixedWidth(25)
+        self.noduleSegmentationLayout.addWidget(self.zoomOffButton, row, 4)  # , SlicerUtil.ALIGNMENT_HORIZONTAL_LEFT)
+
         row += 1
+        self.noduleFrame = qt.QFrame()
+        self.noduleFrameLayout = qt.QGridLayout(self.noduleFrame)
+        self.noduleSegmentationLayout.addWidget(self.noduleFrame, row, 0, 1, 4)
 
         fixedSizePolicy = qt.QSizePolicy()
         fixedSizePolicy.setHorizontalPolicy(0)
 
+        noduleRow = 0
+
         # Crosshair
         self.crosshairCheckbox = qt.QCheckBox()
-        self.crosshairCheckbox.setText("Crosshair cursor Navigation")
-        self.crosshairCheckbox.toolTip = "Activate/Desactivate the crosshair cursor for a better visualization"
+        self.crosshairCheckbox.setText("Navigation")
+        self.crosshairCheckbox.toolTip = "Activate/Desactivate the crosshair cursor in Navigation modality"
         self.crosshairCheckbox.setStyleSheet(" margin-top:10px")
         self.crosshairCheckbox.setSizePolicy(fixedSizePolicy)
         self.crosshairCheckbox.setChecked(False)
-        self.noduleSegmentationLayout.addWidget(self.crosshairCheckbox, row, 0)
+        self.noduleFrameLayout.addWidget(self.crosshairCheckbox, noduleRow, 0)
 
-        self.zoomOnButton = ctk.ctkPushButton()
-        self.zoomOnButton.text = "+"
-        self.zoomOnButton.toolTip="Zoom On"
-        self.zoomOnButton.setFixedWidth(25)
-        self.noduleSegmentationLayout.addWidget(self.zoomOnButton, row, 4)
-
-
-        self.zoomOffButton = ctk.ctkPushButton()
-        self.zoomOffButton.text = "-"
-        self.zoomOffButton.toolTip = "Zoom Off"
-        self.zoomOffButton.setFixedWidth(25)
-        self.noduleSegmentationLayout.addWidget(self.zoomOffButton, row, 5)
+        self.modelButton = ctk.ctkPushButton()
+        self.modelButton.text = ""
+        self.modelButton.toolTip = "Create the 3D Model and its Axes for a nodule created in the module Lesion Model"
+        icon = qt.QIcon(":/Icons/MakeModel.png")
+        self.modelButton.setIcon(icon)
+        self.modelButton.setIconSize(qt.QSize(25, 25))
+        self.modelButton.setFixedWidth(35)
 
 
-        row += 1
-        ### Structure Selector
-        self.structuresGroupbox = qt.QGroupBox("Select the structure")
-        self.groupboxLayout = qt.QVBoxLayout()
-        self.structuresGroupbox.setLayout(self.groupboxLayout)
-        self.noduleSegmentationLayout.addWidget(self.structuresGroupbox, row, 0)
+        self.noduleFrameLayout.addWidget(self.modelButton, noduleRow, 2)   #,SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
 
-        self.structuresButtonGroup = qt.QButtonGroup()
-        # btn = qt.QRadioButton("None")
-        # btn.visible = False
-        # self.structuresButtonGroup.addButton(btn)
-        # self.groupboxLayout.addWidget(btn)
 
-        btn = qt.QRadioButton("Width-Height")
-        #btn.name = "Width"
-        btn.checked = True
+        self.modifyButton = ctk.ctkPushButton()
+        self.modifyButton.text = ""
+        self.modifyButton.toolTip = "Update the 3D Model after changing the length of axes"
+        self.modifyButton.setIcon(qt.QIcon("{0}/Reload.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.modifyButton.setIconSize(qt.QSize(25, 25))
+        self.modifyButton.setFixedWidth(35)
+        self.noduleFrameLayout.addWidget(self.modifyButton, noduleRow, 1)
 
-        self.structuresButtonGroup.addButton(btn, 0)
-        self.groupboxLayout.addWidget(btn)
+        #row += 1
+        #self.noduleFrame = qt.QFrame()
+        #self.noduleFrameLayout = qt.QGridLayout(self.noduleFrame)
+        #self.noduleSegmentationLayout.addWidget(self.noduleFrame, row, 0, 1, 4)
 
-        btn = qt.QRadioButton("Height-Depth")
-        #btn.name = "axisHeight"
-        self.structuresButtonGroup.addButton(btn, 1)
-        self.groupboxLayout.addWidget(btn)
 
-        btn = qt.QRadioButton("Depth-Width")
-        #btn.name = "axisDept"
-        self.structuresButtonGroup.addButton(btn, 2)
-        self.groupboxLayout.addWidget(btn)
+        noduleRow += 2
+        # Structure Selector
+        self.structuresGroupbox  = qt.QLabel("Navigate volume slices: ")
+        #self.structuresGroupbox.setFixedWidth(100)
+        #self.structuresGroupbox.setStyleSheet("margin:5px 0 0 5px")
+        self.noduleFrameLayout.addWidget(self.structuresGroupbox , noduleRow, 0, SlicerUtil.ALIGNMENT_HORIZONTAL_LEFT)
+        self.structuresButtonGroup= qt.QButtonGroup()
+
+        button = qt.QRadioButton("Axial")
+        button.setChecked(True)
+        button.setStyleSheet("margin: 10px 0")
+        self.structuresButtonGroup.addButton(button, 0)
+        self.noduleFrameLayout.addWidget(button, noduleRow, 1)
+
+        button = qt.QRadioButton("Sagittal")
+        button.setStyleSheet("margin: 10px 0")
+        self.structuresButtonGroup.addButton(button, 1)
+        self.noduleFrameLayout.addWidget(button, noduleRow, 2)
+
+        button = qt.QRadioButton("Coronal")
+        button.setStyleSheet("margin: 10px 0")
+        self.structuresButtonGroup.addButton(button, 2)
+        self.noduleFrameLayout.addWidget(button, noduleRow, 3)
+
+
 
         #row += 2
+        noduleRow += 1
         self.moveUpButton = ctk.ctkPushButton()
         self.moveUpButton.text = "Move up"
-        self.moveUpButton.toolTip = "Move the selected ruler/s one slice up"
+        self.moveUpButton.toolTip = "Move the selected axes one slice up"
         self.moveUpButton.setIcon(qt.QIcon("{0}/move_up.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.moveUpButton.setIconSize(qt.QSize(20, 20))
         self.moveUpButton.setFixedWidth(95)
-        self.noduleSegmentationLayout.addWidget(self.moveUpButton, row, 2)
+        self.moveUpButton.setStyleSheet("font-weight:bold; font-size:12px; background-color:#96f05d;")
+        #self.noduleSegmentationLayout.addWidget(self.moveUpButton, row, 1)
+        #self.groupboxLayout.addWidget(self.moveUpButton, row,0)
+        self.noduleFrameLayout.addWidget(self.moveUpButton, noduleRow, 1)
 
 
         self.moveDownButton = ctk.ctkPushButton()
         self.moveDownButton.text = "Move down"
-        self.moveDownButton.toolTip = "Move the selected ruler/s one slice down"
+        self.moveDownButton.toolTip = "Move the selected axes one slice down"
         self.moveDownButton.setIcon(qt.QIcon("{0}/move_down.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.moveDownButton.setIconSize(qt.QSize(20, 20))
-        self.moveDownButton.setFixedWidth(95)
-        self.noduleSegmentationLayout.addWidget(self.moveDownButton, row, 3)
+        self.moveDownButton.setFixedWidth(110)
+        self.moveDownButton.setStyleSheet("font-weight:bold; font-size:12px; background-color:#96f05d;")
+        #self.noduleSegmentationLayout.addWidget(self.moveDownButton, row, 2)
+        #self.groupboxLayout.addWidget(self.moveDownButton, row, 1)
+        self.noduleFrameLayout.addWidget(self.moveDownButton, noduleRow, 2)
 
-        row += 2
+
+        row += 5
         self.resetButton = ctk.ctkPushButton()
-        self.resetButton.text = "Delete Nodule"
-        self.resetButton.toolTip = "Reset the current nodule"
+        self.resetButton.text = "Delete"
+        self.resetButton.toolTip = "Delete the current nodule"
         self.resetButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.resetButton.setIconSize(qt.QSize(20, 20))
+        self.resetButton.setIconSize(qt.QSize(25, 25))
         #self.resetButton.setFixedSize(40, 40)
-        self.resetButton.setFixedWidth(115)
-        self.noduleSegmentationLayout.addWidget(self.resetButton, row, 2)
+        self.resetButton.setFixedWidth(90)
+        self.resetButton.setStyleSheet("font-weight:bold;")
+        self.noduleSegmentationLayout.addWidget(self.resetButton, row, 0)
 
-        self.modifyButton = ctk.ctkPushButton()
-        self.modifyButton.text = "Modify Model 3D"
-        self.modifyButton.toolTip = "Modify Model 3D after changing rulers"
-        #self.modifyButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.modifyButton.setIconSize(qt.QSize(20, 20))
-        self.modifyButton.setFixedWidth(115)
-        self.noduleSegmentationLayout.addWidget(self.modifyButton, row, 1)
 
         # Save case data
         self.reportsCollapsibleButton = ctk.ctkCollapsibleButton()
         self.reportsCollapsibleButton.text = "Reporting"
         self.layout.addWidget(self.reportsCollapsibleButton)
+
         self.reportsLayout = qt.QHBoxLayout(self.reportsCollapsibleButton)
 
-        self.storedColumnNames = ["caseId", "axis1_mm", "axis2_mm", "axis3_mm","centerR", "centerA","centerS"]
-        self.reportsWidget = CaseReportsWidget("CIP_LesionProgress", columnNames=self.storedColumnNames,
-                                               parentWidget=self.reportsCollapsibleButton)
+        self.storedColumnNames = ["CaseId","Nodule","Center_RAS","Width_RAS","Height_RAS", "Depth_RAS"]
+        self.reportsWidget = CaseReportsWidget("CIP_LesionProgress", columnNames=self.storedColumnNames, parentWidget=self.reportsCollapsibleButton)
         self.reportsWidget.setup()
 
         #self.switchToSidebySideView()
@@ -339,6 +377,7 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
 
 
         # Connections
+        self.observers = []
 
         self.inputVolumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onInputVolumeChanged__)
         self.fourUpButton.connect('clicked()', self.__onFourUpButton__)
@@ -350,6 +389,7 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
 
         self.nodulesComboBox.connect("currentIndexChanged (int)", self.__onNodulesComboboxCurrentIndexChanged__)
         self.addNewNoduleButton.connect('clicked()', self.__onAddNewNoduleButtonClicked__)
+        self.modelButton.connect('clicked()', self.__onModelButtonClicked__)
         self.zoomOnButton.connect('clicked(bool)', self.__onZoomOnButtonClicked__)
         self.zoomOffButton.connect('clicked(bool)', self.__onZoomOffButtonClicked__)
 
@@ -357,7 +397,7 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
         self.moveDownButton.connect('clicked()', self.onMoveDownRulerClicked)
         self.resetButton.connect('clicked()', self.onRemoveNoduleClicked)
         self.modifyButton.connect('clicked()', self.onModifyModelClicked)
-        #self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
+        self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
 
 
         # Add vertical spacer
@@ -535,11 +575,11 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
         :return: self.logic.Width or self.logic.Height or self.logic.Depth
         """
         selectedStructureText = self.structuresButtonGroup.checkedButton().text
-        if selectedStructureText == "Width-Height":
+        if selectedStructureText == "Axial":
             return self.lesionProgressLogic.WIDTH_HEIGHT
-        elif selectedStructureText == "Height-Depth":
+        elif selectedStructureText == "Sagittal":
             return self.lesionProgressLogic.HEIGHT_DEPTH
-        elif selectedStructureText == "Depth-Width":
+        elif selectedStructureText == "Coronal":
             return self.lesionProgressLogic.DEPTH_WIDTH
         return self.lesionProgressLogic.NONE
 
@@ -586,7 +626,39 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
         greenSliceNode=self.getGreenSliceNode()
         greenSliceNode.JumpSlice(0,newSlice,0)
 
-    def modifyModel(self):
+
+    def rulersModelLabelCreate(self):
+        centerRAS = self.coordCenter(self.currentNoduleIndex)
+        axisWidth, axisHeight, axisDepth = self.lesionProgressLogic.drawAxes(self.currentVolume,
+                                                                             self.currentNoduleIndex, centerRAS,
+                                                                             self.onRulerModified)
+
+        SlicerUtil.setFiducialsCursorMode(False)
+        SlicerUtil.setCrosshairCursor(False)
+        self.JumpSliceByCentering(centerRAS)
+        self.ZoomModify(0.5)
+        self.JumpToSliceCenter(centerRAS)
+
+        # create model 3d
+        width = self.getMeasurement(axisWidth)
+        height = self.getMeasurement(axisHeight)
+        depth = self.getMeasurement(axisDepth)
+
+        col = slicer.mrmlScene.GetNodesByName("NoduleModel_{}".format(self.currentNoduleIndex))
+        # col1 = slicer.mrmlScene.GetNodesByName("NoduleEllipsoidModel_{}".format(self.currentNoduleIndex))
+        # if col1:
+        #   currentModel = col1.GetItemAsObject(0)
+        if col.GetNumberOfItems() == 1:
+           currentModel = col.GetItemAsObject(0)
+           displayNode = currentModel.GetDisplayNode()
+           displayNode.SetSliceIntersectionVisibility(True)
+           self._hideCurrentLabelmap_()
+
+
+        ellTransform = self.lesionProgressLogic.ellipsoidPolyData(width, height, depth, centerRAS)
+        self.lesionProgressLogic.createModelLabel(self.currentVolume, self.currentNoduleIndex, ellTransform)
+
+    def   updateModelLabelmap(self):
 
         centerRAS = self.coordCenter(self.currentNoduleIndex)
         # Get the node that contains all the rulers for this volume
@@ -614,15 +686,27 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
                 if rulerNode.GetName() == "Depth":
                     depth = self.getMeasurement(rulerNode)
 
-        # col = slicer.mrmlScene.GetNodesByName("NoduleModel_{}".format(self.currentNoduleIndex))
-        # currentModel = col.GetItemAsObject(0)
-        # slicer.mrmlScene.RemoveNode(currentModel)
-
-        currentModel = self.logic.getNthNoduleModelNode(self.currentVolume, self.currentNoduleIndex)
+        col = slicer.mrmlScene.GetNodesByName("NoduleModel_{}".format(self.currentNoduleIndex))
+        #col1 = slicer.mrmlScene.GetNodesByName("NoduleEllipsoidModel_{}".format(self.currentNoduleIndex))
+        #if col1:
+        #   currentModel = col1.GetItemAsObject(0)
+        #else:
+        if col.GetNumberOfItems()==1:
+           currentModel = col.GetItemAsObject(0)
+        else :
+            currentModel = col.GetItemAsObject(1)
         slicer.mrmlScene.RemoveNode(currentModel)
 
-        currentLabel = self.logic.getNthNoduleLabelmapNode(self.currentVolume, self.currentNoduleIndex)
+        lab = slicer.mrmlScene.GetNodesByName("NoduleLabelmap_{}".format(self.currentNoduleIndex))
+        #lab1 = slicer.mrmlScene.GetNodesByName("NoduleEllipsoidLabelmap_{}".format(self.currentNoduleIndex))
+        if lab.GetNumberOfItems()==1:
+           currentLabel = lab.GetItemAsObject(0)
+        else:
+           currentLabel = lab.GetItemAsObject(1)
         slicer.mrmlScene.RemoveNode(currentLabel)
+
+        #currentLabel = self.logic.getNthNoduleLabelmapNode(self.currentVolume, self.currentNoduleIndex)
+
 
         # annotationsHierarchyModelNode = self.logic.getNthNoduleModelNode(self.currentVolume, self.currentNoduleIndex)
         # if annotationsHierarchyModelNode is not None:
@@ -633,7 +717,7 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
 
 
         ellTransform = self.lesionProgressLogic.ellipsoidPolyData(width, height, depth, centerRAS)
-        self.lesionProgressLogic.buildEllipsoid(self.currentVolume, self.currentNoduleIndex,
+        self.lesionProgressLogic.createEllipsoid(self.currentVolume, self.currentNoduleIndex,
                                                 ellTransform).GetDisplayNode().Modified()
         self.lesionProgressLogic.createLabelmap(self.currentVolume, self.currentNoduleIndex, ellTransform)
         #self._showCurrentLabelmap_()
@@ -666,7 +750,7 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
             self.nodulesComboBox.blockSignals(False)
 
             # Disable volumes combobox so that the user cannot switch between different volumes
-            self.inputVolumeSelector.enabled = False
+            #self.inputVolumeSelector.enabled = False
 
         self.refreshGUI()
 
@@ -689,9 +773,14 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
             return False
         return True
 
-
-
-
+    def _hideCurrentLabelmap_(self):
+        """ Display the right labelmap for the current background node if it exists"""
+        # Set the current labelmap active
+        selectionNode = slicer.app.applicationLogic().GetSelectionNode()
+        selectionNode.SetReferenceActiveVolumeID(self.currentVolume.GetID())
+        labelmap = self.logic.getNthNoduleLabelmapNode(self.currentVolume, self.currentNoduleIndex)
+        selectionNode.SetReferenceActiveLabelVolumeID(None)
+        slicer.app.applicationLogic().PropagateVolumeSelection(0)
 
     ############
     # Events
@@ -754,9 +843,19 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
     def __onSidebysideButton__(self):
         SlicerUtil.changeLayout(29)
 
-    def __onCrosshairCheckChanged__(self):
-        SlicerUtil.setCrosshairCursor(self.crosshairCheckbox.isChecked())
-        self.setCrosshairNavigation()
+    def __onCrosshairCheckChanged__(self, state):
+        active = self.crosshairCheckbox.isChecked()
+        #SlicerUtil.setCrosshairCursor(active)
+        #self.setCrosshairNavigation(1)
+        crosshairNode = slicer.util.getNode('vtkMRMLCrosshairNode*')
+        crosshairNode.SetCrosshairMode(1)
+        crosshairNode.NavigationOn()
+        if not active:
+            crosshairNode.NavigationOff()
+            crosshairNode.SetCrosshairMode(0)
+
+
+
 
     def __onAddNewNoduleButtonClicked__(self):
         #self.ZoomModify(2)
@@ -768,6 +867,14 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
         if index is not None and index >= 0:
             # self.currentNoduleIndex = self.nodulesComboBox.itemData(index)
             self.setActiveNodule(self.nodulesComboBox.itemData(index))
+            centerRAS = self.coordCenter(self.currentNoduleIndex)
+            self.JumpSliceByCentering(centerRAS)
+
+
+    def __onModelButtonClicked__(self):
+        self.setActiveNodule(self.currentNoduleIndex)
+        self.rulersModelLabelCreate()
+
 
     def __onZoomOnButtonClicked__(self):
         self.ZoomModify(0.5)
@@ -781,29 +888,7 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
         @param vtkMRMLMarkupsFiducialNode: Current fiducials node
         @param event:
         """
-        centerRAS=self.coordCenter(self.currentNoduleIndex)
-        axisWidth,axisHeight, axisDepth = self.lesionProgressLogic.drawAxes(self.currentVolume, self.currentNoduleIndex, centerRAS, self.onRulerModified)
-
-
-        SlicerUtil.setFiducialsCursorMode(False)
-        SlicerUtil.setCrosshairCursor(False)
-        self.JumpSliceByCentering(centerRAS)
-        self.ZoomModify(0.5)
-        self.JumpToSliceCenter(centerRAS)
-
-        # create model 3d
-        width=self.getMeasurement(axisWidth)
-        height=self.getMeasurement(axisHeight)
-        depth= self.getMeasurement(axisDepth)
-
-        ellTransform=self.lesionProgressLogic.ellipsoidPolyData(width,height,depth,centerRAS)
-        currentModel= self.lesionProgressLogic.buildEllipsoid(self.currentVolume,self.currentNoduleIndex,ellTransform)
-        self.currentNoduleModel=currentModel
-
-        # labelmap
-        self.lesionProgressLogic.createLabelmap(self.currentVolume, self.currentNoduleIndex, ellTransform)
-        #axisWidth.AddObserver(vtk.vtkCommand.ModifiedEvent, self.__refreshModel__())
-        #self._showCurrentLabelmap_()
+        self.rulersModelLabelCreate()
 
 
     def onMoveUpRulerClicked(self):
@@ -817,8 +902,37 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
 
 
     def onModifyModelClicked (self):
-        self.modifyModel()
+        self.updateModelLabelmap()
 
+    def onSaveReport(self):
+        """ Save the current values in a persistent csv file
+        :return:
+        """
+
+        volumeId = self.inputVolumeSelector.currentNodeID
+        if volumeId:
+            caseName = slicer.mrmlScene.GetNodeByID(volumeId).GetName()
+            #noduleIndex=self.currentNoduleIndex
+            for nodule in self.logic.getAllNoduleKeys(self.currentVolume):
+                fidNode=self.logic.getNthFiducialsListNode(self.currentVolume, nodule)
+                coordsList = []
+                for i in range(fidNode.GetNumberOfMarkups()):
+                    coords = [0, 0, 0]
+                    fidNode.GetNthFiducialPosition(i, coords)
+                    center=[round(coords[0],3),  round(coords[1],3),  round(coords[2],3)]
+                    coordsList.append(center)
+                    parent = self.logic.getNthRulersListNode(self.currentVolume, nodule)
+                    col = vtk.vtkCollection()
+                    parent.GetAllChildren(col)
+                    axisWidth = col.GetItemAsObject(0)
+                    width_RAS=self.lesionProgressLogic.getAxisStringRepr(axisWidth)
+                    axisHeight = col.GetItemAsObject(1)
+                    height_RAS = self.lesionProgressLogic.getAxisStringRepr(axisHeight)
+                    axisDepth = col.GetItemAsObject(2)
+                    depth_RAS = self.lesionProgressLogic.getAxisStringRepr(axisDepth)
+
+                self.reportsWidget.saveCurrentValues(CaseId=caseName, Nodule=nodule, Center_RAS= coordsList.__str__(), Width_RAS = width_RAS,Height_RAS = height_RAS, Depth_RAS =depth_RAS)
+        qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
 
 
     def onRemoveNoduleClicked(self):
@@ -835,8 +949,9 @@ class CIP_LesionProgressWidget(ScriptedLoadableModuleWidget):
         print object
 
 
+
     def onRefreshModel(self, event):  # width,height,depth):
-        #self.modifyModel()
+        #self.  updateModelLabelmap()
         pass
 
 
@@ -866,17 +981,36 @@ class CIP_LesionProgressLogic(ScriptedLoadableModuleLogic):
     HEIGHT_DEPTH=2
     DEPTH_WIDTH=3
 
+    #MAX_TUMOR_RADIUS = 30
+    WORKING_MODE_HUMAN = 0
+    WORKING_MODE_SMALL_ANIMAL = 1
+
 
     def __init__(self):                                        # workingMode=WORKING_MODE_HUMAN):
         ScriptedLoadableModuleLogic.__init__(self)
         self.lesionModelLogic = CIP_LesionModelLogic()
 
 
+    def getAxesStandard(self, vtkMRMLScalarVolumeNode):
+        """
+        Get the max axis for a nodule based on the current working mode for this volume
+        @param vtkMRMLScalarVolumeNode:
+        @return:
+        """
+        if self.lesionModelLogic.getWorkingMode(vtkMRMLScalarVolumeNode)== self.WORKING_MODE_HUMAN :
+             a=10.0
+             b=5.0
+        else:
+            a=2.0
+            b=1.0
+        return a,b
 
     def drawAxes(self,vtkMRMLScalarVolumeNode, noduleIndex, coordCenter, callbackWhenRulerModified):
         rulersHierarchy = self.lesionModelLogic.getNthRulersListNode(vtkMRMLScalarVolumeNode, noduleIndex)
         annotationsLogic = slicer.modules.annotations.logic()
         annotationsLogic.SetActiveHierarchyNodeID(rulersHierarchy.GetID())
+
+        a,b=self.getAxesStandard(vtkMRMLScalarVolumeNode)
 
         # Axis Width
         rulerNodeAxisW = slicer.mrmlScene.CreateNodeByClass('vtkMRMLAnnotationRulerNode')
@@ -884,8 +1018,8 @@ class CIP_LesionProgressLogic(ScriptedLoadableModuleLogic):
         slicer.mrmlScene.AddNode(rulerNodeAxisW)
         rulerNodeAxisW.AddObserver(vtk.vtkCommand.ModifiedEvent, callbackWhenRulerModified)
 
-        defaultEnd1AxisW = [coordCenter[0] - 10, coordCenter[1], coordCenter[2], 1]
-        defaultEnd2AxisW = [coordCenter[0] + 10, coordCenter[1], coordCenter[2], 1]
+        defaultEnd1AxisW = [coordCenter[0] - a, coordCenter[1], coordCenter[2], 1]
+        defaultEnd2AxisW = [coordCenter[0] + a, coordCenter[1], coordCenter[2], 1]
         defaultCoordWidth = [defaultEnd1AxisW, defaultEnd2AxisW]
 
         rulerNodeAxisW.SetPositionWorldCoordinates1(defaultCoordWidth[0])
@@ -898,8 +1032,8 @@ class CIP_LesionProgressLogic(ScriptedLoadableModuleLogic):
         slicer.mrmlScene.AddNode(rulerNodeAxisH)
         rulerNodeAxisH.AddObserver(vtk.vtkCommand.ModifiedEvent, callbackWhenRulerModified)
 
-        defaultEnd1AxisH = [coordCenter[0], coordCenter[1] - 5, coordCenter[2], 1]
-        defaultEnd2AxisH = [coordCenter[0], coordCenter[1] + 5, coordCenter[2], 1]
+        defaultEnd1AxisH = [coordCenter[0], coordCenter[1] - b, coordCenter[2], 1]
+        defaultEnd2AxisH = [coordCenter[0], coordCenter[1] + b, coordCenter[2], 1]
         defaultCoordHeight = [defaultEnd1AxisH, defaultEnd2AxisH]
 
         rulerNodeAxisH.SetPositionWorldCoordinates1(defaultCoordHeight[0])
@@ -913,8 +1047,8 @@ class CIP_LesionProgressLogic(ScriptedLoadableModuleLogic):
         slicer.mrmlScene.AddNode(rulerNodeAxisD)
         rulerNodeAxisD.AddObserver(vtk.vtkCommand.ModifiedEvent, callbackWhenRulerModified)
 
-        defaultEnd1AxisD = [coordCenter[0], coordCenter[1], coordCenter[2]- 5, 1]
-        defaultEnd2AxisD = [coordCenter[0], coordCenter[1], coordCenter[2] + 5, 1]
+        defaultEnd1AxisD = [coordCenter[0], coordCenter[1], coordCenter[2]- b, 1]
+        defaultEnd2AxisD = [coordCenter[0], coordCenter[1], coordCenter[2] + b, 1]
         defaultCoordDepth = [defaultEnd1AxisD, defaultEnd2AxisD]
 
         rulerNodeAxisD.SetPositionWorldCoordinates1(defaultCoordDepth[0])
@@ -1086,7 +1220,7 @@ class CIP_LesionProgressLogic(ScriptedLoadableModuleLogic):
 
     def placeRulerInNewSlice(self, rulerNode, newCoords1, newCoords2):
         """ Move the ruler to the specified slice (in RAS format)
-        :param rulerNode: node of type vtkMRMLAnnotationRulerNode
+
         :param newSlice: slice in RAS format
         :return: True if the operation was succesful
         """
@@ -1116,22 +1250,29 @@ class CIP_LesionProgressLogic(ScriptedLoadableModuleLogic):
 
         return ellTransform
 
-    def buildEllipsoid(self, vtkMRMLScalarVolumeNode, noduleindex, polyDataEll):
+    def createEllipsoid(self, vtkMRMLScalarVolumeNode, noduleindex,vtkTransformPolyDataFilter):
 
         modelsLogic = slicer.modules.models.logic()
-        currentNoduleModel = modelsLogic.AddModel(polyDataEll.GetOutputPort())
-        currentNoduleModel.SetName("Nodule Model")
-        self.lesionModelLogic.setNthNoduleModelNode(vtkMRMLScalarVolumeNode,noduleindex, currentNoduleModel)
+        currentNoduleModel = modelsLogic.AddModel(vtkTransformPolyDataFilter.GetOutputPort())
+        #model= self.lesionModelLogic.getNthNoduleModelNode(vtkMRMLScalarVolumeNode, noduleindex)
+        self.lesionModelLogic.setNthNoduleModelNode(vtkMRMLScalarVolumeNode, noduleindex, currentNoduleModel)
+        currentNoduleModel.SetName("NoduleModel_{}".format(noduleindex))
+
         displayNode = currentNoduleModel.GetDisplayNode()
-        displayNode.SetOpacity(0.5)
-        displayNode.SetColor((3, 0, 0))
+        #displayNode.SetOpacity(3.0)
+        displayNode.SetColor( (  0.525, 0.299, 20.247  ) )
         displayNode.SetSliceIntersectionVisibility(True)
+
+        layoutManager = slicer.app.layoutManager()
+        threeDWidget = layoutManager.threeDWidget(0)
+        threeDView = threeDWidget.threeDView()
+        threeDView.resetFocalPoint()
 
         return currentNoduleModel
 
-    def createLabelmap(self,vtkMRMLScalarVolumeNode, noduleindex, ellTransform):
-        ellTransform.Update()
-        currentNodulePolyData = ellTransform.GetOutput()
+    def createLabelmap(self,vtkMRMLScalarVolumeNode, noduleindex, vtkTransformPolyDataFilter):
+        vtkTransformPolyDataFilter.Update()
+        currentNodulePolyData = vtkTransformPolyDataFilter.GetOutput()
 
         # Create segmentation and set master to closed surface
         currentNoduleSegmentation = vtkSegmentationCore.vtkSegmentation()
@@ -1175,10 +1316,27 @@ class CIP_LesionProgressLogic(ScriptedLoadableModuleLogic):
             vtkSegmentationCore.vtkSegmentationConverter.GetSegmentationBinaryLabelmapRepresentationName())
         labelmapNode = slicer.vtkMRMLLabelMapVolumeNode()
         slicer.mrmlScene.AddNode(labelmapNode)
-        labelmapNode.SetName('Nodule1Labelmap')
+
 
         seg.CreateLabelmapVolumeFromOrientedImageData(binaryLabelmap, labelmapNode)
+
+        labelmap=self.lesionModelLogic.getNthNoduleLabelmapNode(vtkMRMLScalarVolumeNode, noduleindex)
         self.lesionModelLogic.setNthNoduleLabelmapNode(vtkMRMLScalarVolumeNode, noduleindex, labelmapNode)
+        labelmapNode.SetName("NoduleLabelmap_{}".format(noduleindex))
+
+
+    def createModelLabel(self, vtkMRMLScalarVolumeNode, noduleindex, ellTransform):
+
+        currentModel = self.createEllipsoid(vtkMRMLScalarVolumeNode, noduleindex, ellTransform)
+        # currentModel.SetName("NoduleEllipsoidModel_{}".format(self.currentNoduleIndex))
+        self.currentNoduleModel = currentModel
+        #self.currentNoduleModel.SetName("NoduleEllipsoidModel_{}".format(noduleindex))
+
+        # labelmap
+        # if self.lesionModelLogic.getWorkingMode(self.currentVolume) == self.lesionProgressLogic.WORKING_MODE_HUMAN:
+        self.createLabelmap(vtkMRMLScalarVolumeNode, noduleindex, ellTransform)
+        # axisWidth.AddObserver(vtk.vtkCommand.ModifiedEvent, self.__refreshModel__())
+        # self._showCurrentLabelmap_()
 
     def RAStoIJK(self, volumeNode, rasCoords):
         """ Transform a list of RAS coords in IJK for a volume
@@ -1197,6 +1355,16 @@ class CIP_LesionProgressLogic(ScriptedLoadableModuleLogic):
         volumeNode.GetIJKToRASMatrix(ijktoras)
         ijkCoords.append(1)
         return list(ijktoras.MultiplyPoint(ijkCoords))
+
+    def getAxisStringRepr(self, axis):
+        s = "["
+        pos1 = [0, 0, 0, 0]
+        pos2 = [0, 0, 0, 0]
+        axis.GetPositionWorldCoordinates1(pos1)
+        s += "[EP1:{},{},{}],".format(round(pos1[0],3),  round(pos1[1],3),  round(pos1[2],3))
+        axis.GetPositionWorldCoordinates2(pos2)
+        s += "[EP2:{},{},{}]]".format(round(pos2[0],3),  round(pos2[1],3),  round(pos2[2],3))
+        return s
 
 
 
