@@ -1,6 +1,5 @@
-
-import csv, os, time, pprint
-from __main__ import qt, ctk, slicer
+import csv, os, time, pprint, logging
+import qt, ctk, slicer
 
 from CIP.logic import EventsTrigger
 from CIP.logic.SlicerUtil import SlicerUtil
@@ -17,7 +16,13 @@ class CaseReportsWidget(EventsTrigger):
         return self.logic.TIMESTAMP_COLUMN_NAME
 
     def __init__(self, moduleName, columnNames, parentWidget = None, filePreffix=""):
-        """Widget constructor (existing module)"""
+        """
+        Widget constructor
+        :param moduleName:
+        :param columnNames: list of column names
+        :param parentWidget:
+        :param filePreffix:
+        """
         EventsTrigger.__init__(self)
         
         if not parentWidget:
@@ -28,7 +33,7 @@ class CaseReportsWidget(EventsTrigger):
             self.parent = parentWidget
         self.layout = self.parent.layout()
 
-        self.__showWarningWhenIncompleteColumns__ = True
+        self._showWarningWhenIncompleteColumns_ = True
         self.logic = CaseReportsLogic(moduleName, columnNames, filePreffix)
         self.__initEvents__()
         self.reportWindow = CaseReportsWindow(self)
@@ -36,7 +41,7 @@ class CaseReportsWidget(EventsTrigger):
 
     @property
     def showWarningWhenWrongColumns(self):
-        return self.__showWarningWhenIncompleteColumns__
+        return self._showWarningWhenIncompleteColumns_
 
     def setup(self):
         self.saveButton = ctk.ctkPushButton()
@@ -76,23 +81,25 @@ class CaseReportsWidget(EventsTrigger):
         """Init all the structures required for events mechanism"""
         self.setEvents([self.EVENT_SAVE_BUTTON_CLICKED, self.EVENT_SHOW_REPORT, self.EVENT_CLEAN_CACHE])
 
-    def setColumnNames(self, columnNames):
-        """ Set the column names that will saved every time the user clicks "Save" button
-        :param columnNames:
-        """
-        self.logic.columnNames = columnNames
+    # def setColumnNames(self, columnNames):
+    #     """ Set the column names that will saved every time the user clicks "Save" button
+    #     :param columnNames:
+    #     """
+    #     self.logic.columnNames = columnNames
 
-    def saveCurrentValues(self, **kwargs):
+    def insertRow(self, **kwargs):
         """ Save a record.
         The function will expect to be invoked with key-value parameters with the name of the columns.
-        Ex: self.reportsWidget.saveCurrentValues(
+        Ex: self.reportsWidget.insertRow(
                 caseId = caseName,
                 regionType = stat.LabelCode,
                 label = stat.LabelDescription)
         :param kwargs:
-        :return:
+        :return: 0 = OK; 1 = Warning
         """
-        self.logic.saveValues(**kwargs)
+        # Add the values in the right order (there are not obligatory fields)
+        # Insert the default timestamp
+        return self.logic.insertRow(**kwargs)
 
     def enableSaveButton(self, enabled):
         """ Enable/Disable the "Save" button
@@ -110,7 +117,7 @@ class CaseReportsWidget(EventsTrigger):
         """ Show/Hide warning messages when the columns passed when saving some values are not exactly the ones expected
         :param showMessages: True/False
         """
-        self.__showWarningWhenIncompleteColumns__ = showMessages
+        self._showWarningWhenIncompleteColumns_ = showMessages
         self.logic.showWarningWhenIncompleteColumns = showMessages
 
     def hideReportsWindow(self):
@@ -142,7 +149,7 @@ class CaseReportsWidget(EventsTrigger):
         """ Show the dialog window with all the information stored so far
         :return:
         """
-        self.reportWindow.load(self.logic.columnNamesExtended, self.logic.loadValues())
+        # self.reportWindow.load(self.logic.columnNamesExtended, self.logic.loadValues())
         self.reportWindow.show()
         self.triggerEvent(self.EVENT_SHOW_REPORT)
 
@@ -161,84 +168,138 @@ class CaseReportsWidget(EventsTrigger):
 #############################
 ##
 class CaseReportsLogic(object):
-    DBTYPE_SQLITE = 0
-
-
     def __init__(self, moduleName, columnNames, filePreffix):
         self.__moduleName__ = moduleName
         p = SlicerUtil.getSettingsDataFolder(moduleName)
         if filePreffix != "":
-            self.__csvFilePath__ = os.path.join(p, "{0}.{1}.storage.csv".format(filePreffix, moduleName))
+            self._dbFilePath_ = os.path.join(p, "{0}.{1}.sqlitestorage.db".format(filePreffix, moduleName))
         else:
-            self.__csvFilePath__ = os.path.join(p, moduleName + ".storage.csv")
-        self.__columnNames__ = columnNames
+            self._dbFilePath_ = os.path.join(p, moduleName + ".sqlitestorage.db")
+        print("DEBUG: file saved in {}".format(self._dbFilePath_))
+
+        self.tableStorageNode = slicer.vtkMRMLTableSQLiteStorageNode()
+        slicer.mrmlScene.AddNode(self.tableStorageNode)
+        self.tableStorageNode.SetFileName(self._dbFilePath_)
+        self.tableStorageNode.SetTableName(moduleName)
+        self.tableNode = slicer.vtkMRMLTableNode()
+        self.tableNode.SetName("{}_table".format(moduleName))
+        self.tableNode.SetAndObserveStorageNodeID(self.tableStorageNode.GetID())
+
+        if os.path.isfile(self._dbFilePath_):
+            # Read the previous data
+            self.tableStorageNode.ReadData(self.tableNode)
+
+        self._checkColumns_(columnNames)
+        # self.__columnNames__ = columnNames
         self.showWarningWhenIncompleteColumns = True
 
-        self.db = None
 
-    def createDB(self, dbType):
-        if dbType == self.DBTYPE_SQLITE:
-            self.db = vtk.vtkSQLiteDatabase()
 
     @property
     def TIMESTAMP_COLUMN_NAME(self):
         return "Timestamp"
 
+    def _checkColumns_(self, newColumnNames):
+        """
+        Create the list of columns.
+        If the database already existed, create new columns if necessary
+        :param newColumnNames:
+        """
+        self._columns_ = []
+        table = self.tableNode.GetTable()
+        if self.tableNode.GetNumberOfColumns() == 0:
+            # Empty table. Add the timestamp column and the rest of the columns
+            self._columns_.append(self.TIMESTAMP_COLUMN_NAME)
+            col = self.tableNode.AddColumn()
+            col.SetName(self.TIMESTAMP_COLUMN_NAME)
+            for columnName in newColumnNames:
+                col = self.tableNode.AddColumn()
+                col.SetName(columnName)
+                self._columns_.append(columnName)
+            logging.info("New table created with the following column names: {}".format(self._columns_))
+        else:
+            for i in range(self.tableNode.GetNumberOfColumns()):
+                self._columns_.append(table.GetColumnName(i))
+            for columnName in newColumnNames:
+                if columnName not in self._columns_:
+                    # Add a new column
+                    col = self.tableNode.AddColumn()
+                    col.SetName(columnName)
+                    self._columns_.append(columnName)
+                    logging.info("New column added to the database: {}".format(columnName))
+
+
     @property
     def columnNames(self):
-        return self.__columnNames__
-    @columnNames.setter
-    def columnNames(self, value):
-        self.__columnNames__ = value
+        return self._columns_
+    # @columnNames.setter
+    # def columnNames(self, value):
+    #     self.__columnNames__ = value
+
+    # @property
+    # def columnNamesExtended(self):
+    #     """ Column names with the date (timestamp) added as the first column
+    #     :return:
+    #     """
+    #     columns = [self.TIMESTAMP_COLUMN_NAME]
+    #     columns.extend(self.columnNames)
+    #     return columns
 
     @property
-    def columnNamesExtended(self):
-        """ Column names with the date (timestamp) added as the first column
-        :return:
-        """
-        columns = [self.TIMESTAMP_COLUMN_NAME]
-        columns.extend(self.columnNames)
-        return columns
-
-    @property
-    def csvFilePath(self):
+    def dbFilePath(self):
         """ Path of the file that contains all the data
         :return: Path of the file that contains all the data
         """
-        return self.__csvFilePath__
+        return self._dbFilePath_
 
 
-    def saveValues(self, **kwargs):
+    def insertRow(self, **kwargs):
         """ Save a new row of information in the current csv file that stores the data  (from a dictionary of items)
         :param kwargs: dictionary of values
+        :return: 0 = OK; 1=Warning
         """
+        result = 0
         # Check that we have all the "columns"
-        if len(kwargs) != len(self.columnNames) and self.showWarningWhenIncompleteColumns:
-            print("WARNING. There is a wrong number of arguments in ReportsWidget. ")
-            print("Current columns: ")
-            pprint.pprint(self.columnNames)
-            print("Total: {0}".format(len(self.columnNames)))
-            print("Args passed: ")
-            pprint.pprint(kwargs)
-            print("Total: {0}".format(len(kwargs)))
+        # if len(kwargs) != len(self.columnNames) and self.showWarningWhenIncompleteColumns:
+        #     print("WARNING. There is a wrong number of arguments in ReportsWidget. ")
+        #     print("Current columns: ")
+        #     pprint.pprint(self.columnNames)
+        #     print("Total: {0}".format(len(self.columnNames)))
+        #     print("Args passed: ")
+        #     pprint.pprint(kwargs)
+        #     print("Total: {0}".format(len(kwargs)))
+        #     result = 1
 
         for key in kwargs:
             if key not in self.columnNames:
-                print("WARNING: Column {0} is not included in the list of columns".format(key))
-        # Add the values in the right order (there are not obligatory fields)
-        orderedColumns = []
-        # Always add a timestamp as the first value
-        orderedColumns.append(time.strftime("%Y/%m/%d %H:%M:%S"))
-        for column in self.columnNames:
-            if kwargs.has_key(column):
-                orderedColumns.append(kwargs[column])
-            else:
-                orderedColumns.append('')
+                print("WARNING: Column {0} is not included in the list of columns and therefore it will NOT be saved".
+                      format(key))
+                result = 1
 
-        with open(self.csvFilePath, 'a+b') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(orderedColumns)
+        rowIndex = self.tableNode.AddEmptyRow()
+        table = self.tableNode.GetTable()
 
+        try:
+            # Insert the timestamp
+            self.tableNode.SetCellText(rowIndex, 0, time.strftime("%Y/%m/%d %H:%M:%S"))
+            # Rest of the values
+            for i in range(1, len(self.columnNames)):
+                colName = table.GetColumnName(i)
+                if colName in kwargs:
+                    elem = kwargs[colName]
+                    if elem is not None:
+                        elem = str(elem)    # The table node only allows text
+                    self.tableNode.SetCellText(rowIndex, i, elem)
+        except Exception as ex:
+            # Remove the row
+            self.tableNode.RemoveRow(rowIndex)
+            raise ex
+        # Persist the info
+        self.tableStorageNode.WriteData(self.tableNode)
+
+        # Notify GUI
+        self.tableNode.Modified()
+        return result
 
     def exportCSV(self, filePath):
         """ Export the information stored in the current csv file that is storing the data to a better
@@ -246,8 +307,8 @@ class CaseReportsLogic(object):
         :param filePath: destination of the file (full path)
         :return:
         """
-        if os.path.exists(self.csvFilePath):
-            with open(self.csvFilePath, 'r+b') as csvfileReader:
+        if os.path.exists(self.dbFilePath):
+            with open(self.dbFilePath, 'r+b') as csvfileReader:
                 reader = csv.reader(csvfileReader)
                 with open(filePath, 'a+b') as csvfileWriter:
                     writer = csv.writer(csvfileWriter)
@@ -263,8 +324,8 @@ class CaseReportsLogic(object):
         :return: list of lists (rows/colums)
         """
         data = []
-        if os.path.exists(self.csvFilePath):
-            with open(self.csvFilePath, 'r+b') as csvfileReader:
+        if os.path.exists(self.dbFilePath):
+            with open(self.dbFilePath, 'r+b') as csvfileReader:
                 reader = csv.reader(csvfileReader)
                 for row in reader:
                     data.append(row)
@@ -274,8 +335,8 @@ class CaseReportsLogic(object):
         """ Return the last row of data that was stored in the csv file
         :return: list with the information of a single row
         """
-        if os.path.exists(self.csvFilePath):
-            with open(self.csvFilePath, 'r+b') as csvfileReader:
+        if os.path.exists(self.dbFilePath):
+            with open(self.dbFilePath, 'r+b') as csvfileReader:
                 reader = csv.reader(csvfileReader)
                 #return reader.next()
                 # Read all the information of the file to iterate in reverse order
@@ -290,8 +351,8 @@ class CaseReportsLogic(object):
         :param value:
         :return: row with the first match or None if it' not found
         """
-        if os.path.exists(self.csvFilePath):
-            with open(self.csvFilePath, 'r+b') as csvfileReader:
+        if os.path.exists(self.dbFilePath):
+            with open(self.dbFilePath, 'r+b') as csvfileReader:
                 reader = csv.reader(csvfileReader)
                 rows = [row for row in reader if row[columnIndex + 1] == value]
                 # print("DEBUG. Rows:")
@@ -305,8 +366,8 @@ class CaseReportsLogic(object):
 
     def remove(self):
         """ Remove the whole results file """
-        if os.path.exists(self.csvFilePath):
-            os.remove(self.csvFilePath)
+        if os.path.exists(self.dbFilePath):
+            os.remove(self.dbFilePath)
 
 
 
@@ -316,6 +377,10 @@ class CaseReportsWindow(qt.QWidget):
     for the state of this module
     """
     def __init__(self, parent):
+        """
+        Window that display the data
+        :param parent: CaseReportsWidget object
+        """
         super(CaseReportsWindow, self).__init__()
 
         self.mainLayout = qt.QVBoxLayout(self)
@@ -326,8 +391,11 @@ class CaseReportsWindow(qt.QWidget):
         self.label.setStyleSheet("margin: 10px 0 15px 0")
         self.mainLayout.addWidget(self.label)
 
-        self.tableView = qt.QTableView()
+        self.tableView = slicer.qMRMLTableView()
         self.tableView.setColumnWidth(0,125)
+        self.tableView.setMRMLTableNode(parent.logic.tableNode)
+        self.tableView.setFirstRowLocked(True)  # First row will be headers
+        self.tableView.setSortingEnabled(True)
 
         self.tableView.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
         self.mainLayout.addWidget(self.tableView)
@@ -350,11 +418,52 @@ class CaseReportsWindow(qt.QWidget):
         self.removeButton.connect('clicked()', parent.onRemoveStoredData)
 
 
+    # def load(self, columnNames, data):
+    #     """ Load all the information displayed in the table
+    #     :param columnNames: list of column names
+    #     :param data: list of rows, each of them with one value per column
+    #     """
+    #     self.items = []
+    #
+    #     self.statisticsTableModel = qt.QStandardItemModel()
+    #     self.tableView.setModel(self.statisticsTableModel)
+    #     self.tableView.verticalHeader().visible = False
+    #     self.tableView.sortingEnabled = True
+    #
+    #     policy = self.tableView.sizePolicy
+    #     policy.setVerticalPolicy(qt.QSizePolicy.Expanding)
+    #     policy.setHorizontalPolicy(qt.QSizePolicy.Expanding)
+    #     policy.setVerticalStretch(0)
+    #     self.tableView.setSizePolicy(policy)
+    #
+    #     # Header
+    #     self.statisticsTableModel.setHorizontalHeaderLabels(columnNames)
+    #
+    #     for row in range(len(data)):
+    #         rowData = data[row]
+    #         for col in range(len(rowData)):
+    #             item = qt.QStandardItem()
+    #             item.setData(data[row][col], qt.Qt.DisplayRole)
+    #             item.setEditable(False)
+    #             self.statisticsTableModel.setItem(row, col,item)
+    #             self.items.append(item)
+    #
+    #     self.tableView.sortByColumn(0, 1)   # Sort by Date Descending
+
     def load(self, columnNames, data):
         """ Load all the information displayed in the table
         :param columnNames: list of column names
         :param data: list of rows, each of them with one value per column
         """
+        columns = []
+        for colName in columnNames:
+            column = self.tableNode.AddColumn()
+            column.SetName(colName)
+            column.InsertNextValue("my value {}".format(colName))
+
+        self.tableView.setMRMLTableNode(self.tableNode)
+        self.tableNode.Modified()
+        return
         self.items = []
 
         self.statisticsTableModel = qt.QStandardItemModel()
@@ -381,4 +490,3 @@ class CaseReportsWindow(qt.QWidget):
                 self.items.append(item)
 
         self.tableView.sortByColumn(0, 1)   # Sort by Date Descending
-

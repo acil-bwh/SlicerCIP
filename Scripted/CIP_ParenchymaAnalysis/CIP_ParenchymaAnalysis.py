@@ -630,7 +630,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
             for k in self.keys:
                 e[k] = self.labelStats[k, tag]
 
-            repWidget.saveCurrentValues(**e)
+            repWidget.insertRow(**e)
 
         if not self.__preventDialogs__:
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')

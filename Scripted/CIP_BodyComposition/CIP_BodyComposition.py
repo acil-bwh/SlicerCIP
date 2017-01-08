@@ -1180,7 +1180,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
         caseName = slicer.mrmlScene.GetNodeByID(volumeId).GetName()
         for stat in self.lastAnalysisResults:
-            self.reportsWidget.saveCurrentValues(
+            self.reportsWidget.insertRow(
                 date=time.strftime("%Y/%m/%d %H:%M:%S"),
                 caseId=caseName,
                 regionType=stat.LabelCode,

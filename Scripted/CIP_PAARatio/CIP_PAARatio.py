@@ -662,7 +662,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
                 a1 = list(coords)
                 rulerNode.GetPositionWorldCoordinates2(coords)
                 a2 = list(coords)
-            self.reportsWidget.saveCurrentValues(
+            self.reportsWidget.insertRow(
                 caseId=caseName,
                 paDiameter_mm=self.paTextBox.text,
                 aortaDiameter_mm=self.aortaTextBox.text,
@@ -1111,4 +1111,3 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
             self.assertEqual(color[i], logic.defaultWarningColor[i])
         logging.info("Red color...OK")
         self.delayDisplay('Test passed!')
-

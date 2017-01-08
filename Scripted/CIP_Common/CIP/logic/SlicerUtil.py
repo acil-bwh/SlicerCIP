@@ -286,7 +286,7 @@ class SlicerUtil:
         :return: vtkMRMLLabelMapVolumeNode
         """
         logic = slicer.modules.volumes.logic()
-        if nodeName == "":
+        if not nodeName:
             nodeName = vtkMRMLScalarVolumeNode.GetName() + "_labelmap"
 
         node = logic.CreateAndAddLabelVolume(vtkMRMLScalarVolumeNode, nodeName)
