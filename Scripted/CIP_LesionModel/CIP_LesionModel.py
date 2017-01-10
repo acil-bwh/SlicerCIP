@@ -97,7 +97,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         @return:
         """
         if self.__storedColumnNames__ is None:
-            self.__storedColumnNames__ = ["CaseId", "Date", "Nodule", "Threshold", "LesionType", "Seeds_LPS", "Axis"]
+            self.__storedColumnNames__ = ["CaseId", "Date", "NoduleId", "SphereRadius", "Threshold", "LesionType", "Seeds_LPS", "Axis"]
             # Create a single features list with all the "child" features
             self.__storedColumnNames__.extend(itertools.chain.from_iterable(self.featureClasses.itervalues()))
         return self.__storedColumnNames__
@@ -200,7 +200,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.inputVolumeSelector.showHidden = False
         self.inputVolumeSelector.showChildNodeTypes = False
         self.inputVolumeSelector.setMRMLScene(slicer.mrmlScene)
-        #self.inputVolumeSelector.sortFilterProxyModel().setFilterRegExp(self.logic.INPUTVOLUME_FILTER_REGEXPR)
+        # self.inputVolumeSelector.sortFilterProxyModel().setFilterRegExp(self.logic.INPUTVOLUME_FILTER_REGEXPR)
         # self.volumeSelector.setStyleSheet("margin:0px 0 0px 0; padding:2px 0 2px 5px")
         self.caseSelectorLayout.addWidget(self.inputVolumeSelector, row, 1, 1, 3)
 
@@ -713,21 +713,20 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         Make sure that the SubjectHierarchy/AutoCreateSubjectHierarchy is enabled. Otherwise the module won't work!
         @return:
         """
-        setting = "SubjectHierarchy/AutoCreateSubjectHierarchy"
-        val = slicer.app.settings().value(setting)
-
-        if not val == 'true':
+        subjectHierarchyWidget = slicer.modules.subjecthierarchy.widgetRepresentation()
+        subjectHierarchyPluginLogic = subjectHierarchyWidget.pluginLogic()
+        if not subjectHierarchyPluginLogic.autoCreateSubjectHierarchy:
             if qt.QMessageBox.question(slicer.util.mainWindow(), "Activate SubjectHierarchy",
-                "This module needs to activate the SubjectHierarchy 'Automatically create subject hierarchy'\n" +
-                "Do you want to activate it? (Slicer will be restarted)\n" +
-                "You can always modify the value of this setting under Edit/Application settings/Subject hiearchy"
-                , qt.QMessageBox.Yes | qt.QMessageBox.No) == qt.QMessageBox.Yes:
-                    slicer.app.settings().setValue(setting, 'true')
-                    slicer.app.restart()
+                   "This module needs to activate the SubjectHierarchy 'Automatically create subject hierarchy'\n" +
+                   "Do you want to activate it?\n" +
+                   "You can always modify the value of this setting under Edit/Application settings/Subject hiearchy"
+                   , qt.QMessageBox.Yes | qt.QMessageBox.No) == qt.QMessageBox.Yes:
+                subjectHierarchyPluginLogic.autoCreateSubjectHierarchy = True
+                subjectHierarchyPluginLogic.autoDeleteSubjectHierarchyChildren = True
+                return True
             else:
-                return False    # Module will be disabled
+                return False
         return True
-
 
 
     def addNewNodule(self):
@@ -739,7 +738,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         hierNode = self.logic.addNewNodule(self.currentVolume)
         # Get the index of the added nodule node
         index = int(hierNode.GetName())
-        # Add it to the combobox saving the index (we can't just use the combobox index because the user can remove elems)
+        # Add it to the combobox saving the index (we can't just use the combobox index because the user can clear elems)
         # Disable signals because we don't want the nodule to be active until we build all the required objects
         self.nodulesComboBox.blockSignals(True)
         self.nodulesComboBox.addItem("Nodule {}".format(index))
@@ -1099,7 +1098,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # Get all the spheres for this nodule
         for r in (s[1] for s in self.__analyzedSpheres__ if s[0]==noduleIndex):
             keyName = "{}_r{}_{}".format(volume.GetName(), r, noduleIndex)
-            self.__saveSubReport__(keyName, volume, noduleIndex)
+            self.__saveSubReport__(keyName, volume, noduleIndex, r)
         # keyName = self.inputVolumeSelector.currentNode().GetName() + "__r15"
         # self.__saveSubReport__(keyName)
         # keyName = self.inputVolumeSelector.currentNode().GetName() + "__r20"
@@ -1269,7 +1268,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             self.seedsContainerFrame.children()[1].hide()
             self.seedsContainerFrame.children()[1].delete()
 
-    def __saveSubReport__(self, keyName, volume, noduleIndex):
+    def __saveSubReport__(self, keyName, volume, noduleIndex, sphereRadius=None):
         """ Save a report in Case Reports Widget for this case and a concrete radius
         @param keyName: CaseId[__rXX] where XX = sphere radius
         @param noduleIndex: nodule id
@@ -1277,17 +1276,17 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """
         if keyName in self.analysisResults and self.analysisResults[keyName] is not None \
                 and len(self.analysisResults[keyName]) > 0:
-            self.__saveBasicData__(keyName, volume, noduleIndex)
-            self.reportsWidget.saveCurrentValues(**self.analysisResults[keyName])
+            self.__saveBasicData__(keyName, volume, noduleIndex, sphereRadius=sphereRadius)
+            self.reportsWidget.insertRow(**self.analysisResults[keyName])
 
             if self.logic.printTiming:
                 # Save also timing report
                 # self.analysisResultsTiming[keyName]["CaseId"] = keyName + "_timing"
                 # self.analysisResultsTiming[keyName]["Date"] = date
-                self.__saveBasicData__(keyName, volume, noduleIndex, isTiming=True)
-                self.reportsWidget.saveCurrentValues(**self.analysisResultsTiming[keyName])
+                self.__saveBasicData__(keyName, volume, noduleIndex, isTiming=True, sphereRadius=sphereRadius)
+                self.reportsWidget.insertRow(**self.analysisResultsTiming[keyName])
 
-    def __saveBasicData__(self, keyName, volume, noduleIndex, isTiming=False):
+    def __saveBasicData__(self, keyName, volume, noduleIndex, isTiming=False, sphereRadius=None):
         date = time.strftime("%Y/%m/%d %H:%M:%S")
         # noduleKeys = self.logic.getAllNoduleKeys(self.currentVolume)
         # for noduleIndex in noduleKeys:
@@ -1307,7 +1306,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             d[keyName]["CaseId"] = keyName
 
         d[keyName]["Date"] = date
-        d[keyName]["Nodule"] = noduleIndex
+        d[keyName]["NoduleId"] = noduleIndex
+        d[keyName]["SphereRadius"] = sphereRadius
         d[keyName]["Threshold"] = self.logic.marchingCubesFilters[(volume.GetID(), noduleIndex)].GetValue(0) \
             if (volume.GetID(), noduleIndex) in self.logic.marchingCubesFilters else str(self.logic.defaultThreshold)
         d[keyName]["LesionType"] = self.logic.lesionTypes[(volume.GetID(), noduleIndex)] \
@@ -1568,7 +1568,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
     def __onRemoveNoduleButtonClicked__(self):
         if  qt.QMessageBox.question(slicer.util.mainWindow(), "Remove nodule?",
-                    "Are you sure you want to remove this nodule?",
+                    "Are you sure you want to clear this nodule?",
                     qt.QMessageBox.Yes|qt.QMessageBox.No) == qt.QMessageBox.Yes:
             if self.logic.removeNthNodule(self.currentVolume, self.currentNoduleIndex):
                 # Remove the item from the combobox
@@ -1653,6 +1653,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         input volume selector
         """
         return "^(?!{0})(.)+$".format(self.__PREFIX_INPUTVOLUME__)
+
 
     @property
     def __SUFFIX__SEGMENTED_LABELMAP(self):
@@ -1904,7 +1905,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if not parent:
             return False
 
-        # First, remove the possibly existing one
+        # First, clear the possibly existing one
         self._extractNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
                               nodeName + slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyNodeNamePostfix())
 
@@ -2004,7 +2005,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @return: vtkMRMLAnnotationHierarchyNode
         """
         return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
-                                        "{}_NoduleLabelmap_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
+                                        "{}_nodule_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
 
 
     def setNthNoduleLabelmapNode(self, vtkMRMLScalarVolumeNode, noduleIndex, labelmapNode):
@@ -2017,7 +2018,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         """
         if vtkMRMLScalarVolumeNode is None or labelmapNode is None:
             return False
-        nodeName = "{}_NoduleLabelmap_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex)
+        nodeName = "{}_nodule_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex)
         return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, labelmapNode, nodeName)
 
 
@@ -2168,6 +2169,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             cliOutputScalarNode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLScalarVolumeNode")
             # segmentedNodeName = self.__PREFIX_INPUTVOLUME__ + self.vtkMRMLScalarVolumeNode.GetID()
             slicer.mrmlScene.AddNode(cliOutputScalarNode)
+
             cliOutputScalarNode.SetName("{}_NoduleAlgorithmSegmentation_{}".format(inputVolume.GetName(), noduleIndex))
             # Place it correctly in the hierarchy
             self.setNthAlgorithmSegmentationNode(inputVolume, noduleIndex, cliOutputScalarNode)
@@ -2287,7 +2289,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if not node:
             return False
 
-        # First of all, remove manually the rulers, as the Subject Hierarchy Tree has currently no support for hierarchies...
+        # First of all, clear manually the rulers, as the Subject Hierarchy Tree has currently no support for hierarchies...
         annotationsHierarchyRulersNode = self.getNthRulersListNode(vtkMRMLScalarVolumeNode, noduleIndex)
         if annotationsHierarchyRulersNode is not None:
             # Remove the children
@@ -2470,12 +2472,13 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         thresholdFilter.SetReplaceOut(True)
         thresholdFilter.SetOutValue(0)  # Value of the background
         thresholdFilter.SetInValue(1)  # Value of the segmented nodule
+        thresholdFilter.SetOutputScalarTypeToUnsignedShort()    # Follow CIP labelmap convention
 
         labelmap = self.getNthNoduleLabelmapNode(vtkMRMLScalarVolumeNode, noduleIndex)
         if labelmap is None:
             # Create a labelmap with the same dimensions that the ct volume
             labelmap = SlicerUtil.getLabelmapFromScalar(cliOutputScalarNode,
-                                            "{}_NoduleLabelmap_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
+                                            "{}_nodule_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
             labelmap.SetImageDataConnection(thresholdFilter.GetOutputPort())
             # Associate it to the right place in the Subject Hierarchy Tree
             self.setNthNoduleLabelmapNode(vtkMRMLScalarVolumeNode, noduleIndex, labelmap)

@@ -158,9 +158,9 @@ class CaseReportsWidget(EventsTrigger):
         :return:
         """
         if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Remove stored data',
-                'Are you sure you want to remove the saved csv data?',
+                'Are you sure you want to clear the saved csv data?',
                 qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
-            self.logic.remove()
+            self.logic.clear()
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data removed', 'The data were removed successfully')
             self.triggerEvent(self.EVENT_CLEAN_CACHE)
 
@@ -175,15 +175,8 @@ class CaseReportsLogic(object):
             self._dbFilePath_ = os.path.join(p, "{0}.{1}.sqlitestorage.db".format(filePreffix, moduleName))
         else:
             self._dbFilePath_ = os.path.join(p, moduleName + ".sqlitestorage.db")
-        print("DEBUG: file saved in {}".format(self._dbFilePath_))
-
-        self.tableStorageNode = slicer.vtkMRMLTableSQLiteStorageNode()
-        slicer.mrmlScene.AddNode(self.tableStorageNode)
-        self.tableStorageNode.SetFileName(self._dbFilePath_)
-        self.tableStorageNode.SetTableName(moduleName)
-        self.tableNode = slicer.vtkMRMLTableNode()
-        self.tableNode.SetName("{}_table".format(moduleName))
-        self.tableNode.SetAndObserveStorageNodeID(self.tableStorageNode.GetID())
+        logging.debug("Module {} storage in {}".format(moduleName, self._dbFilePath_))
+        self._initTableNode_()
 
         if os.path.isfile(self._dbFilePath_):
             # Read the previous data
@@ -198,6 +191,15 @@ class CaseReportsLogic(object):
     @property
     def TIMESTAMP_COLUMN_NAME(self):
         return "Timestamp"
+
+    def _initTableNode_(self):
+        self.tableStorageNode = slicer.vtkMRMLTableSQLiteStorageNode()
+        slicer.mrmlScene.AddNode(self.tableStorageNode)
+        self.tableStorageNode.SetFileName(self._dbFilePath_)
+        self.tableStorageNode.SetTableName(self.__moduleName__)
+        self.tableNode = slicer.vtkMRMLTableNode()
+        self.tableNode.SetName("{}_table".format(self.__moduleName__))
+        self.tableNode.SetAndObserveStorageNodeID(self.tableStorageNode.GetID())
 
     def _checkColumns_(self, newColumnNames):
         """
@@ -307,67 +309,104 @@ class CaseReportsLogic(object):
         :param filePath: destination of the file (full path)
         :return:
         """
-        if os.path.exists(self.dbFilePath):
-            with open(self.dbFilePath, 'r+b') as csvfileReader:
-                reader = csv.reader(csvfileReader)
-                with open(filePath, 'a+b') as csvfileWriter:
-                    writer = csv.writer(csvfileWriter)
-                    writer.writerow(self.columnNamesExtended)
-                    for row in reader:
-                        writer.writerow(row)
-            return True
-        else:
-            return False
+        # Use a regular TableStorageNode to export to CSV
+        storageNode = slicer.vtkMRMLTableStorageNode()
+        storageNode.SetFileName(filePath)
+        storageNode.WriteData(self.tableNode)
+        return True
+        # if os.path.exists(self.dbFilePath):
+        #     with open(self.dbFilePath, 'r+b') as csvfileReader:
+        #         reader = csv.reader(csvfileReader)
+        #         with open(filePath, 'a+b') as csvfileWriter:
+        #             writer = csv.writer(csvfileWriter)
+        #             writer.writerow(self.columnNamesExtended)
+        #             for row in reader:
+        #                 writer.writerow(row)
+        #     return True
+        # else:
+        #     return False
 
-    def loadValues(self):
-        """ Load all the information stored in the csv file
-        :return: list of lists (rows/colums)
-        """
-        data = []
-        if os.path.exists(self.dbFilePath):
-            with open(self.dbFilePath, 'r+b') as csvfileReader:
-                reader = csv.reader(csvfileReader)
-                for row in reader:
-                    data.append(row)
-        return data
+    # def loadValues(self):
+    #     """ Load all the information stored in the csv file
+    #     :return: list of lists (rows/colums)
+    #     """
+    #     data = []
+    #     if os.path.exists(self.dbFilePath):
+    #         with open(self.dbFilePath, 'r+b') as csvfileReader:
+    #             reader = csv.reader(csvfileReader)
+    #             for row in reader:
+    #                 data.append(row)
+    #     return data
 
     def getLastRow(self):
-        """ Return the last row of data that was stored in the csv file
+        """ Return the last row of data that was stored in the file
         :return: list with the information of a single row
         """
-        if os.path.exists(self.dbFilePath):
-            with open(self.dbFilePath, 'r+b') as csvfileReader:
-                reader = csv.reader(csvfileReader)
-                #return reader.next()
-                # Read all the information of the file to iterate in reverse order
-                rows = [row for row in reader]
-                return rows.pop()
-        # Error case
-        return None
+        # if os.path.exists(self.dbFilePath):
+        #     with open(self.dbFilePath, 'r+b') as csvfileReader:
+        #         reader = csv.reader(csvfileReader)
+        #         #return reader.next()
+        #         # Read all the information of the file to iterate in reverse order
+        #         rows = [row for row in reader]
+        #         return rows.pop()
+        # # Error case
+        # return None
+        rows = self.tableNode.GetNumberOfRows()
+        if rows == 0:
+            # Only header. No data
+            return None
+        columns = self.tableNode.GetNumberOfColumns()
+        values = []
+        for i in range(columns):
+            values.append(self.tableNode.GetCellText(rows-1, i))
+        return values
 
-    def findLastMatchRow(self, columnIndex, value):
+    def findLastMatchRow(self, columnName, value):
         """ Go over all the rows in the CSV until it finds the value "value" in the column "columnName"
         :param columnIndex: index of the column that we are comparing. This index will NOT include the obligatory timestamp field
         :param value:
         :return: row with the first match or None if it' not found
         """
-        if os.path.exists(self.dbFilePath):
-            with open(self.dbFilePath, 'r+b') as csvfileReader:
-                reader = csv.reader(csvfileReader)
-                rows = [row for row in reader if row[columnIndex + 1] == value]
-                # print("DEBUG. Rows:")
-                # import pprint
-                # pprint.pprint(rows)
-                if len(rows) > 0:
-                    # Get the last element
-                    return rows.pop()
-        # Not found
-        return None
+        # TODO: REPLACE THIS
+        # if os.path.exists(self.dbFilePath):
+        #     with open(self.dbFilePath, 'r+b') as csvfileReader:
+        #         reader = csv.reader(csvfileReader)
+        #         rows = [row for row in reader if row[columnIndex + 1] == value]
+        #         # print("DEBUG. Rows:")
+        #         # import pprint
+        #         # pprint.pprint(rows)
+        #         if len(rows) > 0:
+        #             # Get the last element
+        #             return rows.pop()
+        # # Not found
+        # return None
+        columns = self.tableNode.GetNumberOfColumns()
+        colIndex = -1
+        table = self.tableNode.GetTable()
+        for i in range(columns):
+            if table.GetColumnName(i) == columnName:
+                colIndex = i
+                break
+        if colIndex == -1:
+            raise Exception("Column not found: {}".format(columnName))
+        rows = self.tableNode.GetNumberOfRows()
+        for i in range(rows-1, stop=-1, step=-1):
+            if self.tableNode.GetCellText(i, colIndex) == str(value):
+                # Return the whole row
+                values = []
+                for c in range(columns):
+                    values.append(self.tableNode.GetCellText(i, c))
+                return values
+        return None     # Not found
 
-    def remove(self):
-        """ Remove the whole results file """
-        if os.path.exists(self.dbFilePath):
-            os.remove(self.dbFilePath)
+
+    def clear(self):
+        """ Remove all the data content """
+        while self.tableNode.GetNumberOfRows() > 0:
+            self.tableNode.RemoveRow(0)
+
+
+
 
 
 

@@ -431,8 +431,8 @@ class CIP_GetImageLogic:
                     # Delete file previously to avoid confirmation messages
                     print "Remove cached files: " + localFile                    
                     try:                                
-                        os.remove(localFile)
-                        os.remove("{0}/{1}{2}.raw.gz".format(localStoragePath, caseId, ext))
+                        os.clear(localFile)
+                        os.clear("{0}/{1}{2}.raw.gz".format(localStoragePath, caseId, ext))
                     except:
                         print "Error when deleting local files ({0})".format(localFile)
                 
