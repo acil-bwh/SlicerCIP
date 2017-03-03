@@ -421,21 +421,6 @@ class SlicerUtil:
         return Util.get_case_name_from_labelmap(name)
 
     @staticmethod
-    def getSubjectHierarchyNodeAssociatedToNode(nodeID):
-        """ Get the SubjectHierarchyNode associated to a node (if it exists).
-        None if the node is not found
-        @param nodeID:
-        @return:
-        """
-        if not nodeID:
-            return None
-        col = slicer.mrmlScene.GetNodesByClass("vtkMRMLSubjectHierarchyNode")
-        for i in range(col.GetNumberOfItems()):
-            if col.GetItemAsObject(i).GetAssociatedNodeID() == nodeID:
-                return col.GetItemAsObject(i)
-        return None
-
-    @staticmethod
     def getNodesByClass(className, includeSubclasses=False):
         """
         Get a list with all the "className" nodes available in the scene.
