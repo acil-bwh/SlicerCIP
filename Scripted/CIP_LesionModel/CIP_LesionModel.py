@@ -1784,7 +1784,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         root = shNode.GetItemByDataNode(vtkMRMLScalarVolumeNode)
         children = vtk.vtkIdList()
         shNode.GetItemChildren(root, children)
-        for i in children.GetNumberOfIds():
+        for i in xrange(children.GetNumberOfIds()):
             child = children.GetId(i)
             if shNode.GetItemLevel(child) == "Folder":
                 return child
@@ -1801,7 +1801,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         keys = []
         children = vtk.vtkIdList()
         shNode.GetItemChildren(root, children)
-        for i in children.GetNumberOfIds():
+        for i in xrange(children.GetNumberOfIds()):
             keys.append(int(shNode.GetItemName(children.GetId(i))))
         return keys
 
@@ -1841,7 +1841,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
         children = vtk.vtkIdList()
         shNode.GetItemChildren(noduleFolder, children)
-        for i in children.GetNumberOfIds():
+        for i in xrange(children.GetNumberOfIds()):
             child = children.GetId(i)
             if shNode.GetItemName(child) == itemName:
                 return shNode.GetItemDataNode(child)
@@ -1883,7 +1883,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
         children = vtk.vtkIdList()
         shNode.GetItemChildren(noduleFolder, children)
-        for i in children.GetNumberOfIds():
+        for i in xrange(children.GetNumberOfIds()):
             child = children.GetId(i)
             if shNode.GetItemName(child) == nodeName:
                 # Disassociate the Subject Hierarchy Node from the nodule folder
