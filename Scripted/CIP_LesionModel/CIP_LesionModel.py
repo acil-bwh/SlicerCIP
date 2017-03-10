@@ -1319,7 +1319,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
             subjectHierarchyItem = shNode.GetItemByDataNode(node)
             # It should always be present
-            if subjectHierarchyItem == slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID():
+            if not subjectHierarchyItem:
                 raise EnvironmentError("SubjectHierarchyItem not found for node " + node.GetName())
 
             # Create the initial structure if it does not exist yet
@@ -1747,7 +1747,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         # Get subject hierarchy node
         # If there is not Nodules root folder yet, create it
         nodulesFolder = self.getRootNodulesFolderSubjectHierarchyItem(vtkMRMLScalarVolumeNode)
-        if nodulesFolder == slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID():
+        if not nodulesFolder:
             # Create the folder for the different nodules
             nodeName =  "{}_Nodules".format(vtkMRMLScalarVolumeNode.GetName())
             nodulesFolder = shNode.CreateItem(volumeRootFolder, nodeName)
@@ -1813,7 +1813,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @return: Nth "Nodule" subject hierarchy item ID
         """
         nodulesFolder = self.getRootNodulesFolderSubjectHierarchyItem(vtkMRMLScalarVolumeNode)
-        if nodulesFolder == slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID():
+        if not nodulesFolder:
             return slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID()
 
         shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
@@ -1836,7 +1836,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if noduleIndex < 0:
             return None
         noduleFolder = self.getNthNoduleFolder(vtkMRMLScalarVolumeNode, noduleIndex)
-        if noduleFolder == slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID():
+        if not noduleFolder:
             return None
         shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
         children = vtk.vtkIdList()
@@ -1859,7 +1859,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if not vtkMRMLScalarVolumeNode:
             return False
         parent = self.getNthNoduleFolder(vtkMRMLScalarVolumeNode, noduleIndex)
-        if parent == slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID():
+        if not parent:
             return False
 
         # First, clear the possibly existing one
@@ -1868,7 +1868,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         # Get the subject hierachy item associated to the node
         shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
         itemID = shNode.GetItemByDataNode(node)
-        if itemID == slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID():
+        if not itemID:
             return False
         # Set the parent
         shNode.SetItemParent(itemID, parent)
@@ -1878,7 +1878,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if noduleIndex < 0:
             return
         noduleFolder = self.getNthNoduleFolder(vtkMRMLScalarVolumeNode, noduleIndex)
-        if noduleFolder == slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID():
+        if not noduleFolder:
             return
         shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
         children = vtk.vtkIdList()
@@ -2245,7 +2245,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if vtkMRMLScalarVolumeNode is None:
             return False
         node = self.getNthNoduleFolder(vtkMRMLScalarVolumeNode, noduleIndex)
-        if node == slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID():
+        if not node:
             return False
 
         shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
