@@ -40,11 +40,11 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         ScriptedLoadableModuleWidget.__init__(self, parent)
 
         self.chartOptions = (
-        "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "Mean", "Std", "Kurtosis", "Skewness", "Volume")
-        self.storedColumnNames = ["Volume Name", "Region", "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "Mean", "Std",
-                                  "Kurtosis", "Skewness", "Volume"]
+        "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600","Perc10","Perc15","Mean","Std","Kurtosis","Skewness","Ventilation Heterogeneity","Mass", "Volume")
+        self.storedColumnNames = ["Volume Name", "Region", "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600","Perc10","Perc15","Mean", "Std", \
+                                  "Kurtosis", "Skewness","Ventilation Heterogeneity","Mass","Volume"]
         self.rTags = (
-        "Global", "Right", "Left", "RUL", "RLL", "RML", "LUL", "LLL", "LUT", "LMT", "LLT", "RUT", "RMT", "RLT")
+        "WholeLung", "RightLung", "LeftLung", "RUL", "RLL", "RML", "LUL", "LLL", "LUT", "LMT", "LLT", "RUT", "RMT", "RLT")
         if not parent:
             self.parent = slicer.qMRMLWidget()
             self.parent.setLayout(qt.QVBoxLayout())
@@ -480,10 +480,10 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
     __preventDialogs__ = False
 
     def __init__(self, CTNode, labelNode, fileName=None):
-        self.keys = ["LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "Mean", "Std", "Kurtosis", "Skewness",
-                     "Volume"]
+        self.keys = ["LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "Perc10","Perc15", "Mean", "Std", "Kurtosis", "Skewness",
+                     "Ventilation Heterogeneity","Mass","Volume"]
 
-        rTags = ["Global", "Right", "Right", "Right", "Left", "Left", "RUL", "RLL", "RML", "LUL", "LLL", "LUT", "LMT",
+        rTags = ["WholeLung", "RightLung", "RightLung", "RightLung", "LeftLung", "LeftLung", "RUL", "RLL", "RML", "LUL", "LLL", "LUT", "LMT",
                  "LLT", "RUT", "RMT", "RLT"]
         self.regionTags = []
         self.regionValues = [(1, 14), (2, 2), (4, 6), (12, 14), (3, 3), (7, 11), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8),
@@ -537,8 +537,12 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
                 self.labelStats['LAA%-856', tag] = 100.0 * (data < -856).sum() / float(data.size)
                 self.labelStats['HAA%-700', tag] = 100.0 * (data > -700).sum() / float(data.size)
                 self.labelStats['HAA%-600', tag] = 100.0 * (data > -600).sum() / float(data.size)
+                self.labelStats['Ventilation Heterogeneity', tag] =  self.vh(data)
                 # self.labelStats[cycle,'Perc10',tag]=self.percentile(data,.1)
                 # self.labelStats[cycle,'Perc15',tag]=self.percentile(data,.15)
+                self.labelStats['Perc10',tag]=numpy.percentile(data,10)
+                self.labelStats['Perc15',tag]=numpy.percentile(data,15)
+                self.labelStats['Mass',tag] = self.mass(data,cubicMMPerVoxel)
                 self.labelStats['Volume', tag] = data.size * cubicMMPerVoxel * litersPerCubicMM;
 
                 # Compute histograms
@@ -592,6 +596,16 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         d1 = key(N[int(c)]) * (k - f)
         return d0 + d1
 
+    def vh(self, data):
+        import numpy
+        arr = data[((data > -1000) & (data <= 0))]
+        # Convert to float to apply the formula
+        #arr = arr.astype(numpy.float)
+        # Apply formula
+        arr = -arr / (arr + 1000.0)
+        arr **= (1/3.0)
+        return arr.std()
+
     def kurt(self, obs, meanVal, stdDev):
         import numpy as np
         n = float(len(obs))
@@ -617,6 +631,43 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         num = 1 / n * np.sum((obs - meanVal) ** 3)
         denom = stdDev ** 3  # avoid losing precision with np.sqrt call
         return num / denom
+
+    def mass(self,data,cubicMMPerVoxel):
+        # This quantity is computed in a piecewise linear form
+        # according to the prescription presented in ref. [1].
+        # Mass is computed in grams. First compute the
+        # contribution in HU interval from -98 and below.
+        import numpy as np
+        pheno_val = 0.0
+        HU_tmp = data[data < -98].clip(-1000)
+        if HU_tmp.shape[0] > 0:
+            m = (1.21e-3 - 0.93) / (-1000 + 98)
+            b = 1.21e-3 + 1000 * m
+            pheno_val += np.sum((m * HU_tmp + b) *  cubicMMPerVoxel * 0.001)
+
+        # Now compute the mass contribution in the interval
+        # [-98, 18] HU. Note the in the original paper, the
+        # interval is defined from -98HU to 14HU, but we
+        # extend in slightly here so there are no gaps in
+        # coverage. The values we report in the interval
+        # [14, 23] should be viewed as approximate.
+        HU_tmp = data[np.logical_and(data >= -98,data <= 18)]
+        if HU_tmp.shape[0] > 0:
+            pheno_val += \
+                np.sum((1.018 + 0.893 * HU_tmp / 1000.0) * cubicMMPerVoxel * 0.001)
+
+        # Compute the mass contribution in the interval
+        # (18, 100]
+        HU_tmp = data[np.logical_and(data> 18,data <= 100)]
+        if HU_tmp.shape[0] > 0:
+            pheno_val += np.sum((1.003 + 1.169 * HU_tmp / 1000.0) * cubicMMPerVoxel * 0.001)
+
+        # Compute the mass contribution in the interval > 100
+        HU_tmp = data[data > 100]
+        if HU_tmp.shape[0] > 0:
+            pheno_val += np.sum((1.017 + 0.592 * HU_tmp / 1000.0) * cubicMMPerVoxel * 0.001)
+
+        return pheno_val
 
     def statsAsCSV(self, repWidget, CTNode):
         if self.labelStats is None:
