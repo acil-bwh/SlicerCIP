@@ -16,6 +16,20 @@
 14 RightKidneyAxial 229 51 102 127
 15 NoduleAxial 77 249 78 127
 16 AscendingAortaAxial 204 204 50 127
+17 LeftDiaphragmAxial 144 172 212 127
+18 RightDiaphragmAxial 218 214 234 127
+19 SternumAxial 234 176 38 127
+20 SuperiorMesentericArteryAxial 90 234 127 127
+21 PancreasHeadAxial 130 226 234 127
+22 LeftChestWallAxial 234 173 162 127
+23 RightChestWallAxial 229 153 234 127
+24 LeftAnteriorChestWallAxial 234 111 0 127
+25 RightAnteriorChestWallAxial 234 0 220 127
+26 LeftPosteriorChestWallAxial 234 225 131 127
+27 RightPosteriorChestWallAxial 234 179 0 127
+28 TracheaCarinaAxial 0 2 234 127
+29 AorticValveSystole 0 207 234 127
+30 AorticValveDiastole 36 11 234 127
 31 TransversalAortaSagittal 76 25 204 127
 32 AscendingAortaSagittal 204 204 0 127
 33 PulmonaryArterySagittal 51 81 25 127
@@ -27,7 +41,13 @@
 39 LeftHilumSagittal 44 127 0 127
 40 RightHilumSagittal 127 25 102 127
 41 LeftVentricleSagittal 51 25 76 127
-42 NoduleSagittal 77 249 78 127
+42 NoduleSagittal 82 249 78 127
+43 LeftDiaphragmSagittal 239 173 162 127
+44 RightDiaphragmSagittal 234 153 234 127
+45 LeftAnteriorChestWallSagittal 239 111 0 127
+46 RightAnteriorChestWallSagittal 239 0 220 127
+47 LeftPosteriorChestWallSagittal 239 225 131 127
+48 RightPosteriorChestWallSagittal 239 179 0 127
 51 DescendingAortaCoronal 102 51 229 127
 52 Trachea2Coronal 85 188 255 127
 53 AscendingAortaCoronal 229 229 25 127
@@ -41,3 +61,7 @@
 61 HernialHiatusCoronal 25 200 200 127
 62 PulmonaryArteryCoronal 217 0 92 127
 63 NoduleCoronal 77 249 78 127
+64 RightDiaphragmCoronal 85 25 3 127
+65 WholeHeartCoronal 206 0 0 127
+66 SpleenCoronal 81 206 67
+67 TracheaCarinaCoronal 7 2 234 127
