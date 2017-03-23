@@ -41,8 +41,21 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         self.chartOptions = (
         "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600","Perc10","Perc15","Mean","Std","Kurtosis","Skewness","Ventilation Heterogeneity","Mass", "Volume")
-        self.storedColumnNames = ["Volume Name", "Region", "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600","Perc10","Perc15","Mean", "Std", \
-                                  "Kurtosis", "Skewness","Ventilation Heterogeneity","Mass","Volume"]
+        # self.storedColumnNames = ["Volume Name", "Region", "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600","Perc10","Perc15","Mean", "Std", \
+        #                           "Kurtosis", "Skewness","Ventilation Heterogeneity","Mass","Volume"]
+        self.storedColumnNames = ["VolumeName", "Region", "LAA950", "LAA910", "LAA856", "HAA700", "HAA600",
+                                  "Perc10", "Perc15", "Mean", "Std", \
+                                  "Kurtosis", "Skewness", "VentilationHeterogeneity", "Mass", "Volume"]
+        self.storedColumnDescriptions = {
+            "Volume Name": "VolumeName",
+            "LAA%-950": "LAA950",
+            "LAA%-910": "LAA910",
+            "LAA%-856": "LAA856",
+            "HAA%-700": "HAA700",
+            "HAA%-600": "HAA600",
+            "Ventilation Heterogeneity": "VentilationHeterogeneity"
+        }
+
         self.rTags = (
         "WholeLung", "RightLung", "LeftLung", "RUL", "RLL", "RML", "LUL", "LLL", "LUT", "LMT", "LLT", "RUT", "RMT", "RLT")
         if not parent:
@@ -239,8 +252,8 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         chartFrame.layout().addWidget(self.chartOption)
         self.chartBox.enabled = False
 
-        self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
-                                               parentWidget=self.parent)
+        self.reportsWidget = CaseReportsWidget(self.moduleName, columnKeys=self.storedColumnNames,
+                                               parentWidget=self.parent, columnDescriptionsPairing=self.storedColumnDescriptions)
         self.reportsWidget.setup()
         self.reportsWidget.saveButton.enabled = False
         self.reportsWidget.openButton.enabled = False

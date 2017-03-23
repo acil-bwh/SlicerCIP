@@ -201,10 +201,10 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.layout.addWidget(self.reportsCollapsibleButton)
         self.reportsLayout = qt.QHBoxLayout(self.reportsCollapsibleButton)
 
-        self.storedColumnNames = ["caseId", "paDiameter_mm", "aortaDiameter_mm",
+        self.storedColumnNames = ["caseId", "paDiameterMm", "aortaDiameterMm",
                                   "pa1r", "pa1a", "pa1s", "pa2r", "pa2a", "pa2s",
                                   "a1r", "a1a", "a1s", "a2r", "a2a", "a2s"]
-        self.reportsWidget = CaseReportsWidget("CIP_PAARatio", columnNames=self.storedColumnNames, parentWidget=self.reportsCollapsibleButton)
+        self.reportsWidget = CaseReportsWidget("CIP_PAARatio", columnKeys=self.storedColumnNames, parentWidget=self.reportsCollapsibleButton)
         self.reportsWidget.setup()
 
         # Init state
@@ -258,7 +258,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         #     self.volumeSelector.setCurrentNodeID(activeVolumeId)
         #     if activeVolumeId not in self.logic.currentVolumesLoaded:
         #         self.placeDefaultRulers(activeVolumeId)
-
         # Save state
         self.saveStateBeforeEnteringModule()
 
@@ -664,8 +663,8 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
                 a2 = list(coords)
             self.reportsWidget.insertRow(
                 caseId=caseName,
-                paDiameter_mm=self.paTextBox.text,
-                aortaDiameter_mm=self.aortaTextBox.text,
+                paDiameterMm=self.paTextBox.text,
+                aortaDiameterMm=self.aortaTextBox.text,
                 pa1r = pa1[0] if pa1 is not None else '',
                 pa1a = pa1[1] if pa1 is not None else '',
                 pa1s = pa1[2] if pa1 is not None else '',

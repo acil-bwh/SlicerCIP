@@ -236,7 +236,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.statsButtonsFrame.layout().addWidget(self.btnAnalysis2)
 
         # Reports widget
-        self.reportsWidget = CaseReportsWidget(self.moduleName, columnNames=self.storedColumnNames,
+        self.reportsWidget = CaseReportsWidget(self.moduleName, columnKeys=self.storedColumnNames,
                                                parentWidget=self.statsButtonsFrame)
         self.reportsWidget.setup()
 
