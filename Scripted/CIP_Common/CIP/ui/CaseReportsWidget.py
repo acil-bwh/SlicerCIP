@@ -15,17 +15,18 @@ class CaseReportsWidget(EventsTrigger):
     def TIMESTAMP_COLUMN_NAME(self):
         return self.logic.TIMESTAMP_COLUMN_NAME
 
-    def __init__(self, dbFileName, columnKeys, parentWidget = None, dbTableName=None,
-                 columnDescriptionsPairing={}):
+    def __init__(self, dbTableName, columnKeys, parentWidget = None,
+                 columnDescriptionsPairing={}, dbFilePath=None):
         """
         Widget constructor
-        :param dbFileName: name of the file that will store the database that is using the widget
+        :param dbTableName: name of the table that will store the information of the module
         :param columnKeys: list of column keys (columns in the database)
         :param parentWidget: widget where this ReportsWidget will be inserted
-        :param dbTableName: name of the table that will store the information of the module
         :param columnDescriptionsPairing: dictionary that may contain more descriptive names for the columns in the shape
                                    columnDescription: columnKey
                                    (note that column keys cannot contain special characters, white spaces, etc.)
+        :param dbFilePath: full path of the file that will store the database that is using the widget.
+                           by default, it will be in the settings folder
         """
         EventsTrigger.__init__(self)
         
@@ -38,7 +39,8 @@ class CaseReportsWidget(EventsTrigger):
         self.layout = self.parent.layout()
 
         self._showWarningWhenIncompleteColumns_ = True
-        self.logic = CaseReportsLogic(dbFileName, columnKeys, dbTableName=dbTableName, columnDescriptionsPairing=columnDescriptionsPairing)
+        self.logic = CaseReportsLogic(dbTableName, columnKeys, columnDescriptionsPairing=columnDescriptionsPairing,
+                                      dbFilePath=dbFilePath)
         self.__initEvents__()
         self.reportWindow = CaseReportsWindow(self)
         self.reportWindow.objectName = "caseReportsWindow"
@@ -172,24 +174,24 @@ class CaseReportsWidget(EventsTrigger):
 #############################
 ##
 class CaseReportsLogic(object):
-    def __init__(self, dbFileName, columnKeys, dbTableName=None, columnDescriptionsPairing={}):
-        self.dbFileName = dbFileName
-        self.dbTableName = dbFileName if dbTableName is None else dbTableName
+    def __init__(self, dbTableName, columnKeys, columnDescriptionsPairing={}, dbFilePath=None):
+        """
+        Constructor
+        :param dbTableName: name of the table in the database
+        :param columnKeys: list of column names in the db
+        :param columnDescriptionsPairing: additional column descriptions dictionary in the shape
+                                          "Descr: Key"
+        :param dbFilePath: path to the file that will store the data. By default it will be
+                            in the CIP settings folder
+        """
+        self._dbFilePath_ = SlicerUtil.modulesDbPath() if dbFilePath is None else dbFilePath
+        self._dbTableName_ = dbTableName
         self._columnDescriptions_ = columnDescriptionsPairing
-        p = SlicerUtil.getSettingsDataFolder(dbFileName)
-        self._dbFilePath_ = os.path.join(p, dbFileName + ".sqlitestorage.db")
-        logging.debug("Module {} storage in {}".format(dbFileName, self._dbFilePath_))
+        logging.debug("Module storage in {}-{}".format(dbFilePath, dbTableName))
         self._initTableNode_()
-        if os.path.isfile(self._dbFilePath_):
-            logging.info("Loading the data stored in {}".format(self._dbFilePath_))
-            # Read the previous data
-            self.tableStorageNode.ReadData(self.tableNode)
-
         self._initColumns_(columnKeys)
         # self.__columnNames__ = columnNames
         self.showWarningWhenIncompleteColumns = True
-
-
 
     @property
     def TIMESTAMP_COLUMN_NAME(self):
@@ -202,11 +204,17 @@ class CaseReportsLogic(object):
         self.tableStorageNode = slicer.vtkMRMLTableSQLiteStorageNode()
         slicer.mrmlScene.AddNode(self.tableStorageNode)
         self.tableStorageNode.SetFileName(self._dbFilePath_)
-        self.tableStorageNode.SetTableName(self.dbTableName)
+        self.tableStorageNode.SetTableName(self._dbTableName_)
         self.tableNode = slicer.vtkMRMLTableNode()
         slicer.mrmlScene.AddNode(self.tableNode)
-        self.tableNode.SetName("{}_table".format(self.dbTableName))
+        self.tableNode.SetName("{}_table".format(self._dbTableName_))
         self.tableNode.SetAndObserveStorageNodeID(self.tableStorageNode.GetID())
+        if os.path.isfile(self._dbFilePath_):
+            # Read the previous data
+            self.tableStorageNode.ReadData(self.tableNode)
+        else:
+            logging.info("The storage database has not been created yet")
+
 
     def _initColumns_(self, newColumnKeys):
         """
@@ -231,7 +239,7 @@ class CaseReportsLogic(object):
                 col.SetName(columnName)
                 self._columnKeys_.append(columnName)
             SlicerUtil.logDevelop("Table {} initialized from scratch with the following column names: {}".format(
-                self.dbTableName, self._columnKeys_), includePythonConsole=True)
+                self._dbTableName_, self._columnKeys_), includePythonConsole=True)
         else:
             # Compare the current columns in the tableNode with the specified column keys
             for i in range(self.tableNode.GetNumberOfColumns()):
@@ -243,7 +251,7 @@ class CaseReportsLogic(object):
                     col.SetName(columnName)
                     self._columnKeys_.append(columnName)
                     SlicerUtil.logDevelop("New column added to the table {} in the database: {}".
-                                          format(self.dbTableName, columnName), includePythonConsole=True)
+                                          format(self._dbTableName_, columnName), includePythonConsole=True)
 
 
 
@@ -413,19 +421,6 @@ class CaseReportsLogic(object):
         :param value:
         :return: row with the first match or None if it' not found
         """
-        # TODO: REPLACE THIS
-        # if os.path.exists(self.dbFilePath):
-        #     with open(self.dbFilePath, 'r+b') as csvfileReader:
-        #         reader = csv.reader(csvfileReader)
-        #         rows = [row for row in reader if row[columnIndex + 1] == value]
-        #         # print("DEBUG. Rows:")
-        #         # import pprint
-        #         # pprint.pprint(rows)
-        #         if len(rows) > 0:
-        #             # Get the last element
-        #             return rows.pop()
-        # # Not found
-        # return None
         columns = self.tableNode.GetNumberOfColumns()
         colIndex = -1
         table = self.tableNode.GetTable()
@@ -436,7 +431,7 @@ class CaseReportsLogic(object):
         if colIndex == -1:
             raise Exception("Column not found: {}".format(columnName))
         rows = self.tableNode.GetNumberOfRows()
-        for i in range(rows-1, stop=-1, step=-1):
+        for i in range(rows-1, -1, -1):
             if self.tableNode.GetCellText(i, colIndex) == str(value):
                 # Return the whole row
                 values = []

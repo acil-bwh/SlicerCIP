@@ -48,7 +48,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
     def __init__(self, parent):
         ScriptedLoadableModuleWidget.__init__(self, parent)
-
+        self.moduleName = "CIP_PAARatio"
         from functools import partial
         def __onNodeAddedObserver__(self, caller, eventId, callData):
             """Node added to the Slicer scene"""
@@ -204,7 +204,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.storedColumnNames = ["caseId", "paDiameterMm", "aortaDiameterMm",
                                   "pa1r", "pa1a", "pa1s", "pa2r", "pa2a", "pa2s",
                                   "a1r", "a1a", "a1s", "a2r", "a2a", "a2s"]
-        self.reportsWidget = CaseReportsWidget("CIP_PAARatio", columnKeys=self.storedColumnNames, parentWidget=self.reportsCollapsibleButton)
+        self.reportsWidget = CaseReportsWidget(self.moduleName, columnKeys=self.storedColumnNames, parentWidget=self.reportsCollapsibleButton)
         self.reportsWidget.setup()
 
         # Init state

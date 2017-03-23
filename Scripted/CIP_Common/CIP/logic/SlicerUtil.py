@@ -62,11 +62,11 @@ class SlicerUtil:
         return path
 
     @staticmethod
-    def getSettingsDataFolder(moduleName):
+    def getSettingsDataFolder(moduleName=""):
         """ Get the full path file where the settings of a module are going to be stored.
         It creates the directory if it doesn't exist.
         For instante, the root base dir in Mac is /Users/jonieva/.config/www.na-mic.org/CIP/ModuleName
-        :param moduleName: name of the module
+        :param moduleName: name of the module (optional)
         :return: full path to the file
         """
         # return os.path.join(os.path.expanduser('~'), "SlicerCIP_Data", moduleName, "Results")
@@ -78,6 +78,14 @@ class SlicerUtil:
             os.makedirs(p)
             print ("Created path {} for module {} settings".format(p, moduleName))
         return p
+
+    @staticmethod
+    def modulesDbPath():
+        """
+        Return the full path to the sqlite database that will store the information of all the modules
+        :return: full path
+        """
+        return os.path.join(SlicerUtil.getSettingsDataFolder(), "CIP.db")
 
     @staticmethod
     def setSetting(moduleName, settingName, settingValue):
