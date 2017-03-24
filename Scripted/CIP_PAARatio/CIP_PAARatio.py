@@ -194,7 +194,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.ratioTextBox.setReadOnly(True)
         self.textboxesLayout.addRow("Ratio PA/A: ", self.ratioTextBox)
 
-
         # Save case data
         self.reportsCollapsibleButton = ctk.ctkCollapsibleButton()
         self.reportsCollapsibleButton.text = "Reporting"

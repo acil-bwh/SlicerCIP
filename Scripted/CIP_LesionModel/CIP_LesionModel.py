@@ -705,7 +705,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         #self.progressBar.visible = self.distanceLevelSlider.enabled
         self.saveSeedsButton.visible = self.loadSeedsButton.visible = self.__evaluateSegmentationModeOn__
-        self.reportsWidget.showSaveButton(self.__evaluateSegmentationModeOn__)
+        self.reportsWidget.enableSaveButton(self.__evaluateSegmentationModeOn__)
         self.radiomicsCollapsibleButton.visible = self.__showRadiomics__
 
     def _checkSubjectHierarchySettingsEnabled(self):

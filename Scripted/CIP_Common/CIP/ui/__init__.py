@@ -3,6 +3,7 @@ from CIP_EditBox import *
 from CaseReportsWidget import *
 from PreProcessingWidget import *
 from MIPViewerWidget import *
+from CollapsibleMultilineText import *
 #from ACIL_GetImage.CaseNavigatorWidget import *
 #from AutoUpdateWidget import AutoUpdateWidget
 

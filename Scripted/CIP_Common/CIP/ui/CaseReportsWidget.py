@@ -3,6 +3,7 @@ import qt, ctk, slicer
 
 from CIP.logic import EventsTrigger
 from CIP.logic.SlicerUtil import SlicerUtil
+from CIP.ui.CollapsibleMultilineText import CollapsibleMultilineText
 
 class CaseReportsWidget(EventsTrigger):
     # Events triggered by the widget
@@ -50,33 +51,41 @@ class CaseReportsWidget(EventsTrigger):
         return self._showWarningWhenIncompleteColumns_
 
     def setup(self):
+        self.mainFrame = qt.QFrame()
+        frameLayout = qt.QGridLayout()
+        self.mainFrame.setLayout(frameLayout)
+        self.layout.addWidget(self.mainFrame)
+
         self.saveButton = ctk.ctkPushButton()
         self.saveButton.text = "Save"
         self.saveButton.objectName = "reportSaveButton"
         self.saveButton.setIcon(qt.QIcon("{0}/Save.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.saveButton.setIconSize(qt.QSize(24, 24))
-        self.layout.addWidget(self.saveButton)
+        frameLayout.addWidget(self.saveButton, 0, 0)
 
         self.openButton = ctk.ctkPushButton()
         self.openButton.text = "Open"
         self.openButton.objectName = "reportOpenButton"
         self.openButton.setIcon(qt.QIcon("{0}/open_file.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.openButton.setIconSize(qt.QSize(24,24))
-
-        self.layout.addWidget(self.openButton)
+        frameLayout.addWidget(self.openButton, 0, 1)
 
         self.exportButton = ctk.ctkPushButton()
         self.exportButton.text = "Export"
         self.exportButton.objectName = "reportExportButton"
         self.exportButton.setIcon(qt.QIcon("{0}/export-csv.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.exportButton.setIconSize(qt.QSize(24,24))
-        self.layout.addWidget(self.exportButton)
+        frameLayout.addWidget(self.exportButton, 0, 2)
 
         self.removeButton = ctk.ctkPushButton()
         self.removeButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.removeButton.setIconSize(qt.QSize(24,24))
         self.removeButton.text = "Clean cache"
-        self.layout.addWidget(self.removeButton)
+        frameLayout.addWidget(self.removeButton, 0, 3)
+
+        frameLayout.addWidget(qt.QLabel("Additional comments:"), 1, 0, 1, 2)
+        self.additionalComentsTextEdit = CollapsibleMultilineText()
+        frameLayout.addWidget(self.additionalComentsTextEdit, 1, 2, 1, 2)
 
         self.saveButton.connect('clicked()', self.onSave)
         self.exportButton.connect('clicked()', self.onExport)
@@ -103,8 +112,9 @@ class CaseReportsWidget(EventsTrigger):
         :param kwargs:
         :return: 0 = OK; 1 = Warning
         """
-        # Add the values in the right order (there are not obligatory fields)
-        # Insert the default timestamp
+        s = self.additionalComentsTextEdit.toPlainText()
+        s = s.replace("\r\n", "  ").replace("\n", "  ")
+        kwargs[self.logic.ADDITIONAL_COMMENTS_COLUMN_NAME] = s
         return self.logic.insertRow(**kwargs)
 
     def enableSaveButton(self, enabled):
@@ -113,11 +123,11 @@ class CaseReportsWidget(EventsTrigger):
         """
         self.saveButton.setEnabled(enabled)
 
-    def showSaveButton(self, show):
-        """ Show/hide the save button (it can be hidden when the data are saved obligatory)
-        :param show: show == True
-        """
-        self.saveButton.setVisible(show)
+    # def showSaveButton(self, show):
+    #     """ Show/hide the save button (it can be hidden when the data are saved obligatory)
+    #     :param show: show == True
+    #     """
+    #     self.saveButton.setVisible(show)
 
     def showWarnigMessages(self, showMessages):
         """ Show/Hide warning messages when the columns passed when saving some values are not exactly the ones expected
@@ -141,6 +151,8 @@ class CaseReportsWidget(EventsTrigger):
         """
         self.triggerEvent(self.EVENT_SAVE_BUTTON_CLICKED)
 
+    def onExpandRows(self):
+        self.reportWindow.tableView.resizeRowsToContents()
 
     def onExport(self):
         """ Export the current csv file to a customized and formatted file
@@ -156,6 +168,7 @@ class CaseReportsWidget(EventsTrigger):
         :return:
         """
         # self.reportWindow.load(self.logic.columnNamesExtended, self.logic.loadValues())
+
         self.reportWindow.show()
         self.triggerEvent(self.EVENT_SHOW_REPORT)
 
@@ -164,7 +177,7 @@ class CaseReportsWidget(EventsTrigger):
         :return:
         """
         if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Remove stored data',
-                'Are you sure you want to clear the saved csv data?',
+                'Are you sure you want to clear the stored data? (This operation cannot be undone)',
                 qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
             self.logic.clear()
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data removed', 'The data were removed successfully')
@@ -196,6 +209,10 @@ class CaseReportsLogic(object):
     @property
     def TIMESTAMP_COLUMN_NAME(self):
         return "Timestamp"
+
+    @property
+    def ADDITIONAL_COMMENTS_COLUMN_NAME(self):
+        return "AdditionalComments"
 
     def _initTableNode_(self):
         """
@@ -238,6 +255,9 @@ class CaseReportsLogic(object):
                 col = self.tableNode.AddColumn()
                 col.SetName(columnName)
                 self._columnKeys_.append(columnName)
+            col = self.tableNode.AddColumn()
+            col.SetName(self.ADDITIONAL_COMMENTS_COLUMN_NAME)
+            self._columnKeys_.append(self.ADDITIONAL_COMMENTS_COLUMN_NAME)
             SlicerUtil.logDevelop("Table {} initialized from scratch with the following column names: {}".format(
                 self._dbTableName_, self._columnKeys_), includePythonConsole=True)
         else:
@@ -354,7 +374,7 @@ class CaseReportsLogic(object):
         self.tableNode.Modified()
         if result == 1:
             logging.warning("Current list of columns keys: {}".format(self._columnKeys_))
-            logging.warning("Current list of columns descriptions: {}".format(self._columnDescriptions__))
+            logging.warning("Current list of columns descriptions: {}".format(self._columnDescriptions_))
         return result
 
     def exportCSV(self, filePath):
@@ -473,8 +493,17 @@ class CaseReportsWindow(qt.QWidget):
         self.tableView.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
         self.mainLayout.addWidget(self.tableView)
 
+        self.expandRowsButton = ctk.ctkPushButton()
+        self.expandRowsButton.text = "Expand rows"
+        self.expandRowsButton.toolTip = "Change the height of the rows to show/hide all the multiline data"
+        self.expandRowsButton.setFixedWidth(150)
+        self.expandRowsButton.setIcon(qt.QIcon("{0}/reload.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.expandRowsButton.setIconSize(qt.QSize(24, 24))
+        self.mainLayout.addWidget(self.expandRowsButton)
+
         self.exportButton = ctk.ctkPushButton()
         self.exportButton.text = "Export"
+        self.exportButton.toolTip = "Export to a CVS file"
         self.exportButton.setFixedWidth(150)
         self.exportButton.setIcon(qt.QIcon("{0}/export-csv.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.exportButton.setIconSize(qt.QSize(24,24))
@@ -487,8 +516,10 @@ class CaseReportsWindow(qt.QWidget):
         self.removeButton.setFixedWidth(150)
         self.mainLayout.addWidget(self.removeButton)
 
+        self.expandRowsButton.connect('clicked()', parent.onExpandRows)
         self.exportButton.connect('clicked()', parent.onExport)
         self.removeButton.connect('clicked()', parent.onRemoveStoredData)
+
 
 
     # def load(self, columnNames, data):
@@ -523,43 +554,44 @@ class CaseReportsWindow(qt.QWidget):
     #
     #     self.tableView.sortByColumn(0, 1)   # Sort by Date Descending
 
-    def load(self, columnNames, data):
-        """ Load all the information displayed in the table
-        :param columnNames: list of column names
-        :param data: list of rows, each of them with one value per column
-        """
-        columns = []
-        for colName in columnNames:
-            column = self.tableNode.AddColumn()
-            column.SetName(colName)
-            column.InsertNextValue("my value {}".format(colName))
+    # def load(self, columnNames, data):
+    #     """ Load all the information displayed in the table
+    #     :param columnNames: list of column names
+    #     :param data: list of rows, each of them with one value per column
+    #     """
+    #     columns = []
+    #     for colName in columnNames:
+    #         column = self.tableNode.AddColumn()
+    #         column.SetName(colName)
+    #         column.InsertNextValue("my value {}".format(colName))
+    #
+    #     self.tableView.setMRMLTableNode(self.tableNode)
+    #     self.tableNode.Modified()
+    #     return
+    #     self.items = []
+    #
+    #     self.statisticsTableModel = qt.QStandardItemModel()
+    #     self.tableView.setModel(self.statisticsTableModel)
+    #     self.tableView.verticalHeader().visible = False
+    #     self.tableView.sortingEnabled = True
+    #
+    #     policy = self.tableView.sizePolicy
+    #     policy.setVerticalPolicy(qt.QSizePolicy.Expanding)
+    #     policy.setHorizontalPolicy(qt.QSizePolicy.Expanding)
+    #     policy.setVerticalStretch(0)
+    #     self.tableView.setSizePolicy(policy)
+    #
+    #     # Header
+    #     self.statisticsTableModel.setHorizontalHeaderLabels(columnNames)
+    #
+    #     for row in range(len(data)):
+    #         rowData = data[row]
+    #         for col in range(len(rowData)):
+    #             item = qt.QStandardItem()
+    #             item.setData(data[row][col], qt.Qt.DisplayRole)
+    #             item.setEditable(False)
+    #             self.statisticsTableModel.setItem(row, col,item)
+    #             self.items.append(item)
+    #
+    #     self.tableView.sortByColumn(0, 1)   # Sort by Date Descending
 
-        self.tableView.setMRMLTableNode(self.tableNode)
-        self.tableNode.Modified()
-        return
-        self.items = []
-
-        self.statisticsTableModel = qt.QStandardItemModel()
-        self.tableView.setModel(self.statisticsTableModel)
-        self.tableView.verticalHeader().visible = False
-        self.tableView.sortingEnabled = True
-
-        policy = self.tableView.sizePolicy
-        policy.setVerticalPolicy(qt.QSizePolicy.Expanding)
-        policy.setHorizontalPolicy(qt.QSizePolicy.Expanding)
-        policy.setVerticalStretch(0)
-        self.tableView.setSizePolicy(policy)
-
-        # Header
-        self.statisticsTableModel.setHorizontalHeaderLabels(columnNames)
-
-        for row in range(len(data)):
-            rowData = data[row]
-            for col in range(len(rowData)):
-                item = qt.QStandardItem()
-                item.setData(data[row][col], qt.Qt.DisplayRole)
-                item.setEditable(False)
-                self.statisticsTableModel.setItem(row, col,item)
-                self.items.append(item)
-
-        self.tableView.sortByColumn(0, 1)   # Sort by Date Descending
