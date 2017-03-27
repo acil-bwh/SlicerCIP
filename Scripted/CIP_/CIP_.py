@@ -1,11 +1,11 @@
 
-class CIP_Common:
+class CIP_:
   """Module template for ACIL Slicer Modules"""
   def __init__(self, parent):
     """Constructor for main class"""
     self.parent = parent    
     #ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "CIP_Common"
+    self.parent.title = "CIP_"
     self.parent.categories = ["CIP"]
     self.parent.dependencies = []
     self.parent.contributors = ["Jorge Onieva", "Applied Chest Imaging Laboratory", "Brigham and Women's Hospital"] 
@@ -13,7 +13,7 @@ class CIP_Common:
     #self.parent.acknowledgementText = ACIL_AcknowledgementText
     self.parent.hidden = True   # Hide the module. It just works as a container for the CIP python library
   
-class CIP_CommonWidget:
+class CIP_Widget:
   def __init__(self, parent = None):
     self.parent = parent
   

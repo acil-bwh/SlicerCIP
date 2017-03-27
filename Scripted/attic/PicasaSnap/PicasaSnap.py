@@ -5,19 +5,7 @@ import os, sys
 # Picasa API
 import gdata.photos.service
 
-# Add the CIP common library to the path if it has not been loaded yet
-try:
-    import CIP.logic
-except Exception as ex:
-    currentpath = os.path.dirname(os.path.realpath(__file__))
-    # We assume that CIP_Common is in the development structure
-    path = os.path.normpath(currentpath + '/../CIP_Common')
-    if not os.path.exists(path):
-        # We assume that CIP is a subfolder (Slicer behaviour)
-        path = os.path.normpath(currentpath + '/CIP')
-    sys.path.append(path)
-    print("The following path was manually added to the PythonPath in Picasa Snap: " + path)
-    import CIP.logic
+import CIP.logic
 
 #from CIP.ui import AutoUpdateWidget
 

@@ -3,9 +3,6 @@ import os
 import CIP.logic.geometry_topology_data as gtd
 import glob
 
-sys.path.append('/Users/jonieva/Projects/SlicerCIP/Scripted/CIP_ParenchymaSubtypeTraining')
-sys.path.append('/Users/jonieva/Projects/SlicerCIP/Scripted/CIP_Common')
-
 def get_points(root_folder, study_name):
     import os
     import CIP.logic.geometry_topology_data as gtd

@@ -11,7 +11,7 @@ class Colors(object):
         @return:
         """
         if Colors.__chest_regions__ is None:
-            # Colors.__chest_regions__ = Colors.__readColorMapFile__("/Users/jonieva/Projects/SlicerCIP/Scripted/CIP_Common/CIP/ui/Resources/chest_region_colors.ctbl")
+            # Colors.__chest_regions__ = Colors.__readColorMapFile__("/Users/jonieva/Projects/SlicerCIP/Scripted/CIP_/CIP/ui/Resources/chest_region_colors.ctbl")
             Colors.__chest_regions__ = Colors.__readColorMapFile__(path.join
                                         (SlicerUtil.CIP_RESOURCES_DIR, "chest_region_colors.ctbl"))
         return Colors.__chest_regions__
@@ -22,7 +22,7 @@ class Colors(object):
         @return:
         """
         if Colors.__chest_types__ is None:
-            #Colors.__chest_types__ = Colors.__readColorMapFile__("/Users/jonieva/Projects/SlicerCIP/Scripted/CIP_Common/CIP/ui/Resources/chest_type_colors.ctbl")
+            #Colors.__chest_types__ = Colors.__readColorMapFile__("/Users/jonieva/Projects/SlicerCIP/Scripted/CIP_/CIP/ui/Resources/chest_type_colors.ctbl")
             Colors.__chest_types__  = Colors.__readColorMapFile__(path.join
                                         (SlicerUtil.CIP_RESOURCES_DIR, "chest_type_colors.ctbl"))
         return Colors.__chest_types__

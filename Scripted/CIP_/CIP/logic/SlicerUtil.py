@@ -31,7 +31,7 @@ class SlicerUtil:
         The content is solely the responsibility of the authors and does not necessarily represent the official views of the National Institutes of Health."""
 
     CIP_ModulesCategory = ["Chest Imaging Platform"]
-    CIP_ModuleName = "CIP_Common"
+    CIP_ModuleName = "CIP_"
 
     GIT_REPO_FOLDER = path.join(slicer.app.temporaryPath, 'CIP-Repo')
     GIT_REMOTE_URL = "https://github.com/acil-bwh/SlicerCIP.git"
@@ -573,7 +573,7 @@ class SlicerUtil:
         :param iconName: name of the file (ex: previous.png)
         :param isSystemIcon: True if the icon belongs to the Slicer library. The available files can be found in the
         folder "/Users/Jorge/Projects/BWH/Slicer/Libs/MRML/Widgets/Resources/Icons".
-        isSystemIcon=False for CIP icons (in "SlicerCIP/Scripted/CIP_Common/CIP/ui/Resources/Icons/")
+        isSystemIcon=False for CIP icons (in "SlicerCIP/Scripted/CIP_/CIP/ui/Resources/Icons/")
         :return: QIcon object
         """
         if not isSystemIcon:

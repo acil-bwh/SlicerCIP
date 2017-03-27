@@ -1,7 +1,7 @@
 MAIN CLASSES:
 
 - Slicer/Base/Python/slicer/util.py ==> very useful class to load volumes and other common operations (import as slicer.util)
-- vtk.util ==> convert vtk in numpy and viceversa  (see also CIP_Common/CIP/Util)
+- vtk.util ==> convert vtk in numpy and viceversa  (see also CIP_/CIP/Util)
 
 - ScriptedLoadableModuleTemplate ==> class that contains the default template for a new Python module
 - slicer.modules.volumes.logic() ==> handle volumes (events, etc.)
@@ -10,8 +10,8 @@ MAIN CLASSES:
 - slicer.app.layoutManager()  ==> general layout operations  (ex: select a different module?)
 - slicer.modules.volumerendering.logic() ==> many utilites for 3D 3rendering
 
-- SlicerCIP/CIP_Common/CIP/SlicerUtil ==> some common utils for Slicer (expected to be extended in the future)
-- SlicerCIP/CIP_Common/CIP/Util ==> common utils specially fot volume handling: VTK<=>numpy, save nodes
+- SlicerCIP/CIP_/CIP/SlicerUtil ==> some common utils for Slicer (expected to be extended in the future)
+- SlicerCIP/CIP_/CIP/Util ==> common utils specially fot volume handling: VTK<=>numpy, save nodes
 
 
 Some useful snippets: http://wiki.slicer.org/slicerWiki/index.php/Documentation/Nightly/Developers/Python_scripting

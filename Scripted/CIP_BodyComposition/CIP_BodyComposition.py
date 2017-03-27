@@ -14,24 +14,8 @@ import qt, vtk, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
 
-# Add the CIP common library to the path if it has not been loaded yet
-# This is needed because alphabetically CIP_BodyComposition < CIP_Common, and only in Development.
-# This is not needed if ACIL modules are added to Slicer
-try:
-    from CIP.logic.SlicerUtil import SlicerUtil
-except Exception as ex:
-    currentpath = os.path.dirname(os.path.realpath(__file__))
-    # We assume that CIP_Common is in the development structure
-    path = os.path.normpath(currentpath + '/../CIP_Common')
-    if not os.path.exists(path):
-        print("Path not found: " + path)
-        # We assume that CIP is a subfolder (Slicer behaviour)
-        path = os.path.normpath(currentpath + '/CIP')
-    sys.path.append(path)
-    print("The following path was manually added to the PythonPath in CIP_BodyComposition: " + path)
-    from CIP.logic.SlicerUtil import SlicerUtil
 
-# from CIP.logic.SlicerUtil import SlicerUtil
+from CIP.logic.SlicerUtil import SlicerUtil
 from CIP.logic import Util
 from CIP.logic import file_conventions
 from CIP_BodyComposition_logic import BodyCompositionParameters
