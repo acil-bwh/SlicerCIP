@@ -18,6 +18,7 @@ set(MODULE_PYTHON_SCRIPTS
   CIP/ui/CaseReportsWidget.py
   CIP/ui/CIP_EditBox.py
   CIP/ui/CIP_EditorWidget.py
+  CIP/ui/CollapsibleMultilineText.py
   CIP/ui/MIPViewerWidget.py
   CIP/ui/PreProcessingWidget.py
   )
