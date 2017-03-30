@@ -7,6 +7,7 @@ import numpy as np
 import time
 import SimpleITK as sitk
 import logging
+from collections import OrderedDict
 
 from CIP.logic.SlicerUtil import SlicerUtil
 from CIP.logic import Util
@@ -567,7 +568,10 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.analysisResultsCollapsibleButton.text = "Results of the analysis"
         self.layout.addWidget(self.analysisResultsCollapsibleButton)
         self.reportsLayout = qt.QHBoxLayout(self.analysisResultsCollapsibleButton)
-        self.reportsWidget = CaseReportsWidget(self.moduleName, columnKeys=self.storedColumnNames,
+        columns = OrderedDict()
+        for key in self.storedColumnNames:
+            columns[key] = key
+        self.reportsWidget = CaseReportsWidget(self.moduleName, columns,
                                                parentWidget=self.analysisResultsCollapsibleButton)
         self.reportsWidget.setup()
         self.reportsWidget.showWarnigMessages(False)

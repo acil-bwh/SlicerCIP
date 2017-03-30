@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+from collections import OrderedDict
 
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
@@ -203,7 +204,10 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.storedColumnNames = ["caseId", "paDiameterMm", "aortaDiameterMm",
                                   "pa1r", "pa1a", "pa1s", "pa2r", "pa2a", "pa2s",
                                   "a1r", "a1a", "a1s", "a2r", "a2a", "a2s"]
-        self.reportsWidget = CaseReportsWidget(self.moduleName, columnKeys=self.storedColumnNames, parentWidget=self.reportsCollapsibleButton)
+        columns = OrderedDict()
+        for key in self.storedColumnNames:
+            columns[key] = key
+        self.reportsWidget = CaseReportsWidget(self.moduleName, columns, parentWidget=self.reportsCollapsibleButton)
         self.reportsWidget.setup()
 
         # Init state

@@ -5,19 +5,16 @@ the volume based on its label map, like Area, Mean, Std.Dev., etc.
 First version: Jorge Onieva (ACIL, jonieva@bwh.harvard.edu). 11/2014'''
 
 import os
-import sys
 import time
-
 import numpy as np
+import logging
+from collections import OrderedDict
 
 import qt, vtk, ctk, slicer
 from slicer.ScriptedLoadableModule import *
-import logging
-
 
 from CIP.logic.SlicerUtil import SlicerUtil
 from CIP.logic import Util
-from CIP.logic import file_conventions
 from CIP_BodyComposition_logic import BodyCompositionParameters
 from CIP.ui import CaseReportsWidget
 import CIP.ui as CIPUI
@@ -220,8 +217,10 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.statsButtonsFrame.layout().addWidget(self.btnAnalysis2)
 
         # Reports widget
-        self.reportsWidget = CaseReportsWidget(self.moduleName, columnKeys=self.storedColumnNames,
-                                               parentWidget=self.statsButtonsFrame)
+        columns = OrderedDict()
+        for key in self.storedColumnNames:
+            columns[key] = key
+        self.reportsWidget = CaseReportsWidget(self.moduleName, columns, parentWidget=self.statsButtonsFrame)
         self.reportsWidget.setup()
 
 
@@ -233,7 +232,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.tableView = qt.QTableView()
         self.tableView.sortingEnabled = True
         self.tableView.minimumHeight = 550
-        # Unsuccesful attempts to autoscale the table
+        # Unsuccessful attempts to autoscale the table
         self.tableView.maximumHeight = 800
         policy = self.tableView.sizePolicy
         policy.setVerticalPolicy(qt.QSizePolicy.Expanding)

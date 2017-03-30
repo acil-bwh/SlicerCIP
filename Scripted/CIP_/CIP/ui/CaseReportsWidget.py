@@ -1,4 +1,6 @@
-import csv, os, time, pprint, logging
+import os, time, pprint, logging
+from collections import OrderedDict
+
 import qt, ctk, slicer
 
 from CIP.logic import EventsTrigger
@@ -14,18 +16,15 @@ class CaseReportsWidget(EventsTrigger):
 
     @property
     def TIMESTAMP_COLUMN_NAME(self):
-        return self.logic.TIMESTAMP_COLUMN_NAME
+        return self.logic.TIMESTAMP_COLUMN_KEY
 
-    def __init__(self, dbTableName, columnKeys, parentWidget = None,
-                 columnDescriptionsPairing={}, dbFilePath=None):
+    def __init__(self, dbTableName, columnsDict, parentWidget = None, dbFilePath=None):
         """
         Widget constructor
         :param dbTableName: name of the table that will store the information of the module
-        :param columnKeys: list of column keys (columns in the database)
+        :param columnsDict: dictionary of colummKey-ColumnDescription (note that column keys cannot contain special
+        characters, white spaces, etc.)
         :param parentWidget: widget where this ReportsWidget will be inserted
-        :param columnDescriptionsPairing: dictionary that may contain more descriptive names for the columns in the shape
-                                   columnDescription: columnKey
-                                   (note that column keys cannot contain special characters, white spaces, etc.)
         :param dbFilePath: full path of the file that will store the database that is using the widget.
                            by default, it will be in the settings folder
         """
@@ -40,8 +39,7 @@ class CaseReportsWidget(EventsTrigger):
         self.layout = self.parent.layout()
 
         self._showWarningWhenIncompleteColumns_ = True
-        self.logic = CaseReportsLogic(dbTableName, columnKeys, columnDescriptionsPairing=columnDescriptionsPairing,
-                                      dbFilePath=dbFilePath)
+        self.logic = CaseReportsLogic(dbTableName, columnsDict, dbFilePath=dbFilePath)
         self.__initEvents__()
         self.reportWindow = CaseReportsWindow(self)
         self.reportWindow.objectName = "caseReportsWindow"
@@ -119,7 +117,7 @@ class CaseReportsWidget(EventsTrigger):
         """
         s = self.additionalComentsTextEdit.toPlainText()
         s = s.replace("\r\n", "  ").replace("\n", "  ")
-        kwargs[self.logic.ADDITIONAL_COMMENTS_COLUMN_NAME] = s
+        kwargs[self.logic.ADDITIONAL_COMMENTS_COLUMN_KEY] = s
         return self.logic.insertRow(**kwargs)
 
     def enableSaveButton(self, enabled):
@@ -192,32 +190,43 @@ class CaseReportsWidget(EventsTrigger):
 #############################
 ##
 class CaseReportsLogic(object):
-    def __init__(self, dbTableName, columnKeys, columnDescriptionsPairing={}, dbFilePath=None):
+    def __init__(self, dbTableName, columnsDict, dbFilePath=None):
         """
         Constructor
         :param dbTableName: name of the table in the database
-        :param columnKeys: list of column names in the db
-        :param columnDescriptionsPairing: additional column descriptions dictionary in the shape
-                                          "Descr: Key"
+        :param columnsDict: dictionary of column key-column value
         :param dbFilePath: path to the file that will store the data. By default it will be
                             in the CIP settings folder
         """
         self._dbFilePath_ = SlicerUtil.modulesDbPath() if dbFilePath is None else dbFilePath
         self._dbTableName_ = dbTableName
-        self._columnDescriptions_ = columnDescriptionsPairing
         logging.debug("Module storage in {}-{}".format(dbFilePath, dbTableName))
+        # We need the dictionary to be ordered for the table node
         self._initTableNode_()
-        self._initColumns_(columnKeys)
+        if isinstance(columnsDict, OrderedDict):
+            self.columnsDict = columnsDict
+        else:
+            self.columnsDict = OrderedDict(columnsDict)
+        self._initColumns_()
+
         # self.__columnNames__ = columnNames
         self.showWarningWhenIncompleteColumns = True
 
     @property
-    def TIMESTAMP_COLUMN_NAME(self):
+    def TIMESTAMP_COLUMN_KEY(self):
         return "Timestamp"
 
     @property
-    def ADDITIONAL_COMMENTS_COLUMN_NAME(self):
+    def ADDITIONAL_COMMENTS_COLUMN_KEY(self):
         return "AdditionalComments"
+
+    @property
+    def _columnKeys_(self):
+        return self.columnsDict.keys()
+
+    @property
+    def _columnDescriptions_(self):
+        return self.columnsDict.values()
 
     def _initTableNode_(self):
         """
@@ -238,51 +247,54 @@ class CaseReportsLogic(object):
             logging.info("The storage database has not been created yet")
 
 
-    def _initColumns_(self, newColumnKeys):
+    def _initColumns_(self):
         """
-        Create the list of columns in the tableNode based on the passed column names.
+        Create the list of columns in the tableNode based on the existing columns dictionary.
         If the database already existed, create new columns if necessary
-        :param newColumnKeys:
+        :param columnsDict:
         """
-        for col in newColumnKeys:
-            if not col.isalnum():
-                raise Exception("Column {} is not alphanumeric. The column names can contain only letters and numbers."
-                                "If you need additional symbols please use the 'columnDescriptionsPairing' dictionary "
-                                "(where every entry has the form 'Column_description: Column_key'".format(col))
-        self._columnKeys_ = []
+        for colKey, colDesc in self.columnsDict.iteritems():
+            if not colKey.isalnum():
+                raise Exception("Column {} is not alphanumeric. The column keys can contain only letters and numbers."
+                                .format(colKey))
+            if colKey in (self.TIMESTAMP_COLUMN_KEY, self.ADDITIONAL_COMMENTS_COLUMN_KEY):
+                raise Exception("One of the columns is named as one of the reserved fields: {}".format(
+                    (self.TIMESTAMP_COLUMN_KEY, self.ADDITIONAL_COMMENTS_COLUMN_KEY)))
+
         table = self.tableNode.GetTable()
         if self.tableNode.GetNumberOfColumns() == 0:
-            # Empty table. Add the timestamp column and the rest of the columns
-            self._columnKeys_.append(self.TIMESTAMP_COLUMN_NAME)
-            col = self.tableNode.AddColumn()
-            col.SetName(self.TIMESTAMP_COLUMN_NAME)
-            for columnName in newColumnKeys:
+            # Empty table
+            # Add columns
+            for columnKey in self.columnsDict.iterkeys():
                 col = self.tableNode.AddColumn()
-                col.SetName(columnName)
-                self._columnKeys_.append(columnName)
+                col.SetName(columnKey)
+
+            # Add Timestamp column
             col = self.tableNode.AddColumn()
-            col.SetName(self.ADDITIONAL_COMMENTS_COLUMN_NAME)
-            self._columnKeys_.append(self.ADDITIONAL_COMMENTS_COLUMN_NAME)
-            SlicerUtil.logDevelop("Table {} initialized from scratch with the following column names: {}".format(
-                self._dbTableName_, self._columnKeys_), includePythonConsole=True)
+            col.SetName(self.TIMESTAMP_COLUMN_KEY)
+            self.columnsDict[self.TIMESTAMP_COLUMN_KEY] = self.TIMESTAMP_COLUMN_KEY
+            # Add AdditionalComments column
+            col = self.tableNode.AddColumn()
+            col.SetName(self.ADDITIONAL_COMMENTS_COLUMN_KEY)
+            self.columnsDict[self.ADDITIONAL_COMMENTS_COLUMN_KEY] = self.ADDITIONAL_COMMENTS_COLUMN_KEY
+
+            SlicerUtil.logDevelop("Table {} initialized from scratch with the following columns: {}".format(
+                self._dbTableName_, self.columnsDict), includePythonConsole=True)
         else:
-            # Compare the current columns in the tableNode with the specified column keys
+            # The table already has previously existing columns. Check if new columns were introduced
+            columnKeys = []
             for i in range(self.tableNode.GetNumberOfColumns()):
-                self._columnKeys_.append(table.GetColumnName(i))
-            for columnName in newColumnKeys:
-                if columnName not in self._columnKeys_:
-                    # Add a new column
+                columnKeys.append(table.GetColumnName(i))
+
+            for columnKey in self.columnsDict.iterkeys():
+                if columnKey not in columnKeys:
+                    # Add a new column to the table
                     col = self.tableNode.AddColumn()
-                    col.SetName(columnName)
-                    self._columnKeys_.append(columnName)
+                    col.SetName(columnKey)
                     SlicerUtil.logDevelop("New column added to the table {} in the database: {}".
-                                          format(self._dbTableName_, columnName), includePythonConsole=True)
+                                          format(self._dbTableName_, columnKey), includePythonConsole=True)
 
 
-
-    @property
-    def columnKeys(self):
-        return self._columnKeys_
     # @columnNames.setter
     # def columnNames(self, value):
     #     self.__columnNames__ = value
@@ -318,10 +330,9 @@ class CaseReportsLogic(object):
         :param columnKeyOrDescription:
         :return: String or None if the column was not found
         """
-        if columnKeyOrDescription in self._columnKeys_:
-            return columnKeyOrDescription
-        if columnKeyOrDescription in self._columnDescriptions_:
-            return self._columnDescriptions_[columnKeyOrDescription]
+        for key, value in self.columnsDict.iteritems():
+            if columnKeyOrDescription in (key, value):
+                return key
         return None
 
     def insertRow(self, **kwargs):
@@ -332,42 +343,27 @@ class CaseReportsLogic(object):
         """
         result = 0
         # Check that we have all the "columns"
-        # if len(kwargs) != len(self.columnNames) and self.showWarningWhenIncompleteColumns:
-        #     print("WARNING. There is a wrong number of arguments in ReportsWidget. ")
-        #     print("Current columns: ")
-        #     pprint.pprint(self.columnNames)
-        #     print("Total: {0}".format(len(self.columnNames)))
-        #     print("Args passed: ")
-        #     pprint.pprint(kwargs)
-        #     print("Total: {0}".format(len(kwargs)))
-        #     result = 1
-
         for key in kwargs:
             if not self.hasColumn(key):
-                logging.warning("WARNING: Column {0} is not included in the list of columns and therefore it will NOT be saved".
+                logging.warning("WARNING: Column {} is not included in the list of columns and therefore it will NOT be saved".
                       format(key))
                 result = 1
 
         rowIndex = self.tableNode.AddEmptyRow()
         table = self.tableNode.GetTable()
-
         try:
-            # Insert the timestamp
-            self.tableNode.SetCellText(rowIndex, 0, time.strftime("%Y/%m/%d %H:%M:%S"))
-            # Rest of the values
-            for i in range(1, len(self._columnKeys_)):
-                colName = table.GetColumnName(i)
-                for key,value in kwargs.iteritems():
-                    if colName == self.getColumnKey(key):
-                        if value is not None:
-                            value = str(value) # The table node only allows text
-                        self.tableNode.SetCellText(rowIndex, i, value)
-                        break
-                # if colName in kwargs:
-                #     elem = kwargs[colName]
-                #     if elem is not None:
-                #         elem = str(elem)    # The table node only allows text
-                #     self.tableNode.SetCellText(rowIndex, i, elem)
+            for i in range(0, len(self.columnsDict)):
+                colKey = table.GetColumnName(i)
+                if colKey == self.TIMESTAMP_COLUMN_KEY:
+                    self.tableNode.SetCellText(rowIndex, i, time.strftime("%Y/%m/%d %H:%M:%S"))
+                else:
+                    # Search every column (we will look either for key or for description)
+                    for key,value in kwargs.iteritems():
+                        if colKey == self.getColumnKey(key):
+                            if value is not None:
+                                value = str(value) # The table node only allows text
+                            self.tableNode.SetCellText(rowIndex, i, value)
+                            break
         except Exception as ex:
             # Remove the row
             self.tableNode.RemoveRow(rowIndex)

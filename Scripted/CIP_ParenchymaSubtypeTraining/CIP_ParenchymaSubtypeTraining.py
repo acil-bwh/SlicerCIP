@@ -1,9 +1,19 @@
-import os
+import os, sys
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 
 from CIP.logic.SlicerUtil import SlicerUtil
 from CIP_PointsLabelling import CIP_PointsLabelling, CIP_PointsLabellingWidget, CIP_PointsLabellingLogic
+# Note: this is neccesary in development because of the python path dependency
+# try:
+#     from CIP_PointsLabelling import CIP_PointsLabelling, CIP_PointsLabellingWidget, CIP_PointsLabellingLogic
+# except:
+#     import inspect
+#     path = os.path.dirname(inspect.getfile(inspect.currentframe()))
+#     path = os.path.normpath(os.path.join(path, '../CIP_PointsLabelling'))        # We assume that CIP_Common is a sibling folder of the one that contains this module
+#     sys.path.append(path)
+#     from CIP_PointsLabelling import CIP_PointsLabelling, CIP_PointsLabellingWidget, CIP_PointsLabellingLogic
+
 from CIP_ParenchymaSubtypeTrainingLogic.SubtypingParameters import SubtypingParameters
 
 
@@ -22,7 +32,7 @@ class CIP_ParenchymaSubtypeTraining(CIP_PointsLabelling):
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
         self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory",
                                     "Brigham and Women's Hospital"]
-        self.parent.helpText = """Training for a subtype of emphysema done quickly by an expert"""
+        self.parent.helpText = """Training parenchyma subtypes done quickly by an expert"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 

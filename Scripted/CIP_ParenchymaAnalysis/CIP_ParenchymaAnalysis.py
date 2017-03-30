@@ -1,4 +1,5 @@
 import os
+from collections import OrderedDict
 
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
@@ -41,20 +42,25 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         self.chartOptions = (
         "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600","Perc10","Perc15","Mean","Std","Kurtosis","Skewness","Ventilation Heterogeneity","Mass", "Volume")
-        # self.storedColumnNames = ["Volume Name", "Region", "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600","Perc10","Perc15","Mean", "Std", \
-        #                           "Kurtosis", "Skewness","Ventilation Heterogeneity","Mass","Volume"]
-        self.storedColumnNames = ["VolumeName", "Region", "LAA950", "LAA910", "LAA856", "HAA700", "HAA600",
-                                  "Perc10", "Perc15", "Mean", "Std", \
-                                  "Kurtosis", "Skewness", "VentilationHeterogeneity", "Mass", "Volume"]
-        self.storedColumnDescriptions = {
-            "Volume Name": "VolumeName",
-            "LAA%-950": "LAA950",
-            "LAA%-910": "LAA910",
-            "LAA%-856": "LAA856",
-            "HAA%-700": "HAA700",
-            "HAA%-600": "HAA600",
-            "Ventilation Heterogeneity": "VentilationHeterogeneity"
-        }
+        
+        self.columnsDict = OrderedDict({
+            "VolumeName": "Volume Name",
+            "Region": "Region",
+            "LAA950": "LAA%-950",
+            "LAA910": "LAA%-910",
+            "LAA856": "LAA%-856",
+            "HAA700": "HAA%-700",
+            "HAA600": "HAA%-600",
+            "Perc10": "Perc10",
+            "Perc15": "Perc15",
+            "Mean": "Mean",
+            "Std": "Std",
+            "Kurtosis": "Kurtosis",
+            "Skewness": "Skewness",
+            "VentilationHeterogeneity": "Ventilation Heterogeneity",
+            "Mass": "Mass",
+            "Volume": "Volume"
+        })
 
         self.rTags = (
         "WholeLung", "RightLung", "LeftLung", "RUL", "RLL", "RML", "LUL", "LLL", "LUT", "LMT", "LLT", "RUT", "RMT", "RLT")
@@ -252,8 +258,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         chartFrame.layout().addWidget(self.chartOption)
         self.chartBox.enabled = False
 
-        self.reportsWidget = CaseReportsWidget(self.moduleName, columnKeys=self.storedColumnNames,
-                                               parentWidget=self.parent, columnDescriptionsPairing=self.storedColumnDescriptions)
+        self.reportsWidget = CaseReportsWidget(self.moduleName, self.columnsDict, parentWidget=self.parent)
         self.reportsWidget.setup()
         self.reportsWidget.saveButton.enabled = False
         self.reportsWidget.openButton.enabled = False
@@ -417,6 +422,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
             slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(self.CTNode.GetID())
             
         self.labelSelector.setCurrentNode(self.labelNode)
+        pass
 
     def onHistogram(self):
         """Histogram of the selected region
