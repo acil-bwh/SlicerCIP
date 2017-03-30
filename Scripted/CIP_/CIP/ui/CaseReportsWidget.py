@@ -58,6 +58,7 @@ class CaseReportsWidget(EventsTrigger):
 
         self.saveButton = ctk.ctkPushButton()
         self.saveButton.text = "Save"
+        self.saveButton.toolTip = "Save the current table"
         self.saveButton.objectName = "reportSaveButton"
         self.saveButton.setIcon(qt.QIcon("{0}/Save.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.saveButton.setIconSize(qt.QSize(24, 24))
@@ -65,6 +66,7 @@ class CaseReportsWidget(EventsTrigger):
 
         self.openButton = ctk.ctkPushButton()
         self.openButton.text = "Open"
+        self.openButton.toolTip = "Open all the results saved"
         self.openButton.objectName = "reportOpenButton"
         self.openButton.setIcon(qt.QIcon("{0}/open_file.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.openButton.setIconSize(qt.QSize(24,24))
@@ -72,6 +74,7 @@ class CaseReportsWidget(EventsTrigger):
 
         self.exportButton = ctk.ctkPushButton()
         self.exportButton.text = "Export"
+        self.exportButton.toolTip = "Export all the saved results to a CSV file"
         self.exportButton.objectName = "reportExportButton"
         self.exportButton.setIcon(qt.QIcon("{0}/export-csv.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.exportButton.setIconSize(qt.QSize(24,24))
@@ -83,9 +86,11 @@ class CaseReportsWidget(EventsTrigger):
         self.removeButton.text = "Clean cache"
         frameLayout.addWidget(self.removeButton, 0, 3)
 
-        frameLayout.addWidget(qt.QLabel("Additional comments:"), 1, 0, 1, 2)
+        self.additionalComentsLabel = qt.QLabel("Additional comments:")
+        self.additionalComentsLabel.setStyleSheet("margin-top: 3px")
+        frameLayout.addWidget(self.additionalComentsLabel, 1, 0, 1, 2)
         self.additionalComentsTextEdit = CollapsibleMultilineText()
-        frameLayout.addWidget(self.additionalComentsTextEdit, 1, 2, 1, 2)
+        frameLayout.addWidget(self.additionalComentsTextEdit, 1, 1, 1, 2)
 
         self.saveButton.connect('clicked()', self.onSave)
         self.exportButton.connect('clicked()', self.onExport)

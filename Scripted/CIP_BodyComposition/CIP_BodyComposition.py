@@ -205,7 +205,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
         # Statistics buttons frame
         self.statsButtonsFrame = qt.QFrame(self.statisticsCollapsibleButton)
-        self.statsButtonsFrame.setLayout(qt.QHBoxLayout())
+        self.statsButtonsFrame.setLayout(qt.QVBoxLayout())
         self.statisticsLayout.addWidget(self.statsButtonsFrame)
 
 
@@ -216,7 +216,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.btnAnalysis2.setStyleSheet("font-weight:bold; font-size:14px")
         self.btnAnalysis2.setIcon(qt.QIcon("{0}/1415667870_kview.png".format(self.iconsPath)))
         self.btnAnalysis2.setIconSize(qt.QSize(24, 24))
-        # self.btnAnalysis2.setFixedWidth(200)
+        self.btnAnalysis2.setFixedWidth(250)
         self.statsButtonsFrame.layout().addWidget(self.btnAnalysis2)
 
         # Reports widget
@@ -243,15 +243,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         # Hide the table until we have some volume loaded
         self.tableView.visible = False
         self.statsTableFrame.layout().addWidget(self.tableView)
-
-        # Export to CSV data button
-        self.btnExport = ctk.ctkPushButton()
-        self.btnExport.text = "Export to CSV file"
-        self.btnExport.visible = False
-        self.btnExport.setIcon(qt.QIcon("{0}/export-csv.png".format(self.iconsPath)))
-        self.btnExport.setIconSize(qt.QSize(24, 24))
-        self.btnExport.setFixedWidth(200)
-        self.statsTableFrame.layout().addWidget(self.btnExport)
 
         #####
         # Case navigator
@@ -302,7 +293,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.btnAnalysis2.connect("clicked()", self.onBtnAnalysisClicked)
         self.btnGoToNextStructure.connect("clicked()", self.onBtnNextClicked)
         self.btnGoToPreviousStructure.connect("clicked()", self.onBtnPrevClicked)
-        self.btnExport.connect("clicked()", self.onBtnExportClicked)
         self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
 
         slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__)
@@ -345,7 +335,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         """Save the state of the module regarding labelmap, etc. This state will be saved/loaded when
         exiting/entering the module
         """
-        SlicerUtil.logDevelop("Saving state...", includePythonConsole=True)
+        SlicerUtil.logDevelop("Saving module state...", includePythonConsole=False)
         if self.preventSavingState:
             # Avoid that the first time that the module loads, the state is saved twice
             self.preventSavingState = False
@@ -368,7 +358,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                 activeLabelmapId = SlicerUtil.getFirstActiveLabelmapId()
                 self.savedLabelmapID = activeLabelmapId
                 SlicerUtil.logDevelop("Saved volume {} and labelmap {}".format(self.savedVolumeID, self.savedLabelmapID)
-                                      , includePythonConsole=False)
+                                      , includePythonConsole=True)
                 if activeLabelmapId is None:
                     self.savedLabelmapOpacity = None
                 else:
@@ -904,8 +894,9 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
             self.structuresCollapsibleButton.collapsed = True
             self.__collapseEditorWidget__(False)
 
-            # Make table and export button visible
-            self.tableView.visible = self.btnExport.visible = True
+            # Make table visible
+            #self.tableView.visible = self.btnExport.visible = True
+            self.tableView.visible = True
         except StopIteration as ex:
             print("The process was interrupted by the user")
 
@@ -1010,7 +1001,9 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         redNodeSliceNode.JumpSlice(0, 0, sliceS)
 
     def exportTableToCSV(self):
-        """Export the current statistics table to a CSV file"""
+        """DEPRECATED (controlled by CaseReportsWidget).
+         Export the current statistics table to a CSV file
+         """
         # Open a filesavedialog in the most recent
         fileName = qt.QFileDialog.getSaveFileName(self.parent, "Export to CSV file")
         if fileName:
@@ -1125,7 +1118,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
     def __uploadLabelmapCallback__(self, result):
         if result == Util.OK:
-            SlicerUtil.logDevelop("Upload labemap callback: {0}".format(result), includePythonConsole=True)
+            SlicerUtil.logDevelop("Upload labemap callback: {0}".format(result), includePythonConsole=False)
             qt.QMessageBox.information(slicer.util.mainWindow(), "Labelmap saved", "Labelmap saved succesfully")
         else:
             qt.QMessageBox.warning(slicer.util.mainWindow(), "Labelmap NOT saved",
@@ -1133,9 +1126,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
     def onBtnAnalysisClicked(self):
         self.populateStatisticsTable()
-
-    def onBtnExportClicked(self):
-        self.exportTableToCSV()
 
     # def onBtnRefreshClicked(self):
     #     self.checkMasterAndLabelMapNodes()
@@ -1178,7 +1168,6 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                 median=stat.Median,
                 numSlices=stat.NumSlices
             )
-        print("Looking prevent: ", self)
         if not self.__preventDialogs__:
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
 
