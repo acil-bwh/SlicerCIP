@@ -145,6 +145,16 @@ class CaseReportsWidget(EventsTrigger):
         self.reportWindow.hide()
         self.triggerEvent(self.EVENT_HIDE_REPORT)
 
+    @staticmethod
+    def getColumnKeysNormalizedDictionary(columnList):
+        """
+        From a list of column descriptive names, build a dictionary ColumnKey-ColumnDescription, where ColumnDescription
+        will contain the provided columnList and ColumnKey will be the normalized (removing non-alphanumeric symbols)
+        :param columnList: list of column descriptions
+        :return: OrderedDictionary of columnKey-ColumnDescription
+        """
+        return CaseReportsLogic.getColumnKeysNormalized(columnList)
+
     ###############
     # EVENTS
     def onSave(self):
@@ -353,13 +363,14 @@ class CaseReportsLogic(object):
         table = self.tableNode.GetTable()
         try:
             for i in range(0, len(self.columnsDict)):
-                colKey = table.GetColumnName(i)
-                if colKey == self.TIMESTAMP_COLUMN_KEY:
+                colName = table.GetColumnName(i)
+                colKey = self.columnsDict.keys()[0]
+                if colName == self.TIMESTAMP_COLUMN_KEY:
                     self.tableNode.SetCellText(rowIndex, i, time.strftime("%Y/%m/%d %H:%M:%S"))
                 else:
                     # Search every column (we will look either for key or for description)
                     for key,value in kwargs.iteritems():
-                        if colKey == self.getColumnKey(key):
+                        if colName == self.getColumnKey(key):
                             if value is not None:
                                 value = str(value) # The table node only allows text
                             self.tableNode.SetCellText(rowIndex, i, value)
@@ -368,8 +379,22 @@ class CaseReportsLogic(object):
             # Remove the row
             self.tableNode.RemoveRow(rowIndex)
             raise ex
+
+        # Temporarily rename the columns so that the db saves the normalized names columns
+        keys = self.columnsDict.keys()
+        for i in range(table.GetNumberOfColumns()):
+            # Sanity check
+            assert(table.GetColumn(i).GetName() == self.columnsDict[keys[i]], "Column mismatch (table=={}; Dict=={})".format(
+                table.GetColumn(i).GetName(), self.columnsDict[keys[i]])
+            )
+            # Change the name
+            table.GetColumn(i).SetName(keys[i])
         # Persist the info
         self.tableStorageNode.WriteData(self.tableNode)
+        # Return to the original column names
+        for i in range(table.GetNumberOfColumns()):
+            # Change the name
+            table.GetColumn(i).SetName(self.columnsDict[keys[i]])
 
         # Notify GUI
         self.tableNode.Modified()
@@ -389,6 +414,23 @@ class CaseReportsLogic(object):
         storageNode.SetFileName(filePath)
         storageNode.WriteData(self.tableNode)
         return True
+
+    @staticmethod
+    def getColumnKeysNormalized(columnList):
+        """
+        From a list of column descriptive names, build a dictionary ColumnKey-ColumnDescription, where ColumnDescription
+        will contain the provided columnList and ColumnKey will be the normalized (removing non-alphanumeric symbols)
+        :param columnList: list of column descriptions
+        :return: OrderedDictionary of columnKey-ColumnDescription
+        """
+        d = OrderedDict()
+        for column in columnList:
+            key = ""
+            for c in column:
+                if c.isalnum():
+                    key += c
+            d[key] = column
+        return d
         # if os.path.exists(self.dbFilePath):
         #     with open(self.dbFilePath, 'r+b') as csvfileReader:
         #         reader = csv.reader(csvfileReader)

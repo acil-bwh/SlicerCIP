@@ -4,7 +4,7 @@ from slicer.ScriptedLoadableModule import *
 
 from CIP.logic.SlicerUtil import SlicerUtil
 from CIP_PointsLabelling import CIP_PointsLabelling, CIP_PointsLabellingWidget, CIP_PointsLabellingLogic
-# Note: this is neccesary in development because of the python path dependency
+# Note: this is necessary in development because of the python path dependency
 # try:
 #     from CIP_PointsLabelling import CIP_PointsLabelling, CIP_PointsLabellingWidget, CIP_PointsLabellingLogic
 # except:

@@ -204,9 +204,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.storedColumnNames = ["caseId", "paDiameterMm", "aortaDiameterMm",
                                   "pa1r", "pa1a", "pa1s", "pa2r", "pa2a", "pa2s",
                                   "a1r", "a1a", "a1s", "a2r", "a2a", "a2s"]
-        columns = OrderedDict()
-        for key in self.storedColumnNames:
-            columns[key] = key
+        columns = CaseReportsWidget.getColumnKeysNormalizedDictionary(self.storedColumnNames)
         self.reportsWidget = CaseReportsWidget(self.moduleName, columns, parentWidget=self.reportsCollapsibleButton)
         self.reportsWidget.setup()
 

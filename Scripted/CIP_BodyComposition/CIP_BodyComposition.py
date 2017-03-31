@@ -217,12 +217,9 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.statsButtonsFrame.layout().addWidget(self.btnAnalysis2)
 
         # Reports widget
-        columns = OrderedDict()
-        for key in self.storedColumnNames:
-            columns[key] = key
+        columns = CaseReportsWidget.getColumnKeysNormalizedDictionary(self.storedColumnNames)
         self.reportsWidget = CaseReportsWidget(self.moduleName, columns, parentWidget=self.statsButtonsFrame)
         self.reportsWidget.setup()
-
 
         # Statistics table
         self.statsTableFrame = qt.QFrame(self.statisticsCollapsibleButton)

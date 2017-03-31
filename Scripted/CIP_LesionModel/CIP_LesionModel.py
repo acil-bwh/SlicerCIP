@@ -568,9 +568,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.analysisResultsCollapsibleButton.text = "Results of the analysis"
         self.layout.addWidget(self.analysisResultsCollapsibleButton)
         self.reportsLayout = qt.QHBoxLayout(self.analysisResultsCollapsibleButton)
-        columns = OrderedDict()
-        for key in self.storedColumnNames:
-            columns[key] = key
+
+        columns = CaseReportsWidget.getColumnKeysNormalizedDictionary(self.storedColumnNames)
         self.reportsWidget = CaseReportsWidget(self.moduleName, columns,
                                                parentWidget=self.analysisResultsCollapsibleButton)
         self.reportsWidget.setup()
