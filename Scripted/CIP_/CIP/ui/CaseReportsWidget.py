@@ -263,7 +263,7 @@ class CaseReportsLogic(object):
         If the database already existed, create new columns if necessary
         :param columnsDict:
         """
-        for colKey, colDesc in self.columnsDict.iteritems():
+        for colKey, colDesc in self.columnsDict.items():
             if not colKey.isalnum():
                 raise Exception("Column {} is not alphanumeric. The column keys can contain only letters and numbers."
                                 .format(colKey))
@@ -275,9 +275,10 @@ class CaseReportsLogic(object):
         if self.tableNode.GetNumberOfColumns() == 0:
             # Empty table
             # Add columns
-            for columnKey in self.columnsDict.iterkeys():
+            for value in self.columnsDict.itervalues():
                 col = self.tableNode.AddColumn()
-                col.SetName(columnKey)
+                # We will keep the "friendly" name of the column until the moment we are saving in db
+                col.SetName(value)
 
             # Add Timestamp column
             col = self.tableNode.AddColumn()
@@ -296,13 +297,13 @@ class CaseReportsLogic(object):
             for i in range(self.tableNode.GetNumberOfColumns()):
                 columnKeys.append(table.GetColumnName(i))
 
-            for columnKey in self.columnsDict.iterkeys():
-                if columnKey not in columnKeys:
+            for key in self.columnsDict.iterkeys():
+                if key not in columnKeys:
                     # Add a new column to the table
                     col = self.tableNode.AddColumn()
-                    col.SetName(columnKey)
+                    col.SetName(key)
                     SlicerUtil.logDevelop("New column added to the table {} in the database: {}".
-                                          format(self._dbTableName_, columnKey), includePythonConsole=True)
+                                          format(self._dbTableName_, key), includePythonConsole=True)
 
 
     # @columnNames.setter
@@ -361,18 +362,26 @@ class CaseReportsLogic(object):
 
         rowIndex = self.tableNode.AddEmptyRow()
         table = self.tableNode.GetTable()
+
+        # Temporarily rename the columns so that the db saves the normalized names columns
+        keys = self.columnsDict.keys()
+        for i in range(table.GetNumberOfColumns()):
+            # Sanity check
+            assert table.GetColumn(i).GetName() == self.columnsDict[keys[i]], "Column mismatch (table=={}; Dict=={})".format(
+                table.GetColumn(i).GetName(), self.columnsDict[keys[i]])
+            # Change the name
+            table.GetColumn(i).SetName(keys[i])
+        table.Modified()
+
         try:
-            for i in range(0, len(self.columnsDict)):
-                colName = table.GetColumnName(i)
-                colKey = self.columnsDict.keys()[0]
-                if colName == self.TIMESTAMP_COLUMN_KEY:
-                    self.tableNode.SetCellText(rowIndex, i, time.strftime("%Y/%m/%d %H:%M:%S"))
-                else:
-                    # Search every column (we will look either for key or for description)
-                    for key,value in kwargs.iteritems():
-                        if colName == self.getColumnKey(key):
-                            if value is not None:
-                                value = str(value) # The table node only allows text
+            for key, value in kwargs.iteritems():
+                if value is not None:
+                    for i in range(0, len(self.columnsDict)):
+                        colName = table.GetColumnName(i)
+                        if colName == self.TIMESTAMP_COLUMN_KEY:
+                            self.tableNode.SetCellText(rowIndex, i, time.strftime("%Y/%m/%d %H:%M:%S"))
+                        elif colName == self.getColumnKey(key):
+                            value = str(value)  # The table node only allows text
                             self.tableNode.SetCellText(rowIndex, i, value)
                             break
         except Exception as ex:
@@ -380,22 +389,13 @@ class CaseReportsLogic(object):
             self.tableNode.RemoveRow(rowIndex)
             raise ex
 
-        # Temporarily rename the columns so that the db saves the normalized names columns
-        keys = self.columnsDict.keys()
-        for i in range(table.GetNumberOfColumns()):
-            # Sanity check
-            assert(table.GetColumn(i).GetName() == self.columnsDict[keys[i]], "Column mismatch (table=={}; Dict=={})".format(
-                table.GetColumn(i).GetName(), self.columnsDict[keys[i]])
-            )
-            # Change the name
-            table.GetColumn(i).SetName(keys[i])
         # Persist the info
         self.tableStorageNode.WriteData(self.tableNode)
         # Return to the original column names
         for i in range(table.GetNumberOfColumns()):
             # Change the name
             table.GetColumn(i).SetName(self.columnsDict[keys[i]])
-
+        table.Modified()
         # Notify GUI
         self.tableNode.Modified()
         if result == 1:

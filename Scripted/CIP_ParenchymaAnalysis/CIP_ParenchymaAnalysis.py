@@ -42,25 +42,26 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         self.chartOptions = (
         "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600","Perc10","Perc15","Mean","Std","Kurtosis","Skewness","Ventilation Heterogeneity","Mass", "Volume")
-        
-        self.columnsDict = OrderedDict({
-            "VolumeName": "Volume Name",
-            "Region": "Region",
-            "LAA950": "LAA%-950",
-            "LAA910": "LAA%-910",
-            "LAA856": "LAA%-856",
-            "HAA700": "HAA%-700",
-            "HAA600": "HAA%-600",
-            "Perc10": "Perc10",
-            "Perc15": "Perc15",
-            "Mean": "Mean",
-            "Std": "Std",
-            "Kurtosis": "Kurtosis",
-            "Skewness": "Skewness",
-            "VentilationHeterogeneity": "Ventilation Heterogeneity",
-            "Mass": "Mass",
-            "Volume": "Volume"
-        })
+
+        # Build the column keys. Here all the columns are declared, but an alternative could be just:
+        #self.columnsDict = CaseReportsWidget.getColumnKeysNormalizedDictionary(["Volume Name", "Region", "LAA%-950", ...])
+        self.columnsDict = OrderedDict()
+        self.columnsDict["VolumeName"] = "Volume Name"
+        self.columnsDict["Region"] = "Region"
+        self.columnsDict["LAA950"] = "LAA%-950"
+        self.columnsDict["LAA910"] = "LAA%-910"
+        self.columnsDict["LAA856"] = "LAA%-856"
+        self.columnsDict["HAA700"] = "HAA%-700"
+        self.columnsDict["HAA600"] = "HAA%-600"
+        self.columnsDict["Perc10"] = "Perc10"
+        self.columnsDict["Perc15"] = "Perc15"
+        self.columnsDict["Mean"] = "Mean"
+        self.columnsDict["Std"] = "Std"
+        self.columnsDict["Kurtosis"] = "Kurtosis"
+        self.columnsDict["Skewness"] = "Skewness"
+        self.columnsDict["VentilationHeterogeneity"] = "Ventilation Heterogeneity"
+        self.columnsDict["Mass"] = "Mass"
+        self.columnsDict["Volume"] = "Volume"
 
         self.rTags = (
         "WholeLung", "RightLung", "LeftLung", "RUL", "RLL", "RML", "LUL", "LLL", "LUT", "LMT", "LLT", "RUT", "RMT", "RLT")
@@ -422,7 +423,6 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
             slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(self.CTNode.GetID())
             
         self.labelSelector.setCurrentNode(self.labelNode)
-        pass
 
     def onHistogram(self):
         """Histogram of the selected region
