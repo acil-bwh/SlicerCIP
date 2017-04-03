@@ -1707,7 +1707,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         """
         shNode = self.shSceneNode
         root = shNode.GetItemByDataNode(vtkMRMLScalarVolumeNode)
-        return shNode.CreateItem(root, "{}_Nodules".format(vtkMRMLScalarVolumeNode.GetName()))
+        return shNode.CreateFolderItem(root, "{}_Nodules".format(vtkMRMLScalarVolumeNode.GetName()))
 
     def getLastNoduleIndex(self, vtkMRMLScalarVolumeNode):
         """
@@ -1751,7 +1751,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             raise Exception("Parent nodules folder could not be created")
         # Add a new Nodule folder with the corresponding index number (starting at 1!, more intuitive for the user)
         noduleIndex = self.getLastNoduleIndex(vtkMRMLScalarVolumeNode) + 1
-        hierNoduleFolder = shNode.CreateItem(nodulesFolder, str(noduleIndex))
+        hierNoduleFolder = shNode.CreateFolderItem(nodulesFolder, str(noduleIndex))
 
         # Create the fiducials node
         fidNode = self._createFiducialsListNode_(vtkMRMLScalarVolumeNode, noduleIndex)
