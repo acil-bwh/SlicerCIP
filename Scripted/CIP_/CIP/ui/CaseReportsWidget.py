@@ -238,6 +238,10 @@ class CaseReportsLogic(object):
     def _columnDescriptions_(self):
         return self.columnsDict.values()
 
+    @property
+    def reservedColumnKeys(self):
+        return (self.TIMESTAMP_COLUMN_KEY, self.ADDITIONAL_COMMENTS_COLUMN_KEY)
+
     def _initTableNode_(self):
         """
         Initialize the vtkMRMLTableSQLiteStorageNode and add it to the scene
@@ -256,7 +260,6 @@ class CaseReportsLogic(object):
         else:
             logging.info("The storage database has not been created yet")
 
-
     def _initColumns_(self):
         """
         Create the list of columns in the tableNode based on the existing columns dictionary.
@@ -267,9 +270,9 @@ class CaseReportsLogic(object):
             if not colKey.isalnum():
                 raise Exception("Column {} is not alphanumeric. The column keys can contain only letters and numbers."
                                 .format(colKey))
-            if colKey in (self.TIMESTAMP_COLUMN_KEY, self.ADDITIONAL_COMMENTS_COLUMN_KEY):
+            if colKey in self.reservedColumnKeys:
                 raise Exception("One of the columns is named as one of the reserved fields: {}".format(
-                    (self.TIMESTAMP_COLUMN_KEY, self.ADDITIONAL_COMMENTS_COLUMN_KEY)))
+                    self.reservedColumnKeys))
 
         table = self.tableNode.GetTable()
         if self.tableNode.GetNumberOfColumns() == 0:
@@ -279,31 +282,30 @@ class CaseReportsLogic(object):
                 col = self.tableNode.AddColumn()
                 # We will keep the "friendly" name of the column until the moment we are saving in db
                 col.SetName(value)
-
-            # Add Timestamp column
-            col = self.tableNode.AddColumn()
-            col.SetName(self.TIMESTAMP_COLUMN_KEY)
-            self.columnsDict[self.TIMESTAMP_COLUMN_KEY] = self.TIMESTAMP_COLUMN_KEY
-            # Add AdditionalComments column
-            col = self.tableNode.AddColumn()
-            col.SetName(self.ADDITIONAL_COMMENTS_COLUMN_KEY)
-            self.columnsDict[self.ADDITIONAL_COMMENTS_COLUMN_KEY] = self.ADDITIONAL_COMMENTS_COLUMN_KEY
-
             SlicerUtil.logDevelop("Table {} initialized from scratch with the following columns: {}".format(
                 self._dbTableName_, self.columnsDict), includePythonConsole=True)
+            tableColumnKeys = self.columnsDict.keys()
         else:
             # The table already has previously existing columns. Check if new columns were introduced
-            columnKeys = []
+            tableColumnKeys = []
             for i in range(self.tableNode.GetNumberOfColumns()):
-                columnKeys.append(table.GetColumnName(i))
+                tableColumnKeys.append(table.GetColumnName(i))
 
             for key in self.columnsDict.iterkeys():
-                if key not in columnKeys:
+                if key not in tableColumnKeys:
                     # Add a new column to the table
                     col = self.tableNode.AddColumn()
                     col.SetName(key)
                     SlicerUtil.logDevelop("New column added to the table {} in the database: {}".
                                           format(self._dbTableName_, key), includePythonConsole=True)
+
+        # Add obligatory columns
+        for key in self.reservedColumnKeys:
+            if key not in self.columnsDict:
+                self.columnsDict[key] = key
+            if key not in tableColumnKeys:
+                col = self.tableNode.AddColumn()
+                col.SetName(key)
 
 
     # @columnNames.setter
@@ -366,9 +368,9 @@ class CaseReportsLogic(object):
         # Temporarily rename the columns so that the db saves the normalized names columns
         keys = self.columnsDict.keys()
         for i in range(table.GetNumberOfColumns()):
-            # Sanity check
-            assert table.GetColumn(i).GetName() == self.columnsDict[keys[i]], "Column mismatch (table=={}; Dict=={})".format(
-                table.GetColumn(i).GetName(), self.columnsDict[keys[i]])
+            # # Sanity check
+            # assert table.GetColumn(i).GetName() == self.columnsDict[keys[i]], "Column mismatch (table=={}; Dict=={})".format(
+            #     table.GetColumn(i).GetName(), self.columnsDict[keys[i]])
             # Change the name
             table.GetColumn(i).SetName(keys[i])
         table.Modified()
