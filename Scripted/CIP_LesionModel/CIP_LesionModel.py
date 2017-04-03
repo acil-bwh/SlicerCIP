@@ -2088,7 +2088,6 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
                 node = self.shSceneNode.GetItemDataNode(noduleChildren.GetId(j))
                 if node is not None and isinstance(node, slicer.vtkMRMLMarkupsFiducialNode):
                     fidNodes.append(node)
-        print ("DEBUG: fidNodes: ", fidNodes)
         return fidNodes
 
     def getAllRulerChildNodes(self, vtkMRMLScalarVolumeNode):
