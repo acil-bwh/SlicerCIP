@@ -699,7 +699,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         # Add the new hierarchy node to the scene
         hierNode = self.logic.addNewNodule(self.currentVolume)
         # Get the index of the added nodule node
-        index = int(hierNode.GetName())
+        index = int(self.logic.shSceneNode.GetItemName(hierNode))
         # Add it to the combobox saving the index (we can't just use the combobox index because the user can clear elems)
         # Disable signals because we don't want the nodule to be active until we build all the required objects
         self.nodulesComboBox.blockSignals(True)
@@ -1305,7 +1305,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """
         if node is not None:
             # Get the associated hierarchy item associated to this volume.
-            shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+            shNode = self.logic.shSceneNode
             subjectHierarchyItem = shNode.GetItemByDataNode(node)
             # It should always be present
             if not subjectHierarchyItem:
@@ -1621,6 +1621,13 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         """
         return "^(.)+{0}$".format(self.__SUFFIX__SEGMENTED_LABELMAP)
 
+    @property
+    def shSceneNode(self):
+        """
+        Get the root SubjectHierarchy node associated to the main mrmlscene
+        @return:
+        """
+        return slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
     # @property
     # def currentModelNode(self):
     #     if self.currentModelNodeId is None:
@@ -1696,9 +1703,9 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         """
         Create a "Nodules" subject hierarchy folder
         @param vtkMRMLScalarVolumeNode:
-        @return:
+        @return: int id with the folder node identifier
         """
-        shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+        shNode = self.shSceneNode
         root = shNode.GetItemByDataNode(vtkMRMLScalarVolumeNode)
         return shNode.CreateItem(root, "{}_Nodules".format(vtkMRMLScalarVolumeNode.GetName()))
 
@@ -1724,23 +1731,24 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
 
     def addNewNodule(self, vtkMRMLScalarVolumeNode):
         """
-        Create all the nodes hierarchy needed to store the information for a new nodule (markups, rulers, etc)
+        Create all the hierarchy nodes needed to store the information for a new nodule (markups, rulers, etc)
         @param vtkMRMLScalarVolumeNode: vtkMRMLScalarVolumeNode
-        @return: SubjectHierarchyItem associated to the node, once that all the subhierarchy has been created
+        @return: SubjectHierarchyItem folder id associated to the node, once that all the subhierarchy has been created
         """
         if vtkMRMLScalarVolumeNode is None:
             return slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID()
         # Get the root folder for the current volume
-        shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
-        volumeRootFolder = shNode.GetItemByDataNode(vtkMRMLScalarVolumeNode)
+        shNode = self.shSceneNode
+        # volumeRootFolder = shNode.GetItemByDataNode(vtkMRMLScalarVolumeNode)
         # Get subject hierarchy node
         # If there is not Nodules root folder yet, create it
         nodulesFolder = self.getRootNodulesFolderSubjectHierarchyItem(vtkMRMLScalarVolumeNode)
-        if not nodulesFolder:
-            # Create the folder for the different nodules
-            nodeName =  "{}_Nodules".format(vtkMRMLScalarVolumeNode.GetName())
-            nodulesFolder = shNode.CreateItem(volumeRootFolder, nodeName)
-
+        # if nodulesFolder == slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID():
+        #     # Create the folder for the different nodules
+        #     nodeName =  "{}_Nodules".format(vtkMRMLScalarVolumeNode.GetName())
+        #     nodulesFolder = shNode.CreateItem(volumeRootFolder, nodeName)
+        if nodulesFolder == slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID():
+            raise Exception("Parent nodules folder could not be created")
         # Add a new Nodule folder with the corresponding index number (starting at 1!, more intuitive for the user)
         noduleIndex = self.getLastNoduleIndex(vtkMRMLScalarVolumeNode) + 1
         hierNoduleFolder = shNode.CreateItem(nodulesFolder, str(noduleIndex))
@@ -1751,9 +1759,9 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self.setNthFiducialsListNode(vtkMRMLScalarVolumeNode, noduleIndex, fidNode)
 
         # Create the Annotations Ruler hierarchy for the three rulers
-        annotRulersNode = self._createRulersNode_()
+        annotRulersNode = self._createRulersNode_(vtkMRMLScalarVolumeNode, noduleIndex)
         # Create a folder that will be associated with the rulers hierarchy
-        rulersItem = shNode.CreateItem(hierNoduleFolder, annotRulersNode)
+        #rulersItem = shNode.CreateItem(hierNoduleFolder, annotRulersNode)
         # Move it to the right place
         self.setNthRulersListNode(vtkMRMLScalarVolumeNode, noduleIndex, annotRulersNode)
 
@@ -1765,11 +1773,11 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         Get the current SubjectHierarchyItem that corresponds to the root folder for a given volume ('Nodules' folder)
         @param vtkMRMLScalarVolumeNode: volume node
         @param createIfNotExist: create the node if it doesn't exist yet
-        @return: "Nodules" vtkMRMLSubjectHierarchyItem
+        @return: "Nodules" vtkMRMLSubjectHierarchyItem id
         """
         if vtkMRMLScalarVolumeNode is None:
             return slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID()
-        shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+        shNode = self.shSceneNode
         root = shNode.GetItemByDataNode(vtkMRMLScalarVolumeNode)
         children = vtk.vtkIdList()
         shNode.GetItemChildren(root, children)
@@ -1783,9 +1791,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         return slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID()
 
 
-
     def getAllNoduleKeys(self, vtkMRMLScalarVolumeNode):
-        shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+        shNode = self.shSceneNode
         root = self.getRootNodulesFolderSubjectHierarchyItem(vtkMRMLScalarVolumeNode, createIfNotExist=False)
         keys = []
         children = vtk.vtkIdList()
@@ -1805,11 +1812,11 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if not nodulesFolder:
             return slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID()
 
-        shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+        shNode = self.shSceneNode
         children = vtk.vtkIdList()
         shNode.GetItemChildren(nodulesFolder, children)
         if children.GetNumberOfIds() < noduleIndex:
-            print("WARNING: trying to attempt to nodule {} when the total number of children for node {} is {}".format(
+            print("WARNING: attempting to access to nodule {} when the total number of children for node {} is {}".format(
                 noduleIndex, shNode.GetItemName(nodulesFolder), children.GetNumberOfIds()))
             return slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID()
         return children.GetId(noduleIndex-1)
@@ -1820,21 +1827,24 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param vtkMRMLScalarVolumeNode:
         @param noduleIndex:
         @param nodeName:
-        @return: Node or None
+        @return: Node id or slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID()
         """
-        if noduleIndex < 0:
-            return None
+        if noduleIndex is None:
+            return slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID()
+        if noduleIndex <= 0:
+            return slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID()
         noduleFolder = self.getNthNoduleFolder(vtkMRMLScalarVolumeNode, noduleIndex)
         if not noduleFolder:
-            return None
-        shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+            return slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID()
+        shNode = self.shSceneNode
         children = vtk.vtkIdList()
         shNode.GetItemChildren(noduleFolder, children)
         for i in xrange(children.GetNumberOfIds()):
             child = children.GetId(i)
-            if shNode.GetItemName(child) == itemName:
-                return shNode.GetItemDataNode(child)
-        return None
+            if shNode.GetItemName(child) == nodeName:
+                #return shNode.GetItemDataNode(child)
+                return child
+        return slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID()
 
     def _setNthSubjectHierarchyNode_(self, vtkMRMLScalarVolumeNode, noduleIndex, node, nodeName):
         """
@@ -1855,7 +1865,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         self._extractNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, nodeName)
 
         # Get the subject hierachy item associated to the node
-        shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+        shNode = self.shSceneNode
         itemID = shNode.GetItemByDataNode(node)
         if not itemID:
             return False
@@ -1869,7 +1879,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         noduleFolder = self.getNthNoduleFolder(vtkMRMLScalarVolumeNode, noduleIndex)
         if not noduleFolder:
             return
-        shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+        shNode = self.shSceneNode
         children = vtk.vtkIdList()
         shNode.GetItemChildren(noduleFolder, children)
         for i in xrange(children.GetNumberOfIds()):
@@ -1894,7 +1904,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     #     if not parent:
     #         return False
     #     # Get the subject hierachy item associated to the node
-    #     shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+    #     shNode = self.shSceneNode
     #     shn = shNode.GetItemByDataNode(node)
     #     if not shn:
     #         return False
@@ -1910,8 +1920,9 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param noduleIndex: int number of nodule (starting at 1)
         @return: vtkMRMLMarkupsFiducialNode (or None if not found)
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
+        nodeId = self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
                                                  "{}_Fiducials_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
+        return self.shSceneNode.GetItemDataNode(nodeId)
 
     def setNthFiducialsListNode(self, vtkMRMLScalarVolumeNode, noduleIndex, vtkMRMLMarkupsFiducialNode):
         """
@@ -1929,10 +1940,11 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         Get the current annotation rulers hierarchy node for the specified volume and index of nodule
         @param vtkMRMLScalarVolumeNode: volume node
         @param noduleIndex:  number of nodule (starting at 1)
-        @return: vtkMRMLAnnotationHierarchyNode
+        @return: vtkMRMLAnnotationHierarchyNode or None
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
+        nodeId = self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
                                                  "{}_Rulers_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
+        return self.shSceneNode.GetItemDataNode(nodeId)
 
     def setNthRulersListNode(self, vtkMRMLScalarVolumeNode, noduleIndex, vtkMRMLAnnotationHierarchyNode):
         """
@@ -1950,10 +1962,11 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         Get the current annotation rulers hierarchy node for the specified volume and index of nodule
         @param vtkMRMLScalarVolumeNode: volume node
         @param noduleIndex:  number of nodule (starting at 1)
-        @return: vtkMRMLAnnotationHierarchyNode
+        @return: labelmap node or None
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
-                                        "{}_nodule_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
+        nodeId = self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
+                                        "{}_noduleLabelmap_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
+        return self.shSceneNode.GetItemDataNode(nodeId)
 
 
     def setNthNoduleLabelmapNode(self, vtkMRMLScalarVolumeNode, noduleIndex, labelmapNode):
@@ -1966,7 +1979,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         """
         if vtkMRMLScalarVolumeNode is None or labelmapNode is None:
             return False
-        nodeName = "{}_nodule_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex)
+        nodeName = "{}_noduleLabelmap_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex)
         return self._setNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex, labelmapNode, nodeName)
 
 
@@ -1975,10 +1988,11 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         Get the scalar node output from the CLI
         @param vtkMRMLScalarVolumeNode: volume node
         @param noduleIndex:  number of nodule (starting at 1)
-        @return: vtkMRMLAnnotationHierarchyNode
+        @return: scalar node or None
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
+        nodeId = self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
                              "{}_NoduleAlgorithmSegmentation_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
+        return self.shSceneNode.GetItemDataNode(nodeId)
 
     def setNthAlgorithmSegmentationNode(self, vtkMRMLScalarVolumeNode, noduleIndex, node):
         """
@@ -1995,10 +2009,11 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         Get the 3D model for the nodule
         @param vtkMRMLScalarVolumeNode: volume node
         @param noduleIndex:  number of nodule (starting at 1)
-        @return: vtkMRMLAnnotationHierarchyNode
+        @return: model node or None
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
+        nodeId = self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
                                             "{}_NoduleModel_{}".format(vtkMRMLScalarVolumeNode.GetName(),noduleIndex))
+        return self.shSceneNode.GetItemDataNode(nodeId)
 
     def setNthNoduleModelNode(self, vtkMRMLScalarVolumeNode, noduleIndex, modelNode):
         """
@@ -2020,12 +2035,13 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         # Get all the nodes that can be a sphere labelmap
         folder = self.getNthNoduleFolder(vtkMRMLScalarVolumeNode, noduleIndex)
         nodes = []
-        for i in range(folder.GetNumberOfChildrenNodes()):
-            associatedID = folder.GetNthChildNode(i).GetAssociatedNodeID()
-            if associatedID:
-                childNode = slicer.util.getNode(associatedID)
-                if "SphereLabelmap" in childNode.GetName():
-                    nodes.append(childNode)
+        children = vtk.vtkIdList()
+        self.shSceneNode.GetItemChildren(folder, children)
+        for i in range(children.GetNumberOfIds()):
+            node = self.shSceneNode.GetItemDataNode(children.GetId(i))
+            if node:
+                if "SphereLabelmap" in node.GetName():
+                    nodes.append(node)
         return nodes
 
     def getNthSphereLabelmapNode(self, vtkMRMLScalarVolumeNode, noduleIndex, sphereRadius):
@@ -2034,11 +2050,12 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         @param vtkMRMLScalarVolumeNode: volume node
         @param noduleIndex:  number of nodule (starting at 1)
         @param sphereRadius: radius of the sphere
-        @return: vtkMRMLAnnotationHierarchyNode
+        @return: vtkMRMLAnnotationHierarchyNode or None
         """
-        return self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
+        nodeId = self._getNthSubjectHierarchyNode_(vtkMRMLScalarVolumeNode, noduleIndex,
                                                  "{}_SphereLabelmap_r{}_{}".format(vtkMRMLScalarVolumeNode.GetName(),
                                                                                      sphereRadius, noduleIndex))
+        return self.shSceneNode.GetItemDataNode(nodeId)
 
     def setNthSphereLabelmapNode(self, vtkMRMLScalarVolumeNode, noduleIndex, modelNode, sphereRadius):
         """
@@ -2057,16 +2074,21 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         Get a list of Markup nodes for all the current nodules
         @return: list of markup nodes
         """
-        nodulesParent = self.getRootNodulesFolderSubjectHierarchyItem(vtkMRMLScalarVolumeNode, createIfNotExist=False)
-        numberOfNodules = nodulesParent.GetNumberOfChildrenNodes()
+        rootNodulesParentId = self.getRootNodulesFolderSubjectHierarchyItem(vtkMRMLScalarVolumeNode, createIfNotExist=False)
+        nodules = vtk.vtkIdList()
+        self.shSceneNode.GetItemChildren(rootNodulesParentId, nodules)
+        numberOfNodules = nodules.GetNumberOfIds()
         fidNodes = []
         for i in range(numberOfNodules):
-            # Get the node folder
-            node = nodulesParent.GetNthChildNode(i)
-            # Loop over the nodule folder children
-            for j in range(node.GetNumberOfChildrenNodes()):
-                if isinstance(node.GetNthChildNode(j).GetAssociatedNode(), slicer.vtkMRMLMarkupsFiducialNode):
-                    fidNodes.append(node.GetNthChildNode(j).GetAssociatedNode())
+            # Get all the children for the nodule
+            noduleChildren = vtk.vtkIdList()
+            self.shSceneNode.GetItemChildren(nodules.GetId(i), noduleChildren)
+            # Loop over the children to find the Markups nodes
+            for j in xrange(noduleChildren.GetNumberOfIds()):
+                node = self.shSceneNode.GetItemDataNode(noduleChildren.GetId(j))
+                if node is not None and isinstance(node, slicer.vtkMRMLMarkupsFiducialNode):
+                    fidNodes.append(node)
+        print ("DEBUG: fidNodes: ", fidNodes)
         return fidNodes
 
     def getAllRulerChildNodes(self, vtkMRMLScalarVolumeNode):
@@ -2237,7 +2259,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if not node:
             return False
 
-        shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+        shNode = self.shSceneNode
         shNode.RemoveItem(node)
         return True
 
@@ -2350,7 +2372,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         # Node created succesfully
         return fiducialsNode
 
-    def _createRulersNode_(self):
+    def _createRulersNode_(self, vtkMRMLScalarVolumeNode, noduleIndex):
         """
         Create a rulers hierarchy node to store the three rulers belonging to a nodule
         @return: created vtkMRMLAnnotationHierarchyNode
@@ -2359,7 +2381,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         rootHierarchyNode = SlicerUtil.getRootAnnotationsNode()
         annotationsLogic.SetActiveHierarchyNodeID(rootHierarchyNode.GetID())
         annotationsLogic.AddHierarchy()
-
+        hierarchyNode = slicer.util.getNode(annotationsLogic.GetActiveHierarchyNodeID())
+        hierarchyNode.SetName("{}_Rulers_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
         return hierarchyNode
 
     def __onNoduleSegmentationCLIStateUpdated__(self, caller, vtkMRMLScalarVolumeNode, noduleIndex, callbackFunctionWhenFinished=None):
@@ -2399,7 +2422,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if labelmap is None:
             # Create a labelmap with the same dimensions that the ct volume
             labelmap = SlicerUtil.getLabelmapFromScalar(cliOutputScalarNode,
-                                            "{}_nodule_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
+                                            "{}_noduleLabelmap_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
             labelmap.SetImageDataConnection(thresholdFilter.GetOutputPort())
             # Associate it to the right place in the Subject Hierarchy Tree
             self.setNthNoduleLabelmapNode(vtkMRMLScalarVolumeNode, noduleIndex, labelmap)
@@ -2490,7 +2513,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         # for i in range(children.GetNumberOfItems()):
         #     rulerNode = children.GetItemAsObject(i)
         #     # Get the SHN corresponding to the ruler node
-        #     shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+        #     shNode = self.shSceneNode
         #     rulerSHNode = shNode.GetItemByDataNode(rulerNode)
         #     # Get the SHN for the Hierarchy
         #     parentSHNode = shNode.GetItemByDataNode(vtkMRMLAnnotationHierarchyNode)
