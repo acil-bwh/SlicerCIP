@@ -459,25 +459,19 @@ class CaseReportsLogic(object):
 
     def getLastRow(self):
         """ Return the last row of data that was stored in the file
-        :return: list with the information of a single row
+        :return: dictionary with the information of a single row
         """
-        # if os.path.exists(self.dbFilePath):
-        #     with open(self.dbFilePath, 'r+b') as csvfileReader:
-        #         reader = csv.reader(csvfileReader)
-        #         #return reader.next()
-        #         # Read all the information of the file to iterate in reverse order
-        #         rows = [row for row in reader]
-        #         return rows.pop()
-        # # Error case
-        # return None
         rows = self.tableNode.GetNumberOfRows()
         if rows == 0:
             # Only header. No data
             return None
         columns = self.tableNode.GetNumberOfColumns()
-        values = []
+        values = {}
+        table = self.tableNode.GetTable()
         for i in range(columns):
-            values.append(self.tableNode.GetCellText(rows-1, i))
+            col = table.GetColumn(i)
+            key = self.getColumnKey(col.GetName())
+            values[key] = self.tableNode.GetCellText(rows-1, i)
         return values
 
     def findLastMatchRow(self, columnName, value):
