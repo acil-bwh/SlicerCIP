@@ -13,4 +13,5 @@ file_conventions_extensions = {
     # Xmls
     "ParenchymaTrainingFiducialsXml": "_parenchymaTraining.xml",
     "StructuresXml": "_structures.xml",
+    "DCNNStructuresXml": "_dcnnStructuresDetection.xml",
 }
