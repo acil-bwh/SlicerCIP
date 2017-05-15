@@ -48,6 +48,8 @@ set(MODULE_PYTHON_RESOURCES
   CIP/ui/Resources/Icons/rulers.png
   CIP/ui/Resources/Icons/sagittal.png
   CIP/ui/Resources/StructuresColorMap.ctbl
+  CIP/ui/Resources/chest_type_colors.ctbl
+  CIP/ui/Resources/chest_region_colors.ctbl
   )
 
 #-----------------------------------------------------------------------------
