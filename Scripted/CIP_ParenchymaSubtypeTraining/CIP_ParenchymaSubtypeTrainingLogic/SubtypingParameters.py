@@ -88,6 +88,7 @@ class SubtypingParameters(object):
     __regions__[7] = ("Left Superior Lobe", "LSL")
     __regions__[8] = ("Left Inferior Lobe", "LIL")
     __regions__[45] = ("Ascending Aorta", "AA")
+    __regions__[46] = ("Transversal Aorta", "TA")
     __regions__[47] = ("Descending Aorta", "DA")
     __regions__[58] = ("Trachea", "Trachea")
     __regions__[76] = ("Carina", "Carina")
