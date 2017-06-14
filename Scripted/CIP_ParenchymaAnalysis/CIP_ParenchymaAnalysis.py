@@ -268,7 +268,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.reportsWidget.exportButton.enabled = False
         self.reportsWidget.removeButton.enabled = False
         # By default, the Print button is hidden
-        self.reportsWidget.showPrintButton(True)
+        # self.reportsWidget.showPrintButton(True)
         #    self.reportsWidget.openButton.hide()
 
         # Add vertical spacer
