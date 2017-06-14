@@ -185,7 +185,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.analysisButton.objectName = "analysisButton"
         self.analysisButton.toolTip = "Calculate the main statistics for each structure in the volume"
         self.analysisButton.setStyleSheet("font-weight:bold; font-size:14px")
-        self.analysisButton.setIcon(qt.QIcon("{0}/1415667870_kview.png".format(self.iconsPath)))
+        self.analysisButton.setIcon(qt.QIcon("{0}/search.png".format(self.iconsPath)))
         self.analysisButton.setIconSize(qt.QSize(24, 24))
         self.structuresLayout.addWidget(self.analysisButton, 3, 2)
 
@@ -211,7 +211,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.btnAnalysis2.text = "Start analysis"
         self.analysisButton.toolTip = "Calculate the main statistics for each structure in the volume"
         self.btnAnalysis2.setStyleSheet("font-weight:bold; font-size:14px")
-        self.btnAnalysis2.setIcon(qt.QIcon("{0}/1415667870_kview.png".format(self.iconsPath)))
+        self.btnAnalysis2.setIcon(qt.QIcon("{0}/search.png".format(self.iconsPath)))
         self.btnAnalysis2.setIconSize(qt.QSize(24, 24))
         self.btnAnalysis2.setFixedWidth(250)
         self.statsButtonsFrame.layout().addWidget(self.btnAnalysis2)

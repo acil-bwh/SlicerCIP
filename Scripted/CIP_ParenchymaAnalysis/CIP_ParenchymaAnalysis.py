@@ -6,7 +6,9 @@ from slicer.ScriptedLoadableModule import *
 
 from CIP.ui import CaseReportsWidget
 from CIP.ui import PreProcessingWidget
+from CIP.ui import PdfReporter
 from CIP.logic.SlicerUtil import SlicerUtil
+from CIP.logic.Util import Util
 
 #
 # CIP_ParenchymaAnalysis
@@ -265,6 +267,8 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.reportsWidget.openButton.enabled = False
         self.reportsWidget.exportButton.enabled = False
         self.reportsWidget.removeButton.enabled = False
+        # By default, the Print button is hidden
+        self.reportsWidget.showPrintButton(True)
         #    self.reportsWidget.openButton.hide()
 
         # Add vertical spacer
@@ -275,6 +279,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.chartButton.connect('clicked()', self.onChart)
 
         self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
+        self.reportsWidget.addObservable(self.reportsWidget.EVENT_PRINT_BUTTON_CLICKED, self.onPrintReport)
         self.CTSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onCTSelect)
         self.labelSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onLabelSelect)
 
@@ -292,6 +297,8 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.RUTHistCheckBox.connect('clicked()', self.onHistogram)
         self.RMTHistCheckBox.connect('clicked()', self.onHistogram)
         self.RLTHistCheckBox.connect('clicked()', self.onHistogram)
+
+
 
     def onCTSelect(self, node):
         self.CTNode = node
@@ -444,6 +451,39 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         """ Save the current values in a persistent csv file
         """
         self.logic.statsAsCSV(self.reportsWidget, self.CTNode)
+
+    def onPrintReport(self):
+        """
+        Print a pdf report
+        """
+        pdfReporter = PdfReporter()
+        # Get the values that are going to be inserted in the html template
+        values = {}
+        values["@@SUMMARY@@"] = "Dynamic summary"
+
+        # Generate a sample table dynamically
+        rows = """<tr>
+                  <td>Row 1_1 </td>
+                  <td>Row 1_2 </td>
+                </tr>
+                <tr>
+                  <td>Row 2_1 </td>
+                  <td>Row 2_2 </td>
+                </tr>"""
+        values["@@TABLE_ROWS@@"] = rows
+
+        # Get the path to the html template
+        htmlTemplatePath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                         "Resources/ReportTemplate.html")
+
+        # Get a list of image absolute paths that may be needed for the report. In this case, we get the ACIL logo
+        imagesFileList = [SlicerUtil.ACIL_LOGO_PATH]
+
+        # Print the report. Remember that we can optionally specify the absolute path where the report is going to be stored
+        pdfReporter.printPdf(htmlTemplatePath, values, self.reportPrinted, imagesFileList=imagesFileList)
+
+    def reportPrinted(self, reportPath):
+        Util.openFile(reportPath)
 
     def onFileSelected(self, fileName):
         self.logic.saveStats(fileName)

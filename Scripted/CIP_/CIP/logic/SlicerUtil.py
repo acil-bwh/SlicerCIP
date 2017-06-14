@@ -36,6 +36,8 @@ class SlicerUtil:
     GIT_REPO_FOLDER = path.join(slicer.app.temporaryPath, 'CIP-Repo')
     GIT_REMOTE_URL = "https://github.com/acil-bwh/SlicerCIP.git"
 
+    ACIL_LOGO_PATH = os.path.join(CIP_ICON_DIR, 'ACIL.png')
+
     # Aligment
     ALIGNMENT_HORIZONTAL_LEFT = 0x0001
     ALIGNMENT_HORIZONTAL_RIGHT = 0x0002

@@ -13,6 +13,7 @@ class CaseReportsWidget(EventsTrigger):
     EVENT_SHOW_REPORT = 2
     EVENT_HIDE_REPORT = 3
     EVENT_CLEAN_CACHE = 4
+    EVENT_PRINT_BUTTON_CLICKED = 5
 
     @property
     def TIMESTAMP_COLUMN_NAME(self):
@@ -84,20 +85,33 @@ class CaseReportsWidget(EventsTrigger):
         self.removeButton.text = "Clean cache"
         frameLayout.addWidget(self.removeButton, 0, 3)
 
+        self.printButton = ctk.ctkPushButton()
+        self.printButton.text = "Print"
+        self.printButton.toolTip = "Print report"
+        self.printButton.objectName = "reportPrintButton"
+        self.printButton.setIcon(qt.QIcon("{0}/print.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.printButton.setIconSize(qt.QSize(24,24))
+        self.printButton.setVisible(False)  # By default, this button will be hidden
+        frameLayout.addWidget(self.printButton, 0, 4)
+
         self.additionalComentsLabel = qt.QLabel("Additional comments:")
         self.additionalComentsLabel.setStyleSheet("margin-top: 3px")
         frameLayout.addWidget(self.additionalComentsLabel, 1, 0, 1, 2)
         self.additionalComentsTextEdit = CollapsibleMultilineText()
-        frameLayout.addWidget(self.additionalComentsTextEdit, 1, 1, 1, 2)
+        frameLayout.addWidget(self.additionalComentsTextEdit, 1, 1, 1, 3)
 
+        self.openButton.connect('clicked()', self.onShowStoredData)
         self.saveButton.connect('clicked()', self.onSave)
         self.exportButton.connect('clicked()', self.onExport)
-        self.openButton.connect('clicked()', self.onShowStoredData)
+        self.printButton.connect('clicked()', self.onPrintReport)
         self.removeButton.connect('clicked()', self.onRemoveStoredData)
 
     def __initEvents__(self):
         """Init all the structures required for events mechanism"""
-        self.setEvents([self.EVENT_SAVE_BUTTON_CLICKED, self.EVENT_SHOW_REPORT, self.EVENT_CLEAN_CACHE])
+        events = [attr for attr in dir(self) if not callable(getattr(self, attr)) and attr.startswith("EVENT_")]
+        for i in range(len(events)):
+            events[i] = eval('self.{}'.format(events[i]))
+        self.setEvents(events)
 
     # def setColumnNames(self, columnNames):
     #     """ Set the column names that will saved every time the user clicks "Save" button
@@ -125,6 +139,12 @@ class CaseReportsWidget(EventsTrigger):
         :param enabled: True/False
         """
         self.saveButton.setEnabled(enabled)
+
+    def showPrintButton(self, visible):
+        """ Show/Hide the Print Button
+        :param enabled: True/False
+        """
+        self.printButton.setVisible(visible)
 
     # def showSaveButton(self, show):
     #     """ Show/hide the save button (it can be hidden when the data are saved obligatory)
@@ -167,6 +187,15 @@ class CaseReportsWidget(EventsTrigger):
     def onExpandRows(self):
         self.reportWindow.tableView.resizeRowsToContents()
 
+    def onShowStoredData(self):
+        """ Show the dialog window with all the information stored so far
+        :return:
+        """
+        # self.reportWindow.load(self.logic.columnNamesExtended, self.logic.loadValues())
+
+        self.reportWindow.show()
+        self.triggerEvent(self.EVENT_SHOW_REPORT)
+
     def onExport(self):
         """ Export the current csv file to a customized and formatted file
         :return:
@@ -176,14 +205,8 @@ class CaseReportsWidget(EventsTrigger):
             self.logic.exportCSV(fileName)
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data exported', 'The data were exported successfully')
 
-    def onShowStoredData(self):
-        """ Show the dialog window with all the information stored so far
-        :return:
-        """
-        # self.reportWindow.load(self.logic.columnNamesExtended, self.logic.loadValues())
-
-        self.reportWindow.show()
-        self.triggerEvent(self.EVENT_SHOW_REPORT)
+    def onPrintReport(self):
+        self.triggerEvent(self.EVENT_PRINT_BUTTON_CLICKED)
 
     def onRemoveStoredData(self):
         """ Remove the current csv file
