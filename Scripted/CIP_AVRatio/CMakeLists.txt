@@ -1,10 +1,5 @@
 #-----------------------------------------------------------------------------
-set(MODULE_NAME CIP_ParenchymaAnalysis)
-
-string(TOUPPER ${MODULE_NAME} MODULE_NAME_UPPER)
-
-#-----------------------------------------------------------------------------
-set(MODULE_EXPORT_DIRECTIVE "Q_SLICER_QTMODULES_${MODULE_NAME_UPPER}_EXPORT")
+set(MODULE_NAME CIP_AVRatio)
 
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
@@ -13,11 +8,10 @@ set(MODULE_PYTHON_SCRIPTS
 
 set(MODULE_PYTHON_RESOURCES
   Resources/Icons/${MODULE_NAME}.png
-  Resources/CIP_ParenchymaAnalysisReport.html
-  Resources/normalize.css
+  Resources/CIP_AVRatioReport.html
   Resources/skeleton.css
+  Resources/normalize.css
   )
-
 
 #-----------------------------------------------------------------------------
 slicerMacroBuildScriptedModule(
@@ -32,9 +26,9 @@ if(BUILD_TESTING)
 
   # Register the unittest subclass in the main script as a ctest.
   # Note that the test will also be available at runtime.
-  slicer_add_python_unittest(SCRIPT ${MODULE_NAME}.py)
+  #slicer_add_python_unittest(SCRIPT ${MODULE_NAME}.py)
 
   # Additional build-time testing
- # add_subdirectory(Testing)
+  add_subdirectory(Testing)
 endif()
 

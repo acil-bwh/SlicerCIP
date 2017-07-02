@@ -268,7 +268,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.reportsWidget.exportButton.enabled = False
         self.reportsWidget.removeButton.enabled = False
         # By default, the Print button is hidden
-        # self.reportsWidget.showPrintButton(True)
+        self.reportsWidget.showPrintButton(True)
         #    self.reportsWidget.openButton.hide()
 
         # Add vertical spacer
@@ -456,30 +456,38 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         """
         Print a pdf report
         """
+        emphysema_image_path, ct_slice_path = self.logic.computeEmphysemaOnSlice(self.CTNode, self.labelNode,
+                                                                                 op=0.3)
         pdfReporter = PdfReporter()
         # Get the values that are going to be inserted in the html template
-        values = {}
-        values["@@SUMMARY@@"] = "Dynamic summary"
+        caseName = self.CTNode.GetName()
 
-        # Generate a sample table dynamically
-        rows = """<tr>
-                  <td>Row 1_1 </td>
-                  <td>Row 1_2 </td>
-                </tr>
-                <tr>
-                  <td>Row 2_1 </td>
-                  <td>Row 2_2 </td>
-                </tr>"""
-        values["@@TABLE_ROWS@@"] = rows
+        values = dict()
+        values["@@PATH_TO_STATIC@@"] = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Resources/")
+        values["@@SUBJECT@@"] = "Subject: " + str(caseName)
+        values["@@GLOBAL_LEVEL@@"] = "{:.2f}%".format(self.logic.labelStats['LAA%-950','WholeLung'])
+        values["@@SUMMARY@@"] = "Emphysema per region: "
+
+        pdfRows = """"""
+        for tag in self.logic.regionTags:
+            pdfRows += """<tr>
+              <td align="center">{} </td>
+              <td align="center">{:.2f} </td>
+            </tr>""".format(tag, self.logic.labelStats['LAA%-950', tag])
+
+        values["@@TABLE_ROWS@@"] = pdfRows
 
         # Get the path to the html template
         htmlTemplatePath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                         "Resources/ReportTemplate.html")
-
+                                        "Resources/CIP_ParenchymaAnalysisReport.html")
         # Get a list of image absolute paths that may be needed for the report. In this case, we get the ACIL logo
         imagesFileList = [SlicerUtil.ACIL_LOGO_PATH]
 
-        # Print the report. Remember that we can optionally specify the absolute path where the report is going to be stored
+        values["@@EMPHYSEMA_IMAGE@@"] = emphysema_image_path
+        values["@@CT_IMAGE@@"] = ct_slice_path
+
+        # Print the report. Remember that we can optionally specify the absolute path where the report is going to
+        # be stored
         pdfReporter.printPdf(htmlTemplatePath, values, self.reportPrinted, imagesFileList=imagesFileList)
 
     def reportPrinted(self, reportPath):
@@ -958,6 +966,48 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         customLayoutId = 502
         layoutManager.layoutLogic().GetLayoutNode().AddLayoutDescription(customLayoutId, customLayout)
         layoutManager.setLayout(customLayoutId)
+
+    def computeEmphysemaOnSlice(self, CTNode, labelNode, op=0.2):
+        import tempfile
+        import numpy as np
+        import SimpleITK as sitk
+
+        image_arr = slicer.util.array(CTNode.GetName())
+        label_arr = slicer.util.array(labelNode.GetName())
+
+        image_arr = image_arr.transpose(2, 1, 0)
+        label_arr = label_arr.transpose(2, 1, 0)
+
+        ct_slice = image_arr[:, 255, :]
+        slice_label = label_arr[:, 255, :]
+        slice_label[np.logical_and(slice_label > 1, slice_label < 512)] = 1
+        slice_label[slice_label >= 512] = 0
+
+        emph_slice = ct_slice.copy()
+
+        emph_slice[emph_slice >= -950.0] = 0
+        emph_slice[np.logical_and(emph_slice >= -3000.0, emph_slice < -950.0)] = 1
+
+        emph_slice = emph_slice.astype(np.uint8)
+
+        emph_slice *= slice_label
+
+        sitk_ct_slice = sitk.GetImageFromArray(ct_slice.transpose(1,0))
+        sitk_emph_slice = sitk.GetImageFromArray(emph_slice.transpose(1,0))
+
+        sitk_ct_slice = sitk.Cast(sitk.IntensityWindowing(sitk_ct_slice, windowMinimum=-1200, windowMaximum=200,
+                                                          outputMinimum=0, outputMaximum=255), sitk.sitkUInt8)
+
+        label_overlay = sitk.LabelOverlay(sitk_ct_slice, sitk_emph_slice, opacity=op, colormap=[255,0,0])
+
+        tmpFolder = tempfile.mkdtemp()
+        img_path = os.path.join(tmpFolder, "tmpImg__.png")
+        img_path_CT = os.path.join(tmpFolder, "tmpImgCT__.png")
+
+        sitk.WriteImage(label_overlay, img_path)
+        sitk.WriteImage(sitk_ct_slice, img_path_CT)
+
+        return img_path, img_path_CT
 
 
 class Slicelet(object):
