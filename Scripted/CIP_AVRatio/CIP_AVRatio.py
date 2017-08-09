@@ -891,6 +891,7 @@ class CIP_AVRatioLogic(ScriptedLoadableModuleLogic):
                     self.__changeColor__(node, self.defaultAirwayColor)
                 elif structureId == self.VESSEL:
                     self.__changeColor__(node, self.defaultVesselColor)
+
                 slicer.mrmlScene.AddNode(node)
                 isNewNode = True
                 node.AddObserver(vtk.vtkCommand.ModifiedEvent, callbackWhenRulerModified)
