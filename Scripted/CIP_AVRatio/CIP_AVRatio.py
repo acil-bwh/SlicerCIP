@@ -262,7 +262,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         self.layout.addWidget(self.reportsCollapsibleButton)
         self.reportsLayout = qt.QHBoxLayout(self.reportsCollapsibleButton)
 
-        self.storedColumnNames = ["caseId", "airwayDiameterMm", "vesselDiameterMm",
+        self.storedColumnNames = ["caseId", "airwayDiameterMm", "vesselDiameterMm", "AVRationMm",
                                   "a1r", "a1a", "a1s", "a2r", "a2a", "a2s",
                                   "v1r", "v1a", "v1s", "v2r", "v2a", "v2s"]
         columns = CaseReportsWidget.getColumnKeysNormalizedDictionary(self.storedColumnNames)
@@ -335,8 +335,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         if volumeId:
             SlicerUtil.displayBackgroundVolume(volumeId)
 
-            # TODO: this is not the best way to do it I think!
-            SlicerUtil.changeLayoutToFourUp()
+            SlicerUtil.changeLayout(3)
             SlicerUtil.centerAllVolumes()
 
             # Show the current rulers (if existing)
@@ -681,6 +680,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
                 caseId=caseName,
                 airwayDiameterMm=self.airwayTextBox.text,
                 vesselDiameterMm=self.vesselTextBox.text,
+                AVRationMm=self.ratioTextBox.text,
                 a1r=a1[0] if a1 is not None else '',
                 a1a=a1[1] if a1 is not None else '',
                 a1s=a1[2] if a1 is not None else '',

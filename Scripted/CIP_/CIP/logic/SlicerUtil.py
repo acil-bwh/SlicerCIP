@@ -605,6 +605,14 @@ class SlicerUtil:
         SlicerUtil.changeLayout(6)
 
     @staticmethod
+    def changeLayoutToSagittal():
+        SlicerUtil.changeLayout(7)
+
+    @staticmethod
+    def changeLayoutToCoronal():
+        SlicerUtil.changeLayout(8)
+
+    @staticmethod
     def changeContrastWindow(window, level):
         """ Adjust the window contrast level in the range min-max.
         Note: it takes the first visible node in 2D windows
