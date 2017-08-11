@@ -49,6 +49,8 @@ set(MODULE_PYTHON_RESOURCES
   CIP/ui/Resources/Icons/rulers.png
   CIP/ui/Resources/Icons/search.png
   CIP/ui/Resources/Icons/sagittal.png
+  CIP/ui/Resources/Icons/zoom_in.png
+  CIP/ui/Resources/Icons/zoom_out.png
   CIP/ui/Resources/StructuresColorMap.ctbl
   )
 

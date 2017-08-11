@@ -11,7 +11,6 @@ from CIP.logic import Util
 from CIP.ui import CaseReportsWidget
 from CIP.ui import PdfReporter
 
-
 #
 # CIP_AVRatio
 #
@@ -67,6 +66,15 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
         self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
 
+        # Timer for dynamic zooming
+        self.zoomToSeedTimer = qt.QTimer()
+        self.zoomToSeedTimer.setInterval(100)
+        self.zoomToSeedTimer.timeout.connect(self.zoomToSeed)
+
+        self.interactor = None
+        self.initialFOV = [0.0, 0.0, 0.0]
+        self.initialRAS = [0.0, 0.0, 0.0]
+
     def setup(self):
         """This is called one time when the module GUI is initialized
         """
@@ -106,17 +114,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         #
         self.viewsGroupBox = qt.QGroupBox("Choose the view")
         self.viewsGroupBox.setLayout(qt.QHBoxLayout())
-        # self.viewsGroupBox.setFixedHeight(86)
         self.mainAreaLayout.addWidget(self.viewsGroupBox, 1, 1)
-
-        #
-        # Default Layout Button
-        #
-        # self.defaultButton = qt.QPushButton("Default")
-        # self.defaultButton.toolTip = "Default layout button."
-        # self.defaultButton.enabled = True
-        # self.defaultButton.setFixedSize(60, 43)
-        # self.viewsGroupBox.layout().addWidget(self.defaultButton)
 
         #
         # Red Slice Button
@@ -161,17 +159,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         # self.greenViewButton.setStyleSheet("font-weight:bold")
         self.viewsGroupBox.layout().addWidget(self.greenViewButton)
 
-        # self.jumptToTemptativeSliceButton = ctk.ctkPushButton()
-        # self.jumptToTemptativeSliceButton.name = "jumptToTemptativeSliceButton"
-        # self.jumptToTemptativeSliceButton.text = "Jump to temptative slice"
-        # self.jumptToTemptativeSliceButton.toolTip = "Jump to the best estimated slice to place the rulers"
-        # self.jumptToTemptativeSliceButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.CIP_ICON_DIR)))
-        # self.jumptToTemptativeSliceButton.setIconSize(qt.QSize(20, 20))
-        # self.jumptToTemptativeSliceButton.setStyleSheet("font-weight: bold;")
-        # # self.jumptToTemptativeSliceButton.setFixedWidth(140)
-        # self.mainAreaLayout.addWidget(self.jumptToTemptativeSliceButton, 1, 1)
-
-        ### Structure Selector
+        # Structure Selector
         self.structuresGroupbox = qt.QGroupBox("Select the structure")
         self.groupboxLayout = qt.QVBoxLayout()
         self.structuresGroupbox.setLayout(self.groupboxLayout)
@@ -202,39 +190,39 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         self.buttonsToolboxFrame.setLayout(self.buttonsToolboxLayout)
         self.mainAreaLayout.addWidget(self.buttonsToolboxFrame, 2, 1)
 
+        self.zoomToPlaceButton = ctk.ctkPushButton()
+        self.zoomToPlaceButton.text = "Zoom in on region"
+        self.zoomToPlaceButton.toolTip = "Zoom to clicked region"
+        self.zoomToPlaceButton.setIcon(qt.QIcon("{0}/zoom_in.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.zoomToPlaceButton.setIconSize(qt.QSize(20, 20))
+        # self.zoomToPlaceButton.setFixedWidth(123)
+        self.buttonsToolboxLayout.addWidget(self.zoomToPlaceButton, 0, 0)
+
+        self.zoomBackButton = ctk.ctkPushButton()
+        self.zoomBackButton.text = "Zoom out"
+        self.zoomBackButton.toolTip = "Zoom out"
+        self.zoomBackButton.setIcon(qt.QIcon("{0}/zoom_out.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.zoomBackButton.setIconSize(qt.QSize(20, 20))
+        self.zoomBackButton.setFixedWidth(116)
+        self.buttonsToolboxLayout.addWidget(self.zoomBackButton, 0, 1)
 
         self.placeRulersButton = ctk.ctkPushButton()
         self.placeRulersButton.text = "Place ruler/s"
         self.placeRulersButton.name = "placeRulersButton"
         self.placeRulersButton.toolTip = "Place the ruler/s for the selected structure/s in the current slice"
         self.placeRulersButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.placeRulersButton.setIconSize(qt.QSize(20,20))
+        self.placeRulersButton.setIconSize(qt.QSize(20, 20))
         self.placeRulersButton.setFixedWidth(105)
         self.placeRulersButton.setStyleSheet("font-weight:bold")
-        self.buttonsToolboxLayout.addWidget(self.placeRulersButton, 0, 0)
-
-        self.moveUpButton = ctk.ctkPushButton()
-        self.moveUpButton.text = "Move up"
-        self.moveUpButton.toolTip = "Move the selected ruler/s one slice up"
-        self.moveUpButton.setIcon(qt.QIcon("{0}/move_up.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.moveUpButton.setIconSize(qt.QSize(20,20))
-        self.moveUpButton.setFixedWidth(95)
-        self.buttonsToolboxLayout.addWidget(self.moveUpButton, 0, 1)
-
-        self.moveDownButton = ctk.ctkPushButton()
-        self.moveDownButton.text = "Move down"
-        self.moveDownButton.toolTip = "Move the selected ruler/s one slice down"
-        self.moveDownButton.setIcon(qt.QIcon("{0}/move_down.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.moveDownButton.setIconSize(qt.QSize(20,20))
-        self.moveDownButton.setFixedWidth(95)
-        self.buttonsToolboxLayout.addWidget(self.moveDownButton, 0, 2)
+        self.buttonsToolboxLayout.addWidget(self.placeRulersButton, 1, 0)
 
         self.removeButton = ctk.ctkPushButton()
         self.removeButton.text = "Remove ALL rulers"
         self.removeButton.toolTip = "Remove all the rulers for this volume"
         self.removeButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.removeButton.setIconSize(qt.QSize(20,20))
+        self.removeButton.setIconSize(qt.QSize(20, 20))
         self.buttonsToolboxLayout.addWidget(self.removeButton, 1, 1, 1, 2, 2)
+
 
         ### Textboxes
         self.textboxesFrame = qt.QFrame()
@@ -300,17 +288,19 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
 
         # Connections
         self.observers = []
+        self.zoomObserver = []
 
         self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelectorChanged)
         # self.defaultButton.connect('clicked()', self.onDefaultLayoutButton)
         self.redViewButton.connect('clicked()', self.onRedViewButton)
         self.yellowViewButton.connect('clicked()', self.onYellowViewButton)
         self.greenViewButton.connect('clicked()', self.onGreenViewButton)
-        # self.jumptToTemptativeSliceButton.connect('clicked()', self.onJumpToTemptativeSliceButtonClicked)
         self.placeRulersButton.connect('clicked()', self.onPlaceRulersClicked)
-        self.moveUpButton.connect('clicked()', self.onMoveUpRulerClicked)
-        self.moveDownButton.connect('clicked()', self.onMoveDownRulerClicked)
+        # self.moveUpButton.connect('clicked()', self.onMoveUpRulerClicked)
+        # self.moveDownButton.connect('clicked()', self.onMoveDownRulerClicked)
         self.removeButton.connect('clicked()', self.onRemoveRulerClicked)
+        self.zoomToPlaceButton.connect('clicked()', self.onJumpToPlaceButtonClicked)
+        self.zoomBackButton.connect('clicked()', self.onJumpBackButtonClicked)
 
         self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
         self.reportsWidget.addObservable(self.reportsWidget.EVENT_PRINT_BUTTON_CLICKED, self.onPrintReportToPDF)
@@ -592,6 +582,35 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         if layoutManager is not None:
             SlicerUtil.changeLayoutToAxial()
 
+    def zoomToSeed(self):
+        """
+        Dynamic zoom to the center of the current view in all the 2D windows
+        @return:
+        """
+        sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+        fov = sliceNode.GetFieldOfView()
+        if fov[0] > 45:
+            sliceNode.SetFieldOfView(fov[0] * 0.90,
+                                     fov[1] * 0.90, fov[2])
+            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeYellow')
+            sliceNode.SetFieldOfView(fov[0] * 0.90,
+                                     fov[1] * 0.90, fov[2])
+            sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeGreen')
+            sliceNode.SetFieldOfView(fov[0] * 0.90,
+                                     fov[1] * 0.90, fov[2])
+        else:
+            self.zoomToSeedTimer.stop()
+
+    def zoomBack(self):
+        """
+        Dynamic zoom to the center of the current view in all the 2D windows
+        @return:
+        """
+        sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
+        for sliceNode in sliceNodes.values():
+            sliceNode.SetFieldOfView(self.initialFOV[0], self.initialFOV[1], self.initialFOV[2])
+
+
     def __addSceneObservables__(self):
         self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent,
                                                            self.__onNodeAddedObserver__))
@@ -600,7 +619,6 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
     def __removeSceneObservables(self):
         for observer in self.observers:
             slicer.mrmlScene.RemoveObserver(observer)
-            self.observers.remove(observer)
 
     #########
     # EVENTS
@@ -632,6 +650,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         self.refreshTextboxes()
 
     def onPlaceRulersClicked(self):
+        self.removeZoomObserver()
         self.placeRuler()
 
     def onMoveUpRulerClicked(self):
@@ -768,6 +787,93 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         volumeNode.GetRASToIJKMatrix(rastoijk)
         rasCoords.append(1.0)
         return list(rastoijk.MultiplyPoint(rasCoords))
+
+    def getSliceWidget(self):
+        activeWindow = self.getActiveWindow()
+        lm = slicer.app.layoutManager()
+        if activeWindow == self.AXIAL:
+            sliceWidget = lm.sliceWidget('Red')
+        elif activeWindow == self.SAGITTAL:
+            sliceWidget = lm.sliceWidget('Yellow')
+        else:
+            sliceWidget = lm.sliceWidget('Green')
+
+        return sliceWidget
+
+    def getActiveWindow(self):
+        lm = slicer.app.layoutManager()
+        return lm.layout
+
+    def removeZoomObserver(self):
+        sliceWidget = self.getSliceWidget()
+        style = sliceWidget.sliceView().interactorStyle().GetInteractor()
+        for ii in range(len(self.zoomObserver)):
+            style.RemoveObserver(self.zoomObserver[ii][1])
+
+    def zoomToPosition(self, observee, event):
+        if event == 'LeftButtonPressEvent':
+            sliceNode = self.getSliceNode()
+
+            xy = self.interactor.GetLastEventPosition()
+            xyzw = [xy[0], xy[1], 0, 1]
+            rasw = [0.0, 0.0, 0.0, 1.0]
+
+            sliceNode.GetXYToRAS().MultiplyPoint(xyzw, rasw)
+            SlicerUtil.jumpToSeed(rasw)
+
+            self.zoomToSeedTimer.start()
+            self.removeZoomObserver()
+
+    def getSliceNode(self):
+        sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
+
+        activeWindow = self.getActiveWindow()
+        if activeWindow == self.AXIAL:
+            sliceNode = sliceNodes['Red']
+        elif activeWindow == self.SAGITTAL:
+            sliceNode = sliceNodes['Yellow']
+        else:
+            sliceNode = sliceNodes['Green']
+
+        return sliceNode
+
+    def getInitialRAS(self):
+        sliceWidget = self.getSliceWidget()
+        width = sliceWidget.width
+        height = sliceWidget.height
+
+        centralXY = [int(width / 2.0), int(height / 2.0)]
+        xyzw = [centralXY[0], centralXY[1], 0, 1]
+        rasw = [0.0, 0.0, 0.0, 1.0]
+
+        sliceNode = self.getSliceNode()
+        sliceNode.GetXYToRAS().MultiplyPoint(xyzw, rasw)
+
+        return rasw
+
+    def onJumpToPlaceButtonClicked(self):
+        """
+        Zoom to the area around the clicked point
+        """
+        sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+        self.initialFOV = sliceNode.GetFieldOfView()
+        self.initialRAS = self.getInitialRAS()
+        sliceWidget = self.getSliceWidget()
+
+        self.interactor = sliceWidget.sliceView().interactor()
+
+        style = sliceWidget.sliceView().interactorStyle().GetInteractor()
+        tag = style.AddObserver('LeftButtonPressEvent', self.zoomToPosition, 2)
+        self.zoomObserver.append([style, tag])
+
+    def onJumpBackButtonClicked(self):
+        """
+        Zoom to the area around the clicked point
+        """
+        # self.zoomBackTimer.start()
+        self.zoomBack()
+        SlicerUtil.jumpToSeed(self.initialRAS)
+        self.removeZoomObserver()
 
     def __onSceneClosed__(self, arg1, arg2):
         """ Scene closed. Reset currently loaded volumes
@@ -999,7 +1105,6 @@ class CIP_AVRatioLogic(ScriptedLoadableModuleLogic):
 
         return newSlice
 
-
     def placeRulerInSlice(self, volumeId, structureId, newSlice, callbackWhenUpdated=None):
         """ Move the ruler to the specified slice (in RAS format)
         :param volumeId:
@@ -1095,6 +1200,9 @@ class CIP_AVRatioLogic(ScriptedLoadableModuleLogic):
 
         rulerNode.SetPositionWorldCoordinates1(coords1)
         rulerNode.SetPositionWorldCoordinates2(coords2)
+
+        textDisplayNode = rulerNode.GetAnnotationTextDisplayNode()
+        textDisplayNode.SetOpacity(0.3)
 
     def getViewBounds(self, view):
         """ Get the current view bounds (RAS format)
