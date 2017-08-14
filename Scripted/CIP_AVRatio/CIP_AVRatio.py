@@ -722,7 +722,6 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         """
         Print a pdf report
         """
-        import time
         volumeId = self.volumeSelector.currentNodeID
         if volumeId:
             pdfReporter = PdfReporter()

@@ -263,13 +263,13 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         self.reportsWidget = CaseReportsWidget(self.moduleName, self.columnsDict, parentWidget=self.parent)
         self.reportsWidget.setup()
-        self.reportsWidget.saveButton.enabled = False
-        self.reportsWidget.openButton.enabled = False
-        self.reportsWidget.exportButton.enabled = False
-        self.reportsWidget.removeButton.enabled = False
-        # By default, the Print button is hidden
         self.reportsWidget.showPrintButton(True)
-        #    self.reportsWidget.openButton.hide()
+        # self.reportsWidget.saveButton.enabled = False
+        # self.reportsWidget.openButton.enabled = False
+        # self.reportsWidget.exportButton.enabled = False
+        # self.reportsWidget.removeButton.enabled = False
+        # By default, the Print button is hidden
+        # self.reportsWidget.showPrintButton.enabled = False
 
         # Add vertical spacer
         self.parent.layout().addStretch(1)
@@ -298,8 +298,6 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.RMTHistCheckBox.connect('clicked()', self.onHistogram)
         self.RLTHistCheckBox.connect('clicked()', self.onHistogram)
 
-
-
     def onCTSelect(self, node):
         self.CTNode = node
         self.applyButton.enabled = bool(self.CTNode)  # and bool(self.labelNode)
@@ -311,7 +309,6 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         else:
             for color in ['Red', 'Yellow', 'Green']:
                 slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID('None')
-            
 
     def onLabelSelect(self, node):
         self.labelNode = node
@@ -418,10 +415,10 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         self.HistSection.enabled = True
         self.chartBox.enabled = True
-        self.reportsWidget.saveButton.enabled = True
-        self.reportsWidget.openButton.enabled = True
-        self.reportsWidget.exportButton.enabled = True
-        self.reportsWidget.removeButton.enabled = True
+        # self.reportsWidget.saveButton.enabled = True
+        # self.reportsWidget.openButton.enabled = True
+        # self.reportsWidget.exportButton.enabled = True
+        # self.reportsWidget.removeButton.enabled = True
 
         self.applyButton.enabled = True
         self.applyButton.text = "Apply"
@@ -457,7 +454,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         Print a pdf report
         """
         emphysema_image_path, ct_slice_path = self.logic.computeEmphysemaOnSlice(self.CTNode, self.labelNode,
-                                                                                 op=0.3)
+                                                                                 op=0.5)
         pdfReporter = PdfReporter()
         # Get the values that are going to be inserted in the html template
         caseName = self.CTNode.GetName()
@@ -972,14 +969,13 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         import numpy as np
         import SimpleITK as sitk
 
-        image_arr = slicer.util.array(CTNode.GetName())
-        label_arr = slicer.util.array(labelNode.GetName())
+        image_arr = slicer.util.array(CTNode.GetName()).transpose([2, 1, 0])
+        label_arr = slicer.util.array(labelNode.GetName()).transpose([2, 1, 0])
 
-        image_arr = image_arr.transpose(2, 1, 0)
-        label_arr = label_arr.transpose(2, 1, 0)
+        sl = int(image_arr.shape[2] / 2.0)
 
-        ct_slice = image_arr[:, 255, :]
-        slice_label = label_arr[:, 255, :]
+        ct_slice = image_arr[:, sl, :]
+        slice_label = label_arr[:, sl, :]
         slice_label[np.logical_and(slice_label > 1, slice_label < 512)] = 1
         slice_label[slice_label >= 512] = 0
 
@@ -987,25 +983,25 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
 
         emph_slice[emph_slice >= -950.0] = 0
         emph_slice[np.logical_and(emph_slice >= -3000.0, emph_slice < -950.0)] = 1
-
         emph_slice = emph_slice.astype(np.uint8)
 
         emph_slice *= slice_label
 
-        sitk_ct_slice = sitk.GetImageFromArray(ct_slice.transpose(1,0))
-        sitk_emph_slice = sitk.GetImageFromArray(emph_slice.transpose(1,0))
+        sitk_ct_slice = sitk.GetImageFromArray(ct_slice.transpose())
+        sitk_emph_slice = sitk.GetImageFromArray(emph_slice.transpose())
 
         sitk_ct_slice = sitk.Cast(sitk.IntensityWindowing(sitk_ct_slice, windowMinimum=-1200, windowMaximum=200,
                                                           outputMinimum=0, outputMaximum=255), sitk.sitkUInt8)
 
-        label_overlay = sitk.LabelOverlay(sitk_ct_slice, sitk_emph_slice, opacity=op, colormap=[255,0,0])
+        label_overlay = sitk.LabelOverlay(sitk_ct_slice, sitk_emph_slice, opacity=op, colormap=[255, 51, 51])
+        # label_overlay = sitk.LabelOverlay(sitk_ct_slice, sitk_emph_slice, opacity=op)
 
         tmpFolder = tempfile.mkdtemp()
         img_path = os.path.join(tmpFolder, "tmpImg__.png")
         img_path_CT = os.path.join(tmpFolder, "tmpImgCT__.png")
 
-        sitk.WriteImage(label_overlay, img_path)
-        sitk.WriteImage(sitk_ct_slice, img_path_CT)
+        sitk.WriteImage(sitk.Flip(label_overlay, flipAxes=(False, True)), img_path)
+        sitk.WriteImage(sitk.Flip(sitk_ct_slice, flipAxes=(False, True)), img_path_CT)
 
         return img_path, img_path_CT
 
