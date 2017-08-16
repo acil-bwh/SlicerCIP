@@ -105,6 +105,14 @@ void qSlicerRegionTypeModuleWidget::setup()
   Q_D(qSlicerRegionTypeModuleWidget);
   d->setupUi(this);
 
+//  Load a colormap from a file that contains all the possible combinations
+//  qSlicerModuleManager * moduleManager = qSlicerCoreApplication::application()->moduleManager();
+//  qSlicerAbstractCoreModule *colorsModule = moduleManager->module("Colors");
+//  vtkMRMLColorLogic *colorsLogic = vtkMRMLColorLogic::SafeDownCast(colorsModule->logic());
+//  QString name = QString("/Applications/SlicerCIP.app/Contents/share/Slicer-4.7/ColorFiles/CIPColors.txt");
+//  vtkMRMLColorNode* colorNode = colorsLogic->LoadColorFile(name.toLatin1());
+//  colorNode->SetName("CIP_ColorMap");
+
   //ctkFlowLayout* flowLayout = ctkFlowLayout::replaceLayout(d->InterpolatorWidget);
   //flowLayout->setPreferredExpandingDirections(Qt::Vertical);
 

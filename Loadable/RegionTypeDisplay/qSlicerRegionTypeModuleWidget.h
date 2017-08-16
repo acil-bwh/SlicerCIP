@@ -24,6 +24,10 @@
 #include "qSlicerRegionTypeModuleExport.h"
 #include <vtkNew.h>
 #include <vtkMRMLLabelMapVolumeNode.h>
+//#include "vtkMRMLColorLogic.h"
+//#include "qSlicerCoreApplication.h"
+//#include "qSlicerModuleManager.h"
+//#include "qSlicerAbstractCoreModule.h"
 
 class qSlicerRegionTypeModuleWidgetPrivate;
 class vtkMRMLNode;
