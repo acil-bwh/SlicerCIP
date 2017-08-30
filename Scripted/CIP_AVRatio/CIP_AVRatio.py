@@ -354,6 +354,9 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         """Save the state of the module regarding labelmap, etc. This state will be saved/loaded when
         exiting/entering the module
         """
+        if slicer.app.commandOptions().noMainWindow:
+           return
+
         if self.preventSavingState:
             # Avoid that the first time that the module loads, the state is saved twice
             self.preventSavingState = False
