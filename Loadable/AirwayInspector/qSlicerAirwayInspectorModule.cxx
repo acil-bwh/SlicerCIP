@@ -39,7 +39,10 @@
 #include <vtkMRMLScene.h>
 
 //-----------------------------------------------------------------------------
+#if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
+#include <QtPlugin>
 Q_EXPORT_PLUGIN2(qSlicerAirwayInspectorModule, qSlicerAirwayInspectorModule);
+#endif
 
 //-----------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_AirwayInspector
