@@ -550,7 +550,7 @@ void qSlicerAirwayInspectorModuleWidget::analyzeAll()
   std::vector<vtkMRMLNode *> nodes;
   this->mrmlScene()->GetNodesByClass("vtkMRMLAirwayNode", nodes);
 
-  for (int i=0; i<nodes.size(); i++)
+  for (size_t i=0; i<nodes.size(); i++)
     {
     vtkMRMLAirwayNode* airwayNode = vtkMRMLAirwayNode::SafeDownCast(nodes[i]);
 
@@ -918,7 +918,7 @@ void qSlicerAirwayInspectorModuleWidget::writeCSV()
   std::vector<vtkMRMLNode *> nodes;
   this->mrmlScene()->GetNodesByClass("vtkMRMLAirwayNode", nodes);
 
-  for (int i=0; i<nodes.size(); i++)
+  for (size_t i=0; i<nodes.size(); i++)
     {
     vtkMRMLAirwayNode* node = vtkMRMLAirwayNode::SafeDownCast(nodes[i]);
     std::map<int, vtkDoubleArray*>::iterator it;

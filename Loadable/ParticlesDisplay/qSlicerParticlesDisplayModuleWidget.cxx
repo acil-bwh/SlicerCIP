@@ -148,7 +148,7 @@ void qSlicerParticlesDisplayModuleWidget::onInputChanged(vtkMRMLNode* node)
   std::vector<std::string> scalars;
   particlesNode->GetAvailableScalarNames(scalars);
 
-  for (int i=0; i< scalars.size(); i++)
+  for (size_t i=0; i< scalars.size(); i++)
     {
     d->ColorComboBox->addItem(QString(scalars[i].c_str()));
     }

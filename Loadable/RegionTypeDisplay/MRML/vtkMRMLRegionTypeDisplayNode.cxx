@@ -85,9 +85,9 @@ void vtkMRMLRegionTypeDisplayNode::HideAllRegionTypes(vtkMRMLRegionTypeNode* nod
 {
   std::vector<unsigned char> regions = node->GetAvailableRegions();
   std::vector<unsigned char> types = node->GetAvailableTypes();
-  for (int t=0; t<types.size(); t++)
+  for (size_t t=0; t<types.size(); t++)
   {
-    for (int r=0; r<regions.size(); r++)
+    for (size_t r=0; r<regions.size(); r++)
     {
       this->SetRegionTypeVisibility(regions[r], types[t], 0, 0);
     }
@@ -100,9 +100,9 @@ void vtkMRMLRegionTypeDisplayNode::ShowAllRegionTypes(vtkMRMLRegionTypeNode* nod
 {
   std::vector<unsigned char> regions = node->GetAvailableRegions();
   std::vector<unsigned char> types = node->GetAvailableTypes();
-  for (int t=0; t<types.size(); t++)
+  for (size_t t=0; t<types.size(); t++)
   {
-    for (int r=0; r<regions.size(); r++)
+    for (size_t r=0; r<regions.size(); r++)
     {
       this->SetRegionTypeVisibility(regions[r], types[t], 1, regionTypeColorBlend);
     }
@@ -127,7 +127,7 @@ void vtkMRMLRegionTypeDisplayNode::ShowAllRegions(vtkMRMLRegionTypeNode* node,
 {
   this->HideAllRegionTypes(node);
   std::vector<unsigned char> regions = node->GetAvailableRegions();
-  for (int r=0; r<regions.size(); r++)
+  for (size_t r=0; r<regions.size(); r++)
   {
     this->SetRegionTypeVisibility(regions[r], type, 1, regionTypeColorBlend);
   }
@@ -141,7 +141,7 @@ void vtkMRMLRegionTypeDisplayNode::ShowAllTypes(vtkMRMLRegionTypeNode* node,
 {
   this->HideAllRegionTypes(node);
   std::vector<unsigned char> types = node->GetAvailableTypes();
-  for (int t=0; t<types.size(); t++)
+  for (size_t t=0; t<types.size(); t++)
   {
     this->SetRegionTypeVisibility(region, types[t], 1, regionTypeColorBlend);
   }
@@ -168,9 +168,9 @@ void vtkMRMLRegionTypeDisplayNode::InitializeLookupTable(vtkMRMLRegionTypeNode* 
 
   int index;
   int maxIndex = 0;
-  for (int t=0; t<types.size(); t++)
+  for (size_t t=0; t<types.size(); t++)
   {
-    for (int r=0; r<regions.size(); r++)
+    for (size_t r=0; r<regions.size(); r++)
     {
       index = this->GetLUTIndex(regions[r], types[t]);
       maxIndex = index > maxIndex? index : maxIndex;
