@@ -167,6 +167,7 @@ void qSlicerParticlesDisplayModuleWidget::onInputChanged(vtkMRMLNode* node)
 //-----------------------------------------------------------------------------
 void qSlicerParticlesDisplayModuleWidget::onGlyphTypeChanged(const QString & glyph)
 {
+  Q_UNUSED(glyph);
   Q_D(qSlicerParticlesDisplayModuleWidget);
   vtkMRMLParticlesDisplayNode* particlesDisplayNode = this->getParticlesDisplayNode();
   if (particlesDisplayNode)
@@ -178,6 +179,7 @@ void qSlicerParticlesDisplayModuleWidget::onGlyphTypeChanged(const QString & gly
 //-----------------------------------------------------------------------------
 void qSlicerParticlesDisplayModuleWidget::onColorByChanged(const QString & color)
 {
+  Q_UNUSED(color);
   Q_D(qSlicerParticlesDisplayModuleWidget);
   vtkMRMLParticlesDisplayNode* particlesDisplayNode = this->getParticlesDisplayNode();
   if (particlesDisplayNode)
@@ -189,6 +191,7 @@ void qSlicerParticlesDisplayModuleWidget::onColorByChanged(const QString & color
 //-----------------------------------------------------------------------------
 void qSlicerParticlesDisplayModuleWidget::onTypeChanged(const QString & type)
 {
+  Q_UNUSED(type);
   Q_D(qSlicerParticlesDisplayModuleWidget);
   vtkMRMLParticlesDisplayNode* particlesDisplayNode = this->getParticlesDisplayNode();
   if (particlesDisplayNode)
@@ -200,7 +203,7 @@ void qSlicerParticlesDisplayModuleWidget::onTypeChanged(const QString & type)
 //-----------------------------------------------------------------------------
 void qSlicerParticlesDisplayModuleWidget::onRegionChanged(const QString & regionName)
 {
-  Q_D(qSlicerParticlesDisplayModuleWidget);
+  Q_UNUSED(regionName);
 }
 
 //-----------------------------------------------------------------------------

@@ -123,8 +123,8 @@ QStringList qSlicerAirwayInspectorModule::dependencies() const
 void qSlicerAirwayInspectorModule::setup()
 {
   this->Superclass::setup();
-  vtkSlicerAirwayInspectorModuleLogic* AirwayInspectorLogic =
-    vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
+  //vtkSlicerAirwayInspectorModuleLogic* AirwayInspectorLogic =
+  //  vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
 
   /**
   qSlicerCoreIOManager* ioManager =

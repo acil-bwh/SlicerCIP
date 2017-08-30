@@ -249,18 +249,21 @@ void qSlicerRegionTypeModuleWidget::onOutputVolumeChanged(vtkMRMLNode* node)
 //-----------------------------------------------------------------------------
 void qSlicerRegionTypeModuleWidget::onTypeChanged(const QString & regionName)
 {
+  Q_UNUSED(regionName);
   this->updateDisplay();
 }
 
 //-----------------------------------------------------------------------------
 void qSlicerRegionTypeModuleWidget::onRegionChanged(const QString & regionName)
 {
+  Q_UNUSED(regionName);
   this->updateDisplay();
 }
 
 //-----------------------------------------------------------------------------
 void qSlicerRegionTypeModuleWidget::onColorChanged(int value)
 {
+  Q_UNUSED(value);
   this->updateDisplay();
 }
 
