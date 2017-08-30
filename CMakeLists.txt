@@ -1,6 +1,18 @@
 cmake_minimum_required(VERSION 3.5.0)
 
 #-----------------------------------------------------------------------------
+# C++ standard
+#
+set(_msg "Setting C++ standard")
+message(STATUS "${_msg}")
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 98)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+message(STATUS "${_msg} - C++${CMAKE_CXX_STANDARD}")
+
+#-----------------------------------------------------------------------------
 project(SlicerCIP)
 
 #-----------------------------------------------------------------------------
