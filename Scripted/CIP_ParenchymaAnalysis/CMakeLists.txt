@@ -14,8 +14,8 @@ set(MODULE_PYTHON_SCRIPTS
 set(MODULE_PYTHON_RESOURCES
   Resources/Icons/${MODULE_NAME}.png
   Resources/CIP_ParenchymaAnalysisReport.html
-  Resources/normalize.css
-  Resources/skeleton.css
+  Resources/CIP_ParenchymaAnalysis_normalize.css
+  Resources/CIP_ParenchymaAnalysis_skeleton.css
   )
 
 

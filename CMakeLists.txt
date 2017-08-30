@@ -78,11 +78,7 @@ if(APPLE)
 endif()
 
 #-----------------------------------------------------------------------------
-# Extension modules
-#add_subdirectory(Example-Scripted)
-#add_subdirectory(Example-Loadable)
-#add_subdirectory(Example-CLI)
-## NEXT_MODULE
+set(CTK_COMPILE_PYTHON_SCRIPTS_GLOBAL_TARGET_NAME "SlicerCIP")
 
 #-----------------------------------------------------------------------------
 add_subdirectory(Scripted)
@@ -92,6 +88,9 @@ if(BUILD_TESTING)
 #  add_subdirectory(Testing)
 endif()
 
+#-----------------------------------------------------------------------------
+ctkFunctionAddCompilePythonScriptTargets(
+  ${CTK_COMPILE_PYTHON_SCRIPTS_GLOBAL_TARGET_NAME})
 
 #-----------------------------------------------------------------------------
 #Package CIP into SlicerCIP build (CIP needs to be installed first before packaging extension)
