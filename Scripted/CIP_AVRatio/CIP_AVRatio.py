@@ -1267,10 +1267,10 @@ class CIP_AVRatioTest(ScriptedLoadableModuleTest):
         self.test_CIP_AVRatio()
 
     def test_CIP_AVRatio(self):
-        self.assertIsNotNone(slicer.modules.cip_AVRatio)
+        self.assertIsNotNone(slicer.modules.cip_avratio)
 
         # Get the widget
-        widget = slicer.modules.cip_AVRatio.widgetRepresentation()
+        widget = slicer.modules.cip_avratio.widgetRepresentation()
         volume = SlicerUtil.downloadVolumeForTests(widget=widget)
 
         self.assertFalse(volume is None)
@@ -1283,58 +1283,7 @@ class CIP_AVRatioTest(ScriptedLoadableModuleTest):
         # Make sure that the right volume is selected
         volumeSelector = SlicerUtil.findChildren(widget=widget, name='av_volumeSelector')[0]
         volumeSelector.setCurrentNode(volume)
-        button = SlicerUtil.findChildren(widget=widget, name='jumptToTemptativeSliceButton')[0]
-        # Place default rulers
-        button.click()
-        logging.info("Default rulers placed...OK")
-        # Get rulers
-        aorta = logic.getRulerNodeForVolumeAndStructure(volume.GetID(), logic.AORTA, createIfNotExist=False)[0]
-        pa = logic.getRulerNodeForVolumeAndStructure(volume.GetID(), logic.PA, createIfNotExist=False)[0]
-        # Make sure that rulers are in default color
-        color = aorta.GetNthDisplayNode(0).GetColor()
-        for i in range(3):
-            self.assertEqual(color[i], logic.defaultColor[i])
-        logging.info("Default color...OK")
-        # Check that the rulers are properly positioned
-        coordsAorta1 = [0,0,0]
-        coordsPa1 = [0,0,0]
-        aorta.GetPosition1(coordsAorta1)
-        pa.GetPosition1(coordsPa1)
-        # Aorta ruler should be on the left
-        self.assertTrue(coordsAorta1[0] > coordsPa1[0])
-        # Aorta and PA should be in the same slice
-        self.assertTrue(coordsAorta1[2] == coordsPa1[2])
-        logging.info("Default position...OK")
 
-        # Change Slice of the Aorta ruler
-        layoutManager = slicer.app.layoutManager()
-        redWidget = layoutManager.sliceWidget('Red')
-        style = redWidget.interactorStyle()
-        style.MoveSlice(1)
-        # Click in the radio button
-        button = SlicerUtil.findChildren(widget=widget, name='aortaRadioButton')[0]
-        button.click()
-        # click in the place ruler button
-        button = SlicerUtil.findChildren(widget=widget, name='placeRulersButton')[0]
-        button.click()
-        # Make sure that the slice of the ruler has changed
-        aorta.GetPosition1(coordsAorta1)
-        self.assertTrue(coordsAorta1[2] != coordsPa1[2])
-        logging.info("Position changed...OK")
+        # XXX To be implemented
 
-        # Force PAA ratio > 1
-        coordsAorta2 = [0,0,0]
-        coordsPa2 = [0,0,0]
-        aorta.GetPosition2(coordsAorta2)
-        pa.GetPosition2(coordsPa2)
-        currentRatio = pa.GetDistanceMeasurement() / aorta.GetDistanceMeasurement()
-        # Calculate how much do we have to increase the position of the pa marker
-        delta = 1 - currentRatio + 0.2
-        pa.SetPosition2(coordsPa2[0] + coordsPa2[0]*delta, coordsPa2[1], coordsPa2[2])
-
-        # Make sure that rulers are red now
-        color = aorta.GetNthDisplayNode(0).GetColor()
-        for i in range(3):
-            self.assertEqual(color[i], logic.defaultWarningColor[i])
-        logging.info("Red color...OK")
         self.delayDisplay('Test passed!')
