@@ -149,7 +149,8 @@ void vtkMRMLRegionTypeDisplayNode::ShowAllTypes(vtkMRMLRegionTypeNode* node,
 }
 
 //-------------------------------------------
-void vtkMRMLRegionTypeDisplayNode::InitializeLookupTable(vtkMRMLRegionTypeNode* node, double regionTypeColorBlend)
+void vtkMRMLRegionTypeDisplayNode::InitializeLookupTable(
+  vtkMRMLRegionTypeNode* node, double vtkNotUsed(regionTypeColorBlend))
 {
   vtkMRMLColorNode* colorNode = vtkMRMLColorNode::SafeDownCast( this->GetColorNode() );
   if (colorNode == 0)
