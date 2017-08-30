@@ -362,7 +362,7 @@
      <property name="collapsedHeight" stdset="0">
       <number>0</number>
      </property>
-     <layout class="QFormLayout" name="reportFormLayout">
+     <layout class="QFormLayout" name="outputReportFormLayout">
       <property name="fieldGrowthPolicy">
        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
       </property>
@@ -417,14 +417,14 @@
        <widget class="QLineEdit" name="FilePrefixLineEdit"/>
       </item>
       <item row="3" column="0">
-       <widget class="QPushButton" name="WriteCSVFileButton">
+       <widget class="QPushButton" name="OutputWriteCSVFileButton">
         <property name="text">
          <string>Write CSV File</string>
         </property>
        </widget>
       </item>
       <item row="3" column="1">
-       <widget class="ctkPathLineEdit" name="CSVFilePathEdit" native="true"/>
+       <widget class="ctkPathLineEdit" name="OutputCSVFilePathEdit" native="true"/>
       </item>
      </layout>
     </widget>
