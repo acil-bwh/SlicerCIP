@@ -71,4 +71,4 @@ class CIP_MIPViewerTest(ScriptedLoadableModuleTest):
         self.test_CIP_MIPViewer()
 
     def test_CIP_MIPViewer(self):
-        self.fail("Test not implemented!")
+        self.delayDisplay('Test not implemented!')

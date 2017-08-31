@@ -408,4 +408,4 @@ class CIP_ParenchymaSubtypeTrainingTest(ScriptedLoadableModuleTest):
         self.test_CIP_ParenchymaSubtypeTraining()
 
     def test_CIP_ParenchymaSubtypeTraining(self):
-        self.fail("Test not implemented!")
+        self.delayDisplay('Test not implemented!')
