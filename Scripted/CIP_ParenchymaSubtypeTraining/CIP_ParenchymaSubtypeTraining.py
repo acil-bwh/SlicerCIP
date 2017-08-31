@@ -146,6 +146,9 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
 
         self.updateState()
 
+    def cleanup(self):
+        pass
+
     def updateState(self):
         """ Refresh the markups state, activate the right fiducials list node (depending on the
         current selected type) and creates it when necessary

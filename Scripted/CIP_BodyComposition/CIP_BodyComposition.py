@@ -1021,6 +1021,8 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
     def cleanup(self):
         self.editorWidget.helper.masterSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onMasterNodeSelect)
+        self.reportsWidget.cleanup()
+        self.reportsWidget = None
 
     #############################################
     # SIGNALS

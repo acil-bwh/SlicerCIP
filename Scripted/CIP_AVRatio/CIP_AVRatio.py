@@ -349,6 +349,8 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
     def cleanup(self):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         self.__removeSceneObservables()
+        self.reportsWidget.cleanup()
+        self.reportsWidget = None
 
     def saveStateBeforeEnteringModule(self):
         """Save the state of the module regarding labelmap, etc. This state will be saved/loaded when

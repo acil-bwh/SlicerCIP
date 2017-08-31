@@ -337,6 +337,9 @@ class CIP_TracheaStentPlanningOptimizedWidget(ScriptedLoadableModuleWidget):
         self.executedSetup = True
         self.__refreshUI__()
 
+    def cleanup(self):
+        pass
+
     def enter(self):
         """Enter the module. If there was a previously active volume selected, make the volume (ant the possible labelmap)
         as active in the scene"""

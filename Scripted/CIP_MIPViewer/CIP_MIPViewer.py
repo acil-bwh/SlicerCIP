@@ -54,6 +54,9 @@ class CIP_MIPViewerWidget(ScriptedLoadableModuleWidget, object):
         # self.viewer.activateEnhacedVisualization(True)
         self.layout.addStretch(1)
 
+    def cleanup(self):
+        pass
+
 
 class CIP_MIPViewerTest(ScriptedLoadableModuleTest):
     def setUp(self):

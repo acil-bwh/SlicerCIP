@@ -106,6 +106,9 @@ class CaseReportsWidget(EventsTrigger):
         self.printButton.connect('clicked()', self.onPrintReport)
         self.removeButton.connect('clicked()', self.onRemoveStoredData)
 
+    def cleanup(self):
+        self.reportWindow.cleanup()
+
     def __initEvents__(self):
         """Init all the structures required for events mechanism"""
         events = [attr for attr in dir(self) if not callable(getattr(self, attr)) and attr.startswith("EVENT_")]
@@ -582,6 +585,11 @@ class CaseReportsWindow(qt.QWidget):
         self.exportButton.connect('clicked()', parent.onExport)
         self.removeButton.connect('clicked()', parent.onRemoveStoredData)
 
+    def cleanup(self):
+        self.tableView.setMRMLTableNode(None)
+        self.expandRowsButton.disconnect('clicked()')
+        self.exportButton.disconnect('clicked()')
+        self.removeButton.disconnect('clicked()')
 
 
     # def load(self, columnNames, data):

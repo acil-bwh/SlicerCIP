@@ -1542,7 +1542,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         # self.timer.stop()
         #self.setAddSeedsMode(False)
-        pass
+        self.reportsWidget.cleanup()
+        self.reportsWidget = None
     # def updateFeatureParameterDict(self, intValue, featureWidget):
     #     featureName = featureWidget.getName()
     #     self.featureParametersDict[featureName].update(featureWidget.getParameterDict())
