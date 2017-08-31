@@ -304,7 +304,9 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             return
 
         # Save existing layout
-        self.savedLayout = slicer.app.layoutManager().layout
+        self.savedLayout = None
+        if slicer.app.layoutManager() is not None:
+            slicer.app.layoutManager().layout
 
         # Get the active volume (it it exists)
         activeVolumeId = SlicerUtil.getFirstActiveVolumeId()
