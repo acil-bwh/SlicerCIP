@@ -298,6 +298,10 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.RMTHistCheckBox.connect('clicked()', self.onHistogram)
         self.RLTHistCheckBox.connect('clicked()', self.onHistogram)
 
+    def cleanup(self):
+        self.reportsWidget.cleanup()
+        self.reportsWidget = None
+
     def onCTSelect(self, node):
         self.CTNode = node
         self.applyButton.enabled = bool(self.CTNode)  # and bool(self.labelNode)

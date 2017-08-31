@@ -291,6 +291,8 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
     def cleanup(self):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         self.__removeSceneObservables()
+        self.reportsWidget.cleanup()
+        self.reportsWidget = None
 
     def saveStateBeforeEnteringModule(self):
         """Save the state of the module regarding labelmap, etc. This state will be saved/loaded when
@@ -302,7 +304,9 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             return
 
         # Save existing layout
-        self.savedLayout = slicer.app.layoutManager().layout
+        self.savedLayout = None
+        if slicer.app.layoutManager() is not None:
+            slicer.app.layoutManager().layout
 
         # Get the active volume (it it exists)
         activeVolumeId = SlicerUtil.getFirstActiveVolumeId()

@@ -39,7 +39,10 @@
 #include <vtkMRMLScene.h>
 
 //-----------------------------------------------------------------------------
+#if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
+#include <QtPlugin>
 Q_EXPORT_PLUGIN2(qSlicerAirwayInspectorModule, qSlicerAirwayInspectorModule);
+#endif
 
 //-----------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_AirwayInspector
@@ -123,8 +126,8 @@ QStringList qSlicerAirwayInspectorModule::dependencies() const
 void qSlicerAirwayInspectorModule::setup()
 {
   this->Superclass::setup();
-  vtkSlicerAirwayInspectorModuleLogic* AirwayInspectorLogic =
-    vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
+  //vtkSlicerAirwayInspectorModuleLogic* AirwayInspectorLogic =
+  //  vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
 
   /**
   qSlicerCoreIOManager* ioManager =

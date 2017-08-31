@@ -92,14 +92,8 @@ void vtkSlicerParticlesDisplayLogic::RegisterNodes()
   {
     return;
   }
-  vtkMRMLParticlesNode* pNode = vtkMRMLParticlesNode::New();
-  this->GetMRMLScene()->RegisterNodeClass(pNode);
-
-  vtkMRMLParticlesDisplayNode* pdNode = vtkMRMLParticlesDisplayNode::New();
-  this->GetMRMLScene()->RegisterNodeClass(pdNode);
-
-  pNode->Delete();
-  pdNode->Delete();
+  this->GetMRMLScene()->RegisterNodeClass(vtkSmartPointer<vtkMRMLParticlesNode>::New());
+  this->GetMRMLScene()->RegisterNodeClass(vtkSmartPointer<vtkMRMLParticlesDisplayNode>::New());
 }
 
 //---------------------------------------------------------------------------
@@ -125,12 +119,12 @@ vtkMRMLParticlesNode* vtkSlicerParticlesDisplayLogic::AddParticlesNode (const ch
 {
   vtkDebugMacro("Adding particles from filename " << filename);
 
-  vtkMRMLParticlesNode        *particlesNode = vtkMRMLParticlesNode::New();
-  vtkMRMLParticlesDisplayNode *particlesDisplayNode = vtkMRMLParticlesDisplayNode::New();
-  vtkMRMLModelStorageNode     *storageNode = vtkMRMLModelStorageNode::New();
+  vtkNew<vtkMRMLParticlesNode> particlesNode;
+  vtkNew<vtkMRMLParticlesDisplayNode> particlesDisplayNode;
+  vtkNew<vtkMRMLModelStorageNode> storageNode;
 
   storageNode->SetFileName(filename);
-  if (storageNode->ReadData(particlesNode) != 0)
+  if (!storageNode->ReadData(particlesNode.GetPointer()) != 0)
     {
     const std::string fname(filename);
     std::string name = itksys::SystemTools::GetFilenameWithoutExtension(fname);
@@ -151,25 +145,19 @@ vtkMRMLParticlesNode* vtkSlicerParticlesDisplayLogic::AddParticlesNode (const ch
 
     this->GetMRMLScene()->SaveStateForUndo();
 
-    this->GetMRMLScene()->AddNode(storageNode);
-    this->GetMRMLScene()->AddNode(particlesDisplayNode);
+    this->GetMRMLScene()->AddNode(storageNode.GetPointer());
+    this->GetMRMLScene()->AddNode(particlesDisplayNode.GetPointer());
 
     particlesNode->SetAndObserveStorageNodeID(storageNode->GetID());
 
     particlesNode->SetAndObserveDisplayNodeID(particlesDisplayNode->GetID());
 
-    this->GetMRMLScene()->AddNode(particlesNode);
-
-    particlesNode->Delete();
+    this->GetMRMLScene()->AddNode(particlesNode.GetPointer());
+    return particlesNode.GetPointer();
     }
   else
     {
     vtkErrorMacro("Couldn't read file, returning null particles node: " << filename);
-    particlesNode->Delete();
-    particlesNode = NULL;
     }
-  storageNode->Delete();
-  particlesDisplayNode->Delete();
-
-  return particlesNode;
+  return 0;
 }

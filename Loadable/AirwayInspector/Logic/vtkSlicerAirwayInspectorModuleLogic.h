@@ -48,6 +48,8 @@ public:
 protected:
 
   vtkSlicerAirwayInspectorModuleLogic();
+  vtkSlicerAirwayInspectorModuleLogic(const vtkSlicerAirwayInspectorModuleLogic&); // Not implemented
+  void operator=(const vtkSlicerAirwayInspectorModuleLogic&); // Not implemented
 
   void SetWallSolver(vtkComputeAirwayWall *ref,
                      vtkComputeAirwayWall *out);

@@ -113,7 +113,6 @@ vtkImageData* vtkSlicerAirwayInspectorModuleLogic::CreateAirwaySlice(vtkMRMLAirw
   double orig[3];
   int dim[3];
   double sp[3], p[3],ijk[3];
-  double x[3],y[3],z[3];
   inputImage->GetOrigin(orig);
   inputImage->GetSpacing(sp);
   inputImage->GetDimensions(dim);
@@ -418,7 +417,6 @@ void vtkSlicerAirwayInspectorModuleLogic::AddEllipsesToImage(vtkImageData *slice
       {
       //eFit = static_cast <vtkEllipseFitting > (arr->GetNextItemAsObject());
       eFit =arr[ii];
-      int rx,ry;
       for (int k=0;k<npoints;k++) {
         float t = -3.14159 + 2.0 * 3.14159 * k/(npoints -1.0);
         float angle = eFit->GetAngle();

@@ -312,6 +312,8 @@ class SlicerUtil:
         @return: volume id or None if there is no active volume
         """
         lm = slicer.app.layoutManager()
+        if lm is None:
+            return None
         for slice in SlicerUtil.preferredWidgetKeysOrder:
             widget = lm.sliceWidget(slice)
             if widget.visible:

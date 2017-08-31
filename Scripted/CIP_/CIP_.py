@@ -25,3 +25,5 @@ class CIP_Widget:
     pass
   def exit(self):
     pass
+  def cleanup(self):
+    pass
