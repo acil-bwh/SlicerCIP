@@ -400,20 +400,14 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     def __setupCompositeNodes__(self):
         """Init the CompositeNodes so that the first one (typically Red) listen to events when the node is modified,
         and all the nodes are linked by default"""
-        nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLSliceCompositeNode")
-        # Call necessary to allow the iteration.
-        nodes.InitTraversal()
-        # Get the first CompositeNode (typically Red)
-        compositeNode = nodes.GetNextItemAsObject()
+        nodes = slicer.util.getNodesByClass("vtkMRMLSliceCompositeNode")
+        for node in nodes:
+            # Listen for Modified event (it will be launched several times, but still better than NodeAddedEvent)
+            # compositeNode.AddObserver(vtk.vtkCommand.ModifiedEvent, self.onCompositeNodeModified)
+            #     #slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onCompositeNodeModified)    This one is not triggered when applied to a node
 
-        # Listen for Modified event (it will be launched several times, but still better than NodeAddedEvent)
-        # compositeNode.AddObserver(vtk.vtkCommand.ModifiedEvent, self.onCompositeNodeModified)
-        #     #slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onCompositeNodeModified)    This one is not triggered when applied to a node
-
-        # Link the nodes by default
-        while compositeNode:
-            compositeNode.SetLinkedControl(True)
-            compositeNode = nodes.GetNextItemAsObject()
+            # Link the nodes by default
+            node.SetLinkedControl(True)
 
         slicer.app.applicationLogic().PropagateVolumeSelection(0)
 
