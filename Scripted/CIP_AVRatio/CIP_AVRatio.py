@@ -3,6 +3,7 @@ import logging
 from collections import OrderedDict
 
 import os
+import numpy as np
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 
@@ -24,13 +25,10 @@ class CIP_AVRatio(ScriptedLoadableModule):
         self.parent.title = "AV Ratio"
         self.parent.categories = SlicerUtil.CIP_ModulesCategory
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
-        self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory", "Brigham and Women's Hospital"]
-        self.parent.helpText = """Calculate the ratio between pulmonary arterial and aorta.<br>
-            A quick tutorial of the module can be found <a href='https://s3.amazonaws.com/acil-public/SlicerCIP+Tutorials/PAA_Ratio.pptx'>here</a>.<br><br>
-            The AV Ratio biomarker has been proved to predict acute exacerbations of COPD (Wells, J. M., Washko, G. R.,
-            Han, M. K., Abbas, N., Nath, H., Mamary, a. J., Dransfield, M. T. (2012).
-            Pulmonary Arterial Enlargement and Acute Exacerbations of COPD. New England Journal of Medicine, 367(10), 913-921).
-            For more information refer to: <a href='http://www.nejm.org/doi/full/10.1056/NEJMoa1203830'>http://www.nejm.org/doi/full/10.1056/NEJMoa1203830</a>"""
+        self.parent.contributors = ["Pietro Nardelli (pnardelli@bwh.harvard.edu)", "Applied Chest Imaging Laboratory", "Brigham and Women's Hospital"]
+        self.parent.helpText = """Calculate the ratio between pulmonary airway and vessel.<br>
+            A quick tutorial of the module can be found <a href='https://s3.amazonaws.com/acil-public/SlicerCIP+Tutorials/AV_Ratio.pptx'>here</a>.<br><br>
+            """
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 #
@@ -62,18 +60,29 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
                     and slicer.util.mainWindow().moduleSelector().selectedModule == self.moduleName:    # Current module visible
                 self.volumeSelector.setCurrentNode(callData)
                 SlicerUtil.changeContrastWindow(350, 40)
+                self.initialFOV = self.getInitialFOV()
+
+            elif callData.GetClassName() == 'vtkMRMLAnnotationRulerNode':
+                self.setRulersOptions(self.rulerType, self.structureID)
+                self.refreshTextboxes()
 
         self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
         self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
 
         # Timer for dynamic zooming
         self.zoomToSeedTimer = qt.QTimer()
-        self.zoomToSeedTimer.setInterval(100)
+        self.zoomToSeedTimer.setInterval(50)
         self.zoomToSeedTimer.timeout.connect(self.zoomToSeed)
 
         self.interactor = None
-        self.initialFOV = [0.0, 0.0, 0.0]
+        self.rulerType = -1
+        self.structureID = -1
+
+        self.initialFOV = self.getInitialFOV()
+        # self.initialRAS = self.getInitialRAS()
         self.initialRAS = [0.0, 0.0, 0.0]
+        self.zoomed = False
+
 
     def setup(self):
         """This is called one time when the module GUI is initialized
@@ -167,22 +176,21 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
 
         self.structuresButtonGroup=qt.QButtonGroup()
 
-        btn = qt.QRadioButton("Both")
-        btn.name = "avButton"
-        btn.checked = True
+        self.btnBoth = qt.QRadioButton("Both")
+        self.btnBoth.name = "avButton"
+        self.btnBoth.checked = True
+        self.structuresButtonGroup.addButton(self.btnBoth, 0)
+        self.groupboxLayout.addWidget(self.btnBoth)
 
-        self.structuresButtonGroup.addButton(btn, 0)
-        self.groupboxLayout.addWidget(btn)
+        self.btnA = qt.QRadioButton("Airway")
+        self.btnA.name = "airwayRadioButton"
+        self.structuresButtonGroup.addButton(self.btnA, 1)
+        self.groupboxLayout.addWidget(self.btnA)
 
-        btn = qt.QRadioButton("Airway")
-        btn.name = "airwayRadioButton"
-        self.structuresButtonGroup.addButton(btn, 1)
-        self.groupboxLayout.addWidget(btn)
-
-        btn = qt.QRadioButton("Vessel")
-        btn.name = "vesselRadioButton"
-        self.structuresButtonGroup.addButton(btn, 2)
-        self.groupboxLayout.addWidget(btn)
+        self.btnV = qt.QRadioButton("Vessel")
+        self.btnV.name = "vesselRadioButton"
+        self.structuresButtonGroup.addButton(self.btnV, 2)
+        self.groupboxLayout.addWidget(self.btnV)
 
         ### Buttons toolbox
         self.buttonsToolboxFrame = qt.QFrame()
@@ -206,15 +214,55 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         self.zoomBackButton.setFixedWidth(116)
         self.buttonsToolboxLayout.addWidget(self.zoomBackButton, 0, 1)
 
-        self.placeRulersButton = ctk.ctkPushButton()
-        self.placeRulersButton.text = "Place ruler/s"
-        self.placeRulersButton.name = "placeRulersButton"
-        self.placeRulersButton.toolTip = "Place the ruler/s for the selected structure/s in the current slice"
-        self.placeRulersButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.CIP_ICON_DIR)))
-        self.placeRulersButton.setIconSize(qt.QSize(20, 20))
-        self.placeRulersButton.setFixedWidth(105)
-        self.placeRulersButton.setStyleSheet("font-weight:bold")
-        self.buttonsToolboxLayout.addWidget(self.placeRulersButton, 1, 0)
+        # self.placeRulersButton = ctk.ctkPushButton()
+        # self.placeRulersButton.text = "Place ruler/s"
+        # self.placeRulersButton.name = "placeRulersButton"
+        # self.placeRulersButton.toolTip = "Place the ruler/s for the selected structure/s in the current slice"
+        # self.placeRulersButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.CIP_ICON_DIR)))
+        # self.placeRulersButton.setIconSize(qt.QSize(20, 20))
+        # self.placeRulersButton.setFixedWidth(105)
+        # self.placeRulersButton.setStyleSheet("font-weight:bold")
+        # self.buttonsToolboxLayout.addWidget(self.placeRulersButton, 1, 0)
+
+        self.placeLongAirwayRulerButton = ctk.ctkPushButton()
+        self.placeLongAirwayRulerButton.text = "Long airway ruler"
+        self.placeLongAirwayRulerButton.name = "placeLongAirwayRulerButton"
+        self.placeLongAirwayRulerButton.toolTip = "Activate the ruler for the long diameter airway"
+        self.placeLongAirwayRulerButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.placeLongAirwayRulerButton.setIconSize(qt.QSize(20, 20))
+        self.placeLongAirwayRulerButton.setFixedWidth(132)
+        self.placeLongAirwayRulerButton.setStyleSheet("font-weight:bold")
+        self.buttonsToolboxLayout.addWidget(self.placeLongAirwayRulerButton, 2, 0)
+
+        self.placeShortAirwayRulerButton = ctk.ctkPushButton()
+        self.placeShortAirwayRulerButton.text = "Short airway ruler"
+        self.placeShortAirwayRulerButton.name = "placeShortAirwayRulerButton"
+        self.placeShortAirwayRulerButton.toolTip = "Activate the ruler for the short diameter airway"
+        self.placeShortAirwayRulerButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.placeShortAirwayRulerButton.setIconSize(qt.QSize(20, 20))
+        self.placeShortAirwayRulerButton.setFixedWidth(132)
+        self.placeShortAirwayRulerButton.setStyleSheet("font-weight:bold")
+        self.buttonsToolboxLayout.addWidget(self.placeShortAirwayRulerButton, 2, 1)
+
+        self.placeLongVesselRulerButton = ctk.ctkPushButton()
+        self.placeLongVesselRulerButton.text = "Long vessel ruler"
+        self.placeLongVesselRulerButton.name = "placeLongVesselRulerButton"
+        self.placeLongVesselRulerButton.toolTip = "Activate the ruler for the long diameter vessel"
+        self.placeLongVesselRulerButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.placeLongVesselRulerButton.setIconSize(qt.QSize(20, 20))
+        self.placeLongVesselRulerButton.setFixedWidth(132)
+        self.placeLongVesselRulerButton.setStyleSheet("font-weight:bold")
+        self.buttonsToolboxLayout.addWidget(self.placeLongVesselRulerButton, 3, 0)
+
+        self.placeShortVesselRulerButton = ctk.ctkPushButton()
+        self.placeShortVesselRulerButton.text = "Short vessel ruler"
+        self.placeShortVesselRulerButton.name = "placeShortVesselRulerButton"
+        self.placeShortVesselRulerButton.toolTip = "Activate the ruler for the short diameter vessel"
+        self.placeShortVesselRulerButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.placeShortVesselRulerButton.setIconSize(qt.QSize(20, 20))
+        self.placeShortVesselRulerButton.setFixedWidth(132)
+        self.placeShortVesselRulerButton.setStyleSheet("font-weight:bold")
+        self.buttonsToolboxLayout.addWidget(self.placeShortVesselRulerButton, 3, 1)
 
         self.removeButton = ctk.ctkPushButton()
         self.removeButton.text = "Remove ALL rulers"
@@ -223,26 +271,63 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         self.removeButton.setIconSize(qt.QSize(20, 20))
         self.buttonsToolboxLayout.addWidget(self.removeButton, 1, 1, 1, 2, 2)
 
+        # Textboxes
+        # self.longtextboxesFrame = qt.QFrame()
+        # self.longtextboxesLayout = qt.QFormLayout()
+        # self.longtextboxesFrame.setLayout(self.longtextboxesLayout)
+        # self.longtextboxesFrame.setFixedWidth(190)
+        # self.mainAreaLayout.addWidget(self.longtextboxesFrame, 3, 0)
+        #
+        # self.airwayLongTextBox = qt.QLineEdit()
+        # self.airwayLongTextBox.setReadOnly(True)
+        # self.longtextboxesLayout.addRow("Airway Long (mm):  ", self.airwayLongTextBox)
+        #
+        # self.vesselLongTextBox = qt.QLineEdit()
+        # self.vesselLongTextBox.setReadOnly(True)
+        # self.longtextboxesLayout.addRow("Vessel Long (mm):  ", self.vesselLongTextBox)
+        #
+        # self.ratioLongTextBox = qt.QLineEdit()
+        # self.ratioLongTextBox.name = "ratioTextBox"
+        # self.ratioLongTextBox.setReadOnly(True)
+        # self.longtextboxesLayout.addRow("A/V Ratio Long: ", self.ratioLongTextBox)
+        #
+        # self.shorttextboxesFrame = qt.QFrame()
+        # self.shorttextboxesLayout = qt.QFormLayout()
+        # self.shorttextboxesFrame.setLayout(self.shorttextboxesLayout)
+        # self.shorttextboxesFrame.setFixedWidth(190)
+        # self.mainAreaLayout.addWidget(self.shorttextboxesFrame, 3, 1)
+        #
+        # self.airwayShortTextBox = qt.QLineEdit()
+        # self.airwayShortTextBox.setReadOnly(True)
+        # self.shorttextboxesLayout.addRow("Airway Short (mm):  ", self.airwayShortTextBox)
+        #
+        # self.vesselShortTextBox = qt.QLineEdit()
+        # self.vesselShortTextBox.setReadOnly(True)
+        # self.shorttextboxesLayout.addRow("Vessel Short (mm):  ", self.vesselShortTextBox)
+        #
+        # self.ratioShortTextBox = qt.QLineEdit()
+        # self.ratioShortTextBox.name = "ratioTextBox"
+        # self.ratioShortTextBox.setReadOnly(True)
+        # self.shorttextboxesLayout.addRow("A/V Ratio Short: ", self.ratioShortTextBox)
 
-        ### Textboxes
-        self.textboxesFrame = qt.QFrame()
-        self.textboxesLayout = qt.QFormLayout()
-        self.textboxesFrame.setLayout(self.textboxesLayout)
-        self.textboxesFrame.setFixedWidth(190)
-        self.mainAreaLayout.addWidget(self.textboxesFrame, 3, 0)
+        self.meantextboxesFrame = qt.QFrame()
+        self.meantextboxesLayout = qt.QFormLayout()
+        self.meantextboxesFrame.setLayout(self.meantextboxesLayout)
+        self.meantextboxesFrame.setFixedWidth(190)
+        self.mainAreaLayout.addWidget(self.meantextboxesFrame, 3, 0)
 
-        self.airwayTextBox = qt.QLineEdit()
-        self.airwayTextBox.setReadOnly(True)
-        self.textboxesLayout.addRow("Airway (mm):  ", self.airwayTextBox)
+        self.airwayMeanTextBox = qt.QLineEdit()
+        self.airwayMeanTextBox.setReadOnly(True)
+        self.meantextboxesLayout.addRow("Airway Mean (mm):  ", self.airwayMeanTextBox)
 
-        self.vesselTextBox = qt.QLineEdit()
-        self.vesselTextBox.setReadOnly(True)
-        self.textboxesLayout.addRow("Vessel (mm):  ", self.vesselTextBox)
+        self.vesselMeanTextBox = qt.QLineEdit()
+        self.vesselMeanTextBox.setReadOnly(True)
+        self.meantextboxesLayout.addRow("Vessel Mean (mm):  ", self.vesselMeanTextBox)
 
-        self.ratioTextBox = qt.QLineEdit()
-        self.ratioTextBox.name = "ratioTextBox"
-        self.ratioTextBox.setReadOnly(True)
-        self.textboxesLayout.addRow("A/V Ratio: ", self.ratioTextBox)
+        self.ratioMeanTextBox = qt.QLineEdit()
+        self.ratioMeanTextBox.name = "ratioTextBox"
+        self.ratioMeanTextBox.setReadOnly(True)
+        self.meantextboxesLayout.addRow("A/V Ratio Mean: ", self.ratioMeanTextBox)
 
         # Save case data
         self.reportsCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -250,9 +335,13 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         self.layout.addWidget(self.reportsCollapsibleButton)
         self.reportsLayout = qt.QHBoxLayout(self.reportsCollapsibleButton)
 
-        self.storedColumnNames = ["caseId", "airwayDiameterMm", "vesselDiameterMm", "AVRationMm",
-                                  "a1r", "a1a", "a1s", "a2r", "a2a", "a2s",
-                                  "v1r", "v1a", "v1s", "v2r", "v2a", "v2s"]
+        self.storedColumnNames = ["caseId", "airwayLongDiameterMm", "vesselLongDiameterMm", "avRatioLongMm",
+                                  "airwayShortDiameterMm", "vesselShortDiameterMm", "avRatioShortMm",
+                                  "airwayMeanDiameterMm", "vesselMeanDiameterMm", "AVRationMeanMm",
+                                  "a1_long_r", "a1_long_a", "a1_long_s", "a2_long_r", "a2_long_a", "a2_long_s",
+                                  "a1_short_r", "a1_short_a", "a1_short_s", "a2_short_r", "a2_short_a", "a2_short_s",
+                                  "v1_long_r", "v1_long_a", "v1_long_s", "v2_long_r", "v2_long_a", "v2_long_s",
+                                  "v1_short_r", "v1_short_a", "v1_short_s", "v2_short_r", "v2_short_a", "v2_short_s"]
         columns = CaseReportsWidget.getColumnKeysNormalizedDictionary(self.storedColumnNames)
 
         dbPath = os.path.join(SlicerUtil.getSettingsDataFolder(), "CIP_AVRatio.db")
@@ -291,11 +380,19 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         self.zoomObserver = []
 
         self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onVolumeSelectorChanged)
-        # self.defaultButton.connect('clicked()', self.onDefaultLayoutButton)
         self.redViewButton.connect('clicked()', self.onRedViewButton)
         self.yellowViewButton.connect('clicked()', self.onYellowViewButton)
         self.greenViewButton.connect('clicked()', self.onGreenViewButton)
-        self.placeRulersButton.connect('clicked()', self.onPlaceRulersClicked)
+
+        self.btnBoth.connect('clicked()', self.onRadioButtonBoth)
+        self.btnA.connect('clicked()', self.onRadioButtonAirway)
+        self.btnV.connect('clicked()', self.onRadioButtonVessel)
+
+        # self.placeRulersButton.connect('clicked()', self.onPlaceRulersClicked)
+        self.placeLongAirwayRulerButton.connect('clicked()', self.onPlaceLongAirwayRulerClicked)
+        self.placeShortAirwayRulerButton.connect('clicked()', self.onPlaceShortAirwayRulerClicked)
+        self.placeLongVesselRulerButton.connect('clicked()', self.onPlaceLongVesselRulerClicked)
+        self.placeShortVesselRulerButton.connect('clicked()', self.onPlaceShortVesselRulerClicked)
         # self.moveUpButton.connect('clicked()', self.onMoveUpRulerClicked)
         # self.moveDownButton.connect('clicked()', self.onMoveDownRulerClicked)
         self.removeButton.connect('clicked()', self.onRemoveRulerClicked)
@@ -383,6 +480,42 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
                 # Not action really needed
                 pass
 
+    def getInitialFOV(self):
+        sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+        return sliceNode.GetFieldOfView()
+
+    def getInitialRAS(self):
+        sliceWidget = self.getSliceWidget()
+        width = sliceWidget.width
+        height = sliceWidget.height
+
+        centralXY = [int(width / 2.0), int(height / 2.0)]
+        xyzw = [centralXY[0], centralXY[1], 0, 1]
+        rasw = [0.0, 0.0, 0.0, 1.0]
+
+        sliceNode = self.getSliceNode()
+        sliceNode.GetXYToRAS().MultiplyPoint(xyzw, rasw)
+
+        return rasw
+
+    def onRadioButtonBoth(self):
+        self.placeLongAirwayRulerButton.enabled = True
+        self.placeShortAirwayRulerButton.enabled = True
+        self.placeLongVesselRulerButton.enabled = True
+        self.placeShortVesselRulerButton.enabled = True
+
+    def onRadioButtonAirway(self):
+        self.placeLongAirwayRulerButton.enabled = True
+        self.placeShortAirwayRulerButton.enabled = True
+        self.placeLongVesselRulerButton.enabled = False
+        self.placeShortVesselRulerButton.enabled = False
+
+    def onRadioButtonVessel(self):
+        self.placeLongAirwayRulerButton.enabled = False
+        self.placeShortAirwayRulerButton.enabled = False
+        self.placeLongVesselRulerButton.enabled = True
+        self.placeShortVesselRulerButton.enabled = True
+
     def restoreStateBeforeExitingModule(self):
         """Load the last state of the module when the user exited (labelmap, opacity, contrast window, etc.)
         """
@@ -423,32 +556,26 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
     def onGreenViewButton(self):
         SlicerUtil.changeLayoutToCoronal()
 
-    def placeRuler(self):
-        """ Place one or the two rulers in the current visible slice in active view node
-        """
+    def createRulersNode(self):
         volumeId = self.volumeSelector.currentNodeID
         if volumeId == '':
+            self.resetAVButtonsColor()
             self.showUnselectedVolumeWarningMessage()
             return
 
-        selectedStructure = self.getCurrentSelectedStructure()
-        if selectedStructure == self.logic.NONE:
-            qt.QMessageBox.warning(slicer.util.mainWindow(), 'Review structure',
-                                   'Please select Airway, Vessel or Both to place the ruler/s')
-            return
+        self.logic.activateRulersListNode(volumeId, createIfNotExist=True)
+        self.switchToRulerMode()
 
-        # Get the current slice
-        currentSlice = self.getCurrentActiveWindowSlice()
+    def switchToRulerMode(self):
+        applicationLogic = slicer.app.applicationLogic()
+        selectionNode = applicationLogic.GetSelectionNode()
+        selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLAnnotationRulerNode")
+        interactionNode = applicationLogic.GetInteractionNode()
+        interactionNode.SwitchToSinglePlaceMode()
 
-        if selectedStructure == self.logic.BOTH:
-            structures = [self.logic.AIRWAY, self.logic.VESSEL]
-        else:
-            structures = [selectedStructure]
-
-        for structure in structures:
-            self.logic.placeRulerInSlice(volumeId, structure, currentSlice, self.onRulerUpdated)
-
-        self.refreshTextboxes()
+    def setRulersOptions(self, rulerType=-1, structureID=-1):
+        self.logic.setRulersNameAndColor(rulerType=rulerType, structureID=structureID)
+        self.resetAVButtonsColor()
 
     def getCurrentSelectedStructure(self):
         """ Get the current selected structure id
@@ -460,112 +587,81 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         elif selectedStructureText == "Both": return self.logic.BOTH
         return self.logic.NONE
 
-    def stepSlice(self, offset):
-        """ Move the selected structure one slice up or down
-        :param offset: +1 or -1
-        :return:
-        """
-        volumeId = self.volumeSelector.currentNodeID
-
-        if volumeId == '':
-            self.showUnselectedVolumeWarningMessage()
-            return
-
-        selectedStructure = self.getCurrentSelectedStructure()
-        if selectedStructure == self.logic.NONE:
-            self.showUnselectedStructureWarningMessage()
-            return
-
-        if selectedStructure == self.logic.BOTH:
-            # Move both rulers
-            self.logic.stepSlice(volumeId, self.logic.AIRWAY, offset)
-            newSlice = self.logic.stepSlice(volumeId, self.logic.VESSEL, offset)
-        else:
-            newSlice = self.logic.stepSlice(volumeId, selectedStructure, offset)
-
-        self.moveActiveWindowToSlice(newSlice)
+    # def stepSlice(self, offset):
+    #     """ Move the selected structure one slice up or down
+    #     :param offset: +1 or -1
+    #     :return:
+    #     """
+    #     volumeId = self.volumeSelector.currentNodeID
+    #
+    #     if volumeId == '':
+    #         self.resetAVButtonsColor()
+    #         self.showUnselectedVolumeWarningMessage()
+    #         return
+    #
+    #     selectedStructure = self.getCurrentSelectedStructure()
+    #     if selectedStructure == self.logic.NONE:
+    #         self.showUnselectedStructureWarningMessage()
+    #         return
+    #
+    #     if selectedStructure == self.logic.BOTH:
+    #         # Move both rulers
+    #         self.logic.stepSlice(volumeId, self.logic.AIRWAY, offset)
+    #         newSlice = self.logic.stepSlice(volumeId, self.logic.VESSEL, offset)
+    #     else:
+    #         newSlice = self.logic.stepSlice(volumeId, selectedStructure, offset)
+    #
+    #     self.moveActiveWindowToSlice(newSlice)
 
     def removeRulers(self):
         """ Remove all the rulers related to the current volume node
         :return:
         """
         self.logic.removeRulers(self.volumeSelector.currentNodeID)
+        self.resetAVButtonsColor()
         self.refreshTextboxes(reset=True)
-
-    def getCurrentActiveWindowSlice(self):
-        """ Get the current slice (in RAS) of the Red window
-        :return:
-        """
-        layoutManager = slicer.app.layoutManager()
-        activeWindow = layoutManager.layout
-        if activeWindow == self.AXIAL:
-            nodeSliceNode = layoutManager.sliceWidget('Red').sliceLogic().GetSliceNode()
-        elif activeWindow == self.SAGITTAL:
-            nodeSliceNode = layoutManager.sliceWidget('Yellow').sliceLogic().GetSliceNode()
-        else:
-            nodeSliceNode = layoutManager.sliceWidget('Green').sliceLogic().GetSliceNode()
-
-        return nodeSliceNode.GetSliceOffset()
-
-    def moveActiveWindowToSlice(self, newSlice):
-        """ Moves the red display to the specified RAS slice
-        :param newSlice: slice to jump (RAS format)
-        :return:
-        """
-        layoutManager = slicer.app.layoutManager()
-        activeWindow = layoutManager.layout
-        if activeWindow == self.AXIAL:
-            nodeSliceNode = layoutManager.sliceWidget('Red').sliceLogic().GetSliceNode()
-            nodeSliceNode.JumpSlice(0,0,newSlice)
-        elif activeWindow == self.SAGITTAL:
-            nodeSliceNode = layoutManager.sliceWidget('Yellow').sliceLogic().GetSliceNode()
-            nodeSliceNode.JumpSlice(newSlice, 0, 0)
-        else:
-            nodeSliceNode = layoutManager.sliceWidget('Green').sliceLogic().GetSliceNode()
-            nodeSliceNode.JumpSlice(0, newSlice, 0)
 
     def refreshTextboxes(self, reset=False):
         """ Update the information of the textboxes that give information about the measurements
         """
-        self.airwayTextBox.setText("0")
-        self.vesselTextBox.setText("0")
-        self.ratioTextBox.setText("0")
-        self.ratioTextBox.setStyleSheet(" QLineEdit { background-color: white; color: black}");
+        self.airwayMeanTextBox.setText("0")
+        self.vesselMeanTextBox.setText("0")
+        self.ratioMeanTextBox.setText("0")
+        self.ratioMeanTextBox.setStyleSheet(" QLineEdit { background-color: white; color: black}");
 
         volumeId = self.volumeSelector.currentNodeID
 
-        if volumeId:
-            self.logic.changeActiveRulersColor(volumeId)
+        # if volumeId:
+        #     self.logic.changeActiveRulersColor(volumeId)
 
-        airway = None
-        vessel = None
+        meanAirwayDiameter = None
+        meanVesselDiameter = None
         if not reset:
-            rulerAirway, newAirway = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeID,
-                                                                                  self.logic.AIRWAY,
-                                                                                  createIfNotExist=False)
-            rulerVessel, newVessel = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeID,
-                                                                                  self.logic.VESSEL,
-                                                                                  createIfNotExist=False)
-            if rulerAirway:
-                airway = rulerAirway.GetDistanceMeasurement()
+            # Airway
+            longAirwayRuler, shortAirwayRuler = self.logic.getRulerNodesForStructure(self.logic.AIRWAY)
 
-                self.airwayTextBox.setText(str(airway))
-            if rulerVessel:
-                vessel = rulerVessel.GetDistanceMeasurement()
-                self.vesselTextBox.setText(str(vessel))
-            if airway is not None and vessel is not None and vessel != 0:
+            # Vessel
+            longVesselRuler, shortVesselRuler = self.logic.getRulerNodesForStructure(self.logic.VESSEL)
+
+            if longAirwayRuler and shortAirwayRuler:
+                longAirway = longAirwayRuler.GetDistanceMeasurement()
+                shortAirway = shortAirwayRuler.GetDistanceMeasurement()
+                meanAirwayDiameter = (longAirway + shortAirway) / 2.0
+                meanAirwayDiameter = round(meanAirwayDiameter, 2)
+
+                self.airwayMeanTextBox.setText(str(meanAirwayDiameter))
+            if longVesselRuler and shortVesselRuler:
+                longVessel = longVesselRuler.GetDistanceMeasurement()
+                shortVessel = shortVesselRuler.GetDistanceMeasurement()
+                meanVesselDiameter = (longVessel + shortVessel) / 2.0
+                meanVesselDiameter = round(meanVesselDiameter, 2)
+
+                self.vesselMeanTextBox.setText(str(meanVesselDiameter))
+            if meanAirwayDiameter is not None and meanVesselDiameter is not None and meanVesselDiameter != 0:
                 try:
-                    ratio = airway / vessel
-                    self.ratioTextBox.setText(str(ratio))
-                    # if ratio > 1.0:
-                    # ratio > 1.0 means bronchiectasis
-                    #     # Switch colors ("alarm")
-                    #     st = " QLineEdit {{ background-color: rgb({0}, {1}, {2}); color: white }}". \
-                    #                                     format(int(self.logic.defaultWarningColor[0]*255),
-                    #                                            int(self.logic.defaultWarningColor[1]*255),
-                    #                                            int(self.logic.defaultWarningColor[2]*255))
-                    #     self.ratioTextBox.setStyleSheet(st)
-                    #     self.logic.changeActiveRulersColor(volumeId, self.logic.defaultWarningColor)
+                    ratio = meanAirwayDiameter / meanVesselDiameter
+                    ratio = round(ratio, 2)
+                    self.ratioMeanTextBox.setText(str(ratio))
                 except Exception:
                     Util.print_last_exception()
 
@@ -615,6 +711,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         for sliceNode in sliceNodes.values():
             sliceNode.SetFieldOfView(self.initialFOV[0], self.initialFOV[1], self.initialFOV[2])
 
+        self.zoomed = False
 
     def __addSceneObservables__(self):
         self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent,
@@ -625,8 +722,10 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         for observer in self.observers:
             slicer.mrmlScene.RemoveObserver(observer)
 
-    #########
-    # EVENTS
+    ##########
+    # EVENTS #
+    ##########
+
     def onVolumeSelectorChanged(self, node):
         logging.info("Volume selector node changed: {0}".format(
             '(None)' if node is None else node.GetName()
@@ -654,15 +753,65 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
     def onRulerUpdated(self, node, event):
         self.refreshTextboxes()
 
-    def onPlaceRulersClicked(self):
+    def checkNode(self, nodeName):
+        node = slicer.mrmlScene.GetNodesByName(nodeName).GetItemAsObject(0)
+        if node:
+            qt.QMessageBox.warning(slicer.util.mainWindow(), 'Remove ruler/s',
+                                   'Please remove ruler/s before adding more of the same type')
+            return False
+        return True
+
+    def resetAVButtonsColor(self):
+        self.placeLongAirwayRulerButton.setStyleSheet("background-color: white; font-weight:bold")
+        self.placeShortAirwayRulerButton.setStyleSheet("background-color: white; font-weight:bold")
+        self.placeLongVesselRulerButton.setStyleSheet("background-color: white; font-weight:bold")
+        self.placeShortVesselRulerButton.setStyleSheet("background-color: white; font-weight:bold")
+
+    def onPlaceLongAirwayRulerClicked(self):
         self.removeZoomObserver()
-        self.placeRuler()
 
-    def onMoveUpRulerClicked(self):
-        self.stepSlice(1)
+        if self.checkNode('AL'):
+            self.resetAVButtonsColor()
+            self.placeLongAirwayRulerButton.setStyleSheet("background-color: rgb(255,255,200); font-weight:bold")
+            self.createRulersNode()
+            self.rulerType = 0
+            self.structureID = self.logic.AIRWAY
 
-    def onMoveDownRulerClicked(self):
-        self.stepSlice(-1)
+    def onPlaceShortAirwayRulerClicked(self):
+        self.removeZoomObserver()
+
+        if self.checkNode('AS'):
+            self.resetAVButtonsColor()
+            self.placeShortAirwayRulerButton.setStyleSheet("background-color: rgb(255,255,200); font-weight:bold")
+            self.createRulersNode()
+            self.rulerType = 1
+            self.structureID = self.logic.AIRWAY
+
+    def onPlaceLongVesselRulerClicked(self):
+        self.removeZoomObserver()
+
+        if self.checkNode('VL'):
+            self.resetAVButtonsColor()
+            self.placeLongVesselRulerButton.setStyleSheet("background-color: rgb(255,255,200); font-weight:bold")
+            self.createRulersNode()
+            self.rulerType = 2
+            self.structureID = self.logic.VESSEL
+
+    def onPlaceShortVesselRulerClicked(self):
+        self.removeZoomObserver()
+
+        if self.checkNode('VS'):
+            self.resetAVButtonsColor()
+            self.placeShortVesselRulerButton.setStyleSheet("background-color: rgb(255,255,200); font-weight:bold")
+            self.createRulersNode()
+            self.rulerType = 3
+            self.structureID = self.logic.VESSEL
+
+    # def onMoveUpRulerClicked(self):
+    #     self.stepSlice(1)
+    #
+    # def onMoveDownRulerClicked(self):
+    #     self.stepSlice(-1)
 
     def onRemoveRulerClicked(self):
         if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Remove rulers',
@@ -679,47 +828,92 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         if volumeId:
             caseName = slicer.mrmlScene.GetNodeByID(volumeId).GetName()
             coords = [0, 0, 0, 0]
-            a1 = a2 = v1 = v2 = None
+            a1_long = a2_long = v1_long = v2_long = None
+            a1_short = a2_short = v1_short = v2_short = None
+            a1_mean = a2_mean = v1_mean = v2_mean = None
+
+            airwayLongMm = airwayShortMm = vesselLongMm = vesselShortMm = 0
+
+            avRatioLong = avRatioShort = avRationMean = 0
 
             # AIRWAY
-            rulerNode, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.AIRWAY,
-                                                                              createIfNotExist=False)
-            if rulerNode:
-                # Get current RAS coords
-                rulerNode.GetPositionWorldCoordinates1(coords)
-                a1 = list(coords)
-                rulerNode.GetPositionWorldCoordinates2(coords)
-                a2 = list(coords)
+            longAirwayRuler, shortAirwayRuler = self.logic.getRulerNodesForStructure(self.logic.AIRWAY)
+
+            if longAirwayRuler and shortAirwayRuler:
+                airwayLongMm = round(longAirwayRuler.GetDistanceMeasurement(), 2)
+                airwayShortMm = round(shortAirwayRuler.GetDistanceMeasurement(), 2)
+
+                longAirwayRuler.GetPositionWorldCoordinates1(coords)
+                a1_long = list(coords)
+                longAirwayRuler.GetPositionWorldCoordinates2(coords)
+                a2_long = list(coords)
+
+                shortAirwayRuler.GetPositionWorldCoordinates1(coords)
+                a1_short = list(coords)
+                shortAirwayRuler.GetPositionWorldCoordinates2(coords)
+                a2_short = list(coords)
 
             # VESSEL
-            rulerNode, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.VESSEL,
-                                                                              createIfNotExist=False)
-            if rulerNode:
-                rulerNode.GetPositionWorldCoordinates1(coords)
-                v1 = list(coords)
-                rulerNode.GetPositionWorldCoordinates2(coords)
-                v2 = list(coords)
+            longVesselRuler, shortVesselRuler = self.logic.getRulerNodesForStructure(self.logic.VESSEL)
+
+            if longVesselRuler and shortVesselRuler:
+                vesselLongMm = round(longVesselRuler.GetDistanceMeasurement(), 2)
+                vesselShortMm = round(shortVesselRuler.GetDistanceMeasurement(), 2)
+
+                longVesselRuler.GetPositionWorldCoordinates1(coords)
+                v1_long = list(coords)
+                longVesselRuler.GetPositionWorldCoordinates2(coords)
+                v2_long = list(coords)
+
+                shortVesselRuler.GetPositionWorldCoordinates1(coords)
+                v1_short = list(coords)
+                shortVesselRuler.GetPositionWorldCoordinates2(coords)
+                v2_short = list(coords)
+
+            if airwayLongMm != 0 and vesselLongMm != 0:
+                avRatioLong = round(airwayLongMm / vesselLongMm, 2)
+            if airwayShortMm != 0 and vesselShortMm != 0:
+                avRatioShort = round(airwayShortMm / vesselShortMm, 2)
 
             self.reportsWidget.insertRow(
                 caseId=caseName,
-                airwayDiameterMm=self.airwayTextBox.text,
-                vesselDiameterMm=self.vesselTextBox.text,
-                AVRationMm=self.ratioTextBox.text,
-                a1r=a1[0] if a1 is not None else '',
-                a1a=a1[1] if a1 is not None else '',
-                a1s=a1[2] if a1 is not None else '',
-                a2r=a2[0] if a2 is not None else '',
-                a2a=a2[1] if a2 is not None else '',
-                a2s=a2[2] if a2 is not None else '',
-                v1r=v1[0] if v1 is not None else '',
-                v1a=v1[1] if v1 is not None else '',
-                v1s=v1[2] if v1 is not None else '',
-                v2r=v2[0] if v2 is not None else '',
-                v2a=v2[1] if v2 is not None else '',
-                v2s=v2[2] if v2 is not None else ''
+                airwayLongDiameterMm=str(airwayLongMm),
+                vesselLongDiameterMm=str(vesselLongMm),
+                avRatioLongMm=str(avRatioLong),
+                airwayShortDiameterMm=str(airwayShortMm),
+                vesselShortDiameterMm=str(vesselShortMm),
+                avRatioShortMm=str(avRatioShort),
+                airwayMeanDiameterMm=self.airwayMeanTextBox.text,
+                vesselMeanDiameterMm=self.vesselMeanTextBox.text,
+                AVRationMeanMm=self.ratioMeanTextBox.text,
+                a1_long_r=round(a1_long[0], 2) if a1_long is not None else '',
+                a1_long_a=round(a1_long[1], 2) if a1_long is not None else '',
+                a1_long_s=round(a1_long[2], 2) if a1_long is not None else '',
+                a2_long_r=round(a2_long[0], 2) if a2_long is not None else '',
+                a2_long_a=round(a2_long[1], 2) if a2_long is not None else '',
+                a2_long_s=round(a2_long[2], 2) if a2_long is not None else '',
+                a1_short_r=round(a1_short[0], 2) if a1_short is not None else '',
+                a1_short_a=round(a1_short[1], 2) if a1_short is not None else '',
+                a1_short_s=round(a1_short[2], 2) if a1_short is not None else '',
+                a2_short_r=round(a2_short[0], 2) if a2_short is not None else '',
+                a2_short_a=round(a2_short[1], 2) if a2_short is not None else '',
+                a2_short_s=round(a2_short[2], 2) if a2_short is not None else '',
+                v1_long_r=round(v1_long[0], 2) if v1_long is not None else '',
+                v1_long_a=round(v1_long[1], 2) if v1_long is not None else '',
+                v1_long_s=round(v1_long[2], 2) if v1_long is not None else '',
+                v2_long_r=round(v2_long[0], 2) if v2_long is not None else '',
+                v2_long_a=round(v2_long[1], 2) if v2_long is not None else '',
+                v2_long_s=round(v2_long[2], 2) if v2_long is not None else '',
+                v1_short_r=round(v1_short[0], 2) if v1_short is not None else '',
+                v1_short_a=round(v1_short[1], 2) if v1_short is not None else '',
+                v1_short_s=round(v1_short[2], 2) if v1_short is not None else '',
+                v2_short_r=round(v2_short[0], 2) if v2_short is not None else '',
+                v2_short_a=round(v2_short[1], 2) if v2_short is not None else '',
+                v2_short_s=round(v2_short[2], 2) if v2_short is not None else ''
             )
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
         else:
+            self.resetAVButtonsColor()
             self.showUnselectedVolumeWarningMessage()
             return
 
@@ -746,16 +940,23 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
             pdfRows = """"""
             for rr in range(tableNode.GetNumberOfRows()):
                 if tableNode.GetCellText(rr, 0) == caseName:
-                    date = tableNode.GetCellText(rr, 15).split(' ')[0]
-                    rasLocation = [float(tableNode.GetCellText(rr, 3)), float(tableNode.GetCellText(rr, 4)),
-                                   float(tableNode.GetCellText(rr, 5))]
+                    dateCol = tableNode.GetNumberOfColumns() - 2
+                    date = tableNode.GetCellText(rr, dateCol).split(' ')[0]
+                    rasLocationAL = [float(tableNode.GetCellText(rr, 10)), float(tableNode.GetCellText(rr, 11)),
+                                     float(tableNode.GetCellText(rr, 12))]
+                    rasLocationAS = [float(tableNode.GetCellText(rr, 13)), float(tableNode.GetCellText(rr, 14)),
+                                     float(tableNode.GetCellText(rr, 15))]
+
+                    rasLocation = (np.asarray(rasLocationAL) + np.asarray(rasLocationAS)) / 2.0
+                    rasLocation = rasLocation.tolist()
 
                     ijkCoords = self.RAStoIJK(scalarVolumeNode, rasLocation)
                     ijkLocation = str([int(ijkCoords[0]), int(ijkCoords[1]), int(ijkCoords[2])])
 
-                    airwayDiameter = float(tableNode.GetCellText(rr, 1))
-                    vesselDiameter = float(tableNode.GetCellText(rr, 2))
-                    ratio = airwayDiameter / vesselDiameter
+                    meanAirwayDiameter = float(tableNode.GetCellText(rr, 7))
+                    meanVesselDiameter = float(tableNode.GetCellText(rr, 8))
+                    meanRatio = float(tableNode.GetCellText(rr, 9))
+                    # ratio = airwayDiameter / vesselDiameter
 
                     pdfRows += """<tr>
                       <td align="center">{} </td>
@@ -763,7 +964,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
                       <td align="center">{:.2f} </td>
                       <td align="center">{:.2f} </td>
                       <td align="center">{:.2f} </td>
-                    </tr>""".format(date, ijkLocation, airwayDiameter, vesselDiameter, ratio)
+                    </tr>""".format(date, ijkLocation, meanAirwayDiameter, meanVesselDiameter, meanRatio)
 
             values["@@TABLE_ROWS@@"] = pdfRows
 
@@ -777,6 +978,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
             # be stored
             pdfReporter.printPdf(htmlTemplatePath, values, self.reportPrinted, imagesFileList=imagesFileList)
         else:
+            self.resetAVButtonsColor()
             self.showUnselectedVolumeWarningMessage()
             return
 
@@ -815,7 +1017,8 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
             style.RemoveObserver(self.zoomObserver[ii][1])
 
     def zoomToPosition(self, observee, event):
-        if event == 'LeftButtonPressEvent':
+        if event == 'LeftButtonPressEvent' and not self.zoomed:
+            self.initialRAS = self.getInitialRAS()
             sliceNode = self.getSliceNode()
 
             xy = self.interactor.GetLastEventPosition()
@@ -827,6 +1030,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
 
             self.zoomToSeedTimer.start()
             self.removeZoomObserver()
+            self.zoomed = True
 
     def getSliceNode(self):
         sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
@@ -841,29 +1045,17 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
 
         return sliceNode
 
-    def getInitialRAS(self):
-        sliceWidget = self.getSliceWidget()
-        width = sliceWidget.width
-        height = sliceWidget.height
-
-        centralXY = [int(width / 2.0), int(height / 2.0)]
-        xyzw = [centralXY[0], centralXY[1], 0, 1]
-        rasw = [0.0, 0.0, 0.0, 1.0]
-
-        sliceNode = self.getSliceNode()
-        sliceNode.GetXYToRAS().MultiplyPoint(xyzw, rasw)
-
-        return rasw
+    def resetRulerMode(self):
+        applicationLogic = slicer.app.applicationLogic()
+        interactionNode = applicationLogic.GetInteractionNode()
+        interactionNode.Reset(None)
 
     def onJumpToPlaceButtonClicked(self):
         """
         Zoom to the area around the clicked point
         """
-        sliceNode = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
-        self.initialFOV = sliceNode.GetFieldOfView()
-        self.initialRAS = self.getInitialRAS()
+        self.resetRulerMode()
         sliceWidget = self.getSliceWidget()
-
         self.interactor = sliceWidget.sliceView().interactor()
 
         style = sliceWidget.sliceView().interactorStyle().GetInteractor()
@@ -905,16 +1097,11 @@ class CIP_AVRatioLogic(ScriptedLoadableModuleLogic):
     AIRWAY = 1
     VESSEL = 2
     BOTH = 3
+
     SLICEFACTOR = 0.6
     AXIAL = 6
     SAGITTAL = 7
     CORONAL = 8
-
-    # Default XY coordinates for Aorta and PA (the Z will be estimated depending on the number of slices)
-    # defaultAorta1 = [220, 170, 0]
-    # defaultAorta2 = [275, 175, 0]
-    # defaultPA1 = [280, 175, 0]
-    # defaultPA2 = [320, 190, 0]
 
     defaultColor = [0.3, 1.0, 0.0]
     defaultAirwayColor = [0.0, 0.0, 1.0]
@@ -924,6 +1111,26 @@ class CIP_AVRatioLogic(ScriptedLoadableModuleLogic):
     def __init__(self):
         self.currentActiveVolumeId = None
         # self.currentVolumesLoaded = set()
+
+    def setRulersNameAndColor(self, rulerType, structureID):
+        rulersNode = slicer.mrmlScene.GetNodesByClass('vtkMRMLAnnotationRulerNode')
+        node = rulersNode.GetItemAsObject(rulersNode.GetNumberOfItems() - 1)
+        if rulerType == 0:
+            node.SetName('AL')
+        elif rulerType == 1:
+            node.SetName('AS')
+        elif rulerType == 2:
+            node.SetName('VL')
+        elif rulerType == 3:
+            node.SetName('VS')
+
+        if structureID == self.AIRWAY:
+            self.__changeColor__(node, self.defaultAirwayColor)
+        elif structureID == self.VESSEL:
+            self.__changeColor__(node, self.defaultVesselColor)
+
+        textDisplayNode = node.GetAnnotationTextDisplayNode()
+        textDisplayNode.SetOpacity(0.3)
 
     def getRootAnnotationsNode(self):
         """ Get the root annotations node global to the scene, creating it if necessary
@@ -955,8 +1162,26 @@ class CIP_AVRatioLogic(ScriptedLoadableModuleLogic):
         # Return the node
         return rulersNode
 
-    def getRulerNodeForVolumeAndStructure(self, volumeId, structureId, createIfNotExist=True,
-                                          callbackWhenRulerModified=None):
+    def activateRulersListNode(self, volumeId, createIfNotExist=True):
+        nodeName = volumeId + '_avRulersNode'
+        rulersNode = slicer.util.getNode(nodeName)
+
+        annotationsLogic = slicer.modules.annotations.logic()
+
+        if rulersNode is None and createIfNotExist:
+            # Create the node
+            rootHierarchyNode = self.getRootAnnotationsNode()
+            annotationsLogic.SetActiveHierarchyNodeID(rootHierarchyNode.GetID())
+            annotationsLogic.AddHierarchy()
+            n = rootHierarchyNode.GetNumberOfChildrenNodes()
+            rulersNode = rootHierarchyNode.GetNthChildNode(n - 1)
+            # Rename the node
+            rulersNode.SetName(nodeName)
+            logging.debug("Created node " + nodeName + " (general rulers node for this volume")
+        elif rulersNode is not None:
+            annotationsLogic.SetActiveHierarchyNodeID(rulersNode.GetID())
+
+    def getRulerNodesForStructure(self, structureId):
         """ Search for the right ruler node to be created based on the volume and the selected
         structure (Airway or Vessel).
         It also creates the necessary node hierarchy if it doesn't exist.
@@ -966,48 +1191,19 @@ class CIP_AVRatioLogic(ScriptedLoadableModuleLogic):
         :param callbackWhenRulerModified: function to call when the ruler node is modified
         :return: node and a boolean indicating if the node has been created now
         """
-        isNewNode = False
         if structureId == self.AIRWAY:  # Airway
-            nodeName = "A"
+            longNodeName = "AL"
+            shortNodeName = "AS"
         elif structureId == self.VESSEL:  # Vessel:
-            nodeName = "V"
+            longNodeName = "VL"
+            shortNodeName = "VS"
         else:
-            return None, isNewNode
+            return None, None
 
-        # Get the node that contains all the rulers for this volume
-        rulersListNode = self.getRulersListNode(volumeId, createIfNotExist=createIfNotExist)
-        node = None
-        if rulersListNode:
-            # Search for the node
-            for i in range(rulersListNode.GetNumberOfChildrenNodes()):
-                nodeWrapper = rulersListNode.GetNthChildNode(i)
-                # nodeWrapper is also a HierarchyNode. We need to look for its only child that will be the rulerNode
-                col = vtk.vtkCollection()
-                nodeWrapper.GetChildrenDisplayableNodes(col)
-                rulerNode = col.GetItemAsObject(0)
+        longNode = slicer.mrmlScene.GetNodesByName(longNodeName).GetItemAsObject(0)
+        shortNode = slicer.mrmlScene.GetNodesByName(shortNodeName).GetItemAsObject(0)
 
-                if rulerNode.GetName() == nodeName:
-                    node = rulerNode
-                    break
-
-            if node is None and createIfNotExist:
-                # Create the node
-                # Set the active node, so that the new ruler is a child node
-                annotationsLogic = slicer.modules.annotations.logic()
-                annotationsLogic.SetActiveHierarchyNodeID(rulersListNode.GetID())
-                node = slicer.mrmlScene.CreateNodeByClass('vtkMRMLAnnotationRulerNode')
-                node.SetName(nodeName)
-                if structureId == self.AIRWAY:
-                    self.__changeColor__(node, self.defaultAirwayColor)
-                elif structureId == self.VESSEL:
-                    self.__changeColor__(node, self.defaultVesselColor)
-
-                slicer.mrmlScene.AddNode(node)
-                isNewNode = True
-                node.AddObserver(vtk.vtkCommand.ModifiedEvent, callbackWhenRulerModified)
-                logging.debug("Created node " + nodeName + " for volume " + volumeId)
-
-        return node, isNewNode
+        return longNode, shortNode
 
     def hideAllRulers(self):
         """
@@ -1062,164 +1258,6 @@ class CIP_AVRatioLogic(ScriptedLoadableModuleLogic):
             if node:
                 self.__changeColor__(node, color)
 
-    def stepSlice(self, volumeId, structureId, sliceStep):
-        """ Move the selected ruler up or down one slice.
-        :param volumeId:
-        :param structureId:
-        :param sliceStep: +1 or -1
-        :return: new slice in RAS format
-        """
-        # Calculate the RAS coords of the slice where we should jump to
-        rulerNode, newNode = self.getRulerNodeForVolumeAndStructure(volumeId, structureId, createIfNotExist=False)
-        if not rulerNode:
-            # The ruler has not been created. This op doesn't make sense
-            return False
-
-        coords = [0, 0, 0, 1.0]
-        # Get current RAS coords
-        rulerNode.GetPositionWorldCoordinates1(coords)
-
-        # Get the transformation matrixes
-        rastoijk = vtk.vtkMatrix4x4()
-        ijktoras = vtk.vtkMatrix4x4()
-        scalarVolumeNode = slicer.mrmlScene.GetNodeByID(volumeId)
-        scalarVolumeNode.GetRASToIJKMatrix(rastoijk)
-        scalarVolumeNode.GetIJKToRASMatrix(ijktoras)
-
-        # Get the current slice. It will be the same in both positions
-        ijkCoords = list(rastoijk.MultiplyPoint(coords))
-
-        # Add/substract the offset
-        lm = slicer.app.layoutManager()
-        activeWindow = lm.layout
-        if activeWindow == self.AXIAL:
-            ijkCoords[2] += sliceStep
-            # Convert back to RAS, just replacing the Z
-            newSlice = ijktoras.MultiplyPoint(ijkCoords)[2]
-        elif activeWindow == self.SAGITTAL:
-            ijkCoords[0] += sliceStep
-            # Convert back to RAS, just replacing the X
-            newSlice = ijktoras.MultiplyPoint(ijkCoords)[0]
-        else:
-            ijkCoords[1] += sliceStep
-            # Convert back to RAS, just replacing the Z
-            newSlice = ijktoras.MultiplyPoint(ijkCoords)[1]
-
-        self._placeRulerInSlice_(rulerNode, structureId, volumeId, newSlice)
-
-        return newSlice
-
-    def placeRulerInSlice(self, volumeId, structureId, newSlice, callbackWhenUpdated=None):
-        """ Move the ruler to the specified slice (in RAS format)
-        :param volumeId:
-        :param structureId:
-        :param newSlice: slice in RAS format
-        :return: tuple with ruler node and a boolean indicating if the node was just created
-        """
-        # Get the correct ruler
-        rulerNode, newNode = self.getRulerNodeForVolumeAndStructure(volumeId, structureId,
-                                                                    createIfNotExist=True,
-                                                                    callbackWhenRulerModified=callbackWhenUpdated)
-
-        # Add the volume to the list of volumes that have some ruler
-        # self.currentVolumesLoaded.add(volumeId)
-
-        # Move the ruler
-        self._placeRulerInSlice_(rulerNode, structureId, volumeId, newSlice)
-
-    def _placeRulerInSlice_(self, rulerNode, structureId, volumeId, newSlice):
-        """ Move the ruler to the specified slice (in RAS format)
-        :param rulerNode: node of type vtkMRMLAnnotationRulerNode
-        :param newSlice: slice in RAS format
-        :return: True if the operation was succesful
-        """
-        coords1 = [0, 0, 0, 0]
-        coords2 = [0, 0, 0, 0]
-        # Get RAS coords of the ruler node
-        rulerNode.GetPositionWorldCoordinates1(coords1)
-        rulerNode.GetPositionWorldCoordinates2(coords2)
-
-        # Set the slice of the coordinate
-        layoutManager = slicer.app.layoutManager()
-        if layoutManager is not None:
-            activeWindow = layoutManager.layout
-            if activeWindow == self.AXIAL:
-                coords1[2] = coords2[2] = newSlice
-                viewBounds = self.getViewBounds('Red')
-
-                meanR = (viewBounds[0] + viewBounds[1]) / 2.0
-                meanA = (viewBounds[2] + viewBounds[3]) / 2.0
-                sepR = (viewBounds[1] - viewBounds[0]) * 0.1 - (viewBounds[1] - viewBounds[0]) * 0.05
-                sepA = (viewBounds[3] - viewBounds[2]) * 0.1 - (viewBounds[3] - viewBounds[2]) * 0.05
-
-                if structureId == self.AIRWAY:
-                    coords1[0] = meanR - sepR
-                    coords1[1] = meanA - sepA
-                    coords2[0] = meanR + sepR
-                    coords2[1] = meanA + sepA
-                elif structureId == self.VESSEL:
-                    coords1[0] = meanR - sepR
-                    coords1[1] = meanA - 4.0 * sepA
-                    coords2[0] = meanR + sepR
-                    coords2[1] = meanA - 2.0 * sepA
-
-            elif activeWindow == self.SAGITTAL:
-                coords1[0] = coords2[0] = newSlice
-                viewBounds = self.getViewBounds('Yellow')
-
-                meanA = (viewBounds[2] + viewBounds[3]) / 2.0
-                meanS = (viewBounds[4] + viewBounds[5]) / 2.0
-                sepA = (viewBounds[3] - viewBounds[2]) * 0.1 - (viewBounds[3] - viewBounds[2]) * 0.05
-                sepS = (viewBounds[5] - viewBounds[4]) * 0.1 - (viewBounds[5] - viewBounds[4]) * 0.05
-
-                if structureId == self.AIRWAY:
-                    coords1[1] = meanA - sepA
-                    coords1[2] = meanS - sepS
-                    coords2[1] = meanA + sepA
-                    coords2[2] = meanS + sepS
-                elif structureId == self.VESSEL:
-                    coords1[1] = meanA - sepA
-                    coords1[2] = meanS - 4.0 * sepS
-                    coords2[1] = meanA + sepA
-                    coords2[2] = meanS - 2.0 * sepS
-            else:
-                coords1[1] = coords2[1] = newSlice
-                viewBounds = self.getViewBounds('Green')
-
-                meanR = (viewBounds[0] + viewBounds[1]) / 2.0
-                meanS = (viewBounds[4] + viewBounds[5]) / 2.0
-                sepR = (viewBounds[1] - viewBounds[0]) * 0.1 - (viewBounds[1] - viewBounds[0]) * 0.05
-                sepS = (viewBounds[5] - viewBounds[4]) * 0.1 - (viewBounds[5] - viewBounds[4]) * 0.05
-
-                if structureId == self.AIRWAY:
-                    coords1[0] = meanR - sepR
-                    coords1[2] = meanS - sepS
-                    coords2[0] = meanR + sepR
-                    coords2[2] = meanS + sepS
-                elif structureId == self.VESSEL:
-                    coords1[0] = meanR - sepR
-                    coords1[2] = meanS - 4.0 * sepS
-                    coords2[0] = meanR + sepR
-                    coords2[2] = meanS - 2.0 * sepS
-
-        rulerNode.SetPositionWorldCoordinates1(coords1)
-        rulerNode.SetPositionWorldCoordinates2(coords2)
-
-        textDisplayNode = rulerNode.GetAnnotationTextDisplayNode()
-        textDisplayNode.SetOpacity(0.3)
-
-    def getViewBounds(self, view):
-        """ Get the current view bounds (RAS format)
-        :param view: view name (Red, Yellow, Green)
-        :return: RAS bounds
-        """
-        rasBounds = [0, 0, 0, 0, 0, 0]
-        layoutManager = slicer.app.layoutManager()
-        if layoutManager is not None:
-            layoutManager.sliceWidget(view).sliceLogic().GetSliceModelNode().GetRASBounds(rasBounds)
-
-        return rasBounds
-
     def removeRulers(self, volumeId):
         """ Remove all the rulers for the selected volume
         :param volumeId:
@@ -1250,7 +1288,6 @@ class CIP_AVRatioLogic(ScriptedLoadableModuleLogic):
         return list(ijktoras.MultiplyPoint(ijkCoords))
 
 
-# TODO: modify this part!!
 class CIP_AVRatioTest(ScriptedLoadableModuleTest):
     @classmethod
     def setUpClass(cls):
@@ -1287,5 +1324,4 @@ class CIP_AVRatioTest(ScriptedLoadableModuleTest):
         volumeSelector.setCurrentNode(volume)
 
         # XXX To be implemented
-
         self.delayDisplay('Test passed!')
