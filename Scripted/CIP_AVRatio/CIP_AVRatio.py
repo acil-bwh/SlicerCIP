@@ -306,10 +306,10 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         # self.shorttextboxesLayout.addRow("A/V Ratio Short: ", self.ratioShortTextBox)
 
         self.activateShortcutButton = ctk.ctkPushButton()
-        self.activateShortcutButton.text = "Ctrl-N Shortcut"
-        self.activateShortcutButton.toolTip = "Activate automatic rulers selection using the Ctrl-N shortcut " \
+        self.activateShortcutButton.text = "Ctrl-X Shortcut"
+        self.activateShortcutButton.toolTip = "Activate automatic rulers selection using the Ctrl-X shortcut " \
                                               "in this order: airway long, airway short, vessel long, vessel short. " \
-                                              "Once all rulers are placed, a new Ctrl-N will save results and remove " \
+                                              "Once all rulers are placed, a new Ctrl-X will save results and remove " \
                                               "the rulers. To deactivate the shortcut, press the button again."
         self.activateShortcutButton.setIcon(qt.QIcon("{0}/shortcut.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.activateShortcutButton.setIconSize(qt.QSize(20, 20))
@@ -837,10 +837,10 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
             Key_Ctrl = [0x04000000, 0x10000000]  # From QKeySequence enum. Note: On Mac OS X, the ControlModifier value
                                                  # corresponds to the Command keys on the Macintosh keyboard, and the
                                                  # MetaModifier value corresponds to the Control key
-            Key_N = 0x4e
+            Key_X = 0x58
 
             for key in Key_Ctrl:
-                shortcut = qt.QShortcut(qt.QKeySequence(key+Key_N), slicer.util.mainWindow())
+                shortcut = qt.QShortcut(qt.QKeySequence(key+Key_X), slicer.util.mainWindow())
                 shortcut.connect('activated()', self.nextRuler)
                 self.shortcuts.append(shortcut)
         else:
