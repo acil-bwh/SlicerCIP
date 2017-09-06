@@ -83,6 +83,8 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         self.initialRAS = [0.0, 0.0, 0.0]
         self.zoomed = False
 
+        self.shortcuts = []
+        self.activeRuler = None
 
     def setup(self):
         """This is called one time when the module GUI is initialized
@@ -172,6 +174,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         self.structuresGroupbox = qt.QGroupBox("Select the structure")
         self.groupboxLayout = qt.QVBoxLayout()
         self.structuresGroupbox.setLayout(self.groupboxLayout)
+        self.structuresGroupbox.setFixedHeight(100)
         self.mainAreaLayout.addWidget(self.structuresGroupbox, 2, 0)
 
         self.structuresButtonGroup=qt.QButtonGroup()
@@ -213,16 +216,6 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         self.zoomBackButton.setIconSize(qt.QSize(20, 20))
         self.zoomBackButton.setFixedWidth(116)
         self.buttonsToolboxLayout.addWidget(self.zoomBackButton, 0, 1)
-
-        # self.placeRulersButton = ctk.ctkPushButton()
-        # self.placeRulersButton.text = "Place ruler/s"
-        # self.placeRulersButton.name = "placeRulersButton"
-        # self.placeRulersButton.toolTip = "Place the ruler/s for the selected structure/s in the current slice"
-        # self.placeRulersButton.setIcon(qt.QIcon("{0}/ruler.png".format(SlicerUtil.CIP_ICON_DIR)))
-        # self.placeRulersButton.setIconSize(qt.QSize(20, 20))
-        # self.placeRulersButton.setFixedWidth(105)
-        # self.placeRulersButton.setStyleSheet("font-weight:bold")
-        # self.buttonsToolboxLayout.addWidget(self.placeRulersButton, 1, 0)
 
         self.placeLongAirwayRulerButton = ctk.ctkPushButton()
         self.placeLongAirwayRulerButton.text = "Long airway ruler"
@@ -269,7 +262,9 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         self.removeButton.toolTip = "Remove all the rulers for this volume"
         self.removeButton.setIcon(qt.QIcon("{0}/delete.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.removeButton.setIconSize(qt.QSize(20, 20))
-        self.buttonsToolboxLayout.addWidget(self.removeButton, 1, 1, 1, 2, 2)
+        self.removeButton.setFixedWidth(132)
+        # self.buttonsToolboxLayout.addWidget(self.removeButton, 1, 1, 1, 2, 2)
+        self.buttonsToolboxLayout.addWidget(self.removeButton, 1, 2)
 
         # Textboxes
         # self.longtextboxesFrame = qt.QFrame()
@@ -309,6 +304,18 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         # self.ratioShortTextBox.name = "ratioTextBox"
         # self.ratioShortTextBox.setReadOnly(True)
         # self.shorttextboxesLayout.addRow("A/V Ratio Short: ", self.ratioShortTextBox)
+
+        self.activateShortcutButton = ctk.ctkPushButton()
+        self.activateShortcutButton.text = "Ctrl-N Shortcut"
+        self.activateShortcutButton.toolTip = "Activate automatic rulers selection using the Ctrl-N shortcut " \
+                                              "in this order: airway long, airway short, vessel long, vessel short. " \
+                                              "Once all rulers are placed, a new Ctrl-N will save results and remove " \
+                                              "the rulers. To deactivate the shortcut, press the button again."
+        self.activateShortcutButton.setIcon(qt.QIcon("{0}/shortcut.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.activateShortcutButton.setIconSize(qt.QSize(20, 20))
+        self.activateShortcutButton.setCheckable(True)
+        self.activateShortcutButton.setFixedWidth(120)
+        self.buttonsToolboxLayout.addWidget(self.activateShortcutButton, 4, 2)
 
         self.meantextboxesFrame = qt.QFrame()
         self.meantextboxesLayout = qt.QFormLayout()
@@ -393,11 +400,10 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         self.placeShortAirwayRulerButton.connect('clicked()', self.onPlaceShortAirwayRulerClicked)
         self.placeLongVesselRulerButton.connect('clicked()', self.onPlaceLongVesselRulerClicked)
         self.placeShortVesselRulerButton.connect('clicked()', self.onPlaceShortVesselRulerClicked)
-        # self.moveUpButton.connect('clicked()', self.onMoveUpRulerClicked)
-        # self.moveDownButton.connect('clicked()', self.onMoveDownRulerClicked)
         self.removeButton.connect('clicked()', self.onRemoveRulerClicked)
         self.zoomToPlaceButton.connect('clicked()', self.onJumpToPlaceButtonClicked)
         self.zoomBackButton.connect('clicked()', self.onJumpBackButtonClicked)
+        self.activateShortcutButton.connect('clicked()', self.onKeyShortcutClicked)
 
         self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
         self.reportsWidget.addObservable(self.reportsWidget.EVENT_PRINT_BUTTON_CLICKED, self.onPrintReportToPDF)
@@ -587,32 +593,6 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         elif selectedStructureText == "Both": return self.logic.BOTH
         return self.logic.NONE
 
-    # def stepSlice(self, offset):
-    #     """ Move the selected structure one slice up or down
-    #     :param offset: +1 or -1
-    #     :return:
-    #     """
-    #     volumeId = self.volumeSelector.currentNodeID
-    #
-    #     if volumeId == '':
-    #         self.resetAVButtonsColor()
-    #         self.showUnselectedVolumeWarningMessage()
-    #         return
-    #
-    #     selectedStructure = self.getCurrentSelectedStructure()
-    #     if selectedStructure == self.logic.NONE:
-    #         self.showUnselectedStructureWarningMessage()
-    #         return
-    #
-    #     if selectedStructure == self.logic.BOTH:
-    #         # Move both rulers
-    #         self.logic.stepSlice(volumeId, self.logic.AIRWAY, offset)
-    #         newSlice = self.logic.stepSlice(volumeId, self.logic.VESSEL, offset)
-    #     else:
-    #         newSlice = self.logic.stepSlice(volumeId, selectedStructure, offset)
-    #
-    #     self.moveActiveWindowToSlice(newSlice)
-
     def removeRulers(self):
         """ Remove all the rulers related to the current volume node
         :return:
@@ -722,10 +702,29 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         for observer in self.observers:
             slicer.mrmlScene.RemoveObserver(observer)
 
+    def nextRuler(self):
+        if self.activeRuler is None:
+            self.onPlaceLongAirwayRulerClicked()
+        elif self.activeRuler == 'AL':
+            self.onPlaceShortAirwayRulerClicked()
+        elif self.activeRuler == 'AS':
+            self.onPlaceLongVesselRulerClicked()
+        elif self.activeRuler == 'VL':
+            self.onPlaceShortVesselRulerClicked()
+        elif self.activeRuler == 'VS':
+            self.onSaveReport()
+            self.activeRuler = None
+            self.onPlaceLongAirwayRulerClicked()
+
+    def removeShortcutKeys(self):
+        for shortcut in self.shortcuts:
+            shortcut.disconnect('activated()')
+            shortcut.setParent(None)
+        self.shortcuts = []
+
     ##########
     # EVENTS #
     ##########
-
     def onVolumeSelectorChanged(self, node):
         logging.info("Volume selector node changed: {0}".format(
             '(None)' if node is None else node.GetName()
@@ -777,6 +776,8 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
             self.rulerType = 0
             self.structureID = self.logic.AIRWAY
 
+            self.activeRuler = 'AL'
+
     def onPlaceShortAirwayRulerClicked(self):
         self.removeZoomObserver()
 
@@ -786,6 +787,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
             self.createRulersNode()
             self.rulerType = 1
             self.structureID = self.logic.AIRWAY
+            self.activeRuler = 'AS'
 
     def onPlaceLongVesselRulerClicked(self):
         self.removeZoomObserver()
@@ -796,6 +798,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
             self.createRulersNode()
             self.rulerType = 2
             self.structureID = self.logic.VESSEL
+            self.activeRuler = 'VL'
 
     def onPlaceShortVesselRulerClicked(self):
         self.removeZoomObserver()
@@ -806,6 +809,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
             self.createRulersNode()
             self.rulerType = 3
             self.structureID = self.logic.VESSEL
+            self.activeRuler = 'VS'
 
     # def onMoveUpRulerClicked(self):
     #     self.stepSlice(1)
@@ -817,8 +821,30 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         if (qt.QMessageBox.question(slicer.util.mainWindow(), 'Remove rulers',
             'Are you sure you want to remove all the rulers from this volume?',
                                     qt.QMessageBox.Yes|qt.QMessageBox.No)) == qt.QMessageBox.Yes:
-            self.logic.removeRulers(self.volumeSelector.currentNodeID)
+            self.removeRulers()
             self.refreshTextboxes()
+            self.activeRuler = None
+
+    def onKeyShortcutClicked(self):
+        if self.activateShortcutButton.checked:
+            self.shortcuts = []
+            volumeId = self.volumeSelector.currentNodeID
+            if volumeId == '':
+                self.showUnselectedVolumeWarningMessage()
+                self.activateShortcutButton.checked = False
+                return
+
+            Key_Ctrl = [0x04000000, 0x10000000]  # From QKeySequence enum. Note: On Mac OS X, the ControlModifier value
+                                                 # corresponds to the Command keys on the Macintosh keyboard, and the
+                                                 # MetaModifier value corresponds to the Control key
+            Key_N = 0x4e
+
+            for key in Key_Ctrl:
+                shortcut = qt.QShortcut(qt.QKeySequence(key+Key_N), slicer.util.mainWindow())
+                shortcut.connect('activated()', self.nextRuler)
+                self.shortcuts.append(shortcut)
+        else:
+            self.removeShortcutKeys()
 
     def onSaveReport(self):
         """ Save the current values in a persistent csv file
@@ -912,6 +938,8 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
                 v2_short_s=round(v2_short[2], 2) if v2_short is not None else ''
             )
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+            self.removeRulers()
+            self.activeRuler = None
         else:
             self.resetAVButtonsColor()
             self.showUnselectedVolumeWarningMessage()
@@ -1049,6 +1077,16 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         applicationLogic = slicer.app.applicationLogic()
         interactionNode = applicationLogic.GetInteractionNode()
         interactionNode.Reset(None)
+        self.resetAVButtonsColor()
+        self.activeRuler = None
+        # if self.activeRuler == 'AL':
+        #     self.onPlaceLongAirwayRulerClicked()
+        # elif self.activeRuler == 'AS':
+        #     self.onPlaceShortAirwayRulerClicked()
+        # elif self.activeRuler == 'VL':
+        #     self.onPlaceLongVesselRulerClicked()
+        # elif self.activeRuler == 'VS':
+        #     self.onPlaceShortVesselRulerClicked()
 
     def onJumpToPlaceButtonClicked(self):
         """
@@ -1066,7 +1104,6 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         """
         Zoom to the area around the clicked point
         """
-        # self.zoomBackTimer.start()
         self.zoomBack()
         SlicerUtil.jumpToSeed(self.initialRAS)
         self.removeZoomObserver()
