@@ -23,7 +23,9 @@ class CIP_ParenchymaAnalysis(ScriptedLoadableModule):
         parent.contributors = ["Applied Chest Imaging Laboratory"]
         parent.dependencies = [SlicerUtil.CIP_ModuleName]
         parent.helpText = string.Template("""
-Use this module to calculate counts and volumes for different labels of a label map plus statistics on the grayscale background volume.  Note: volumes must have same dimensions.  See <a href=\"$a/Documentation/$b.$c/Modules/ParenchymaAnalysis\">$a/Documentation/$b.$c/Modules/ParenchymaAnalysis</a> for more information.
+Use this module to calculate counts and volumes for different labels of a label map plus statistics on the grayscale background volume.  Note: volumes must have same dimensions.<br>
+A quick tutorial of the module can be found <a href='https://chestimagingplatform.org/files/chestimagingplatform/files/parenchymaanalysis_tutorial.pdf'>here</a><br>
+See <a href=\"$a/Documentation/$b.$c/Modules/ParenchymaAnalysis\">$a/Documentation/$b.$c/Modules/ParenchymaAnalysis</a> for more information.
     """).substitute({'a': parent.slicerWikiUrl, 'b': slicer.app.majorVersion, 'c': slicer.app.minorVersion})
         parent.acknowledgementText = """
     Supported by NA-MIC, NAC, BIRN, NCIGT, and the Slicer Community. See http://www.slicer.org for details.  Module implemented by Steve Pieper.
