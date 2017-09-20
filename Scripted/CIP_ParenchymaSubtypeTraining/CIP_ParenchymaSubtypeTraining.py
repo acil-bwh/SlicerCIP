@@ -32,7 +32,8 @@ class CIP_ParenchymaSubtypeTraining(CIP_PointsLabelling):
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
         self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory",
                                     "Brigham and Women's Hospital"]
-        self.parent.helpText = """Training parenchyma subtypes done quickly by an expert"""
+        self.parent.helpText = """Training parenchyma subtypes done quickly by an expert<br>
+        +A quick tutorial of the module can be found <a href='ttps://chestimagingplatform.org/files/chestimagingplatform/files/parenchymasubtypetraining_tutorial.pdf'>here</a>"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 
