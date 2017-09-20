@@ -19,7 +19,8 @@ class CIP_InteractiveLobeSegmentation(ScriptedLoadableModule):
         parent.contributors = [
             "Pietro Nardelli (UCC/SPL) and Applied Chest Imaging Laboratory, Brigham and Women's Hopsital"]
         parent.helpText = """
-    Scripted loadable module for Interactive Lobe segmentation.
+    Scripted loadable module for Interactive Lobe segmentation.<br>
+    A quick tutorial of the module can be found <a href='https://chestimagingplatform.org/files/chestimagingplatform/files/interactivelobesegmentation_tutorial_pn.pdf'>here</a>
     """
         parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
         self.parent = parent
