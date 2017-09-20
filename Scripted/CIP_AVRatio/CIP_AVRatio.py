@@ -27,7 +27,7 @@ class CIP_AVRatio(ScriptedLoadableModule):
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
         self.parent.contributors = ["Pietro Nardelli (pnardelli@bwh.harvard.edu)", "Applied Chest Imaging Laboratory", "Brigham and Women's Hospital"]
         self.parent.helpText = """Calculate the ratio between pulmonary airway and vessel.<br>
-            A quick tutorial of the module can be found <a href='https://s3.amazonaws.com/acil-public/SlicerCIP+Tutorials/AV_Ratio.pptx'>here</a>.<br><br>
+            A quick tutorial of the module can be found <a href=https://chestimagingplatform.org/files/chestimagingplatform/files/av_ratio_tutorial_pn.pdf>here</a>.<br><br>
             """
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
