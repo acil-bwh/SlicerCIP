@@ -32,7 +32,7 @@ class CIP_BodyComposition(ScriptedLoadableModule):
         self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory",
                                     "Brigham and Women's Hospital"]
         self.parent.helpText = """Segment different parts of the lungs in a manual or semi-automatic basis, using for it an embedded Slicer editor<br>
-         A quick tutorial of the module can be found <a href='https://s3.amazonaws.com/acil-public/SlicerCIP+Tutorials/Body_Composition.pptx'>here</a>"""
+         A quick tutorial of the module can be found <a href='https://chestimagingplatform.org/files/chestimagingplatform/files/body_composition.pdf'>here</a>"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 
