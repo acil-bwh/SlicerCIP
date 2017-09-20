@@ -21,7 +21,8 @@ class CIP_MIPViewer(ScriptedLoadableModule):
         self.parent.categories = SlicerUtil.CIP_ModulesCategory
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
         self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory", "Brigham and Women's Hospital"]
-        self.parent.helpText = """Viewer that implements some proyection operations, such as MIP, MinIP and Median"""
+        self.parent.helpText = """Viewer that implements some proyection operations, such as MIP, MinIP and Median<br>
+        A quick tutorial of the module can be found <a href='https://chestimagingplatform.org/files/chestimagingplatform/files/mip_viewer.pdf'>here</a>"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 #
