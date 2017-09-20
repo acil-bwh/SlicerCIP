@@ -35,7 +35,8 @@ class CIP_LesionModel(ScriptedLoadableModule):
                                     "Brigham and Women's Hospital"]
         self.parent.helpText = """This module allows to segment benign nodules and tumors in the lung.
             Besides, it analyzes a lot of different features inside the nodule and in its surroundings,
-            in concentric spheres of different radius centered in the centroid of the nodule"""
+            in concentric spheres of different radius centered in the centroid of the nodule<br>
+            A quick tutorial of the module can be found <a href='https://chestimagingplatform.org/files/chestimagingplatform/files/lung_lesion_analyzer.pdf'>here</a>"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 
