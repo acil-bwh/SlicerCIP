@@ -24,7 +24,7 @@ class CIP_PAARatio(ScriptedLoadableModule):
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
         self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory", "Brigham and Women's Hospital"]
         self.parent.helpText = """Calculate the ratio between pulmonary arterial and aorta.<br>
-            A quick tutorial of the module can be found <a href='https://s3.amazonaws.com/acil-public/SlicerCIP+Tutorials/PAA_Ratio.pptx'>here</a>.<br><br>
+            A quick tutorial of the module can be found <a href='https://chestimagingplatform.org/files/chestimagingplatform/files/paa_ratio.pdf'>here</a>.<br><br>
             The PAA Ratio biomarker has been proved to predict acute exacerbations of COPD (Wells, J. M., Washko, G. R.,
             Han, M. K., Abbas, N., Nath, H., Mamary, a. J., Dransfield, M. T. (2012).
             Pulmonary Arterial Enlargement and Acute Exacerbations of COPD. New England Journal of Medicine, 367(10), 913-921).
@@ -291,6 +291,8 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
     def cleanup(self):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         self.__removeSceneObservables()
+        self.reportsWidget.cleanup()
+        self.reportsWidget = None
 
     def saveStateBeforeEnteringModule(self):
         """Save the state of the module regarding labelmap, etc. This state will be saved/loaded when
@@ -302,7 +304,9 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             return
 
         # Save existing layout
-        self.savedLayout = slicer.app.layoutManager().layout
+        self.savedLayout = None
+        if slicer.app.layoutManager() is not None:
+            slicer.app.layoutManager().layout
 
         # Get the active volume (it it exists)
         activeVolumeId = SlicerUtil.getFirstActiveVolumeId()

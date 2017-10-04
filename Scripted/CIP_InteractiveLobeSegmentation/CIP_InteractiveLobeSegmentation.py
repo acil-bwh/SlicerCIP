@@ -10,7 +10,6 @@ from CIP.ui import PreProcessingWidget
 #
 # CIP_InteractiveLobeSegmentation
 #
-
 class CIP_InteractiveLobeSegmentation(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
@@ -20,7 +19,8 @@ class CIP_InteractiveLobeSegmentation(ScriptedLoadableModule):
         parent.contributors = [
             "Pietro Nardelli (UCC/SPL) and Applied Chest Imaging Laboratory, Brigham and Women's Hopsital"]
         parent.helpText = """
-    Scripted loadable module for Interactive Lobe segmentation.
+    Scripted loadable module for Interactive Lobe segmentation.<br>
+    A quick tutorial of the module can be found <a href='https://chestimagingplatform.org/files/chestimagingplatform/files/interactivelobesegmentation_tutorial_pn.pdf'>here</a>
     """
         parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
         self.parent = parent
@@ -323,7 +323,6 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
             self.preProcessingWidget.enableLMFrame(True)
             for color in ['Red', 'Yellow', 'Green']:
                 slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID('None')
-            
 
     def onFourUpButton(self):
         applicationLogic = slicer.app.applicationLogic()
@@ -363,8 +362,8 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         self.AddRight1ListButton.setStyleSheet("background-color: rgb(255,255,255)")
         self.AddRight2ListButton.setStyleSheet("background-color: rgb(255,255,255)")
         logic = CIP_InteractiveLobeSegmentationLogic()
-        self.logic.name = 'leftObliqueFiducial'
-        logic.createList('leftObliqueFiducial')
+        self.logic.name = 'LO'
+        logic.createList('LO')
 
     def onAddRight1ListButton(self):
         # self.applyButton.enabled = self.inputSelector.currentNode() and self.labelSelector.currentNode() and self.outputSelector.currentNode()
@@ -372,8 +371,8 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         self.AddLeftListButton.setStyleSheet("background-color: rgb(255,255,255)")
         self.AddRight2ListButton.setStyleSheet("background-color: rgb(255,255,255)")
         logic = CIP_InteractiveLobeSegmentationLogic()
-        self.logic.name = 'rightObliqueFiducial'
-        logic.createList('rightObliqueFiducial')
+        self.logic.name = 'RO'
+        logic.createList('RO')
 
     def onAddRight2ListButton(self):
         # self.applyButton.enabled = self.inputSelector.currentNode() and self.labelSelector.currentNode() and self.outputSelector.currentNode()
@@ -381,18 +380,17 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         self.AddLeftListButton.setStyleSheet("background-color: rgb(255,255,255)")
         self.AddRight1ListButton.setStyleSheet("background-color: rgb(255,255,255)")
         logic = CIP_InteractiveLobeSegmentationLogic()
-        self.logic.name = 'rightHorizontalFiducial'
-        logic.createList('rightHorizontalFiducial')
+        self.logic.name = 'RH'
+        logic.createList('RH')
 
     def onApplyButton(self):
+        red_logic = slicer.app.layoutManager().sliceWidget("Red").sliceLogic()
+        red_cn = red_logic.GetSliceCompositeNode()
+        volumeID = red_cn.GetBackgroundVolumeID()
+        CTNode = slicer.util.getNode(volumeID)
         if self.labelSelector.currentNode() == None:
            warning = self.preProcessingWidget.warningMessageForLM()
            if warning == 16384:
-               red_logic = slicer.app.layoutManager().sliceWidget("Red").sliceLogic()
-               red_cn = red_logic.GetSliceCompositeNode()
-               volumeID = red_cn.GetBackgroundVolumeID()
-               CTNode = slicer.util.getNode(volumeID)
-
                labelNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLLabelMapVolumeNode())
                labelNode.SetName(CTNode.GetName() + '_partialLungLabelMap')               
                
@@ -439,9 +437,8 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
             qt.QMessageBox.warning(slicer.util.mainWindow(),
                                    "Running", 'Exception!\n\n' + str(e) + "\n\nSee Python Console for Stack Trace")
         
-        if fissureVolume != False:            
-            self.outputSelector.setCurrentNode(fissureVolume)
-
+        # if fissureVolume is not None:
+        self.outputSelector.setCurrentNode(fissureVolume)
         SlicerUtil.changeLabelmapOpacity(0.5)
 
         self.onFourUpButton()
@@ -453,9 +450,15 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         interactionNode = applicationLogic.GetInteractionNode()
         interactionNode.Reset(None)
         self.visualizationWidget.pendingUpdate = False
+
+        for color in ['Red', 'Yellow', 'Green']:
+            slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(
+                CTNode.GetID())
+            slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID(
+                self.outputSelector.currentNode().GetID())
         
     def filterInputCT(self, input_node):
-#        self.applyButton.enabled = False
+        # self.applyButton.enabled = False
         self.applyButton.text = "Filtering..."
         self.applyButton.repaint()
         slicer.app.processEvents()
@@ -472,7 +475,7 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         self.preProcessingWidget.createPartialLM(input_node, label_node)
 
         SlicerUtil.changeLabelmapOpacity(0.5)
-        self.labelSelector.setCurrentNode(label_node)        
+        self.labelSelector.setCurrentNode(label_node)
 
     def updateList(self):
         """Observe the mrml scene for changes that we wish to respond to."""
@@ -627,11 +630,11 @@ class ILSVisualizationWidget(ILSpqWidget):
 
         name = None
         if column == 0:
-            name = 'leftObliqueFiducial'
+            name = 'LO'
         elif column == 1:
-            name = 'rightObliqueFiducial'
+            name = 'RO'
         else:
-            name = 'rightHorizontalFiducial'
+            name = 'RH'
 
         selectedList = None
         for selectedList in listsInScene.values():
@@ -663,7 +666,7 @@ class ILSVisualizationWidget(ILSpqWidget):
         self.updateScene()
         
         listsInScene = slicer.util.getNodes('vtkMRMLMarkupsFiducialNode*')
-        name = ['leftObliqueFiducial', 'rightObliqueFiducial', 'rightHorizontalFiducial']
+        name = ['LO', 'RO', 'RH']
 
         if (listsInScene):
             for fiducialList in listsInScene.values():
@@ -755,13 +758,13 @@ class ILSVisualizationWidget(ILSpqWidget):
         if (listsInScene):
             mrmlScene = slicer.mrmlScene
             for oldList in listsInScene.values():
-                if oldList.GetName() == 'leftObliqueFiducial':
+                if oldList.GetName() == 'LO':
                     if self.leftRow == 0:
                         mrmlScene.RemoveNode(oldList)
-                if oldList.GetName() == 'rightObliqueFiducial':
+                if oldList.GetName() == 'RO':
                     if self.rightObliqueRow == 0:
                         mrmlScene.RemoveNode(oldList)
-                if oldList.GetName() == 'rightHorizontalFiducial':
+                if oldList.GetName() == 'RH':
                     if self.rightHorizontalRow == 0:
                         mrmlScene.RemoveNode(oldList)
         if self.tableWidget.rowCount == 0:
@@ -804,7 +807,7 @@ class ILSVisualizationWidget(ILSpqWidget):
         self.deleteButton.enabled = True
         self.deleteAllButton.enabled = True
 
-        if originalActiveList.GetName() == 'leftObliqueFiducial':
+        if originalActiveList.GetName() == 'LO':
 
             if self.tableWidget.rowCount == 0:
                 self.tableWidget.setRowCount(1)
@@ -822,7 +825,7 @@ class ILSVisualizationWidget(ILSpqWidget):
             self.tableWidget.setItem(self.leftRow, 0, item)
             self.leftRow += 1
 
-        elif originalActiveList.GetName() == 'rightObliqueFiducial':
+        elif originalActiveList.GetName() == 'RO':
 
             if self.tableWidget.rowCount == 0:
                 self.tableWidget.setRowCount(1)
@@ -840,7 +843,7 @@ class ILSVisualizationWidget(ILSpqWidget):
             self.tableWidget.setItem(self.rightObliqueRow, 1, item)
             self.rightObliqueRow += 1
 
-        elif originalActiveList.GetName() == 'rightHorizontalFiducial':
+        elif originalActiveList.GetName() == 'RH':
 
             if self.tableWidget.rowCount == 0:
                 self.tableWidget.setRowCount(1)
@@ -990,7 +993,7 @@ class CIP_InteractiveLobeSegmentationLogic(ScriptedLoadableModuleLogic):
         rightObliqueFiducials = None
         rightHorizontalFiducials = None
 
-        name = ['leftObliqueFiducial', 'rightObliqueFiducial', 'rightHorizontalFiducial']
+        name = ['LO', 'RO', 'RH']
 
         if (listsInScene):
             for fiducialList in listsInScene.values():
@@ -1024,6 +1027,6 @@ class CIP_InteractiveLobeSegmentationLogic(ScriptedLoadableModuleLogic):
         slicer.cli.run(slicer.modules.segmentlunglobes, None, parameters, wait_for_completion=True)
         selectionNode = slicer.app.applicationLogic().GetSelectionNode()
         selectionNode.SetReferenceActiveLabelVolumeID(outputVolume.GetID())
-        outputVolume.SetName(labelVolume.GetName().replace("_partialLungLabelMap", "_interactiveLobeSegmenation"))        
+        outputVolume.SetName(labelVolume.GetName().replace("_partialLungLabelMap", "_interactiveLobeSegmentation"))
         slicer.app.applicationLogic().PropagateLabelVolumeSelection(0)
         return outputVolume

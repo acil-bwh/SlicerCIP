@@ -32,7 +32,7 @@ class CIP_BodyComposition(ScriptedLoadableModule):
         self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory",
                                     "Brigham and Women's Hospital"]
         self.parent.helpText = """Segment different parts of the lungs in a manual or semi-automatic basis, using for it an embedded Slicer editor<br>
-         A quick tutorial of the module can be found <a href='https://s3.amazonaws.com/acil-public/SlicerCIP+Tutorials/Body_Composition.pptx'>here</a>"""
+         A quick tutorial of the module can be found <a href='https://chestimagingplatform.org/files/chestimagingplatform/files/body_composition.pdf'>here</a>"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 
@@ -185,7 +185,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.analysisButton.objectName = "analysisButton"
         self.analysisButton.toolTip = "Calculate the main statistics for each structure in the volume"
         self.analysisButton.setStyleSheet("font-weight:bold; font-size:14px")
-        self.analysisButton.setIcon(qt.QIcon("{0}/1415667870_kview.png".format(self.iconsPath)))
+        self.analysisButton.setIcon(qt.QIcon("{0}/search.png".format(self.iconsPath)))
         self.analysisButton.setIconSize(qt.QSize(24, 24))
         self.structuresLayout.addWidget(self.analysisButton, 3, 2)
 
@@ -211,7 +211,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.btnAnalysis2.text = "Start analysis"
         self.analysisButton.toolTip = "Calculate the main statistics for each structure in the volume"
         self.btnAnalysis2.setStyleSheet("font-weight:bold; font-size:14px")
-        self.btnAnalysis2.setIcon(qt.QIcon("{0}/1415667870_kview.png".format(self.iconsPath)))
+        self.btnAnalysis2.setIcon(qt.QIcon("{0}/search.png".format(self.iconsPath)))
         self.btnAnalysis2.setIconSize(qt.QSize(24, 24))
         self.btnAnalysis2.setFixedWidth(250)
         self.statsButtonsFrame.layout().addWidget(self.btnAnalysis2)
@@ -400,20 +400,14 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     def __setupCompositeNodes__(self):
         """Init the CompositeNodes so that the first one (typically Red) listen to events when the node is modified,
         and all the nodes are linked by default"""
-        nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLSliceCompositeNode")
-        # Call necessary to allow the iteration.
-        nodes.InitTraversal()
-        # Get the first CompositeNode (typically Red)
-        compositeNode = nodes.GetNextItemAsObject()
+        nodes = slicer.util.getNodesByClass("vtkMRMLSliceCompositeNode")
+        for node in nodes:
+            # Listen for Modified event (it will be launched several times, but still better than NodeAddedEvent)
+            # compositeNode.AddObserver(vtk.vtkCommand.ModifiedEvent, self.onCompositeNodeModified)
+            #     #slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onCompositeNodeModified)    This one is not triggered when applied to a node
 
-        # Listen for Modified event (it will be launched several times, but still better than NodeAddedEvent)
-        # compositeNode.AddObserver(vtk.vtkCommand.ModifiedEvent, self.onCompositeNodeModified)
-        #     #slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.onCompositeNodeModified)    This one is not triggered when applied to a node
-
-        # Link the nodes by default
-        while compositeNode:
-            compositeNode.SetLinkedControl(True)
-            compositeNode = nodes.GetNextItemAsObject()
+            # Link the nodes by default
+            node.SetLinkedControl(True)
 
         slicer.app.applicationLogic().PropagateVolumeSelection(0)
 
@@ -1021,6 +1015,8 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
     def cleanup(self):
         self.editorWidget.helper.masterSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onMasterNodeSelect)
+        self.reportsWidget.cleanup()
+        self.reportsWidget = None
 
     #############################################
     # SIGNALS

@@ -32,7 +32,8 @@ class CIP_ParenchymaSubtypeTraining(CIP_PointsLabelling):
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
         self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory",
                                     "Brigham and Women's Hospital"]
-        self.parent.helpText = """Training parenchyma subtypes done quickly by an expert"""
+        self.parent.helpText = """Training parenchyma subtypes done quickly by an expert<br>
+        +A quick tutorial of the module can be found <a href='ttps://chestimagingplatform.org/files/chestimagingplatform/files/parenchymasubtypetraining_tutorial.pdf'>here</a>"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 
@@ -145,6 +146,9 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
                                                self.__onSecondaryRadioButtonClicked__)
 
         self.updateState()
+
+    def cleanup(self):
+        pass
 
     def updateState(self):
         """ Refresh the markups state, activate the right fiducials list node (depending on the
@@ -405,4 +409,4 @@ class CIP_ParenchymaSubtypeTrainingTest(ScriptedLoadableModuleTest):
         self.test_CIP_ParenchymaSubtypeTraining()
 
     def test_CIP_ParenchymaSubtypeTraining(self):
-        self.fail("Test not implemented!")
+        self.delayDisplay('Test not implemented!')

@@ -240,6 +240,9 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             self.onVolumeChanged(self.inputSelector.currentNode())
             self.createModels()
 
+    def cleanup(self):
+        pass
+
     def addLabel(self, row, rgb, val):
         #print "add row", row, rgb
         self.selectLabels.setRowCount(row+1)

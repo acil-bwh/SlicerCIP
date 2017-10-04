@@ -4,6 +4,7 @@ include(SlicerMacroBuildScriptedModule)
 #add_subdirectory(Example)
 set(modules
   CIP_
+  CIP_AVRatio
   CIP_InteractiveLobeSegmentation
   CIP_ParenchymaAnalysis
   CIP_BodyComposition

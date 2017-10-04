@@ -1,0 +1,81 @@
+<html>
+  <head>
+    <meta  content="text/html; charset=ISO-8859-1"  http-equiv="content-type">
+    <link rel="stylesheet" href="@@PATH_TO_STATIC@@CIP_AVRatio_normalize.css">
+    <link rel="stylesheet" href="@@PATH_TO_STATIC@@CIP_AVRatio_skeleton.css">
+    <title>Bronchiectasis</title>
+    <style  type="text/css">
+      .divContent {
+        margin: 15px 15px 20px 15px;
+        float:left
+      }
+
+      body {
+
+      }
+
+      h1 {
+        font-size: 15pt;
+        margin-bottom: 0;
+      }
+
+      .dataTable th{
+        font-size: large;
+      }
+      .dataTable td{
+        font-style: italic;
+      }
+
+      page[size="A4"] {
+        background: white;
+        width: 21cm;
+        height: 29.7cm;
+        display: block;
+        margin: 0 auto;
+        margin-bottom: 0.5cm;
+        box-shadow: 0 0 0.5cm rgba(0,0,0,0.5);
+      }
+      @media print {
+        body, page[size="A4"] {
+          margin: 0;
+          box-shadow: 0;
+        }
+      }
+
+
+  </style>
+  </head>
+  <body>
+    <div  class="page">
+      <div  style="width:100%"> <img  src="ACIL.png"  alt="logo" style="width:64px">
+      </div>
+      <div  style="float:left">
+        <h1>Bronchiectasis Report</h1>
+      </div>
+      <div  style="float:right; margin: 20px 0 0 30px; font-size: 12px; color: rgb(187, 187, 187);">
+        Powered by: <b>Applied Chest Imaging Laboratory (ACIL)</b>
+        <br>Brigham and Women's Hospital. Boston (MA). USA
+      </div>
+      <div  style="clear: both;">
+        <div class="divContent">
+          <p style="font-style: italic">@@SUBJECT@@</p>
+          <br/>
+          <div>
+            <p style="font-style: normal">@@SUMMARY@@</p>
+            <table class="u-full-width">
+              <thead>
+                <th>Date</th>
+                <th>Location</th>
+                <th>Mean Airway Diameter (mm)</th>
+                <th>Mean Vessel Diameter (mm)</th>
+                <th>Mean AV Ratio</th>
+              </thead>
+              <tbody>
+                @@TABLE_ROWS@@
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+  </body>
+</html>

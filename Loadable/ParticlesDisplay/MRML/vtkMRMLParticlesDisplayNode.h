@@ -124,14 +124,14 @@ protected:
   double  ScaleFactor;
   double  ParticleSize;
 
-  vtkGlyph3DWithScaling        *Glypher;
-  vtkSphereSource              *SphereSource;
-  vtkCylinderSource            *CylinderSource;
-  vtkPolyDataAlgorithm         *GlyphSource;
-  vtkAssignAttribute           *AssignScalar;
-  vtkAssignAttribute           *AssignVector;
-  vtkTransformPolyDataFilter   *TransformPolyData;
-  vtkTransform                 *CylinderRotator;
+  vtkSmartPointer<vtkGlyph3DWithScaling>        Glypher;
+  vtkSmartPointer<vtkSphereSource>              SphereSource;
+  vtkSmartPointer<vtkCylinderSource>            CylinderSource;
+  vtkSmartPointer<vtkPolyDataAlgorithm>         GlyphSource;
+  vtkSmartPointer<vtkAssignAttribute>           AssignScalar;
+  vtkSmartPointer<vtkAssignAttribute>           AssignVector;
+  vtkSmartPointer<vtkTransformPolyDataFilter>   TransformPolyData;
+  vtkSmartPointer<vtkTransform>                 CylinderRotator;
 };
 
 #endif

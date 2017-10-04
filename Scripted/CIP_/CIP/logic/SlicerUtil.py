@@ -36,6 +36,8 @@ class SlicerUtil:
     GIT_REPO_FOLDER = path.join(slicer.app.temporaryPath, 'CIP-Repo')
     GIT_REMOTE_URL = "https://github.com/acil-bwh/SlicerCIP.git"
 
+    ACIL_LOGO_PATH = os.path.join(CIP_ICON_DIR, 'ACIL.png')
+
     # Aligment
     ALIGNMENT_HORIZONTAL_LEFT = 0x0001
     ALIGNMENT_HORIZONTAL_RIGHT = 0x0002
@@ -310,6 +312,8 @@ class SlicerUtil:
         @return: volume id or None if there is no active volume
         """
         lm = slicer.app.layoutManager()
+        if lm is None:
+            return None
         for slice in SlicerUtil.preferredWidgetKeysOrder:
             widget = lm.sliceWidget(slice)
             if widget.visible:
@@ -601,6 +605,14 @@ class SlicerUtil:
     @staticmethod
     def changeLayoutToAxial():
         SlicerUtil.changeLayout(6)
+
+    @staticmethod
+    def changeLayoutToSagittal():
+        SlicerUtil.changeLayout(7)
+
+    @staticmethod
+    def changeLayoutToCoronal():
+        SlicerUtil.changeLayout(8)
 
     @staticmethod
     def changeContrastWindow(window, level):

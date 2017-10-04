@@ -50,33 +50,6 @@ vtkMRMLParticlesNode::~vtkMRMLParticlesNode()
 }
 
 //----------------------------------------------------------------------------
-void vtkMRMLParticlesNode::WriteXML(ostream& of, int nIndent)
-{
-  // Write all attributes not equal to their defaults
-
-  Superclass::WriteXML(of, nIndent);
-
-  vtkIndent indent(nIndent);
-}
-
-//----------------------------------------------------------------------------
-void vtkMRMLParticlesNode::ReadXMLAttributes(const char** atts)
-{
-  int disabledModify = this->StartModify();
-
-  Superclass::ReadXMLAttributes(atts);
-  const char* attName;
-  const char* attValue;
-  while (*atts != NULL)
-    {
-    attName = *(atts++);
-    attValue = *(atts++);
-    }
-
-  this->EndModify(disabledModify);
-}
-
-//----------------------------------------------------------------------------
 // Copy the node's attributes to this object.
 // Does NOT copy: ID, FilePrefix, Name, ID
 void vtkMRMLParticlesNode::Copy(vtkMRMLNode *anode)

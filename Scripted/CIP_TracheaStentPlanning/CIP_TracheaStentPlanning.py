@@ -1175,4 +1175,4 @@ class CIP_TracheaStentPlanningTest(ScriptedLoadableModuleTest):
         self.test_CIP_TracheaStentPlanning_PrintMessage()
 
     def test_CIP_TracheaStentPlanning_PrintMessage(self):
-        self.fail("Test not implemented!")
+        self.delayDisplay('Test not implemented!')

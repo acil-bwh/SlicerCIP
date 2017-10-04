@@ -35,7 +35,8 @@ class CIP_LesionModel(ScriptedLoadableModule):
                                     "Brigham and Women's Hospital"]
         self.parent.helpText = """This module allows to segment benign nodules and tumors in the lung.
             Besides, it analyzes a lot of different features inside the nodule and in its surroundings,
-            in concentric spheres of different radius centered in the centroid of the nodule"""
+            in concentric spheres of different radius centered in the centroid of the nodule<br>
+            A quick tutorial of the module can be found <a href='https://chestimagingplatform.org/files/chestimagingplatform/files/lung_lesion_analyzer.pdf'>here</a>"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 
@@ -1542,7 +1543,8 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """This is invoked as a destructor of the GUI when the module is no longer going to be used"""
         # self.timer.stop()
         #self.setAddSeedsMode(False)
-        pass
+        self.reportsWidget.cleanup()
+        self.reportsWidget = None
     # def updateFeatureParameterDict(self, intValue, featureWidget):
     #     featureName = featureWidget.getName()
     #     self.featureParametersDict[featureName].update(featureWidget.getParameterDict())

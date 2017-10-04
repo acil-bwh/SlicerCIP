@@ -47,7 +47,9 @@ class MIPViewerWidget(object):
         # If no context is set, display the whole widget
         self.fullModeOn = (context == self.CONTEXT_UNKNOWN)
         self.currentContext = context
-        self.originalLayout = slicer.app.layoutManager().layout
+        self.originalLayout = None
+        if slicer.app.layoutManager() is not None:
+            self.originalLayout = slicer.app.layoutManager().layout
 
     ####
     # PROPERTIES
@@ -358,7 +360,8 @@ class MIPViewerWidget(object):
 
     def enter(self):
         """This is invoked every time that we select this module as the active module in Slicer (not only the first time)"""
-        self.originalLayout = slicer.app.layoutManager().layout
+        if slicer.app.layoutManager() is not None:
+            self.originalLayout = slicer.app.layoutManager().layout
 
     def exit(self):
         """This is invoked every time that we switch to another module (not only when Slicer is closed)."""

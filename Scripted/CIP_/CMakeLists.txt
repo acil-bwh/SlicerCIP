@@ -20,11 +20,11 @@ set(MODULE_PYTHON_SCRIPTS
   CIP/ui/CIP_EditorWidget.py
   CIP/ui/CollapsibleMultilineText.py
   CIP/ui/MIPViewerWidget.py
+  CIP/ui/PdfReporter.py
   CIP/ui/PreProcessingWidget.py
   )
 
 set(MODULE_PYTHON_RESOURCES
-  CIP/ui/Resources/Icons/1415667870_kview.png
   CIP/ui/Resources/Icons/ACIL.png
   CIP/ui/Resources/Icons/ACIL_Blank.png
   CIP/ui/Resources/Icons/Load.png
@@ -43,10 +43,15 @@ set(MODULE_PYTHON_RESOURCES
   CIP/ui/Resources/Icons/open_file.png
   CIP/ui/Resources/Icons/plus.png
   CIP/ui/Resources/Icons/previous.png
+  CIP/ui/Resources/Icons/print.png
   CIP/ui/Resources/Icons/recycle.png
   CIP/ui/Resources/Icons/ruler.png
   CIP/ui/Resources/Icons/rulers.png
+  CIP/ui/Resources/Icons/search.png
   CIP/ui/Resources/Icons/sagittal.png
+  CIP/ui/Resources/Icons/shortcut.png
+  CIP/ui/Resources/Icons/zoom_in.png
+  CIP/ui/Resources/Icons/zoom_out.png
   CIP/ui/Resources/StructuresColorMap.ctbl
   CIP/ui/Resources/chest_type_colors.ctbl
   CIP/ui/Resources/chest_region_colors.ctbl

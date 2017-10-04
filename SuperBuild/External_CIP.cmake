@@ -34,10 +34,8 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
   ExternalProject_Add(${proj}
     ${${proj}_EP_ARGS}
     GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
-    GIT_TAG develop
+    GIT_TAG origin/develop
     SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
-    #DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
-    #SOURCE_DIR ../CIP
     BINARY_DIR ${proj}-build
     CMAKE_CACHE_ARGS
       -DCIP_SUPERBUILD:BOOL=OFF
@@ -66,6 +64,7 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DCIP_CLI_INSTALL_LIBRARY_DESTINATION:PATH=${Slicer_INSTALL_CLIMODULES_LIB_DIR}
       -DCIP_CLI_INSTALL_ARCHIVE_DESTINATION:PATH=${Slicer_INSTALL_CLIMODULES_LIB_DIR}
       -DCIP_CLI_INSTALL_RUNTIME_DESTINATION:PATH=${Slicer_INSTALL_CLIMODULES_BIN_DIR}
+      -DINSTALL_CIP_PYTHON_LIBRARY:BOOL=OFF
       -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
       -DCMAKE_CXX_FLAGS:STRING=${ep_common_cxx_flags}
       -DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}
@@ -73,15 +72,9 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DBUILD_TESTING:BOOL=OFF
       -DCMAKE_CXX_FLAGS:STRING=${CIP_CMAKE_CXX_FLAGS}
-
-    #CONFIGURE_COMMAND ${CMAKE_COMMAND}
-    #-E echo
-    #  "This CONFIGURE_COMMAND is just here as a placeholder."
-    #  "Remove this line to enable configuring of a real CMake based external project"
-    #BUILD_COMMAND ${CMAKE_COMMAND}
-    #-E echo
-    #  "This BUILD_COMMAND is just here as a placeholder."
-    #  "Remove this line to enable building of a real CMake based external project"
+      -DCMAKE_CXX_STANDARD:STRING=${CMAKE_CXX_STANDARD}
+      -DCMAKE_CXX_STANDARD_REQUIRED:BOOL=${CMAKE_CXX_STANDARD_REQUIRED}
+      -DCMAKE_CXX_EXTENSIONS:BOOL=${CMAKE_CXX_EXTENSIONS}
     INSTALL_COMMAND ""
     DEPENDS
       ${${proj}_DEPENDENCIES}

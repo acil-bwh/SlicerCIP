@@ -39,7 +39,10 @@
 #include <vtkMRMLScene.h>
 
 //-----------------------------------------------------------------------------
+#if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
+#include <QtPlugin>
 Q_EXPORT_PLUGIN2(qSlicerAirwayInspectorModule, qSlicerAirwayInspectorModule);
+#endif
 
 //-----------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_AirwayInspector
@@ -65,6 +68,7 @@ QString qSlicerAirwayInspectorModule::helpText()const
 {
   QString help = QString(
     "The AirwayInspector Module detects airway walls and computes their parameters.<br>"
+    "A quick tutorial of the module can be found <a href='https://chestimagingplatform.org/files/chestimagingplatform/files/airway_inspector.pdf'>here.</a><br>"
     "To analyze an airway select a volume, point your mouse in the center or an aiway in the Red slice view and press 'a' key.<br>"
     "<a href=\"%1/Documentation/%2.%3/Modules/AirwayInspector\">"
     "%1/Documentation/%2.%3/Modules/AirwayInspector</a><br>");
@@ -123,8 +127,8 @@ QStringList qSlicerAirwayInspectorModule::dependencies() const
 void qSlicerAirwayInspectorModule::setup()
 {
   this->Superclass::setup();
-  vtkSlicerAirwayInspectorModuleLogic* AirwayInspectorLogic =
-    vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
+  //vtkSlicerAirwayInspectorModuleLogic* AirwayInspectorLogic =
+  //  vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
 
   /**
   qSlicerCoreIOManager* ioManager =

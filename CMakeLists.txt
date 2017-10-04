@@ -1,4 +1,16 @@
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.5.0)
+
+#-----------------------------------------------------------------------------
+# C++ standard
+#
+set(_msg "Setting C++ standard")
+message(STATUS "${_msg}")
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 98)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+message(STATUS "${_msg} - C++${CMAKE_CXX_STANDARD}")
 
 #-----------------------------------------------------------------------------
 project(SlicerCIP)
@@ -66,11 +78,7 @@ if(APPLE)
 endif()
 
 #-----------------------------------------------------------------------------
-# Extension modules
-#add_subdirectory(Example-Scripted)
-#add_subdirectory(Example-Loadable)
-#add_subdirectory(Example-CLI)
-## NEXT_MODULE
+set(CTK_COMPILE_PYTHON_SCRIPTS_GLOBAL_TARGET_NAME "SlicerCIP")
 
 #-----------------------------------------------------------------------------
 add_subdirectory(Scripted)
@@ -80,6 +88,9 @@ if(BUILD_TESTING)
 #  add_subdirectory(Testing)
 endif()
 
+#-----------------------------------------------------------------------------
+ctkFunctionAddCompilePythonScriptTargets(
+  ${CTK_COMPILE_PYTHON_SCRIPTS_GLOBAL_TARGET_NAME})
 
 #-----------------------------------------------------------------------------
 #Package CIP into SlicerCIP build (CIP needs to be installed first before packaging extension)

@@ -4,10 +4,11 @@ Common functions that can be useful in any Python module development
 """
 
 import vtk
-import os, sys
+import sys
 import traceback
 import numpy as np
 import SimpleITK as sitk
+import subprocess
 
 import file_conventions
 from geometry_topology_data import *
@@ -405,3 +406,17 @@ class Util:
         """
         return (chestType << 8) + chestRegion
 
+    @staticmethod
+    def openFile(filePath):
+        """ Open a file with the default system application
+        :param filePath: file to open
+        """
+        if os.sys.platform == "darwin":
+            # MAC
+            subprocess.call(["open", filePath])
+        elif os.sys.platform == "win32":
+            # Windows
+            os.startfile(filePath)
+        else:
+            # Linux
+            subprocess.call(["xdg-open", filePath])

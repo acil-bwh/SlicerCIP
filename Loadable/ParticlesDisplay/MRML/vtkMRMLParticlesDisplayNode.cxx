@@ -42,24 +42,24 @@ vtkMRMLParticlesDisplayNode::vtkMRMLParticlesDisplayNode()
 {
   this->ParticleSize = 0.4;
 
-  this->AssignScalar = vtkAssignAttribute::New();
-  this->AssignVector = vtkAssignAttribute::New();
-  this->Glypher = vtkGlyph3DWithScaling::New();
-  this->SphereSource = vtkSphereSource::New();
+  this->AssignScalar = vtkSmartPointer<vtkAssignAttribute>::New();
+  this->AssignVector = vtkSmartPointer<vtkAssignAttribute>::New();
+  this->Glypher = vtkSmartPointer<vtkGlyph3DWithScaling>::New();
+  this->SphereSource = vtkSmartPointer<vtkSphereSource>::New();
   this->SphereSource->SetRadius( this->ParticleSize );
   this->SphereSource->SetCenter( 0, 0, 0 );
 
-  this->CylinderSource = vtkCylinderSource::New();
+  this->CylinderSource = vtkSmartPointer<vtkCylinderSource>::New();
   this->CylinderSource->SetHeight( this->ParticleSize); //25
   this->CylinderSource->SetRadius( 1.0 );
   this->CylinderSource->SetCenter( 0, 0, 0 );
   this->CylinderSource->SetResolution( 20 );
   this->CylinderSource->CappingOn();
 
-  this->CylinderRotator = vtkTransform::New();
+  this->CylinderRotator = vtkSmartPointer<vtkTransform>::New();
   this->CylinderRotator->RotateZ( 90 );
 
-  this->TransformPolyData = vtkTransformPolyDataFilter::New();
+  this->TransformPolyData = vtkSmartPointer<vtkTransformPolyDataFilter>::New();
   this->TransformPolyData->SetInputConnection(this->CylinderSource->GetOutputPort() );
   this->TransformPolyData->SetTransform( this->CylinderRotator );
   this->TransformPolyData->Update();
@@ -88,10 +88,6 @@ vtkMRMLParticlesDisplayNode::vtkMRMLParticlesDisplayNode()
 //----------------------------------------------------------------------------
 vtkMRMLParticlesDisplayNode::~vtkMRMLParticlesDisplayNode()
 {
-  this->Glypher->Delete();
-  this->GlyphSource->Delete();
-  this->AssignScalar->Delete();
-  this->AssignVector->Delete();
   this->SetParticlesColorBy(0);
 }
 

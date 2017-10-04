@@ -167,8 +167,6 @@ void qSlicerAirwayInspectorModuleWidget::setMRMLScene(vtkMRMLScene *newScene)
 {
   Q_D(qSlicerAirwayInspectorModuleWidget);
 
-  vtkMRMLScene* oldScene = this->mrmlScene();
-
   this->Superclass::setMRMLScene(newScene);
 
   vtkSlicerAirwayInspectorModuleLogic *logic = vtkSlicerAirwayInspectorModuleLogic::SafeDownCast(this->logic());
@@ -294,14 +292,11 @@ void qSlicerAirwayInspectorModuleWidget::onInteractorEvent(vtkRenderWindowIntera
     if (x < windowWidth && y < windowHeight)
       {
       // it's a 3D displayable manager and the click could have been on a node
-      double yNew = windowHeight - y - 1;
-
       vtkMRMLSliceNode* snode = this->interactors[interactor];
       vtkMatrix4x4 *xyToRAS = snode->GetXYToRAS();
       double xyz[4];
       xyz[0] = x;
       xyz[1] = y;
-      //xyz[1] = yNew;
       xyz[2] = 0;
       xyz[3] = 1;
       double *xyzRAS = xyToRAS->MultiplyDoublePoint(xyz);
@@ -351,6 +346,7 @@ void qSlicerAirwayInspectorModuleWidget::onLayoutChanged(int)
 //-----------------------------------------------------------------------------
 void qSlicerAirwayInspectorModuleWidget::setMRMLVolumeNode(vtkMRMLNode* mrmlNode)
 {
+  Q_UNUSED(mrmlNode);
   Q_D(qSlicerAirwayInspectorModuleWidget);
 
   vtkMRMLScalarVolumeNode* volumeNode = vtkMRMLScalarVolumeNode::SafeDownCast(
@@ -376,6 +372,7 @@ void qSlicerAirwayInspectorModuleWidget::setMRMLVolumeNode(vtkMRMLNode* mrmlNode
 //-----------------------------------------------------------------------------
 void qSlicerAirwayInspectorModuleWidget::setMRMLAirwayNode(vtkMRMLNode* mrmlNode)
 {
+  Q_UNUSED(mrmlNode);
   Q_D(qSlicerAirwayInspectorModuleWidget);
 
   vtkMRMLAirwayNode* airwayNode = vtkMRMLAirwayNode::SafeDownCast(
@@ -550,7 +547,7 @@ void qSlicerAirwayInspectorModuleWidget::analyzeAll()
   std::vector<vtkMRMLNode *> nodes;
   this->mrmlScene()->GetNodesByClass("vtkMRMLAirwayNode", nodes);
 
-  for (int i=0; i<nodes.size(); i++)
+  for (size_t i=0; i<nodes.size(); i++)
     {
     vtkMRMLAirwayNode* airwayNode = vtkMRMLAirwayNode::SafeDownCast(nodes[i]);
 
@@ -594,8 +591,6 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
 
   // report the results
   d->ReportTable->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
-
-	int numCols = this->statsLabels.size();
 
   if (airwayNode->GetMin(airwayNode->GetMethod()) == 0 ||
       airwayNode->GetMax(airwayNode->GetMethod()) == 0 ||
@@ -918,7 +913,7 @@ void qSlicerAirwayInspectorModuleWidget::writeCSV()
   std::vector<vtkMRMLNode *> nodes;
   this->mrmlScene()->GetNodesByClass("vtkMRMLAirwayNode", nodes);
 
-  for (int i=0; i<nodes.size(); i++)
+  for (size_t i=0; i<nodes.size(); i++)
     {
     vtkMRMLAirwayNode* node = vtkMRMLAirwayNode::SafeDownCast(nodes[i]);
     std::map<int, vtkDoubleArray*>::iterator it;
