@@ -2,6 +2,8 @@ import os
 from collections import OrderedDict
 
 import vtk, qt, ctk, slicer
+import SimpleITK as sitk
+
 from slicer.ScriptedLoadableModule import *
 
 from CIP.ui import CaseReportsWidget
@@ -9,6 +11,7 @@ from CIP.ui import PreProcessingWidget
 from CIP.ui import PdfReporter
 from CIP.logic.SlicerUtil import SlicerUtil
 from CIP.logic.Util import Util
+from CIP.logic.lung_splitter import LungSplitter as lung_splitter
 
 #
 # CIP_ParenchymaAnalysis
@@ -146,6 +149,11 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         # Image filtering section
         self.preProcessingWidget = PreProcessingWidget(self.moduleName, parentWidget=self.parent)
         self.preProcessingWidget.setup()
+        #
+        # self.splitRadioButton = qt.QRadioButton()
+        # self.splitRadioButton.setText('Split Label Map')
+        # self.splitRadioButton.setChecked(0)
+        # self.parent.layout().addWidget(self.splitRadioButton, 0, 3)
 
         # Apply button
         self.applyButton = qt.QPushButton("Apply")
@@ -278,6 +286,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         # connections
         self.applyButton.connect('clicked()', self.onApply)
+
         self.chartButton.connect('clicked()', self.onChart)
 
         self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
@@ -390,6 +399,28 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.labelNode.SetName(slicer.mrmlScene.GenerateUniqueName(name))
 
         self.preProcessingWidget.createPartialLM(inputNode, self.labelNode)
+
+        label_image = self.labelNode.GetImageData()
+        shape = list(label_image.GetDimensions())
+        input_array = vtk.util.numpy_support.vtk_to_numpy(label_image.GetPointData().GetScalars())
+        original_shape = input_array.shape
+        input_array = input_array.reshape(shape)
+
+        input_image = sitk.GetImageFromArray(input_array)
+
+        my_lung_splitter = lung_splitter(split_thrids=True)
+        split_lm = my_lung_splitter.execute(input_image)
+
+        split = sitk.GetArrayFromImage(split_lm)
+
+        input_aa = vtk.util.numpy_support.vtk_to_numpy(label_image.GetPointData().GetScalars())
+
+        input_aa[:] = split.reshape(original_shape)
+
+        self.labelNode.StorableModified()
+        self.labelNode.Modified()
+        self.labelNode.InvokeEvent(slicer.vtkMRMLVolumeNode.ImageDataModifiedEvent, self.labelNode)
+
         SlicerUtil.changeLabelmapOpacity(0.5)
 
     def onApply(self):
