@@ -56,10 +56,10 @@ class LungSplitter():
         
         #Work just on whole lung or Upper,Middle,Lower Thrids
         lm_wl_np = lm_region_np
-        wl_mask=(lm_region_np==self.WholeLung) | (lm_region_np==self.UpperThird) |\
-                 (lm_region_np==self.MiddleThrid) | (lm_region_np==self.LowerThird)
+        wl_mask = (lm_region_np == self.WholeLung) | (lm_region_np == self.UpperThird) |\
+                  (lm_region_np == self.MiddleThrid) | (lm_region_np == self.LowerThird)
                  
-        if np.sum(wl_mask)==0:
+        if np.sum(wl_mask) != 0:
             #Nothing to do a filter should return the input lm
             return lm
         
@@ -94,37 +94,34 @@ class LungSplitter():
 
 
         #Final labeling by region growing
-
-
         #Splitting in Thrids
         if self.split_thrids == True:
-            vol_right = np.sum(olm_np==self.RightLabel)
-            vol_left = np.sum(olm_np==self.LeftLabel)
+            vol_right = np.sum(olm_np == self.RightLabel)
+            vol_left = np.sum(olm_np == self.LeftLabel)
             target_vol_right = 0
             target_vol_left = 0
             for zz in xrange(size[2]):
                 cut =olm_np[zz,:,:]
-                right_mask= (cut==self.RightLabel)
-                left_mask= (cut==self.LeftLabel)
+                right_mask= (cut == self.RightLabel)
+                left_mask= (cut == self.LeftLabel)
                 
                 slice_vol_right = np.sum(right_mask)
                 slice_vol_left = np.sum(left_mask)
                 if target_vol_right <= vol_right/3:
-                    cut[right_mask]=self.RightLowerThrid
+                    cut[right_mask] = self.RightLowerThrid
                 elif target_vol_right > vol_right/3 and target_vol_right <= 2*vol_right/3:
-                    cut[right_mask]=self.RightMiddleThrid
+                    cut[right_mask] = self.RightMiddleThrid
                 else:
-                    cut[right_mask]=self.RightUpperThird
+                    cut[right_mask] = self.RightUpperThird
                 
                 target_vol_right = target_vol_right + slice_vol_right
                 
                 if target_vol_left <= vol_left/3:
-                    cut[left_mask]=self.LeftLowerThrid
+                    cut[left_mask] = self.LeftLowerThrid
                 elif target_vol_left > vol_left/3 and target_vol_left <= 2*vol_left/3:
-                    cut[left_mask]=self.LeftMiddleThird
+                    cut[left_mask] = self.LeftMiddleThird
                 else:
                     cut[left_mask] = self.LeftUpperThird
-                
 
                 target_vol_left = target_vol_left + slice_vol_left
 
