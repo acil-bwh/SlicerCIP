@@ -26,7 +26,7 @@ class LungSplitter():
         # self.RightLowerThrid  = c.GetChestRegionValueFromName('RightLowerThird')
         self.RightLabel = 2
         self.LeftLabel = 3
-        self.WholeLung = 16
+        self.WholeLung = 1
         self.UpperThird = 20
         self.MiddleThrid = 21
         self.LowerThird = 22
@@ -47,54 +47,51 @@ class LungSplitter():
         self.ls = sitk.LabelShapeStatisticsImageFilter()
 
     def execute(self, lm):
-
-
-        #Get Region/Type Information
-        lm_np  =sitk.GetArrayFromImage(lm)
+        # Get Region/Type Information
+        lm_np = sitk.GetArrayFromImage(lm)
         lm_region_np = lm_np & 255
         lm_type_np = lm_np >> 8
         
-        #Work just on whole lung or Upper,Middle,Lower Thrids
+        # Work just on whole lung or Upper, Middle, Lower Thirds
         lm_wl_np = lm_region_np
         wl_mask = (lm_region_np == self.WholeLung) | (lm_region_np == self.UpperThird) |\
                   (lm_region_np == self.MiddleThrid) | (lm_region_np == self.LowerThird)
-                 
-        if np.sum(wl_mask) != 0:
-            #Nothing to do a filter should return the input lm
+
+        if np.sum(wl_mask) == 0:
+            # Nothing to do a filter should return the input lm
             return lm
         
-        lm_wl_np[wl_mask]=self.WholeLung
-        lm_wl=sitk.GetImageFromArray(lm_wl_np)
+        lm_wl_np[wl_mask] = self.WholeLung
+        lm_wl = sitk.GetImageFromArray(lm_wl_np)
         lm_wl.CopyInformation(lm)
 
-        #Output holder copy
+        # Output holder copy
         olm_tmp = sitk.Image(lm_wl)
         olm_np = sitk.GetArrayFromImage(olm_tmp)
         
         size = lm_wl.GetSize()
 
-        #Axial run
+        # Axial run
         for zz in xrange(size[2]):
             #print 'Axial %d'%zz
             cut = lm_wl[:,:,zz]
             out_cut = olm_np[zz,:,:]
             self.twoobject_label_cut(cut,out_cut,2,zz,0)
-        #Coronal run
+        # Coronal run
         for yy in xrange(size[1]):
             #print 'Coronal %d'%yy
             cut = lm_wl[:,yy,:]
             out_cut = olm_np[:,yy,:]
             self.twoobject_label_cut(cut,out_cut,1,yy,0)
 
-        #Do majority voting split along sagittal
+        # Do majority voting split along sagittal
         for xx in xrange(size[0]):
             cut = lm_wl[xx,:,:]
             out_cut = olm_np[:,:,xx]
             self.allobjects_majority_voting_label_cut(cut,out_cut)
 
-
-        #Final labeling by region growing
-        #Splitting in Thrids
+        # Final labeling by region growing
+        # Splitting in Thirds
         if self.split_thrids == True:
             vol_right = np.sum(olm_np == self.RightLabel)
             vol_left = np.sum(olm_np == self.LeftLabel)
@@ -144,7 +141,7 @@ class LungSplitter():
             fm_f[label].SetStoppingValue(100)
             seeds[label]
             fm_f[label].SetTrialPoints(seeds)
-    
+
 
 
     def allobjects_majority_voting_label_cut(self,cut,out_np):
@@ -162,7 +159,7 @@ class LungSplitter():
                 out_np[rr_np==oo+1]=self.LeftLabel
             else:
                 out_np[rr_np==oo+1]=self.RightLabel
-    
+
 
     def oneobject_majority_voting_label_cut(self,cut,out_np):
         cc = self.cc_f.Execute(cut)
