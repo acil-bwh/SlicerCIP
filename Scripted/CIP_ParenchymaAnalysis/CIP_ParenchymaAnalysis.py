@@ -441,23 +441,23 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.applyButton.repaint()
         slicer.app.processEvents()
 
-        # self.logic = CIP_ParenchymaAnalysisLogic(self.CTNode, self.labelNode)
-        # self.populateStats()
-        # self.logic.createHistogram()
-        # for i in xrange(len(self.histogramCheckBoxes)):
-        #     self.histogramCheckBoxes[i].setChecked(0)
-        #     self.histogramCheckBoxes[i].hide()
-        #
-        # for tag in self.rTags:
-        #     if tag in self.logic.regionTags:
-        #         self.histogramCheckBoxes[self.rTags.index(tag)].show()
-        #
-        # self.HistSection.enabled = True
-        # self.chartBox.enabled = True
-        # # self.reportsWidget.saveButton.enabled = True
-        # # self.reportsWidget.openButton.enabled = True
-        # # self.reportsWidget.exportButton.enabled = True
-        # # self.reportsWidget.removeButton.enabled = True
+        self.logic = CIP_ParenchymaAnalysisLogic(self.CTNode, self.labelNode)
+        self.populateStats()
+        self.logic.createHistogram()
+        for i in xrange(len(self.histogramCheckBoxes)):
+            self.histogramCheckBoxes[i].setChecked(0)
+            self.histogramCheckBoxes[i].hide()
+
+        for tag in self.rTags:
+            if tag in self.logic.regionTags:
+                self.histogramCheckBoxes[self.rTags.index(tag)].show()
+
+        self.HistSection.enabled = True
+        self.chartBox.enabled = True
+        # self.reportsWidget.saveButton.enabled = True
+        # self.reportsWidget.openButton.enabled = True
+        # self.reportsWidget.exportButton.enabled = True
+        # self.reportsWidget.removeButton.enabled = True
 
         self.applyButton.enabled = True
         self.applyButton.text = "Apply"
