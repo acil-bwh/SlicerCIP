@@ -1,0 +1,660 @@
+<?xml version="1.0" encoding="utf8"?>
+<Structures>
+    <!-- ********** AXIAL. Last id: 30 -->
+    <Structure>
+        <Id>0</Id>
+        <CodeLabel>UNDEFINED</CodeLabel>
+        <ChestRegion>0</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Undefined structure</Description>
+        <WindowWidth>-100000</WindowWidth>
+        <WindowLevel>100000</WindowLevel>
+        <Plane/>
+    </Structure>
+    <Structure>
+        <Id>2</Id>
+        <CodeLabel>RightHumerusAxial</CodeLabel>
+        <ChestRegion>35</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Humerus (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>1</Id>
+        <CodeLabel>LeftHumerusAxial</CodeLabel>
+        <ChestRegion>34</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Humerus (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>4</Id>
+        <CodeLabel>RightScapulaAxial</CodeLabel>
+        <ChestRegion>38</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Scapula (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>3</Id>
+        <CodeLabel>LeftScapulaAxial</CodeLabel>
+        <ChestRegion>37</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Scapula (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>6</Id>
+        <CodeLabel>RightPectoralisAxial</CodeLabel>
+        <ChestRegion>57</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Pectoralis (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>5</Id>
+        <CodeLabel>LeftPectoralisAxial</CodeLabel>
+        <ChestRegion>56</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Pectoralis (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>7</Id>
+        <CodeLabel>TransversalAortaAxial</CodeLabel>
+        <ChestRegion>46</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Transversal Aorta (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>28</Id>
+        <CodeLabel>TracheaCarinaAxial</CodeLabel>
+        <ChestRegion>76</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Carina (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>25</Id>
+        <CodeLabel>RightAnteriorChestWallAxial</CodeLabel>
+        <ChestRegion>73</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Anterior Chest Wall (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>24</Id>
+        <CodeLabel>LeftAnteriorChestWallAxial</CodeLabel>
+        <ChestRegion>72</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Anterior Chest Wall (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>27</Id>
+        <CodeLabel>RightPosteriorChestWallAxial</CodeLabel>
+        <ChestRegion>75</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Posterior Chest Wall (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>26</Id>
+        <CodeLabel>LeftPosteriorChestWallAxial</CodeLabel>
+        <ChestRegion>74</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Posterior Chest Wall (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>23</Id>
+        <CodeLabel>RightChestWallAxial</CodeLabel>
+        <ChestRegion>63</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Chest Wall (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>22</Id>
+        <CodeLabel>LeftChestWallAxial</CodeLabel>
+        <ChestRegion>62</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Chest Wall (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>8</Id>
+        <CodeLabel>PulmonaryArteryAxial</CodeLabel>
+        <ChestRegion>18</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Pulmonary Artery (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>19</Id>
+        <CodeLabel>SternumAxial</CodeLabel>
+        <ChestRegion>32</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Sternum (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>16</Id>
+        <CodeLabel>AscendingAortaAxial</CodeLabel>
+        <ChestRegion>32</ChestRegion>
+        <ChestType>45</ChestType>
+        <Description>Ascending Aorta (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>9</Id>
+        <CodeLabel>LeftCoronoraryArteryAxial</CodeLabel>
+        <ChestRegion>50</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Coronorary Artery (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>10</Id>
+        <CodeLabel>WholeHeartAxial</CodeLabel>
+        <ChestRegion>16</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Whole Heart (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>18</Id>
+        <CodeLabel>RightDiaphragmAxial</CodeLabel>
+        <ChestRegion>65</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Diaphragm (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>17</Id>
+        <CodeLabel>LeftDiaphragmAxial</CodeLabel>
+        <ChestRegion>64</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Diaphragm (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>11</Id>
+        <CodeLabel>LiverAxial</CodeLabel>
+        <ChestRegion>25</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Liver (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>12</Id>
+        <CodeLabel>SpleenAxial</CodeLabel>
+        <ChestRegion>26</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Spleen (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>14</Id>
+        <CodeLabel>RightKidneyAxial</CodeLabel>
+        <ChestRegion>44</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Kidney (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>13</Id>
+        <CodeLabel>LeftKidneyAxial</CodeLabel>
+        <ChestRegion>43</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Kidney (Axial)</Description>s
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>20</Id>
+        <CodeLabel>SuperiorMesentericArteryAxial</CodeLabel>
+        <ChestRegion>69</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Superior Mesenteric Artery (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>21</Id>
+        <CodeLabel>PancreasHeadAxial</CodeLabel>
+        <ChestRegion>71</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Pancreas Head (Axial)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>29</Id>
+        <CodeLabel>AorticValveSystole</CodeLabel>
+        <ChestRegion>77</ChestRegion>
+        <ChestType>94</ChestType>
+        <Description>Aortic Valve (Systole) (Axial)</Description>
+        <WindowWidth>75</WindowWidth>
+        <WindowLevel>130</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+    <Structure>
+        <Id>30</Id>
+        <CodeLabel>AorticValveDiastole</CodeLabel>
+        <ChestRegion>77</ChestRegion>
+        <ChestType>95</ChestType>
+        <Description>Aortic Valve (Diastole) (Axial)</Description>
+        <WindowWidth>75</WindowWidth>
+        <WindowLevel>130</WindowLevel>
+        <Plane>A</Plane>
+    </Structure>
+
+    <!-- ******************************************************************* -->
+    <!-- SAGITTAL. Last id:48 -->
+    <Structure>
+        <Id>31</Id>
+        <CodeLabel>TransversalAortaSagittal</CodeLabel>
+        <ChestRegion>46</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Transversal Aorta (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>34</Id>
+        <CodeLabel>WholeHeartSagittal</CodeLabel>
+        <ChestRegion>16</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Whole Heart (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>33</Id>
+        <CodeLabel>PulmonaryArterySagittal</CodeLabel>
+        <ChestRegion>18</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Pulmonary Artery (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>32</Id>
+        <CodeLabel>AscendingAortaSagittal</CodeLabel>
+        <ChestRegion>45</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Ascending Aorta (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>36</Id>
+        <CodeLabel>Trachea2Sagittal</CodeLabel>
+        <ChestRegion>58</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Trachea (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>35</Id>
+        <CodeLabel>SternumSagittal</CodeLabel>
+        <ChestRegion>32</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Sternum (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>37</Id>
+        <CodeLabel>SpineSagittal</CodeLabel>
+        <ChestRegion>51</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Spine (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>38</Id>
+        <CodeLabel>LiverSagittal</CodeLabel>
+        <ChestRegion>25</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Liver (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>39</Id>
+        <CodeLabel>LeftHilumSagittal</CodeLabel>
+        <ChestRegion>40</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Hilum (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>41</Id>
+        <CodeLabel>LeftVentricleSagittal</CodeLabel>
+        <ChestRegion>52</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Ventricle (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>43</Id>
+        <CodeLabel>LeftDiaphragmSagittal</CodeLabel>
+        <ChestRegion>64</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Diaphragm (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>45</Id>
+        <CodeLabel>LeftAnteriorChestWallSagittal</CodeLabel>
+        <ChestRegion>72</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Anterior Chest Wall (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>47</Id>
+        <CodeLabel>LeftPosteriorChestWallSagittal</CodeLabel>
+        <ChestRegion>74</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Posterior Chest Wall (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>40</Id>
+        <CodeLabel>RightHilumSagittal</CodeLabel>
+        <ChestRegion>41</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Hilum (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>44</Id>
+        <CodeLabel>RightDiaphragmSagittal</CodeLabel>
+        <ChestRegion>65</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Diaphragm (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>46</Id>
+        <CodeLabel>RightAnteriorChestWallSagittal</CodeLabel>
+        <ChestRegion>73</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Anterior Chest Wall (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>48</Id>
+        <CodeLabel>RightPosteriorChestWallSagittal</CodeLabel>
+        <ChestRegion>75</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Posterior Chest Wall (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+    <Structure>
+        <Id>42</Id>
+        <CodeLabel>NoduleSagittal</CodeLabel>
+        <ChestRegion>0</ChestRegion>
+        <ChestType>86</ChestType>
+        <Description>Nodule (Sagittal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>S</Plane>
+    </Structure>
+
+   <!-- ******************************************************************* -->
+	<!-- ********** CORONAL. Last id: 67 -->
+    <Structure>
+        <Id>51</Id>
+        <CodeLabel>DescendingAortaCoronal</CodeLabel>
+        <ChestRegion>47</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Descending Aorta (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>60</Id>
+        <CodeLabel>SpineCoronal</CodeLabel>
+        <ChestRegion>51</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Spine (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>52</Id>
+        <CodeLabel>Trachea2Coronal</CodeLabel>
+        <ChestRegion>58</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Trachea (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>67</Id>
+        <CodeLabel>TracheaCarinaCoronal</CodeLabel>
+        <ChestRegion>76</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Carina (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>66</Id>
+        <CodeLabel>SpleenCoronal</CodeLabel>
+        <ChestRegion>26</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Spleen (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>53</Id>
+        <CodeLabel>AscendingAortaCoronal</CodeLabel>
+        <ChestRegion>45</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Ascending Aorta (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>64</Id>
+        <CodeLabel>RightDiaphragmCoronal</CodeLabel>
+        <ChestRegion>65</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Diaphragm (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>56</Id>
+        <CodeLabel>LeftDiaphragmCoronal</CodeLabel>
+        <ChestRegion>64</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Diaphragm (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>58</Id>
+        <CodeLabel>RightChestWallCoronal</CodeLabel>
+        <ChestRegion>63</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Right Chest Wall (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>57</Id>
+        <CodeLabel>LeftChestWallCoronal</CodeLabel>
+        <ChestRegion>62</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Chest Wall (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>62</Id>
+        <CodeLabel>PulmonaryArteryCoronal</CodeLabel>
+        <ChestRegion>8</ChestRegion>
+        <ChestType>18</ChestType>
+        <Description>Pulmonary Artery (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>55</Id>
+        <CodeLabel>LeftVentricleCoronal</CodeLabel>
+        <ChestRegion>52</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Ventricle (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>54</Id>
+        <CodeLabel>LiverCoronal</CodeLabel>
+        <ChestRegion>25</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Liver (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>59</Id>
+        <CodeLabel>LeftSubclavianCoronal</CodeLabel>
+        <ChestRegion>48</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Left Subclavian Artery (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>65</Id>
+        <CodeLabel>WholeHeartCoronal</CodeLabel>
+        <ChestRegion>16</ChestRegion>
+        <ChestType>0</ChestType>
+        <Description>Whole Heart (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>61</Id>
+        <CodeLabel>HernialHiatusCoronal</CodeLabel>
+        <ChestRegion>66</ChestRegion>
+        <ChestType>81</ChestType>
+        <Description>Hernial Hiatus (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+    <Structure>
+        <Id>63</Id>
+        <CodeLabel>NoduleCoronal</CodeLabel>
+        <ChestRegion>0</ChestRegion>
+        <ChestType>86</ChestType>
+        <Description>Nodule (Coronal)</Description>
+        <WindowWidth>900</WindowWidth>
+        <WindowLevel>50</WindowLevel>
+        <Plane>C</Plane>
+    </Structure>
+</Structures>
