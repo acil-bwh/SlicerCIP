@@ -428,9 +428,7 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
         regionId = self.regionsRadioButtonGroup.checkedId()
         colorId = (typeId << 8) + regionId
         self.editorWidget.toolsColor.colorSpin.setValue(colorId)
-        # else:
-        #     # Artifact. Always the last color in the node
-        #     self.editorWidget.toolsColor.colorSpin.setValue(512)
+        self.editorWidget.setActiveEffect("PaintEffect")
 
     def setSecondaryTypeGUIProperties(self):
         subtype = self.subtypesRadioButtonGroup.checkedId()
@@ -444,6 +442,7 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
         regionId = self.regionsRadioButtonGroup.checkedId()
         colorId = (t << 8) + regionId
         self.editorWidget.toolsColor.colorSpin.setValue(colorId)
+        self.editorWidget.setActiveEffect("PaintEffect")
 
     def saveResults(self):
         try:
