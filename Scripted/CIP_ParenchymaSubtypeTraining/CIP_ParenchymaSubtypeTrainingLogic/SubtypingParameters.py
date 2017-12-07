@@ -328,8 +328,8 @@ class SubtypingParameters(object):
         # Add background
         colorNode.SetColor(0, "Background", 0, 0, 0, 0)
 
-        # Get Slicer RandomIntegers colormap node as a template
-        slicerGenericColors = slicer.util.getNode('RandomIntegers')
+        # Get Slicer GenericColors colormap node as a template
+        slicerGenericColors = slicer.util.getNode('GenericColors')
 
         # Add a region and a type/subtype for each allowed combination
         # The regions will not have a special color, the type is the main object

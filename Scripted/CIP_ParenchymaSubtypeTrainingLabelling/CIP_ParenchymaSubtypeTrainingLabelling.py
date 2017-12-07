@@ -21,13 +21,12 @@ class CIP_ParenchymaSubtypeTrainingLabelling(ScriptedLoadableModule):
     def __init__(self, parent):
         """Constructor for main class"""
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = "CIP Area labelling"
+        self.parent.title = "Parenchyma Subtype Training-Labelling"
         self.parent.categories = SlicerUtil.CIP_ModulesCategory
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
         self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory", "Brigham and Women's Hospital"]
         self.parent.helpText = "Segment and label different structures in the body"
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
-        self.parent.hidden = False  # Hide the module. It just works as a parent for child modules
 
 ######################################
 # CIP_StructuresDetectionWidget
