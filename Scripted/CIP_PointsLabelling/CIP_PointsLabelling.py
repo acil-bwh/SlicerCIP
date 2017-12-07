@@ -219,6 +219,7 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
                                     "Error when saving the results. Please review the console for additional info")
 
     def uploadFileResult(self, result):
+        """Callback method that will be invoked by the CaseNavigator after uploading a file remotely"""
         if result != Util.OK:
             qt.QMessageBox.warning(slicer.util.mainWindow(), "Error when uploading fiducials",
                 "There was an error when uploading the fiducials file. This doesn't mean that your file wasn't saved locally!\n" +

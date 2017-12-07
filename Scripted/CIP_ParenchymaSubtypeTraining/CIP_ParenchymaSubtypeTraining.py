@@ -174,29 +174,29 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
                          , self.regionsRadioButtonGroup.checkedId(), self.artifactsRadioButtonGroup.checkedId())
             self.logic.setActiveFiducialsListNode(self.currentVolumeLoaded, typesList)
 
-    def _getColorTable_(self):
-        """ Color table for this module for a better labelmap visualization.
-        This must be implemented by child classes"""
-        colorTableNode = slicer.util.getNode("CIP_ILDClassification_ColorMap*")
-        if colorTableNode is None:
-            # Load the node from disk
-            p = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                             "Resources/CIP_ILDClassification_ColorMap.ctbl")
-            colorTableNode = slicer.modules.colors.logic().LoadColorFile(p)
-        return colorTableNode
+    # def _getColorTable_(self):
+    #     """ Color table for this module for a better labelmap visualization.
+    #     This must be implemented by child classes"""
+    #     colorTableNode = slicer.util.getNode("CIP_ILDClassification_ColorMap*")
+    #     if colorTableNode is None:
+    #         # Load the node from disk
+    #         p = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+    #                          "Resources/CIP_ILDClassification_ColorMap.ctbl")
+    #         colorTableNode = slicer.modules.colors.logic().LoadColorFile(p)
+    #     return colorTableNode
 
-    def __onNewILDClassificationLabelmapLoaded__(self, labelmapNode, split1, split2):
-        """ Load a new ILD classification labelmap volume.
-        If the labelmap is a known labelmap type, set the right colors and opacity
-        @param labelmapNode:
-        """
-        if SlicerUtil.isExtensionMatch(labelmapNode, "ILDClassificationLabelmap"):
-            colorNode = self._getColorTable_()
-            displayNode = labelmapNode.GetDisplayNode()
-            displayNode.SetAndObserveColorNodeID(colorNode.GetID())
-            # Change Opacity
-            SlicerUtil.displayLabelmapVolume(labelmapNode.GetID())
-            SlicerUtil.changeLabelmapOpacity(0.3)
+    # def __onNewILDClassificationLabelmapLoaded__(self, labelmapNode, split1, split2):
+    #     """ Load a new ILD classification labelmap volume.
+    #     If the labelmap is a known labelmap type, set the right colors and opacity
+    #     @param labelmapNode:
+    #     """
+    #     if SlicerUtil.isExtensionMatch(labelmapNode, "ILDClassificationLabelmap"):
+    #         colorNode = self._getColorTable_()
+    #         displayNode = labelmapNode.GetDisplayNode()
+    #         displayNode.SetAndObserveColorNodeID(colorNode.GetID())
+    #         # Change Opacity
+    #         SlicerUtil.displayLabelmapVolume(labelmapNode.GetID())
+    #         SlicerUtil.changeLabelmapOpacity(0.3)
 
     def __onTypesRadioButtonClicked__(self, button):
         """ One of the radio buttons has been pressed

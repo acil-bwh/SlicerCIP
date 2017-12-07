@@ -1,5 +1,9 @@
 from collections import OrderedDict
-  
+
+import slicer
+
+from CIP.logic.SlicerUtil import SlicerUtil
+
 class SubtypingParameters(object):
     """ Class that stores the structure required for Chest Subtyping training
     """
@@ -109,11 +113,15 @@ class SubtypingParameters(object):
     def artifacts(self):
         return self.__artifacts__
 
+    @property
+    def totalAllowedCombinationsNumber(self):
+        return len(self.__allowedCombinationsTypes__)
+
     # Allowed type combinations
     TYPE_INDEX = 0                           # Type (0-255)
     SUBTYPE_OR_REGION_INDEX = 1              # Subtype or region (0-255)
 
-    __allowedCombinationsTypes__ = ( \
+    __allowedCombinationsTypes__ = (
         # ILD
         (84, 0),
         (84, 85),
@@ -308,3 +316,45 @@ class SubtypingParameters(object):
         if artifactId != 0:
             return (1, 0, 0)       # Mark all artifacts as red
         return self.getMainTypeColor(typeId)
+
+    def createColormapNode(self, colormapName):
+        """ Create a colormap node with one color per type (plus Red for artifacts).
+        :param colormapName: the colormap node will be named like this
+        :return:
+        """
+        # Types/Regions (2 bytes)
+        colorNode = SlicerUtil.createNewColormapNode(colormapName, numberOfColors=256**2)
+
+        # Add background
+        colorNode.SetColor(0, "Background", 0, 0, 0, 0)
+
+        # Get Slicer RandomIntegers colormap node as a template
+        slicerGenericColors = slicer.util.getNode('RandomIntegers')
+
+        # Add a region and a type/subtype for each allowed combination
+        # The regions will not have a special color, the type is the main object
+        for typeId, subtypeId in self.__allowedCombinationsTypes__:
+            t = subtypeId if subtypeId != 0 else typeId
+            color = [0] * 4
+            # Get the color from the RandomIntegers colormap
+            slicerGenericColors.GetColor(t, color)
+            t1 = self.getMainTypeLabel(typeId)
+            t2 = self.getSubtypeLabel(subtypeId)
+
+            typeLabel = "{}-{}".format(t1,t2) if subtypeId != 0 else t1
+            for regionId in self.regions.iterkeys():
+                label = "{}-{}".format(typeLabel, self.regions[regionId][0]) if regionId != 0 else typeLabel
+                colorId = (t << 8) + regionId
+                colorNode.SetColor(colorId, label, color[0], color[1], color[2])
+
+
+        # Add the regions. Use the same Random
+        # for region in self.regions.iterkeys():
+        #     color = [0] * 4
+        #     slicerGenericColors.GetColor(region + 256, color)
+        #     colorNode.SetColor(t, self.getRegionLabel(region), color[0], color[1], color[2])
+
+        # Add Red (Artifact)
+        # colorNode.SetColor(512, "ARTIFACT", 1.0, 0, 0)
+
+        return colorNode

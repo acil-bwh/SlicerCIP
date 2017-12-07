@@ -36,6 +36,8 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
     GIT_REPOSITORY "${git_protocol}://github.com/acil-bwh/ChestImagingPlatform.git"
     GIT_TAG origin/develop
     SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
+    #DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E echo "Remove this line and uncomment GIT_REPOSITORY and GIT_TAG"
+    #SOURCE_DIR /Users/jonieva/Projects/CIP
     BINARY_DIR ${proj}-build
     CMAKE_CACHE_ARGS
       -DCIP_SUPERBUILD:BOOL=OFF
@@ -51,8 +53,8 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DBUILD_GENERATEMODEL:BOOL=OFF
       -DBUILD_GENERATESIMPLELUNGMASK:BOOL=OFF # temporarily off due to lack of VtkGlue
       -DBUILD_ComputeAirwayWallFromParticles:BOOL=OFF # temporarily off due to lack of VtkGlue
-      -DSLICER_PYTHON_CMD:FILEPATH=${PYTHON_EXECUTABLE}
       -DCIP_PYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXECUTABLE}    # To parse the convention files
+      -DUSE_CYTHON:BOOL=OFF
       -DCIP_BUILD_TESTING_PYTHON:BOOL=OFF
       -DSlicerExecutionModel_DIR:STRING=${SlicerExecutionModel_DIR}
       -DSlicer_BUILD_CLI:BOOL=ON

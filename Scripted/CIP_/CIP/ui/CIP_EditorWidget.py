@@ -16,6 +16,11 @@ class CIP_EditorWidget(EditorWidget):
         self.activeTools = activeTools
         EditorWidget.__init__(self, parent, showVolumesFrame)
 
+    def setup(self):
+        EditorWidget.setup(self)
+        self.infoIconLabel.setVisible(False)
+        self.segmentEditorLabel.setVisible(False)
+
     @property
     def masterVolume(self):
         return slicer.util.getNode(self.helper.masterSelector.currentNodeID)
