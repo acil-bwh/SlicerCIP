@@ -264,7 +264,7 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
         self.observers = []
         # self.observers.append(
         #     slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAddedEvent, self.__onNodeAddedObserver__))
-        # self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__))
+        self.observers.append(slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.EndCloseEvent, self.__onSceneClosed__))
 
     def saveResultsCurrentNode(self):
         """ Get current active node and save the xml fiducials file
@@ -474,8 +474,9 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
         :param newVolumeNode:
         :return:
         """
-        self.setCurrentGrayscaleNode(newVolumeNode)
-        self.checkMasterAndLabelMapNodes()
+        if not self.disableEvents:
+            self.setCurrentGrayscaleNode(newVolumeNode)
+            self.checkMasterAndLabelMapNodes()
 
     def _onPreNavigatorLabelmapLoaded_(self, volumeNodeName):
         self.labelmapToBeRemoved = slicer.util.getNode(volumeNodeName)
@@ -556,6 +557,7 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
     #########
     def enter(self):
         """Method that is invoked when we switch to the module in slicer user interface"""
+        self.disableEvents = False
         if self.firstLoad:
             self.firstLoad = False
         else:
@@ -609,6 +611,7 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
 
     def exit(self):
         self.editorWidget.helper.masterSelector.disconnect("currentNodeChanged(vtkMRMLNode*)")
+        self.disableEvents = True
 
     def cleanup(self):
         pass

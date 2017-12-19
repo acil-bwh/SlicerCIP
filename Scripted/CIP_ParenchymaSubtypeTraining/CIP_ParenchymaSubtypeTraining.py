@@ -29,7 +29,7 @@ class CIP_ParenchymaSubtypeTraining(CIP_PointsLabelling):
         ScriptedLoadableModule.__init__(self, parent)
         self.parent.title = "Parenchyma Subtype Training"
         self.parent.categories = SlicerUtil.CIP_ModulesCategory
-        self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
+        self.parent.dependencies = [SlicerUtil.CIP_ModuleName, "CIP_PointsLabelling"]
         self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory",
                                     "Brigham and Women's Hospital"]
         self.parent.helpText = """Training parenchyma subtypes done quickly by an expert<br>
