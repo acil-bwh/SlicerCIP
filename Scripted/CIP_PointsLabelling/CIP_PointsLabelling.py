@@ -2,6 +2,8 @@ import os
 import logging
 from shutil import copyfile
 import time
+from collections import OrderedDict
+
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 
@@ -53,10 +55,14 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
 
         self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
         self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
+        self.additionalFileTypes = OrderedDict()
+
+        self.customFileName = None
 
     def _initLogic_(self):
         """Create a new logic object for the plugin"""
         self.logic = CIP_PointsLabellingLogic()
+
 
     def setup(self):
         """This is called one time when the module GUI is initialized
@@ -70,16 +76,16 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
         self.blockNodeEvents = False
 
         ##########
-        # Main area
-        self.mainAreaCollapsibleButton = ctk.ctkCollapsibleButton()
-        self.mainAreaCollapsibleButton.text = "Main area"
-        self.layout.addWidget(self.mainAreaCollapsibleButton, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
-        self.mainLayout = qt.QGridLayout(self.mainAreaCollapsibleButton)
+        # Volume selection
+        self.volumeSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.volumeSelectionCollapsibleButton.text = "Volume selection"
+        self.layout.addWidget(self.volumeSelectionCollapsibleButton)
+        self.volumeSelectionLayout = qt.QFormLayout(self.volumeSelectionCollapsibleButton)
 
         # Node selector
-        volumeLabel = qt.QLabel("Active volume: ")
-        volumeLabel.setStyleSheet("margin-left:5px")
-        self.mainLayout.addWidget(volumeLabel, 0, 0)
+        # volumeLabel = qt.QLabel("Active volume: ")
+        # volumeLabel.setStyleSheet("margin-left:5px")
+        # self.mainLayout.addWidget(volumeLabel, 0, 0)
         self.volumeSelector = slicer.qMRMLNodeComboBox()
         self.volumeSelector.nodeTypes = ("vtkMRMLScalarVolumeNode", "")
         self.volumeSelector.selectNodeUponCreation = True
@@ -90,11 +96,20 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
         self.volumeSelector.showHidden = False
         self.volumeSelector.showChildNodeTypes = False
         self.volumeSelector.setMRMLScene(slicer.mrmlScene)
-        self.volumeSelector.setFixedWidth(250)
-        self.volumeSelector.setStyleSheet("margin: 15px 0")
-        #self.volumeSelector.selectNodeUponCreation = False
-        self.mainLayout.addWidget(self.volumeSelector, 0, 1, 1, 3)
+        # self.volumeSelector.setFixedWidth(250)
+        # self.volumeSelector.setStyleSheet("margin: 15px 0")
+        # self.volumeSelector.selectNodeUponCreation = False
+        #self.volumeSelectionLayout.addWidget(self.volumeSelector, 0, 1, 1, 3)
+        self.volumeSelectionLayout.addRow("Active volume:", self.volumeSelector)
         self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.__onCurrentNodeChanged__)
+
+        ##########
+        # Main area
+        self.mainAreaCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.mainAreaCollapsibleButton.text = "Main area"
+        self.layout.addWidget(self.mainAreaCollapsibleButton, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
+        self.mainLayout = qt.QGridLayout(self.mainAreaCollapsibleButton)
+
 
 
         # Radio buttons frame. This will be filled by every child module
@@ -155,10 +170,13 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
             # Add a case list navigator
             from ACIL.ui import CaseNavigatorWidget
             self.caseNavigatorWidget = CaseNavigatorWidget(self.moduleName, caseNavigatorAreaCollapsibleButton)
+            for key,value in self.additionalFileTypes.iteritems():
+                self.caseNavigatorWidget.additionalFileTypes[key] = value
             self.caseNavigatorWidget.setup()
             # Listen for the event of loading a new labelmap
             # self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_LABELMAP_LOADED, self.__onNewILDClassificationLabelmapLoaded__)
-            self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_BUNDLE_CASE_FINISHED, self.__onFinishCaseBundleLoad__)
+            self.caseNavigatorWidget.addObservable(self.caseNavigatorWidget.EVENT_BUNDLE_CASE_FINISHED, self._onFinishCaseBundleLoad_)
+
 
         self.layout.addStretch()
 
@@ -209,7 +227,14 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
                 saveInRemoteRepo = question == qt.QMessageBox.Yes
             else:
                 saveInRemoteRepo = False
-            self.logic.saveCurrentFiducials(d, caseNavigatorWidget=self.caseNavigatorWidget,
+
+            if not self.customFileName:
+                fileName = self.currentVolumeLoaded.GetName() + Util.file_conventions_extensions[self.logic._xmlFileExtensionKey_]
+            else:
+                fileName = self.customFileName
+
+            localFilePath = os.path.join(d, fileName)
+            self.logic.saveCurrentFiducials(localFilePath, caseNavigatorWidget=self.caseNavigatorWidget,
                                             callbackFunction=self.uploadFileResult, saveInRemoteRepo=saveInRemoteRepo)
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Results saved',
                 "The results have been saved succesfully")
@@ -325,7 +350,7 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
     def __onCurrentNodeChanged__(self, volumeNode):
         self._checkNewVolume_(volumeNode)
 
-    def __onFinishCaseBundleLoad__(self, result, id, ids, additionalFilePaths):
+    def _onFinishCaseBundleLoad_(self, result, id, ids, additionalFilePaths):
         """
         Event triggered after a volume and the additional files have been loaded for a case.
         In this case, it is important to load a previously existing xml file
@@ -454,20 +479,20 @@ class CIP_PointsLabellingLogic(ScriptedLoadableModuleLogic):
         raise NotImplementedError("This method should be implemented by a child class")
 
 
-    def saveCurrentFiducials(self, directory, caseNavigatorWidget=None, callbackFunction=None, saveInRemoteRepo=False):
+    def saveCurrentFiducials(self, localFilePath, caseNavigatorWidget=None, callbackFunction=None, saveInRemoteRepo=False):
         """ Save all the fiducials for the current volume.
         The name of the file will be VolumeName_parenchymaTraining.xml"
-        :param directory: destination directory
+        :param filePath: destination file (local)
         :param caseNavigatorWidget: case navigator widget (optional)
         :param callbackFunction: function to invoke when the file has been uploaded to the server (optional)
         """
         volume = slicer.mrmlScene.GetNodeByID(self.currentVolumeId)
-        fileName = volume.GetName() + Util.file_conventions_extensions[self._xmlFileExtensionKey_]
+        #fileName = volume.GetName() + Util.file_conventions_extensions[self._xmlFileExtensionKey_]
         # If there is already a xml file in the results directory, make a copy.
-        fiducialsLocalFilePath = os.path.join(directory, fileName)
-        if os.path.isfile(fiducialsLocalFilePath):
+        #localFilePath = os.path.join(directory, fileName)
+        if os.path.isfile(localFilePath):
             # Make a copy of the file for history purposes
-            copyfile(fiducialsLocalFilePath, fiducialsLocalFilePath + "." + time.strftime("%Y%m%d.%H%M%S"))
+            copyfile(localFilePath, localFilePath + "." + time.strftime("%Y%m%d.%H%M%S"))
 
         # Iterate over all the fiducials list nodes
         pos = [0,0,0]
@@ -508,7 +533,7 @@ class CIP_PointsLabellingLogic(ScriptedLoadableModuleLogic):
         # Get the xml content file
         xml = geometryTopologyData.to_xml()
         # Save the file
-        with open(fiducialsLocalFilePath, 'w') as f:
+        with open(localFilePath, 'w') as f:
             f.write(xml)
 
         # Use the new object as the current GeometryTopologyData
@@ -516,7 +541,7 @@ class CIP_PointsLabellingLogic(ScriptedLoadableModuleLogic):
 
         # Upload to MAD if we are using the ACIL case navigator
         if saveInRemoteRepo:
-             caseNavigatorWidget.uploadFile(fiducialsLocalFilePath, callbackFunction=callbackFunction)
+             caseNavigatorWidget.uploadFile(localFilePath, callbackFunction=callbackFunction)
 
         # Mark the current volume as saved
         self.savedVolumes[volume.GetName()] = True

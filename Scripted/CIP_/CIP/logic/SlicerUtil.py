@@ -230,12 +230,12 @@ class SlicerUtil:
         displayNode = volumeNode.GetDisplayNode()
         displayNodeCopy = None
         if displayNode is not None:
-            displayNodeCopy = slicer.mrmlScene.CreateNodeByClass(displayNode.GetClassName())
+            displayNodeCopy = scene.CreateNodeByClass(displayNode.GetClassName())
             displayNodeCopy.CopyWithScene(displayNode)
             scene.AddNode(displayNodeCopy)
 
         # Clone volumeNode
-        clonedVolume = slicer.mrmlScene.CreateNodeByClass(volumeNode.GetClassName())
+        clonedVolume = scene.CreateNodeByClass(volumeNode.GetClassName())
         clonedVolume.CopyWithScene(volumeNode)
 
         # clonedVolume.SetName(scene.GetUniqueNameByString(copyVolumeName))
