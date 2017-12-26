@@ -16,6 +16,7 @@ set(modules
   CIP_ParenchymaSubtypeTraining
   CIP_TracheaStentPlanning
   CIP_ParenchymaSubtypeTrainingLabelling
+  CIP_ParenchymaSubtypeTrainingWithReslicing
   )
 
 foreach (module ${modules})
