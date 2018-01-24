@@ -60,6 +60,7 @@ class SubtypingParameters(object):
     __subtypes__[46] = ("Airway Gen.8", "A8")
     __subtypes__[47] = ("Airway Gen.9", "A9")
     __subtypes__[48] = ("Airway Gen.10", "A10")
+    __subtypes__[99] = ("Branch", "AB")
 
     # Vessel
     __subtypes__[50] = ("Artery", "Art")
@@ -68,6 +69,7 @@ class SubtypingParameters(object):
     __subtypes__[58] = ("Vessel Gen. 2", "VG2")
     __subtypes__[59] = ("Vessel Gen. 3", "VG3")
     __subtypes__[60] = ("Vessel Gen. 4", "VG4")
+    __subtypes__[100] = ("Branch", "VB")
 
 
 
@@ -160,6 +162,7 @@ class SubtypingParameters(object):
         (2, 46),
         (2, 47),
         (2, 48),
+        (2, 99),
         # VESSEL
         (3, 0),
         (3, 50),
@@ -168,6 +171,7 @@ class SubtypingParameters(object):
         (3, 58),
         (3, 59),
         (3, 60),
+        (3, 100),
         # NODULE
         (86, 0),
         (86, 87),
