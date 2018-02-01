@@ -48,7 +48,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         ScriptedLoadableModuleWidget.__init__(self, parent)
 
         self.chartOptions = (
-        "LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600","Perc10","Perc15","Mean","Std","Kurtosis","Skewness","Ventilation Heterogeneity","Mass", "Volume")
+        "LAA%-950", "LAA%-925", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "HAA%-500", "HAA%-250", "Perc10", "Perc15", "Mean","Std","Kurtosis","Skewness","Ventilation Heterogeneity","Mass", "Volume")
 
         # Build the column keys. Here all the columns are declared, but an alternative could be just:
         #self.columnsDict = CaseReportsWidget.getColumnKeysNormalizedDictionary(["Volume Name", "Region", "LAA%-950", ...])
@@ -56,10 +56,13 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.columnsDict["VolumeName"] = "Volume Name"
         self.columnsDict["Region"] = "Region"
         self.columnsDict["LAA950"] = "LAA%-950"
+        self.columnsDict["LAA925"] = "LAA%-925"
         self.columnsDict["LAA910"] = "LAA%-910"
         self.columnsDict["LAA856"] = "LAA%-856"
         self.columnsDict["HAA700"] = "HAA%-700"
         self.columnsDict["HAA600"] = "HAA%-600"
+        self.columnsDict["HAA500"] = "HAA%-500"
+        self.columnsDict["HAA250"] = "HAA%-250"
         self.columnsDict["Perc10"] = "Perc10"
         self.columnsDict["Perc15"] = "Perc15"
         self.columnsDict["Mean"] = "Mean"
@@ -631,20 +634,23 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
             if data.any():
                 mean_data = numpy.mean(data)
                 std_data = numpy.std(data)
-                self.labelStats['Mean', tag] = mean_data
-                self.labelStats['Std', tag] = std_data
-                self.labelStats['Kurtosis', tag] = self.kurt(data, mean_data, std_data)
-                self.labelStats['Skewness', tag] = self.skew(data, mean_data, std_data)
                 self.labelStats['LAA%-950', tag] = 100.0 * (data < -950).sum() / float(data.size)
+                self.labelStats['LAA%-925', tag] = 100.0 * (data < -925).sum() / float(data.size)
                 self.labelStats['LAA%-910', tag] = 100.0 * (data < -910).sum() / float(data.size)
                 self.labelStats['LAA%-856', tag] = 100.0 * (data < -856).sum() / float(data.size)
                 self.labelStats['HAA%-700', tag] = 100.0 * (data > -700).sum() / float(data.size)
                 self.labelStats['HAA%-600', tag] = 100.0 * (data > -600).sum() / float(data.size)
-                self.labelStats['Ventilation Heterogeneity', tag] =  self.vh(data)
+                self.labelStats['HAA%-500', tag] = 100.0 * (data > -500).sum() / float(data.size)
+                self.labelStats['HAA%-250', tag] = 100.0 * (data > -250).sum() / float(data.size)
                 # self.labelStats[cycle,'Perc10',tag]=self.percentile(data,.1)
                 # self.labelStats[cycle,'Perc15',tag]=self.percentile(data,.15)
                 self.labelStats['Perc10',tag]=numpy.percentile(data,10)
                 self.labelStats['Perc15',tag]=numpy.percentile(data,15)
+                self.labelStats['Mean', tag] = mean_data
+                self.labelStats['Std', tag] = std_data
+                self.labelStats['Kurtosis', tag] = self.kurt(data, mean_data, std_data)
+                self.labelStats['Skewness', tag] = self.skew(data, mean_data, std_data)
+                self.labelStats['Ventilation Heterogeneity', tag] =  self.vh(data)
                 self.labelStats['Mass',tag] = self.mass(data,cubicMMPerVoxel)
                 self.labelStats['Volume', tag] = data.size * cubicMMPerVoxel * litersPerCubicMM;
 
