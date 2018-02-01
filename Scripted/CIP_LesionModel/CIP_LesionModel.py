@@ -334,7 +334,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         #self.seedsRadioButtonGroup = qt.QButtonGroup()
 
 
-        # Maximum radius
+        # Maximum radius / Solid checkbox
         noduleRow += 1
         self.labelMaxRad = qt.QLabel("Max. lesion radius (mm)")
         self.labelMaxRad.setStyleSheet("margin: 20px 0 0 5px")
@@ -348,6 +348,13 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.maximumRadiusSpinbox.toolTip = "Maximum radius for the tumor. Recommended: 30 mm for humans and 3 mm for small animals"
         self.noduleFrameLayout.addWidget(self.maximumRadiusSpinbox, noduleRow, 1)
 
+        self.solidLesionCb = qt.QCheckBox()
+        self.solidLesionCb.setText("Solid lesion")
+        self.solidLesionCb.setChecked(False)
+        self.solidLesionCb.setStyleSheet("margin-top: 15px")
+        self.noduleFrameLayout.addWidget(self.solidLesionCb, noduleRow, 2)
+
+        # Run segmentation button
         noduleRow += 1
         self.segmentButton = qt.QPushButton()
         self.segmentButton.text = "Segment nodule"
@@ -872,9 +879,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """ Run the nodule segmentation through a CLI
         """
         maximumRadius = self.maximumRadiusSpinbox.value
+        partsSolid = self.solidLesionCb.isChecked()
         if self.__validateInputVolumeSelection__():
             result = self.logic.callNoduleSegmentationCLI(self.inputVolumeSelector.currentNodeID, self.currentNoduleIndex,
-                                                          maximumRadius, self.__onCLISegmentationFinished__)
+                                                          maximumRadius, partsSolid,
+                                                          self.__onCLISegmentationFinished__)
             self.progressBar.setCommandLineModuleNode(result)
             self.progressBar.visible = True
             SlicerUtil.setSetting(self.moduleName, "maximumRadius", maximumRadius)
@@ -2124,11 +2133,16 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     ##############################
     # CLI Nodule segmentation
     ##############################
-    def callNoduleSegmentationCLI(self, inputVolumeID, noduleIndex, maximumRadius, onCLISegmentationFinishedCallback=None):
+    def callNoduleSegmentationCLI(self, inputVolumeID, noduleIndex, maximumRadius, partSolid, onCLISegmentationFinishedCallback=None):
         """ Invoke the Lesion Segmentation CLI for the specified volume and fiducials.
         Note: the fiducials will be retrieved directly from the scene
-        @param inputVolumeID:
-        @return:
+        @param inputVolumeID: input scalar node id
+        @param noduleIndex: index of the nodule to segment from the ones available in the scene
+        @param maximumRadius: maximum lesion radius in mm (CLI parameter)
+        @param partSolid: boolean. CLI flag for solid lesions
+        @param onCLISegmentationFinishedCallback: function that will be invoked when the CLI finishes
+
+        @return: result of the CLI run call (boolean)
         """
         # Try to load preexisting structures
         # self.setActiveVolume(inputVolumeID)
@@ -2138,7 +2152,6 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         if cliOutputScalarNode is None:
             # Create the scalar node that will work as the CLI output
             cliOutputScalarNode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLScalarVolumeNode")
-            # segmentedNodeName = self.__PREFIX_INPUTVOLUME__ + self.vtkMRMLScalarVolumeNode.GetID()
             slicer.mrmlScene.AddNode(cliOutputScalarNode)
 
             cliOutputScalarNode.SetName("{}_NoduleAlgorithmSegmentation_{}".format(inputVolume.GetName(), noduleIndex))
@@ -2151,6 +2164,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         parameters["seedsFiducials"] = self.getNthFiducialsListNode(inputVolume, noduleIndex)
         parameters["maximumRadius"] = maximumRadius
         parameters["fullSizeOutput"] = True
+        parameters["partSolid"] = partSolid
+
         self.invokedCLI = False  # Semaphore to avoid duplicated events
 
         module = slicer.modules.generatelesionsegmentation
@@ -2160,9 +2175,6 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         result.AddObserver("ModifiedEvent", lambda caller, event: self.__onNoduleSegmentationCLIStateUpdated__(
                                                                             caller, inputVolume, noduleIndex,
                                                                             onCLISegmentationFinishedCallback))
-        # Function that will be invoked when the CLI finishes
-        #self.onCLISegmentationFinishedCallback = onCLISegmentationFinishedCallback
-
         return result
 
     def updateModels(self, vtkMRMLScalarVolumeNode, noduleIndex, newThreshold):

@@ -40,7 +40,7 @@ class CIP_ParenchymaSubtypeTrainingWithReslicingWidget(CIP_ParenchymaSubtypeTrai
         CIP_ParenchymaSubtypeTrainingWidget.__init__(self, parent)
 
         # Slicing
-        self.sliceMeasurements = [1, 3, 5]  # Slice measurementes (in mm)
+        self.sliceMeasurements = [1, 3, 5, 10, 15, 20, 30]  # Slice measurementes (in mm)
         self.customExtension = "MmAirwayCount.xml"
 
         # Before running the setup, define the additional files
