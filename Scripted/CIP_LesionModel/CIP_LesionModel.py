@@ -349,7 +349,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.noduleFrameLayout.addWidget(self.maximumRadiusSpinbox, noduleRow, 1)
 
         self.solidLesionCb = qt.QCheckBox()
-        self.solidLesionCb.setText("Solid lesion")
+        self.solidLesionCb.setText("Part solid lesion")
         self.solidLesionCb.setChecked(False)
         self.solidLesionCb.setStyleSheet("margin-top: 15px")
         self.noduleFrameLayout.addWidget(self.solidLesionCb, noduleRow, 2)
