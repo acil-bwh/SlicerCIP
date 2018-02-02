@@ -586,8 +586,8 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
     __preventDialogs__ = False
 
     def __init__(self, CTNode, labelNode, fileName=None):
-        self.keys = ["LAA%-950", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "Perc10","Perc15", "Mean", "Std", "Kurtosis", "Skewness",
-                     "Ventilation Heterogeneity","Mass","Volume"]
+        self.keys = ["LAA%-950", "LAA%-925", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "HAA%-500", "HAA%-250", "Perc10", "Perc15",
+                     "Mean","Std","Kurtosis","Skewness","Ventilation Heterogeneity","Mass", "Volume"]
 
         rTags = ["WholeLung", "RightLung", "RightLung", "RightLung", "LeftLung", "LeftLung", "RUL", "RLL", "RML", "LUL", "LLL", "LUT", "LMT",
                  "LLT", "RUT", "RMT", "RLT"]
