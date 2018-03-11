@@ -10,32 +10,27 @@ from CIP.logic import Util
 from CIP.ui import CaseReportsWidget
 
 #
-# CIP_PAARatio
+# CIP_RVLVRatio
 #
-class CIP_PAARatio(ScriptedLoadableModule):
+class CIP_RVLVRatio(ScriptedLoadableModule):
     """Uses ScriptedLoadableModule base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = "PAA Ratio"
+        self.parent.title = "RV/LV Ratio"
         self.parent.categories = SlicerUtil.CIP_ModulesCategory
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
         self.parent.contributors = ["Jorge Onieva (jonieva@bwh.harvard.edu)", "Applied Chest Imaging Laboratory", "Brigham and Women's Hospital"]
-        self.parent.helpText = """Calculate the ratio between pulmonary arterial and aorta.<br>
-            A quick tutorial of the module can be found <a href='https://chestimagingplatform.org/files/chestimagingplatform/files/paa_ratio.pdf'>here</a>.<br><br>
-            The PAA Ratio biomarker has been proved to predict acute exacerbations of COPD (Wells, J. M., Washko, G. R.,
-            Han, M. K., Abbas, N., Nath, H., Mamary, a. J., Dransfield, M. T. (2012).
-            Pulmonary Arterial Enlargement and Acute Exacerbations of COPD. New England Journal of Medicine, 367(10), 913-921).
-            For more information refer to: <a href='http://www.nejm.org/doi/full/10.1056/NEJMoa1203830'>http://www.nejm.org/doi/full/10.1056/NEJMoa1203830</a>"""
+        self.parent.helpText = """Calculate the ratio between the right and left heart ventricles (RV / LV)"""
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
 #
-# CIP_PAARatioWidget
+# CIP_RVLVRatioWidget
 #
 
-class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
+class CIP_RVLVRatioWidget(ScriptedLoadableModuleWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
@@ -49,7 +44,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
     def __init__(self, parent):
         ScriptedLoadableModuleWidget.__init__(self, parent)
-        self.moduleName = "CIP_PAARatio"
+        self.moduleName = "CIP_RVLVRatio"
         from functools import partial
         def __onNodeAddedObserver__(self, caller, eventId, callData):
             """Node added to the Slicer scene"""
@@ -68,7 +63,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
         # Create objects that can be used anywhere in the module. Example: in most cases there should be just one
         # object of the logic class
-        self.logic = CIP_PAARatioLogic()
+        self.logic = CIP_RVLVRatioLogic()
 
         #
         # Create all the widgets. Example Area
@@ -83,7 +78,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
         self.volumeSelector = slicer.qMRMLNodeComboBox()
         self.volumeSelector.nodeTypes = ( "vtkMRMLScalarVolumeNode", "" )
-        self.volumeSelector.name = "paa_volumeSelector"
+        self.volumeSelector.name = "rvlv_volumeSelector"
         self.volumeSelector.selectNodeUponCreation = True
         self.volumeSelector.autoFillBackground = True
         self.volumeSelector.addEnabled = True
@@ -119,19 +114,19 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         # self.groupboxLayout.addWidget(btn)
 
         btn = qt.QRadioButton("Both")
-        btn.name = "paaButton"
+        btn.name = "rvlvButton"
         btn.checked = True
 
         self.structuresButtonGroup.addButton(btn, 0)
         self.groupboxLayout.addWidget(btn)
 
-        btn = qt.QRadioButton("Pulmonary Arterial")
-        btn.name = "paRadioButton"
+        btn = qt.QRadioButton("Right Ventricle (RV)")
+        btn.name = "rvRadioButton"
         self.structuresButtonGroup.addButton(btn, 1)
         self.groupboxLayout.addWidget(btn)
 
-        btn = qt.QRadioButton("Aorta")
-        btn.name = "aortaRadioButton"
+        btn = qt.QRadioButton("Left Ventricle (LV)")
+        btn.name = "lvRadioButton"
         self.structuresButtonGroup.addButton(btn, 2)
         self.groupboxLayout.addWidget(btn)
 
@@ -182,18 +177,18 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.textboxesFrame.setFixedWidth(190)
         self.mainAreaLayout.addWidget(self.textboxesFrame, 3, 0)
 
-        self.paTextBox = qt.QLineEdit()
-        self.paTextBox.setReadOnly(True)
-        self.textboxesLayout.addRow("PA (mm):  ", self.paTextBox)
+        self.rvTextBox = qt.QLineEdit()
+        self.rvTextBox.setReadOnly(True)
+        self.textboxesLayout.addRow("RV (mm):  ", self.rvTextBox)
 
-        self.aortaTextBox = qt.QLineEdit()
-        self.aortaTextBox.setReadOnly(True)
-        self.textboxesLayout.addRow("Aorta (mm):  ", self.aortaTextBox)
+        self.lvTextBox = qt.QLineEdit()
+        self.lvTextBox.setReadOnly(True)
+        self.textboxesLayout.addRow("LV (mm):  ", self.lvTextBox)
 
         self.ratioTextBox = qt.QLineEdit()
         self.ratioTextBox.name = "ratioTextBox"
         self.ratioTextBox.setReadOnly(True)
-        self.textboxesLayout.addRow("Ratio PA/A: ", self.ratioTextBox)
+        self.textboxesLayout.addRow("Ratio RV/LV: ", self.ratioTextBox)
 
         # Save case data
         self.reportsCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -201,9 +196,9 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.layout.addWidget(self.reportsCollapsibleButton)
         self.reportsLayout = qt.QHBoxLayout(self.reportsCollapsibleButton)
 
-        self.storedColumnNames = ["caseId", "paDiameterMm", "aortaDiameterMm",
-                                  "pa1r", "pa1a", "pa1s", "pa2r", "pa2a", "pa2s",
-                                  "a1r", "a1a", "a1s", "a2r", "a2a", "a2s"]
+        self.storedColumnNames = ["caseId", "rvDiameterMm", "lvDiameterMm",
+                                  "rv1r", "rv1a", "rv1s", "rv2r", "rv2a", "rv2s",
+                                  "lv1r", "lv1a", "lv1s", "lv2r", "lv2a", "lv2s"]
         columns = CaseReportsWidget.getColumnKeysNormalizedDictionary(self.storedColumnNames)
         self.reportsWidget = CaseReportsWidget(self.moduleName, columns, parentWidget=self.reportsCollapsibleButton)
         self.reportsWidget.setup()
@@ -379,9 +374,9 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         :param volumeId:
         """
         # Get the default coordinates of the ruler
-        aorta1, aorta2, pa1, pa2 = self.logic.getDefaultCoords(volumeId)
+        rv1, rv2, pa1, pa2 = self.logic.getDefaultCoords(volumeId)
         # Set the display in the right slice
-        self.moveRedWindowToSlice(aorta1[2])
+        self.moveRedWindowToSlice(rv1[2])
 
         redSliceNode = slicer.util.getFirstNodeByClassByName("vtkMRMLSliceNode", "Red")
 
@@ -441,14 +436,15 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         selectedStructure = self.getCurrentSelectedStructure()
         if selectedStructure == self.logic.NONE:
             qt.QMessageBox.warning(slicer.util.mainWindow(), 'Review structure',
-                'Please select Pulmonary Arterial, Aorta or both to place the right ruler/s')
+                'Please select RV, LV or both to place the right ruler/s')
             return
 
         # Get the current slice
         currentSlice = self.getCurrentRedWindowSlice()
 
+        print("Selected: ", selectedStructure)
         if selectedStructure == self.logic.BOTH:
-            structures = [self.logic.PA, self.logic.AORTA]
+            structures = [self.logic.LV, self.logic.RV]
         else:
             structures = [selectedStructure]
 
@@ -463,8 +459,8 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         :return: self.logic.AORTA or self.logic.PA
         """
         selectedStructureText = self.structuresButtonGroup.checkedButton().text
-        if selectedStructureText == "Aorta": return self.logic.AORTA
-        elif selectedStructureText == "Pulmonary Arterial": return  self.logic.PA
+        if selectedStructureText == "Right Ventricle (RV)": return self.logic.RV
+        elif selectedStructureText == "Left Ventricle (LV)": return  self.logic.LV
         elif selectedStructureText == "Both": return self.logic.BOTH
         return self.logic.NONE
 
@@ -486,8 +482,8 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
         if selectedStructure == self.logic.BOTH:
             # Move both rulers
-            self.logic.stepSlice(volumeId, self.logic.AORTA, offset)
-            newSlice = self.logic.stepSlice(volumeId, self.logic.PA, offset)
+            self.logic.stepSlice(volumeId, self.logic.RV, offset)
+            newSlice = self.logic.stepSlice(volumeId, self.logic.LV, offset)
         else:
             newSlice = self.logic.stepSlice(volumeId, selectedStructure, offset)
 
@@ -519,8 +515,8 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
     def refreshTextboxes(self, reset=False):
         """ Update the information of the textboxes that give information about the measurements
         """
-        self.aortaTextBox.setText("0")
-        self.paTextBox.setText("0")
+        self.rvTextBox.setText("0")
+        self.lvTextBox.setText("0")
         self.ratioTextBox.setText("0")
         self.ratioTextBox.setStyleSheet(" QLineEdit { background-color: white; color: black}");
 
@@ -528,24 +524,22 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         # if volumeId not in self.logic.currentVolumesLoaded:
         #     return
 
-        if volumeId:
-            self.logic.changeActiveRulersColor(volumeId, self.logic.defaultColor)
-        aorta = None
-        pa = None
+        rv = None
+        lv = None
         if not reset:
-            rulerAorta, newAorta = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeID,
-                                        self.logic.AORTA, createIfNotExist=False)
-            rulerPA, newPA = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeID,
-                                        self.logic.PA, createIfNotExist=False)
-            if rulerAorta:
-                aorta = rulerAorta.GetDistanceMeasurement()
-                self.aortaTextBox.setText(str(aorta))
-            if rulerPA:
-                pa = rulerPA.GetDistanceMeasurement()
-                self.paTextBox.setText(str(pa))
-            if pa is not None and aorta is not None and aorta != 0:
+            rulerRV, newRV = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeID,
+                                                                                self.logic.RV, createIfNotExist=False)
+            rulerLV, newLV = self.logic.getRulerNodeForVolumeAndStructure(self.volumeSelector.currentNodeID,
+                                                                          self.logic.LV, createIfNotExist=False)
+            if rulerRV:
+                rv = rulerRV.GetDistanceMeasurement()
+                self.rvTextBox.setText(str(rv))
+            if rulerLV:
+                lv = rulerLV.GetDistanceMeasurement()
+                self.lvTextBox.setText(str(lv))
+            if lv is not None and rv is not None and rv != 0:
                 try:
-                    ratio = pa / aorta
+                    ratio = lv / rv
                     self.ratioTextBox.setText(str(ratio))
                     if ratio > 1.0:
                         # Switch colors ("alarm")
@@ -554,7 +548,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
                                                                 int(self.logic.defaultWarningColor[1]*255),
                                                                 int(self.logic.defaultWarningColor[2]*255))
                         self.ratioTextBox.setStyleSheet(st)
-                        self.logic.changeActiveRulersColor(volumeId, self.logic.defaultWarningColor)
                 except Exception:
                     Util.print_last_exception()
 
@@ -564,7 +557,7 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
 
     def showUnselectedStructureWarningMessage(self):
         qt.QMessageBox.warning(slicer.util.mainWindow(), 'Review structure',
-                'Please select Aorta, Pulmonary Arterial or Both to place the right ruler/s')
+                'Please select RV, LV or Both to place the right ruler/s')
 
     def switchToRedView(self):
         """ Switch the layout to Red slice only
@@ -651,37 +644,37 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
             caseName = slicer.mrmlScene.GetNodeByID(volumeId).GetName()
             coords = [0, 0, 0, 0]
             pa1 = pa2 = a1 = a2 = None
-            # PA
-            rulerNode, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.PA, createIfNotExist=False)
+            # RV
+            rulerNode, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.RV, createIfNotExist=False)
             if rulerNode:
                 # Get current RAS coords
                 rulerNode.GetPositionWorldCoordinates1(coords)
-                pa1 = list(coords)
+                rv1 = list(coords)
                 rulerNode.GetPositionWorldCoordinates2(coords)
-                pa2 = list(coords)
-            # AORTA
-            rulerNode, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.AORTA, createIfNotExist=False)
+                rv2 = list(coords)
+            # LV
+            rulerNode, newNode = self.logic.getRulerNodeForVolumeAndStructure(volumeId, self.logic.LV, createIfNotExist=False)
             if rulerNode:
                 rulerNode.GetPositionWorldCoordinates1(coords)
-                a1 = list(coords)
+                lv1 = list(coords)
                 rulerNode.GetPositionWorldCoordinates2(coords)
-                a2 = list(coords)
+                lv2 = list(coords)
             self.reportsWidget.insertRow(
                 caseId=caseName,
-                paDiameterMm=self.paTextBox.text,
-                aortaDiameterMm=self.aortaTextBox.text,
-                pa1r = pa1[0] if pa1 is not None else '',
-                pa1a = pa1[1] if pa1 is not None else '',
-                pa1s = pa1[2] if pa1 is not None else '',
-                pa2r = pa2[0] if pa2 is not None else '',
-                pa2a = pa2[1] if pa2 is not None else '',
-                pa2s = pa2[2] if pa2 is not None else '',
-                a1r = a1[0] if a1 is not None else '',
-                a1a = a1[1] if a1 is not None else '',
-                a1s = a1[2] if a1 is not None else '',
-                a2r = a2[0] if a2 is not None else '',
-                a2a = a2[1] if a2 is not None else '',
-                a2s = a2[2] if a2 is not None else ''
+                rvDiameterMm=self.rvTextBox.text,
+                lvDiameterMm=self.lvTextBox.text,
+                rv1r = rv1[0] if rv1 is not None else '',
+                rv1a = rv1[1] if rv1 is not None else '',
+                rv1s = rv1[2] if rv1 is not None else '',
+                rv2r = rv2[0] if rv2 is not None else '',
+                rv2a = rv2[1] if rv2 is not None else '',
+                rv2s = rv2[2] if rv2 is not None else '',
+                lv1r = lv1[0] if lv1 is not None else '',
+                lv1a = lv1[1] if lv1 is not None else '',
+                lv1s = lv1[2] if lv1 is not None else '',
+                lv2r = lv2[0] if lv2 is not None else '',
+                lv2a = lv2[1] if lv2 is not None else '',
+                lv2s = lv2[2] if lv2 is not None else ''
             )
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
 
@@ -695,9 +688,9 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
         self.logic.currentActiveVolumeId = None
 
 
-# CIP_PAARatioLogic
+# CIP_RVLVRatioLogic
 #
-class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
+class CIP_RVLVRatioLogic(ScriptedLoadableModuleLogic):
     """This class should implement all the actual
     computation done by your module.    The interface
     should be such that other python code can import
@@ -708,16 +701,17 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
     """
 
     NONE = 0
-    AORTA = 1
-    PA = 2
+    RV = 1
+    LV = 2
     BOTH = 3
-    SLICEFACTOR = 0.6
+    SLICEFACTOR = 0.33
 
-    # Default XY coordinates for Aorta and PA (the Z will be estimated depending on the number of slices)
-    defaultAorta1 = [220, 170, 0]
-    defaultAorta2 = [275, 175, 0]
-    defaultPA1 = [280, 175, 0]
-    defaultPA2 = [320, 190, 0]
+    # TODO: MODIFY THIS
+    # Default XY coordinates for RV and LV (the Z will be estimated depending on the number of slices)
+    defaultRV1 = [250, 170, 0]
+    defaultRV2 = [300, 200, 0]
+    defaultLV1 = [330, 200, 0]
+    defaultLV2 = [355, 230, 0]
 
     defaultColor = [0.5, 0.5, 1.0]
     defaultWarningColor = [1.0, 0.0, 0.0]
@@ -738,7 +732,7 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         :return: "volumeId_paaRulersNode" vtkMRMLAnnotationHierarchyNode
         """
         # Search for the current volume hierarchy node (each volume has its own hierarchy)
-        nodeName = volumeId + '_paaRulersNode'
+        nodeName = volumeId + '_rvlvRulersNode'
         rulersNode = slicer.util.getNode(nodeName)
 
         if rulersNode is None and createIfNotExist:
@@ -757,10 +751,10 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
 
     def getRulerNodeForVolumeAndStructure(self, volumeId, structureId, createIfNotExist=True, callbackWhenRulerModified=None):
         """ Search for the right ruler node to be created based on the volume and the selected
-        structure (Aorta or PA).
+        structure (RV or LV).
         It also creates the necessary node hierarchy if it doesn't exist.
         :param volumeId:
-        :param structureId: Aorta (1), PA (2)
+        :param structureId: RV (1), LV (2)
         :param createIfNotExist: create the ruler node if it doesn't exist yet
         :param callbackWhenRulerModified: function to call when the ruler node is modified
         :return: node and a boolean indicating if the node has been created now
@@ -768,12 +762,12 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         isNewNode = False
         if structureId == 0: # none
             return None, isNewNode
-        if structureId == self.AORTA:     # Aorta
-             #nodeName = volumeId + '_paaRulers_aorta'
-            nodeName = "A"
-        elif structureId == self.PA:   # 'Pulmonary Arterial':
+        if structureId == self.RV:
+             #nodeName = volumeId + '_paaRulers_rv'
+            nodeName = "RV"
+        elif structureId == self.LV:   # 'Pulmonary Arterial':
         #     nodeName = volumeId + '_paaRulers_pa'
-            nodeName = "PA"
+            nodeName = "LV"
         # Get the node that contains all the rulers for this volume
         rulersListNode = self.getRulersListNode(volumeId, createIfNotExist=createIfNotExist)
         node = None
@@ -797,7 +791,6 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
                 annotationsLogic.SetActiveHierarchyNodeID(rulersListNode.GetID())
                 node = slicer.mrmlScene.CreateNodeByClass('vtkMRMLAnnotationRulerNode')
                 node.SetName(nodeName)
-                self.__changeColor__(node, self.defaultColor)
                 slicer.mrmlScene.AddNode(node)
                 isNewNode = True
                 node.AddObserver(vtk.vtkCommand.ModifiedEvent, callbackWhenRulerModified)
@@ -828,54 +821,28 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
                     rulerNode = col.GetItemAsObject(0)
                     rulerNode.SetDisplayVisibility(visible)
 
-    def __changeColor__(self, node, color):
-        for i in range(3):
-            n = node.GetNthDisplayNode(i)
-            if n:
-                n.SetColor(color)
-
-        layoutManager = slicer.app.layoutManager()
-        # Test the layout manager is not none in case the module is initialized without a main window
-        # This happens for example in automatic tests
-        if layoutManager is not None:
-            # Refresh UI to repaint both rulers. Is this the best way? Who knows...
-            layoutManager.sliceWidget("Red").sliceView().mrmlSliceNode().Modified()
-
-    def changeActiveRulersColor(self, volumeId, color):
-        """ Change the color for all the rulers in this volume
-        :param volumeId:
-        :param color:
-        :return:
-        """
-        for structureId in [self.PA, self.AORTA]:
-            node, new = self.getRulerNodeForVolumeAndStructure(volumeId, structureId, createIfNotExist=False)
-            if node:
-                self.__changeColor__(node, color)
-
-
-
     def createDefaultRulers(self, volumeId, callbackWhenRulerModified):
-        """ Set the Aorta and PA rulers to their default position.
-        The X and Y will be configured in "defaultAorta1, defaultAorta2, defaultPA1, defaultPA2" properties
+        """ Set the RV and LV rulers to their default position.
+        The X and Y will be configured in "defaultRV1, defaultRV2, defaultLV1, defaultLV2" properties
         The Z will be estimated based on the number of slices of the volume
         :param volumeId: volume id
         :param callbackWhenRulerModified: function to invoke when the ruler is modified
         :return: a tuple of 4 vales. For each node, return the node and a boolean indicating if the node was
         created now
         """
-        aorta1, aorta2, pa1, pa2 = self.getDefaultCoords(volumeId)
+        rv1, rv2, lv1, lv2 = self.getDefaultCoords(volumeId)
 
-        rulerNodeAorta, newNodeAorta = self.getRulerNodeForVolumeAndStructure(volumeId, self.AORTA,
-                                    createIfNotExist=True, callbackWhenRulerModified=callbackWhenRulerModified)
-        rulerNodeAorta.SetPositionWorldCoordinates1(aorta1)
-        rulerNodeAorta.SetPositionWorldCoordinates2(aorta2)
+        rulerNodeRV, newNodeRV = self.getRulerNodeForVolumeAndStructure(volumeId, self.RV,
+                                                                              createIfNotExist=True, callbackWhenRulerModified=callbackWhenRulerModified)
+        rulerNodeRV.SetPositionWorldCoordinates1(rv1)
+        rulerNodeRV.SetPositionWorldCoordinates2(rv2)
 
-        rulerNodePA, newNodePA = self.getRulerNodeForVolumeAndStructure(volumeId, self.PA,
-                                    createIfNotExist=True, callbackWhenRulerModified=callbackWhenRulerModified)
-        rulerNodePA.SetPositionWorldCoordinates1(pa1)
-        rulerNodePA.SetPositionWorldCoordinates2(pa2)
+        rulerNodeLV, newNodeLV = self.getRulerNodeForVolumeAndStructure(volumeId, self.LV,
+                                                                        createIfNotExist=True, callbackWhenRulerModified=callbackWhenRulerModified)
+        rulerNodeLV.SetPositionWorldCoordinates1(lv1)
+        rulerNodeLV.SetPositionWorldCoordinates2(lv2)
 
-        return rulerNodeAorta, newNodeAorta, rulerNodePA, newNodePA
+        return rulerNodeRV, newNodeRV, rulerNodeLV, newNodeLV
 
     def stepSlice(self, volumeId, structureId, sliceStep):
         """ Move the selected ruler up or down one slice.
@@ -951,12 +918,12 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         if coords1[0] == 0 and coords1[1] == 0:
             # New node, get default coordinates depending on the structure
             defaultCoords = self.getDefaultCoords(volumeId)
-            if structureId == self.AORTA:
+            if structureId == self.RV:
                 coords1[0] = defaultCoords[0][0]
                 coords1[1] = defaultCoords[0][1]
                 coords2[0] = defaultCoords[1][0]
                 coords2[1] = defaultCoords[1][1]
-            elif structureId == self.PA:
+            elif structureId == self.LV:
                 coords1[0] = defaultCoords[2][0]
                 coords1[1] = defaultCoords[2][1]
                 coords2[0] = defaultCoords[3][0]
@@ -966,9 +933,9 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         rulerNode.SetPositionWorldCoordinates2(coords2)
 
     def getDefaultCoords(self, volumeId):
-        """ Get the default coords for aorta and PA in this volume (RAS format)
+        """ Get the default coords for rv and PA in this volume (RAS format)
         :param volumeId:
-        :return: (aorta1, aorta2, pa1, pa2). All of them lists of 3 positions in RAS format
+        :return: (rv1, rv2, pa1, pa2). All of them lists of 3 positions in RAS format
         """
         volume = slicer.mrmlScene.GetNodeByID(volumeId)
         rasBounds = [0,0,0,0,0,0]
@@ -978,21 +945,21 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         slice = int(ijk[2] * self.SLICEFACTOR)       # Empiric estimation
 
         # Get the default coords, converting from IJK to RAS
-        aorta1 = list(self.defaultAorta1)
-        aorta1[2] = slice
-        aorta1 = self.IJKtoRAS(volume, aorta1)
-        aorta2 = list(self.defaultAorta2)
-        aorta2[2] = slice
-        aorta2 = self.IJKtoRAS(volume, aorta2)
+        rv1 = list(self.defaultRV1)
+        rv1[2] = slice
+        rv1 = self.IJKtoRAS(volume, rv1)
+        rv2 = list(self.defaultRV2)
+        rv2[2] = slice
+        rv2 = self.IJKtoRAS(volume, rv2)
 
-        pa1 = list(self.defaultPA1)
-        pa1[2] = slice
-        pa1 = self.IJKtoRAS(volume, pa1)
-        pa2 = list(self.defaultPA2)
-        pa2[2] = slice
-        pa2 = self.IJKtoRAS(volume, pa2)
+        lv1 = list(self.defaultLV1)
+        lv1[2] = slice
+        lv1 = self.IJKtoRAS(volume, lv1)
+        lv2 = list(self.defaultLV2)
+        lv2[2] = slice
+        lv2 = self.IJKtoRAS(volume, lv2)
 
-        return aorta1, aorta2, pa1, pa2
+        return rv1, rv2, lv1, lv2
 
 
     def removeRulers(self, volumeId):
@@ -1026,11 +993,11 @@ class CIP_PAARatioLogic(ScriptedLoadableModuleLogic):
         return list(ijktoras.MultiplyPoint(ijkCoords))
 
 
-class CIP_PAARatioTest(ScriptedLoadableModuleTest):
+class CIP_RVLVRatioTest(ScriptedLoadableModuleTest):
     @classmethod
     def setUpClass(cls):
         """ Executed once for all the tests """
-        slicer.util.selectModule('CIP_PAARatio')
+        slicer.util.selectModule('CIP_RVLVRatio')
 
     def setUp(self):
         """ Do whatever is needed to reset the state - typically a scene clear will be enough.
@@ -1041,13 +1008,13 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
         """Run as few or as many tests as needed here.
         """
         self.setUp()
-        self.test_CIP_PAARatio()
+        self.test_CIP_RVLVRatio()
 
-    def test_CIP_PAARatio(self):
-        self.assertIsNotNone(slicer.modules.cip_paaratio)
+    def test_CIP_RVLVRatio(self):
+        self.assertIsNotNone(slicer.modules.CIP_RVLVratio)
 
         # Get the widget
-        widget = slicer.modules.cip_paaratio.widgetRepresentation()
+        widget = slicer.modules.CIP_RVLVratio.widgetRepresentation()
         volume = SlicerUtil.downloadVolumeForTests(widget=widget)
 
         self.assertFalse(volume is None)
@@ -1058,59 +1025,58 @@ class CIP_PAARatioTest(ScriptedLoadableModuleTest):
 
         # Actions
         # Make sure that the right volume is selected
-        volumeSelector = SlicerUtil.findChildren(widget=widget, name='paa_volumeSelector')[0]
+        volumeSelector = SlicerUtil.findChildren(widget=widget, name='rvlv_volumeSelector')[0]
         volumeSelector.setCurrentNode(volume)
         button = SlicerUtil.findChildren(widget=widget, name='jumptToTemptativeSliceButton')[0]
         # Place default rulers
         button.click()
         logging.info("Default rulers placed...OK")
         # Get rulers
-        aorta = logic.getRulerNodeForVolumeAndStructure(volume.GetID(), logic.AORTA, createIfNotExist=False)[0]
-        pa = logic.getRulerNodeForVolumeAndStructure(volume.GetID(), logic.PA, createIfNotExist=False)[0]
+        rv = logic.getRulerNodeForVolumeAndStructure(volume.GetID(), logic.RV, createIfNotExist=False)[0]
+        pa = logic.getRulerNodeForVolumeAndStructure(volume.GetID(), logic.LV, createIfNotExist=False)[0]
         # Make sure that rulers are in default color
-        color = aorta.GetNthDisplayNode(0).GetColor()
+        color = rv.GetNthDisplayNode(0).GetColor()
         for i in range(3):
             self.assertEqual(color[i], logic.defaultColor[i])
         logging.info("Default color...OK")
         # Check that the rulers are properly positioned
-        coordsAorta1 = [0,0,0]
-        coordsPa1 = [0,0,0]
-        aorta.GetPosition1(coordsAorta1)
-        pa.GetPosition1(coordsPa1)
+        coordsRV1 = [0,0,0]
+        coordsLV1 = [0,0,0]
+        rv.GetPosition1(coordsRV1)
+        pa.GetPosition1(coordsLV1)
         # Aorta ruler should be on the left
-        self.assertTrue(coordsAorta1[0] > coordsPa1[0])
+        self.assertTrue(coordsRV1[0] > coordsLV1[0])
         # Aorta and PA should be in the same slice
-        self.assertTrue(coordsAorta1[2] == coordsPa1[2])
+        self.assertTrue(coordsRV1[2] == coordsLV1[2])
         logging.info("Default position...OK")
 
-        # Change Slice of the Aorta ruler
+        # Change Slice of the RV ruler
         layoutManager = slicer.app.layoutManager()
         redWidget = layoutManager.sliceWidget('Red')
         style = redWidget.interactorStyle()
         style.MoveSlice(1)
         # Click in the radio button
-        button = SlicerUtil.findChildren(widget=widget, name='aortaRadioButton')[0]
+        button = SlicerUtil.findChildren(widget=widget, name='rvRadioButton')[0]
         button.click()
         # click in the place ruler button
         button = SlicerUtil.findChildren(widget=widget, name='placeRulersButton')[0]
         button.click()
         # Make sure that the slice of the ruler has changed
-        aorta.GetPosition1(coordsAorta1)
-        self.assertTrue(coordsAorta1[2] != coordsPa1[2])
+        rv.GetPosition1(coordsRV1)
+        self.assertTrue(coordsRV1[2] != coordsLV1[2])
         logging.info("Position changed...OK")
 
-        # Force PAA ratio > 1
-        coordsAorta2 = [0,0,0]
-        coordsPa2 = [0,0,0]
-        aorta.GetPosition2(coordsAorta2)
-        pa.GetPosition2(coordsPa2)
-        currentRatio = pa.GetDistanceMeasurement() / aorta.GetDistanceMeasurement()
+        coordsRV2 = [0,0,0]
+        coordsLV2 = [0,0,0]
+        rv.GetPosition2(coordsRV2)
+        pa.GetPosition2(coordsLV2)
+        currentRatio = pa.GetDistanceMeasurement() / rv.GetDistanceMeasurement()
         # Calculate how much do we have to increase the position of the pa marker
         delta = 1 - currentRatio + 0.2
-        pa.SetPosition2(coordsPa2[0] + coordsPa2[0]*delta, coordsPa2[1], coordsPa2[2])
+        pa.SetPosition2(coordsLV2[0] + coordsLV2[0]*delta, coordsLV2[1], coordsLV2[2])
 
         # Make sure that rulers are red now
-        color = aorta.GetNthDisplayNode(0).GetColor()
+        color = rv.GetNthDisplayNode(0).GetColor()
         for i in range(3):
             self.assertEqual(color[i], logic.defaultWarningColor[i])
         logging.info("Red color...OK")
