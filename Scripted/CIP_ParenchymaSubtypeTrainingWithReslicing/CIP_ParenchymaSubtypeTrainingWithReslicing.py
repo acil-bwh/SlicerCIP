@@ -1,10 +1,14 @@
 import os, sys
 import vtk, qt, ctk, slicer
+from shutil import copyfile
+import time
+
 from slicer.ScriptedLoadableModule import *
 
 from CIP.logic.SlicerUtil import SlicerUtil
 from CIP.logic import Util
 from CIP_ParenchymaSubtypeTraining import *
+from CIP.logic import geometry_topology_data as gtd
 
 #
 # CIP_ParenchymaSubtypeTrainingWithReslicing
@@ -117,6 +121,7 @@ class CIP_ParenchymaSubtypeTrainingWithReslicingWidget(CIP_ParenchymaSubtypeTrai
         if checkedId < 0:
             slicer.util.warningDisplay("Please select a reslicing size")
             return
+
         spacing = self.sliceMeasurements[checkedId]
         outputNode = self.logic.run_reslicing_CLI(currentNode, spacing)
         # Set active node
@@ -155,6 +160,79 @@ class CIP_ParenchymaSubtypeTrainingWithReslicingWidget(CIP_ParenchymaSubtypeTrai
 class CIP_ParenchymaSubtypeTrainingWithReslicingLogic(CIP_ParenchymaSubtypeTrainingLogic):
     def __init__(self):
         CIP_ParenchymaSubtypeTrainingLogic.__init__(self)
+        self.currentOriginalNode = None
+
+    def saveCurrentFiducials(self, localFilePath, caseNavigatorWidget=None, callbackFunction=None, saveInRemoteRepo=False):
+        """ Save all the fiducials for the current volume.
+        The name of the file will be VolumeName_parenchymaTraining.xml"
+        :param filePath: destination file (local)
+        :param caseNavigatorWidget: case navigator widget (optional)
+        :param callbackFunction: function to invoke when the file has been uploaded to the server (optional)
+        """
+        volume = slicer.mrmlScene.GetNodeByID(self.currentVolumeId)
+        #fileName = volume.GetName() + Util.file_conventions_extensions[self._xmlFileExtensionKey_]
+        # If there is already a xml file in the results directory, make a copy.
+        #localFilePath = os.path.join(directory, fileName)
+        if os.path.isfile(localFilePath):
+            # Make a copy of the file for history purposes
+            copyfile(localFilePath, localFilePath + "." + time.strftime("%Y%m%d.%H%M%S"))
+
+        # Iterate over all the fiducials list nodes
+        pos = [0,0,0]
+        geometryTopologyData = gtd.GeometryTopologyData()
+        geometryTopologyData.coordinate_system = geometryTopologyData.LPS
+        # Get the transformation matrix LPS-->IJK
+        matrix = Util.get_lps_to_ijk_transformation_matrix(volume)
+        geometryTopologyData.lps_to_ijk_transformation_matrix = Util.convert_vtk_matrix_to_list(matrix)
+        # Save origin of the volume
+        geometryTopologyData.origin = volume.GetOrigin()
+        # Save the ORIGINAL spacing of the node (instead of the resliced node)
+        geometryTopologyData.spacing = self.currentOriginalNode.GetSpacing()
+
+        # Get the hashtable and seed from previously loaded GeometryTopologyData object (if available)
+        if self.currentGeometryTopologyData is None:
+            hashTable = {}
+        else:
+            hashTable = self.currentGeometryTopologyData.get_hashtable()
+            geometryTopologyData.id_seed = self.currentGeometryTopologyData.id_seed
+
+        # Get a timestamp that will be used for all the points
+        timestamp = gtd.GeometryTopologyData.get_timestamp()
+
+        for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volume.GetName())).itervalues():
+            # Get all the markups
+            for i in range(fidListNode.GetNumberOfMarkups()):
+                fidListNode.GetNthFiducialPosition(i, pos)
+                # Get the type from the description (region will always be 0)
+                desc = fidListNode.GetNthMarkupDescription(i)
+                # Switch coordinates from RAS to LPS
+                lps_coords = Util.ras_to_lps(list(pos))
+                pointMetadata = self.getPointMetadataFromFiducialDescription(desc)
+                p = gtd.Point(pointMetadata[0], pointMetadata[1], pointMetadata[2], lps_coords, description=pointMetadata[3])
+                key = p.get_hash()
+                if hashTable.has_key(key):
+                    # Add previously existing point
+                    geometryTopologyData.add_point(hashTable[key], fill_auto_fields=False)
+                else:
+                    # Add a new point with a precalculated timestamp
+                    geometryTopologyData.add_point(p, fill_auto_fields=True)
+                    p.timestamp = timestamp
+
+        # Get the xml content file
+        xml = geometryTopologyData.to_xml()
+        # Save the file
+        with open(localFilePath, 'w') as f:
+            f.write(xml)
+
+        # Use the new object as the current GeometryTopologyData
+        self.currentGeometryTopologyData = geometryTopologyData
+
+        # Upload to MAD if we are using the ACIL case navigator
+        if saveInRemoteRepo:
+             caseNavigatorWidget.uploadFile(localFilePath, callbackFunction=callbackFunction)
+
+        # Mark the current volume as saved
+        self.savedVolumes[volume.GetName()] = True
 
     def run_reslicing_CLI(self, volumeNode, spacingMm, scene=None):
         """
@@ -166,6 +244,7 @@ class CIP_ParenchymaSubtypeTrainingWithReslicingLogic(CIP_ParenchymaSubtypeTrain
         """
         if scene is None:
             scene = slicer.mrmlScene
+        self.currentOriginalNode = volumeNode
         # Create the output volume
         outputVolume = scene.CreateNodeByClass(volumeNode.GetClassName())
         outputVolume.CreateDefaultDisplayNodes()

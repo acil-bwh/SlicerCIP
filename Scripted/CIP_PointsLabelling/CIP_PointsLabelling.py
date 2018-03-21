@@ -501,6 +501,10 @@ class CIP_PointsLabellingLogic(ScriptedLoadableModuleLogic):
         # Get the transformation matrix LPS-->IJK
         matrix = Util.get_lps_to_ijk_transformation_matrix(volume)
         geometryTopologyData.lps_to_ijk_transformation_matrix = Util.convert_vtk_matrix_to_list(matrix)
+        # Save spacing and origin of the volume
+        geometryTopologyData.origin = volume.GetOrigin()
+        geometryTopologyData.spacing = volume.GetSpacing()
+
         # Get the hashtable and seed from previously loaded GeometryTopologyData object (if available)
         if self.currentGeometryTopologyData is None:
             hashTable = {}
