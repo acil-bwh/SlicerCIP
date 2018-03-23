@@ -504,6 +504,7 @@ class CIP_PointsLabellingLogic(ScriptedLoadableModuleLogic):
         # Save spacing and origin of the volume
         geometryTopologyData.origin = volume.GetOrigin()
         geometryTopologyData.spacing = volume.GetSpacing()
+        geometryTopologyData.dimensions = volume.GetImageData().GetDimensions()
 
         # Get the hashtable and seed from previously loaded GeometryTopologyData object (if available)
         if self.currentGeometryTopologyData is None:

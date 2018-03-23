@@ -186,8 +186,9 @@ class CIP_ParenchymaSubtypeTrainingWithReslicingLogic(CIP_ParenchymaSubtypeTrain
         geometryTopologyData.lps_to_ijk_transformation_matrix = Util.convert_vtk_matrix_to_list(matrix)
         # Save origin of the volume
         geometryTopologyData.origin = volume.GetOrigin()
-        # Save the ORIGINAL spacing of the node (instead of the resliced node)
+        # Save the ORIGINAL spacing/dimensions of the node (instead of the resliced node)
         geometryTopologyData.spacing = self.currentOriginalNode.GetSpacing()
+        geometryTopologyData.dimensions = self.currentOriginalNode.GetImageData().GetDimensions()
 
         # Get the hashtable and seed from previously loaded GeometryTopologyData object (if available)
         if self.currentGeometryTopologyData is None:
