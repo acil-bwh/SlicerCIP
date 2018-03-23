@@ -151,7 +151,7 @@ class CIP_ParenchymaSubtypeTrainingWithReslicingWidget(CIP_ParenchymaSubtypeTrai
             SlicerUtil.setFiducialsCursorMode(True, True)
             fidNode = slicer.mrmlScene.GetNodeByID(slicer.modules.markups.logic().GetActiveListID())
             displayNode = fidNode.GetDisplayNode()
-            displayNode.SetTextScale(4)
+            displayNode.SetTextScale(0)     # Remove any labels in fiducials
             # spacing = newVolumeNode.GetName().split("_")[-1]
             self.customFileName = "{}{}".format(newVolumeNode.GetName(), self.customExtension)
 
