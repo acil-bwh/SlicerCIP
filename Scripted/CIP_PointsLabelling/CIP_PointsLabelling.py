@@ -511,7 +511,7 @@ class CIP_PointsLabellingLogic(ScriptedLoadableModuleLogic):
             hashTable = {}
         else:
             hashTable = self.currentGeometryTopologyData.get_hashtable()
-            geometryTopologyData.id_seed = self.currentGeometryTopologyData.id_seed
+            geometryTopologyData.seed_id = self.currentGeometryTopologyData.seed_id
 
         # Get a timestamp that will be used for all the points
         timestamp = gtd.GeometryTopologyData.get_timestamp()

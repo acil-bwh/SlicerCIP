@@ -26,7 +26,6 @@ def get_points_type(root_folder, study_name, typeId):
         if study_name in file_name:
             print ("Analyzing file " + file_name)
             geom = gtd.GeometryTopologyData.from_xml_file(os.path.join(root_folder, file_name))
-            p = gtd.Point
             for point in geom.points:
                 if point.chest_type in subtypes:
                     points += 1
