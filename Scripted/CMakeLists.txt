@@ -16,7 +16,7 @@ set(modules
   CIP_ParenchymaSubtypeTraining
   CIP_TracheaStentPlanning
   CIP_ParenchymaSubtypeTrainingLabelling
-  CIP_ParenchymaSubtypeTrainingWithReslicing
+  # CIP_ParenchymaSubtypeTrainingWithReslicing
   CIP_RVLVRatio
   )
 
