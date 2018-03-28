@@ -68,12 +68,17 @@ def test_geometry_topology_data_write_read():
     g.add_bounding_box(bb2, fill_auto_fields=False)
 
     # Get xml representation for the object
-    xml = g.to_xml(pretty_print=True)
+    xml = g.to_xml()
 
     # Compare XML output with the example file
     with open(xml_file, 'r+b') as f:
-        expectedOutput = f.read()
-    assert xml == expectedOutput, "XML generated: " + xml
+        expected_output = f.read()
+
+    # Remove \r to avoid platform compatibility issues
+    expected_output = expected_output.replace('\r', '')
+    xml = xml.replace('\r', '')
+
+    assert xml == expected_output, "XML generated: " + xml
 
     # Validate schema with lxml
     with open(xsd_file, 'r+b') as f:

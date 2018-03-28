@@ -1091,6 +1091,12 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         filePath = os.path.join(dirPath, self.currentVolume.GetName() + "_seedEvaluation.xml")
         geom = GeometryTopologyData()
         geom.coordinate_system = GeometryTopologyData.LPS
+
+        # Spacing, Origin, Dimensions
+        geom.spacing = self.currentVolume.GetSpacing()
+        geom.origin = self.currentVolume.GetOrigin()
+        geom.dimensions = self.currentVolume.GetImageData().GetDimensions()
+
         for nodule in self.logic.getAllNoduleKeys(self.currentVolume):
             fidNode = self.logic.getNthFiducialsListNode(self.currentVolume, nodule)
             for i in range(fidNode.GetNumberOfMarkups()):

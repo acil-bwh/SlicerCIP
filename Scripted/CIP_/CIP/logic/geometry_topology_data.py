@@ -15,6 +15,7 @@ import time
 import numpy as np
 import warnings
 
+
 class GeometryTopologyData(object):
     # Coordinate System Constants
     UNKNOWN = 0
@@ -24,17 +25,18 @@ class GeometryTopologyData(object):
 
     def __init__(self):
         self.coordinate_system = self.UNKNOWN
-        self.lps_to_ijk_transformation_matrix = None    # Transformation matrix to go from LPS to IJK (in the shape of a 4x4 list)
+        self.lps_to_ijk_transformation_matrix = None  # Transformation matrix to go from LPS to IJK (in the shape of a 4x4 list)
         self.__lps_to_ijk_transformation_matrix_array__ = None  # Same matrix in a numpy array
 
-        self.origin = None      # Volume origin
-        self.spacing = None     # Volume spacing
+        self.origin = None  # Volume origin
+        self.spacing = None  # Volume spacing
         self.dimensions = None  # Volume Dimensions
 
-        self.points = []    # List of Point objects
-        self.bounding_boxes = []    # List of BoundingBox objects
+        self.points = []  # List of Point objects
+        self.bounding_boxes = []  # List of BoundingBox objects
 
-        self.__seed_id__ = 1    # Seed. The structures added with "add_point", etc. will have an id = seed_id + 1
+        self.__seed_id__ = 1  # Seed. The structures added with "add_point", etc. will have an id = seed_id + 1
+        self.__print_separator__ = "  "  # Each level of the xml will be "tabulated" this number of spaces
 
     @property
     def seed_id(self):
@@ -60,7 +62,7 @@ class GeometryTopologyData(object):
         """
         Print a nicely formatted XML with the current content of the object
         """
-        return self.to_xml(pretty_print=True)
+        return self.to_xml()
 
     def add_point(self, point, fill_auto_fields=True, timestamp=None):
         """ Add a new Point to the structure
@@ -88,12 +90,15 @@ class GeometryTopologyData(object):
 
     def fill_auto_fields(self, structure):
         """ Fill "auto" fields like timestamp, username, etc, unless there is already a specified value
-        The id will be id_seed + 1
+        The id will be the current seed_id
         @param structure: object whose fields will be filled
         """
         if structure.__id__ == 0:
+            # Use the current seed to set the structure id
             structure.__id__ = self.__seed_id__
+            # Update the seed
             self.__seed_id__ += 1
+
         if not structure.timestamp:
             structure.timestamp = GeometryTopologyData.get_timestamp()
         if not structure.user_name:
@@ -103,7 +108,7 @@ class GeometryTopologyData(object):
 
     def update_seed(self):
         """
-        Update the id_seed field to the maximum id found + 1
+        Update the seed_id field to the maximum id found + 1
         """
         id = 0
         for p in self.points:
@@ -119,58 +124,63 @@ class GeometryTopologyData(object):
         """
         return time.strftime('%Y-%m-%d %H:%M:%S')
 
-    def to_xml(self, pretty_print=False):
+    def to_xml(self):
         """
         Generate the XML string representation of this object.
         It doesn't use any special python module by default to keep compatibility with Slicer
-        Args:
-            pretty_print: when True and lxml is available, print the xml in a nice format
         Returns:
             XML string representation of the object
         """
-        header = '<?xml version="1.0" encoding="UTF-8"?>'
+        header = '<?xml version="1.0" encoding="UTF-8"?>\r\n'
 
-        output = header + "<GeometryTopologyData>"
+        output = header + "<GeometryTopologyData>\r\n"
 
-        output += ("<CoordinateSystem>%s</CoordinateSystem>" % self.__coordinate_system_to_str__(self.coordinate_system))
+        output += ("{0}<CoordinateSystem>{1}</CoordinateSystem>\r\n".format(self.__print_separator__,
+                                                                            self.__coordinate_system_to_str__(
+                                                                                self.coordinate_system)))
 
         if self.lps_to_ijk_transformation_matrix is not None:
             output += self.__write_transformation_matrix__(self.lps_to_ijk_transformation_matrix)
 
         if self.spacing is not None:
-            output += "<Spacing>{}</Spacing>".format(GeometryTopologyData.__to_xml_vector__(self.spacing))
+            output += "{0}<Spacing>\r\n{1}{0}</Spacing>\r\n".format(self.__print_separator__,
+                                                                    GeometryTopologyData.to_xml_vector(
+                                                                        self.spacing,
+                                                                        separator=self.__print_separator__,
+                                                                        level=2)
+                                                                    )
         if self.origin is not None:
-            output += "<Origin>{}</Origin>".format(GeometryTopologyData.__to_xml_vector__(self.origin))
+            output += "{0}<Origin>\r\n{1}{0}</Origin>\r\n".format(self.__print_separator__,
+                                                                  GeometryTopologyData.to_xml_vector(
+                                                                      self.origin, separator=self.__print_separator__,
+                                                                      level=2)
+                                                                  )
         if self.dimensions is not None:
-            output += "<Dimensions>{}</Dimensions>".format(GeometryTopologyData.__to_xml_vector__(self.dimensions))
+            output += "{0}<Dimensions>\r\n{1}{0}</Dimensions>\r\n".format(self.__print_separator__,
+                                                                          GeometryTopologyData.to_xml_vector(
+                                                                              self.dimensions,
+                                                                              separator=self.__print_separator__,
+                                                                              level=2)
+                                                                          )
 
         # Concatenate points (sort first)
         self.points.sort(key=lambda p: p.__id__)
-        points = "".join(map(lambda i:i.to_xml(), self.points))
+        points = "".join(map(lambda i: i.to_xml(), self.points))
         # Concatenate bounding boxes
-        bounding_boxes = "".join(map(lambda i:i.to_xml(), self.bounding_boxes))
+        bounding_boxes = "".join(map(lambda i: i.to_xml(), self.bounding_boxes))
 
-        s = output + points + bounding_boxes + "</GeometryTopologyData>"
-        if pretty_print:
-            try:
-                import lxml.etree as etree
-                s = str(s)  # Avoid Unicode
-                x = etree.fromstring(s)
-                s = etree.tostring(x, pretty_print=True, xml_declaration="1.0", encoding="UTF-8")
-                # Replace ' just to be sure that the format remains exactly the same
-                s = s.replace("<?xml version='1.0' encoding='UTF-8'?>", header)
-            except:
-                print ("lxml not found. Nice print not available")
+        # Final result
+        s = output + points + bounding_boxes + "</GeometryTopologyData>\r\n"
         return s
 
-    def to_xml_file(self, xml_file_path, pretty_print=True):
+    def to_xml_file(self, xml_file_path):
         """
         Save this object to an xml file
         Args:
             xml_file_path: file path
             pretty_print: write the xml in a nice format (requires lxml)
         """
-        s = self.to_xml(pretty_print=pretty_print)
+        s = self.to_xml()
         with open(xml_file_path, "w+b") as f:
             f.write(s)
 
@@ -279,12 +289,12 @@ class GeometryTopologyData(object):
             return "LPS"
         return "UNKNOWN"
 
-
     def export_to_dataframe(self):
         import pandas as pd
         from cip_python.common import ChestConventions
         if len(self.points) > 0 and len(self.bounding_boxes) > 0:
-            raise NotImplementedError("This function can be used only for points or bounding boxes. This object contains both")
+            raise NotImplementedError(
+                "This function can be used only for points or bounding boxes. This object contains both")
 
         columns = ['chest_type_id', 'chest_type_name',
                    'chest_region_id', 'chest_region_name',
@@ -328,16 +338,16 @@ class GeometryTopologyData(object):
         df.index.name = 'id'
         return df
 
-
     @staticmethod
-    def __to_xml_vector__(array):
+    def to_xml_vector(array, separator="  ", level=0):
         """ Get the xml representation of a vector of coordinates (<value>elem1</value>, <value>elem2</value>...)
         :param array: vector of values
+        :param level: number of tabulations that will be inserted
         :return: xml representation of the vector (<value>elem1</value>, <value>elem2</value>...)
         """
         output = ''
         for i in array:
-            output = "{0}<value>{1:g}</value>".format(output, i)
+            output = "{0}{1}<value>{2:g}</value>\r\n".format(output, level * separator, i)
         return output
 
     @staticmethod
@@ -347,10 +357,14 @@ class GeometryTopologyData(object):
         :return: one the allowed coordinates systems
         """
         if value_str is not None:
-            if value_str == "IJK": return GeometryTopologyData.IJK
-            elif value_str == "RAS": return GeometryTopologyData.RAS
-            elif value_str == "LPS": return GeometryTopologyData.LPS
-            else: return GeometryTopologyData.UNKNOWN
+            if value_str == "IJK":
+                return GeometryTopologyData.IJK
+            elif value_str == "RAS":
+                return GeometryTopologyData.RAS
+            elif value_str == "LPS":
+                return GeometryTopologyData.LPS
+            else:
+                return GeometryTopologyData.UNKNOWN
         else:
             return GeometryTopologyData.UNKNOWN
 
@@ -360,9 +374,12 @@ class GeometryTopologyData(object):
         :param value_int: GeometryTopologyData.IJK, GeometryTopologyData.RAS, GeometryTopologyData.LPS...
         :return: string representing the coordinate system ("IJK", "RAS", "LPS"...)
         """
-        if value_int == GeometryTopologyData.IJK: return "IJK"
-        elif value_int == GeometryTopologyData.RAS: return "RAS"
-        elif value_int == GeometryTopologyData.LPS: return "LPS"
+        if value_int == GeometryTopologyData.IJK:
+            return "IJK"
+        elif value_int == GeometryTopologyData.RAS:
+            return "RAS"
+        elif value_int == GeometryTopologyData.LPS:
+            return "LPS"
         return "UNKNOWN"
 
     def __read_transformation_matrix__(self, root_xml):
@@ -380,8 +397,8 @@ class GeometryTopologyData(object):
             temp.append(float(coord.text))
 
         # Convert to a 4x4 list
-        for i in range (4):
-            m.append([temp[i*4], temp[i*4+1], temp[i*4+2], temp[i*4+3]])
+        for i in range(4):
+            m.append([temp[i * 4], temp[i * 4 + 1], temp[i * 4 + 2], temp[i * 4 + 3]])
         return m
 
     def __write_transformation_matrix__(self, matrix):
@@ -392,13 +409,14 @@ class GeometryTopologyData(object):
         # Flatten the list
         s = ""
         for item in (item for sublist in matrix for item in sublist):
-            s += ("<value>{0:g}</value>".format(item))
-        return "<LPStoIJKTransformationMatrix>%s</LPStoIJKTransformationMatrix>" % s
+            s += ("{0}<value>{1:g}</value>\r\n".format(self.__print_separator__ * 2, item))
+        return "{0}<LPStoIJKTransformationMatrix>\r\n{1}{0}</LPStoIJKTransformationMatrix>\r\n".format(
+            self.__print_separator__, s)
 
 
 class Structure(object):
     def __init__(self, chest_region, chest_type, feature_type, description=None,
-                   timestamp=None, user_name=None, machine_name=None):
+                 timestamp=None, user_name=None, machine_name=None):
         """
         :param chest_region: chestRegion Id
         :param chest_type: chestType Id
@@ -459,33 +477,38 @@ class Structure(object):
             machine_name = machine_name.text
 
         structure = Structure(chest_region, chest_type, feature_type, description=desc, timestamp=timestamp,
-                         user_name=user_name, machine_name=machine_name)
+                              user_name=user_name, machine_name=machine_name)
         structure.__id__ = id
         return structure
 
-    def to_xml(self):
+    def to_xml(self, separator="  ", level=1):
         """ Get the xml string representation of the structure that can be appended to a concrete structure (Point,
         BoundingBox, etc)
         :return: xml string representation of the point
         """
         description = ''
         if self.description is not None:
-            description = '<Description>%s</Description>' % self.description
+            description = '{}<Description>{}</Description>\r\n'.format(separator * level, self.description)
 
         timestamp = ''
         if self.timestamp:
-            timestamp = '<Timestamp>%s</Timestamp>' % self.timestamp
+            timestamp = '{}<Timestamp>{}</Timestamp>\r\n'.format(separator * level, self.timestamp)
 
         user_name = ''
         if self.user_name:
-            user_name = '<UserName>%s</UserName>' % self.user_name
+            user_name = '{}<UserName>{}</UserName>\r\n'.format(separator * level, self.user_name)
 
         machine_name = ''
         if self.machine_name:
-            machine_name = '<MachineName>%s</MachineName>' % self.machine_name
+            machine_name = '{}<MachineName>{}</MachineName>\r\n'.format(separator * level, self.machine_name)
 
-        return '<Id>%i</Id><ChestRegion>%i</ChestRegion><ChestType>%i</ChestType><ImageFeature>%i</ImageFeature>%s%s%s%s' % \
-            (self.__id__, self.chest_region, self.chest_type, self.feature_type, description, timestamp, user_name, machine_name)
+        return ("{0}<Id>{1}</Id>\r\n" +
+                "{0}<ChestRegion>{2}</ChestRegion>\r\n" +
+                "{0}<ChestType>{3}</ChestType>\r\n" +
+                "{0}<ImageFeature>{4}</ImageFeature>\r\n" +
+                description + timestamp + user_name + machine_name).format(separator * level,
+                                                                           self.__id__, self.chest_region,
+                                                                           self.chest_type, self.feature_type)
 
     def convert_to_array(self, type_=np.float32):
         """
@@ -497,7 +520,6 @@ class Structure(object):
 
     def __str__(self):
         return self.to_xml()
-
 
 
 class Point(Structure):
@@ -516,7 +538,7 @@ class Point(Structure):
         :return:
         """
         super(Point, self).__init__(chest_region, chest_type, feature_type, description=description,
-                                timestamp=timestamp, user_name=user_name, machine_name=machine_name)
+                                    timestamp=timestamp, user_name=user_name, machine_name=machine_name)
 
         self.coordinate = coordinate
 
@@ -542,25 +564,24 @@ class Point(Structure):
             coordinates.append(float(coord.text))
 
         p = Point(structure.chest_region, structure.chest_type, structure.feature_type, coordinates,
-                     description=structure.description, timestamp=structure.timestamp, user_name=structure.user_name,
-                     machine_name=structure.machine_name)
+                  description=structure.description, timestamp=structure.timestamp, user_name=structure.user_name,
+                  machine_name=structure.machine_name)
         p.__id__ = structure.__id__
         return p
 
-    def to_xml(self):
+    def to_xml(self, separator="  ", level=1):
         """ Get the xml string representation of the point
         :return: xml string representation of the point
         """
         # lines = super(FileCatNoEmpty, self).cat(filepath)
-        structure = super(Point, self).to_xml()
+        structure = super(Point, self).to_xml(separator=separator, level=level + 1)
+        coords = GeometryTopologyData.to_xml_vector(self.coordinate, separator=separator, level=level + 2)
 
-
-        coords = GeometryTopologyData.__to_xml_vector__(self.coordinate)
-        # description_str = ''
-        # if self.description is not None:
-        #     description_str = '<Description>%s</Description>' % self.description
-
-        return '<Point>%s<Coordinate>%s</Coordinate></Point>' % (structure, coords)
+        return \
+            ("{0}<Point>\r\n" +
+             "{1}" +
+             "{2}<Coordinate>\r\n{3}{2}</Coordinate>\r\n" +
+             "{0}</Point>\r\n").format(separator * level, structure, separator * (level + 1), coords)
 
     def convert_to_array(self, type_=np.float32):
         """
@@ -586,7 +607,7 @@ class BoundingBox(Structure):
         :param machine_name: name of the current machine
         """
         super(BoundingBox, self).__init__(chest_region, chest_type, feature_type, description=description,
-                                timestamp=timestamp, user_name=user_name, machine_name=machine_name)
+                                          timestamp=timestamp, user_name=user_name, machine_name=machine_name)
         self.start = start
         self.size = size
 
@@ -621,20 +642,26 @@ class BoundingBox(Structure):
             coordinates_size.append(float(coord.text))
 
         bb = BoundingBox(structure.chest_region, structure.chest_type, structure.feature_type,
-                    coordinates_start, coordinates_size, description=structure.description,
-                    timestamp=structure.timestamp, user_name=structure.user_name, machine_name=structure.machine_name)
+                         coordinates_start, coordinates_size, description=structure.description,
+                         timestamp=structure.timestamp, user_name=structure.user_name,
+                         machine_name=structure.machine_name)
         bb.__id__ = structure.__id__
         return bb
 
-    def to_xml(self):
+    def to_xml(self, separator="  ", level=1):
         """ Get the xml string representation of the bounding box
         :return: xml string representation of the bounding box
         """
-        start_str = GeometryTopologyData.__to_xml_vector__(self.start)
-        size_str = GeometryTopologyData.__to_xml_vector__(self.size)
-        structure = super(BoundingBox, self).to_xml()
+        start_str = GeometryTopologyData.to_xml_vector(self.start, separator=separator, level=level + 2)
+        size_str = GeometryTopologyData.to_xml_vector(self.size, separator=separator, level=level + 2)
+        structure = super(BoundingBox, self).to_xml(separator=separator, level=level + 1)
 
-        return '<BoundingBox>%s<Start>%s</Start><Size>%s</Size></BoundingBox>' % (structure, start_str, size_str)
+        return \
+            ("{0}<BoundingBox>\r\n" +
+             "{1}" +
+             "{2}<Start>\r\n{3}{2}</Start>\r\n" +
+             "{2}<Size>\r\n{4}{2}</Size>\r\n" +
+             "{0}</BoundingBox>\r\n").format(separator * level, structure, separator * (level + 1), start_str, size_str)
 
     def convert_to_array(self, type_=np.float32):
         """
