@@ -1,13 +1,19 @@
 import os, sys, string
+from collections import OrderedDict
 import unittest
 import vtk, qt, ctk, slicer
 import numpy as np
 import SimpleITK as sitk
 import sitkUtils
 
+
 from slicer.ScriptedLoadableModule import *
 
+from CIP.ui import CaseReportsWidget
+from CIP.ui import PreProcessingWidget
+from CIP.ui import PdfReporter
 from CIP.logic.SlicerUtil import SlicerUtil
+
 #
 # Calc Scoring
 #
@@ -55,11 +61,14 @@ class CIP_CalciumScoring(ScriptedLoadableModule):
         ScriptedLoadableModule.__init__(self, parent)
         self.parent = parent
         self.parent.title = "Calcium Scoring"
-        self.parent.contributors = ["Alex Yarmarkovich", "Applied Chest Imaging Laboratory",
+        self.parent.contributors = ["Alex Yarmarkovich and Raul San Jose", "Applied Chest Imaging Laboratory",
                                     "Brigham and Women's Hospital"]
         self.parent.categories = SlicerUtil.CIP_ModulesCategory
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
+
+        #Add to help the reference about the method.
+        #C. H McCollough, Radiology, 243(2), 2007
 
         # Add this test to the SelfTest module's list for discovery when the module
         # is created.  Since this module may be discovered before SelfTests itself,
@@ -84,7 +93,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
     def __init__(self, parent=None):
         ScriptedLoadableModuleWidget.__init__(self, parent)
         settings = qt.QSettings()
-        self.developerMode = settings.value('Developer/DeveloperMode').lower() == 'true'
+        self.developerMode = settings.value('Developer/DeveloperMode').lower() == 'false'
         if not parent:
             self.parent = slicer.qMRMLWidget()
             self.parent.setLayout(qt.QVBoxLayout())
@@ -97,26 +106,40 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             self.parent.show()
 
         self.priority = 2
-        self.calcinationType = 0
+        self.calcificationType = 0
         self.ThresholdMin = 130.0
-        self.ThresholdMax = 2000.0
+        self.ThresholdMax = 1000.0
         self.MinimumLesionSize = 1
-        self.MaximumLesionSize = 2000
+        self.MaximumLesionSize = 500
         self.croppedVolumeNode = slicer.vtkMRMLScalarVolumeNode()
         self.threshImage = vtk.vtkImageData()
         self.marchingCubes = vtk.vtkDiscreteMarchingCubes()
         self.transformPolyData = vtk.vtkTransformPolyDataFilter()
 
-        self.selectedLableList = []
+        self.selectedLabelList = []
         self.labelScores = []
-        self.selectedLables = {}
+        self.selectedLabels = {}
         self.modelNodes = []
-        self.voxelVolume = 1
+        self.voxelVolume = 1.
+        self.sx = 1.
+        self.sy = 1.
+        self.sz = 1.
         self.selectedRGB = [1,0,0]
         self.observerTags = []
         self.xy = []
 
-        self.totalScore = 0
+        self.summary_reports=["Agatston Score","Mass Score","Volume"]
+
+        self.labelScores = dict()
+        self.totalScores=dict()
+        for sr in self.summary_reports:
+            self.labelScores[sr]=[]
+            self.totalScores[sr]=0
+              
+        self.columnsDict = OrderedDict()
+        self.columnsDict["CaseID"] = "CaseID"
+        for sr in self.summary_reports:
+            self.columnsDict[sr.replace(" ","")]=sr
 
     def __del__(self):
         for observee,tag in self.observerTags:
@@ -161,17 +184,17 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         self.volumeNode = self.inputSelector.currentNode()
         
         #
-        # Calcination type
+        # calcification type
         #
-        self.calcinationTypeBox = qt.QComboBox()
-        self.calcinationTypeBox.addItem("Heart")
-        self.calcinationTypeBox.addItem("Aorta")
-        parametersFormLayout.addRow("Calcination Region", self.calcinationTypeBox)
-        self.calcinationTypeBox.connect("currentIndexChanged(int)", self.onTypeChanged)
+#        self.calcificationTypeBox = qt.QComboBox()
+#        self.calcificationTypeBox.addItem("Heart")
+#        self.calcificationTypeBox.addItem("Aorta")
+#        parametersFormLayout.addRow("Region", self.calcificationTypeBox)
+#        self.calcificationTypeBox.connect("currentIndexChanged(int)", self.onTypeChanged)
 
         self.ThresholdRange = ctk.ctkRangeWidget()
         self.ThresholdRange.minimum = 0
-        self.ThresholdRange.maximum = 3000
+        self.ThresholdRange.maximum = 2000
         self.ThresholdRange.setMinimumValue(self.ThresholdMin)
         self.ThresholdRange.setMaximumValue(self.ThresholdMax)
         self.ThresholdRange.connect("minimumValueChanged(double)", self.onThresholdMinChanged)
@@ -181,7 +204,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         self.ThresholdRange.setMaximumValue(self.ThresholdMax)
 
         self.LesionSizeRange= ctk.ctkRangeWidget()
-        self.LesionSizeRange.minimum = 1
+        self.LesionSizeRange.minimum = 0.5
         self.LesionSizeRange.maximum = 1000
         self.LesionSizeRange.setMinimumValue(self.MinimumLesionSize)
         self.LesionSizeRange.setMaximumValue(self.MaximumLesionSize)
@@ -191,25 +214,60 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         self.LesionSizeRange.setMinimumValue(self.MinimumLesionSize)
         self.LesionSizeRange.setMaximumValue(self.MaximumLesionSize)
 
-        self.scoreField = qt.QLineEdit()
-        self.scoreField.setText(self.totalScore)
-        parametersFormLayout.addRow("Total Score", self.scoreField)
+        self.scoreField=dict()
+        for sr in self.summary_reports:
+          self.scoreField[sr] = qt.QLineEdit()
+          self.scoreField[sr].setText(0)
+          parametersFormLayout.addRow("Total "+sr, self.scoreField[sr])
+        
+        
+        #
+        # Update button and Select Table
+        #
+        
+        self.updateButton = qt.QPushButton("Update")
+        self.updateButton.toolTip = "Update calcium score computation"
+        self.updateButton.enabled = True
+        self.updateButton.setFixedSize(100, 50)
+        #parametersFormLayout.addRow("", self.updateButton)
+        
+        self.updateButton.connect('clicked()', self.onUpdate)
         
         #
         # Select table
         #
         self.selectLabels = qt.QTableWidget()
-        self.selectLabels.horizontalHeader().hide()
+        #self.selectLabels.horizontalHeader().hide()
         self.selectLabels.verticalHeader().hide()
-        self.selectLabels.setColumnCount(2)
+        self.selectLabels.setColumnCount(6)
         self.selectLabels.itemClicked.connect(self.handleItemClicked)
-        parametersFormLayout.addRow("", self.selectLabels)
+        
+        #Add row with columns name
+        col_names=["","Agatston Score","Mass Score","Volume (mm^3)","Mean HU","Max HU"]
+        self.selectLabels.setHorizontalHeaderLabels(col_names)
+        
+        parametersFormLayout.addRow(self.updateButton, self.selectLabels)
+
+
+        #
+        # Save Widget Area
+        #
+
+        #self.saveCollapsibleButton = ctk.ctkCollapsibleButton()
+        #self.saveCollapsibleButton.text = "Saving"
+        #self.layout.addWidget(self.saveCollapsibleButton)
+
+        self.reportsWidget = CaseReportsWidget(self.moduleName, self.columnsDict, parentWidget=self.parent)
+        self.reportsWidget.setup()
+        self.reportsWidget.showPrintButton(False)
+        
+        self.reportsWidget.addObservable(self.reportsWidget.EVENT_SAVE_BUTTON_CLICKED, self.onSaveReport)
 
         #
         # ROI Area
         #
         self.roiCollapsibleButton = ctk.ctkCollapsibleButton()
-        self.roiCollapsibleButton.text = "Heart ROI"
+        self.roiCollapsibleButton.text = "ROI"
         self.roiCollapsibleButton.setChecked(False)
         self.layout.addWidget(self.roiCollapsibleButton)
 
@@ -224,7 +282,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         slicer.mrmlScene.AddNode(self.roiNode)
         self.ROIWidget.setMRMLAnnotationROINode(self.roiNode)
         roiFormLayout.addRow("", self.ROIWidget)
-        self.roiNode.AddObserver("ModifiedEvent", self.onROIChangedEvent, 1)
+        #self.roiNode.AddObserver("ModifiedEvent", self.onROIChangedEvent, 1)
 
         # Add vertical spacer
         self.layout.addStretch(1)
@@ -238,12 +296,13 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         
         if self.inputSelector.currentNode():
             self.onVolumeChanged(self.inputSelector.currentNode())
-            self.createModels()
+            #self.createModels()
 
     def cleanup(self):
-        pass
+        self.reportsWidget.cleanup()
+        self.reportsWidget = None
 
-    def addLabel(self, row, rgb, val):
+    def addLabel(self, row, rgb, values):
         #print "add row", row, rgb
         self.selectLabels.setRowCount(row+1)
 
@@ -252,41 +311,48 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         item0.setCheckState(qt.Qt.Unchecked)
         self.selectLabels.setItem(row,0,item0)
 
-        item1 = qt.QTableWidgetItem('')
-        color=qt.QColor()
-        color.setRgbF(rgb[0],rgb[1],rgb[2])
-        item1.setData(qt.Qt.BackgroundRole,color)
-        item1.setText(val)
-        self.selectLabels.setItem(row,1,item1)
+        for ii,val in enumerate(values):
+          item1 = qt.QTableWidgetItem('')
+          color=qt.QColor()
+          color.setRgbF(rgb[0],rgb[1],rgb[2])
+          item1.setData(qt.Qt.BackgroundRole,color)
+          item1.setText("%.02f"%val)
+          self.selectLabels.setItem(row,1+ii,item1)
 
     def handleItemClicked(self, item):
         if item.checkState() == qt.Qt.Checked:
-            self.selectedLableList[item.row()] = 1
+            self.selectedLabelList[item.row()] = 1
         else:
-            self.selectedLableList[item.row()] = 0
-        #print "LIST=", self.selectedLableList
+            self.selectedLabelList[item.row()] = 0
+        #print "LIST=", self.selectedLabelList
         self.computeTotalScore()
         self.updateModels()
 
     def computeTotalScore(self):
-        self.totalScore = 0
-        for n in range(0, len(self.selectedLableList)):
-            if self.selectedLableList[n] == 1:
-                self.totalScore = self.totalScore + self.labelScores[n]
+        for sr in self.summary_reports:
+            self.totalScores[sr] = 0
+        
+        for n in range(0, len(self.selectedLabelList)):
+            if self.selectedLabelList[n] == 1:
+                for sr in self.summary_reports:
+                    self.totalScores[sr] = self.totalScores[sr] + self.labelScores[sr][n]
 
-        self.scoreField.setText(self.totalScore)
+        for sr in self.summary_reports:
+            self.scoreField[sr].setText(self.totalScores[sr])
 
     def updateModels(self):
-        for n in range(0, len(self.selectedLableList)):
+        for n in range(0, len(self.selectedLabelList)):
             model = self.modelNodes[n]
             dnode = model.GetDisplayNode()
             rgb = [1,0,0]
-            if self.selectedLableList[n] == 1:
+            if self.selectedLabelList[n] == 1:
                 rgb = self.selectedRGB
             else:
                 ct=slicer.mrmlScene.GetNodeByID('vtkMRMLColorTableNodeLabels')
                 ct.GetLookupTable().GetColor(n+1,rgb)
+
             dnode.SetColor(rgb)
+
 
     def setInteractor(self):
         self.renderWindow = slicer.app.layoutManager().threeDWidget(0).threeDView().renderWindow()
@@ -328,11 +394,14 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             self.roiNode.SetRadiusXYZ(xyz)
             sp = self.volumeNode.GetSpacing()
             self.voxelVolume = sp[0]*sp[1]*sp[2]
-        self.createModels()
+            self.sx=sp[0]
+            self.sy=sp[1]
+            self.sz=sp[2]
+        #self.createModels()
 
     def onTypeChanged(self, value):
-        self.calcinationType = value
-        if self.calcinationType == 0:
+        self.calcificationType = value
+        if self.calcificationType == 0:
             self.roiCollapsibleButton.setEnabled(1)
             self.ROIWidget.setEnabled(1)
             self.roiNode.SetDisplayVisibility(1)
@@ -341,25 +410,29 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             self.roiCollapsibleButton.setEnabled(0)
             self.ROIWidget.setEnabled(0)
             self.roiNode.SetDisplayVisibility(0)
-        self.createModels()
+        #self.createModels()
 
     def onMinSizeChanged(self, value):
         self.MinimumLesionSize = value
-        self.createModels()
+        #self.createModels()
 
     def onMaxSizeChanged(self, value):
         self.MaximumLesionSize = value
-        self.createModels()
+        #self.createModels()
 
     def onThresholdMinChanged(self, value):
         self.ThresholdMin = value
-        self.createModels()
+        #self.createModels()
 
     def onThresholdMaxChanged(self, value):
         self.ThresholdMax = value
-        self.createModels()
+        #self.createModels()
 
     def onROIChangedEvent(self, observee, event):
+        pass
+        #self.createModels()
+    
+    def onUpdate(self):
         self.createModels()
 
     def deleteModels(self):
@@ -368,13 +441,13 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             slicer.mrmlScene.RemoveNode(m.GetDisplayNode())
             slicer.mrmlScene.RemoveNode(m)
         self.modelNodes = []
-        self.selectedLables = {}
+        self.selectedLabels = {}
 
     def PickProp(self, object, event):  
         print "PICK"
         pickedActor = self.propPicker.GetActor()
         poly = pickedActor.GetMapper().GetInput()
-        label = self.selectedLables[poly]
+        label = self.selectedLabels[poly]
         print "picked label = ", label
 
     def processEvent(self,observee,event):
@@ -384,10 +457,32 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         pickedActor = self.propPicker.GetActor()
         if pickedActor:
             poly = pickedActor.GetMapper().GetInput()
-            label = self.selectedLables[poly]
+            label = self.selectedLabels[poly]
             print "picked label = ", label
 
-    def computeScore(self, d):
+    def onSaveReport(self):
+        """ Save the current values in a persistent csv file
+        """
+        self.statsAsCSV(self.reportsWidget, self.volumeNode)
+
+    def statsAsCSV(self, repWidget, volumeNode):
+        print "Here we are"
+        if self.totalScores is None:
+            qt.QMessageBox.warning(slicer.util.mainWindow(), "Data not existing", "No statistics calculated")
+            return
+
+        row={}
+        row['CaseID']=volumeNode.GetName()
+        for sr in self.summary_reports:
+            row[sr.replace(" ","")]=self.totalScores[sr]
+
+        print row
+        repWidget.insertRow(**row)
+      
+        qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
+
+
+    def computeDensityScore(self, d):
         score = 0
         if d > 129 and d < 200:
             score = 1
@@ -401,9 +496,10 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
 
     def createModels(self):
         self.deleteModels()
-        self.labelScores = []
-        self.selectedLableList = []
-        if self.calcinationType == 0 and self.volumeNode and self.roiNode:
+        for sr in self.summary_reports:
+            self.labelScores[sr]=[]
+        self.selectedLabelList = []
+        if self.calcificationType == 0 and self.volumeNode and self.roiNode:
             #print 'in Heart Create Models'
 
             slicer.vtkSlicerCropVolumeLogic().CropVoxelBased(self.roiNode, self.volumeNode, self.croppedNode)
@@ -421,21 +517,34 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             #print "Number of labels = ", nLabels
             self.totalScore = 0
             count = 0
+            #Computation of the score follows this paper:
+            #C. H McCollough, Radiology, 243(2), 2007
+            
             for n in range(0,nLabels):
-                max = labelStatFilter.GetMaximum(n);
+                max = labelStatFilter.GetMaximum(n)
+                mean = labelStatFilter.GetMean(n)
                 size = labelStatFilter.GetCount(n)
-                score = self.computeScore(max)
-
-                if size*self.voxelVolume > self.MaximumLesionSize:
+                volume = size*self.voxelVolume
+                if volume > self.MaximumLesionSize:
                     continue
 
-                if size*self.voxelVolume < self.MinimumLesionSize:
+                if volume < self.MinimumLesionSize:
                     nLabels = n+1
                     break
                 
+                density_score = self.computeDensityScore(max)
+
+                #Agatston score is \sum_i area_i * density_score_i
+                #For now we assume that all the plaques have the same density score
+                score = size*(self.sx*self.sy)*density_score
+                
+                mass_score = mean*volume
+
                 #print "label = ", n, "  max = ", max, " score = ", score, " voxels = ", size
-                self.labelScores.append(score)
-                self.selectedLableList.append(0)
+                self.labelScores["Agatston Score"].append(score)
+                self.labelScores["Mass Score"].append(mass_score)
+                self.labelScores["Volume"].append(volume)
+                self.selectedLabelList.append(0)
                 self.marchingCubes.SetInputData(self.labelsNode.GetImageData())
                 self.marchingCubes.SetValue(0, n)
                 self.marchingCubes.Update()
@@ -461,15 +570,19 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
                 rgb = [0,0,0]
                 ct.GetLookupTable().GetColor(count+1,rgb)
                 dnode.SetColor(rgb)
+                #Enable Slice intersection
+                dnode.SetSliceDisplayMode(0)
+                dnode.SetSliceIntersectionVisibility(1)
 
-                self.addLabel(count, rgb, score)
+                self.addLabel(count, rgb, [score,mass_score,volume,mean,max])
+                count = count+1
 
                 self.modelNodes.append(modelNode)
-                self.selectedLables[poly] = n
-                count = count+1
+                self.selectedLabels[poly] = n
                 #a = slicer.util.array(tn.GetID())
                 #sa = sitk.GetImageFromArray(a)
-            self.scoreField.setText(self.totalScore)
+            for sr in self.summary_reports:
+                self.scoreField[sr].setText(self.totalScores[sr])
         else:
             print "not implemented"
 
