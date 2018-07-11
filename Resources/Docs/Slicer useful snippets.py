@@ -203,9 +203,12 @@ for nodeIndex in xrange(sliceNodeCount):
 
 # To get the position of the mouse in a left click:
 def f(obj, event):
-    print interactor.GetLastEventPosition()
+    pos = (interactor.GetLastEventPosition())
+    volumePos = sliceNode.GetXYToRAS().MultiplyPoint(pos + (0, 1))
 
 interactor.AddObserver(vtk.vtkCommand.LeftButtonPressEvent, f)
+
+
 
 ########################################################################
 # Make a batch of changes in the scene and trigger just one event
