@@ -277,7 +277,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(CIP_PointsLabellingLogic):
         artifactId = self.getArtifactId(typesList)
         # The color will be based just in the main type and if it's an artifact
         displayNode.SetSelectedColor(self.params.getColor(typeId, artifactId))
-        displayNode.SetTextScale(1.5)
+        displayNode.SetTextScale(2)
 
         # Add an observer when a new markup is added
         fidNode.AddObserver(fidNode.MarkupAddedEvent, self.onMarkupAdded)

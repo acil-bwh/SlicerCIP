@@ -61,6 +61,7 @@ class SubtypingParameters(object):
     __subtypes__[47] = ("Airway Gen.9", "A9")
     __subtypes__[48] = ("Airway Gen.10", "A10")
     __subtypes__[99] = ("Branch", "AB")
+    __subtypes__[31] = ("Mucus Plug", "Mucus")
 
     # Vessel
     __subtypes__[50] = ("Artery", "Art")
@@ -163,6 +164,7 @@ class SubtypingParameters(object):
         (2, 47),
         (2, 48),
         (2, 99),
+        (2, 31),
         # VESSEL
         (3, 0),
         (3, 50),
