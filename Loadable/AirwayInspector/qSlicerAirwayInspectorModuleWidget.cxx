@@ -38,7 +38,6 @@
 #include "vtkLookupTable.h"
 #include "vtkMatrix4x4.h"
 #include "vtkImageReader.h"
-#include "vtkNRRDWriter.h"
 #include "vtkPNGWriter.h"
 #include "vtkImageFlip.h"
 #include "vtkImageCast.h"
@@ -55,6 +54,7 @@
 #include "vtkMRMLScalarVolumeDisplayNode.h"
 #include "vtkMRMLAirwayNode.h"
 #include "vtkMRMLSliceNode.h"
+#include "vtkTeemNRRDWriter.h"
 
 #include "qSlicerApplication.h"
 #include "qSlicerLayoutManager.h"
@@ -615,16 +615,16 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
 	//Add Table items here
   for (int i=0; i<numRows; i++)
     {
-        
-    
+
+
     QTableWidgetItem *meanItem = new QTableWidgetItem();
     meanItem->setData(0, airwayNode->GetMean(airwayNode->GetMethod())->GetValue(i));
     d->ReportTable->setItem(i,0,meanItem);
-    
+
     QTableWidgetItem *stdItem = new QTableWidgetItem();
     stdItem->setData(0, airwayNode->GetStd(airwayNode->GetMethod())->GetValue(i));
     d->ReportTable->setItem(i,1,stdItem);
-        
+
     QTableWidgetItem *minItem = new QTableWidgetItem();
     minItem->setData(0, airwayNode->GetMin(airwayNode->GetMethod())->GetValue(i));
 	  d->ReportTable->setItem(i,2,minItem);
