@@ -684,6 +684,8 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         self.progressBar = qt.QProgressDialog(slicer.util.mainWindow())
         self.progressBar.minimumDuration = 0
 
+        self.thresholdFilter = None
+
 
     def __initVars__(self):
         """ Init all the variables that are going to be used to perform all the operations
@@ -1003,11 +1005,12 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         will be displayed
         :param thresholdFactor: value between 0.01 and 2
         """
-        threshold = self.currentDistanceMean / thresholdFactor
-        self.thresholdFilter.ThresholdByUpper(threshold)
-        self.thresholdFilter.Update()
-        self.currentTracheaModel.GetDisplayNode().Modified()
-        SlicerUtil.refreshActiveWindows()
+        if self.thresholdFilter:
+            threshold = self.currentDistanceMean / thresholdFactor
+            self.thresholdFilter.ThresholdByUpper(threshold)
+            self.thresholdFilter.Update()
+            self.currentTracheaModel.GetDisplayNode().Modified()
+            SlicerUtil.refreshActiveWindows()
 
     def drawTrachea(self):
         """ Draw the trachea 3D model
