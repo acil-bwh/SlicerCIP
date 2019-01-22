@@ -732,18 +732,18 @@ class SlicerUtil:
         return lm.threeDWidget(0).visible
 
     @staticmethod
-    def takeSnapshot(fullFileName, type=-1):
+    def takeSnapshot(fullFileName, type=-1, hideAnnotations=False):
         """ Save a png snapshot of the specified window
         :param fullFileName: Full path name of the output file (ex: "/Data/output.png")
         :param type: slicer.qMRMLScreenShotDialog.FullLayout, slicer.qMRMLScreenShotDialog.ThreeD,
                     slicer.qMRMLScreenShotDialog.Red, slicer.qMRMLScreenShotDialog.Yellow, slicer.qMRMLScreenShotDialog.Green
                     Default: main window
+        :param hideAnnotations: bool. Remove the volume/labelmap name labels
         :return: full path of the snapshot
         """
         # show the message even if not taking a screen shot
         lm = slicer.app.layoutManager()
         # switch on the type to get the requested window
-        widget = 0
         if type == slicer.qMRMLScreenShotDialog.FullLayout:
             # full layout
             widget = lm.viewport()
@@ -763,14 +763,30 @@ class SlicerUtil:
             # default to using the full window
             widget = slicer.util.mainWindow()
             # reset the type so that the node is set correctly
-            # type = slicer.qMRMLScreenShotDialog.FullLayout
+
+        if hideAnnotations:
+            # Hide volume name
+            SlicerUtil.showCornerAnnotations(False)
 
         # grab and convert to vtk image data
         qpixMap = qt.QPixmap().grabWidget(widget)
         # Save as a png file
         qpixMap.save(fullFileName)
-
+        if hideAnnotations:
+            SlicerUtil.showCornerAnnotations(True)
         return fullFileName
+
+    @staticmethod
+    def showCornerAnnotations(show):
+        """
+        Show/Hide the volume/labelmap names in all the slice view windows
+        :param show: bool. Show/hide the annotations
+        """
+        lm = slicer.app.layoutManager()
+        for key in lm.sliceViewNames():
+            sliceView = lm.sliceWidget(key).sliceView()
+            sliceView.cornerAnnotation().SetVisibility(show)
+            sliceView.scheduleRender()
 
     @staticmethod
     def showToolbars(show):
@@ -794,6 +810,21 @@ class SlicerUtil:
         colorNode.NamesInitialisedOn()
         colorNode.SetNumberOfColors(numberOfColors)
         return colorNode
+
+    @staticmethod
+    def getInteractor(sliceNodeID):
+        """
+        Get the interactor for a slice node
+        @param sliceNodeID: str. SliceNode id
+        @return: vtkRenderWindowInteractor object
+        """
+        layoutManager = slicer.app.layoutManager()
+        try:
+            sliceNode = slicer.mrmlScene.GetNodeByID(sliceNodeID)
+            return layoutManager.sliceWidget(sliceNode.GetLayoutName()).sliceView().interactor()
+        except:
+            logging.warning("Iterator for {} could not be obtained".format(sliceNodeID))
+            return None
 
     #######################################
     #### Testing
