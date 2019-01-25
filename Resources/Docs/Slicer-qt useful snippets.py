@@ -7,6 +7,14 @@ frameLayout.addWidget(myInnerFrameButton)
 self.mainLayout.addWidget(frame)
 
 #####################################################
+# Simple textbox
+txtServer = qt.QLineEdit()
+txtServer.setText("Initial text")
+txtServer.setFixedWidth(100)
+# Force 0-100 range
+txtServer.setValidator(qt.QIntValidator(0, 100))
+
+#####################################################
 # Button (complete example)
 self.exampleButton = ctk.ctkPushButton()
 self.exampleButton.text = "Push me!"
