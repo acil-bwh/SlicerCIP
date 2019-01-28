@@ -1,7 +1,6 @@
 
 include(SlicerMacroBuildScriptedModule)
 
-#add_subdirectory(Example)
 set(modules
   CIP_
   CIP_AVRatio
@@ -17,6 +16,7 @@ set(modules
   CIP_TracheaStentPlanning
   CIP_ParenchymaSubtypeTrainingLabelling
   CIP_RVLVRatio
+  CIP_Calibration
   )
 
 foreach (module ${modules})

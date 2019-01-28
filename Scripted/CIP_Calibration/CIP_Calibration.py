@@ -249,6 +249,8 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget):
         self.editorWidget.toolsColor.colorSpin.setValue(self.typeRadioButtonGroup.checkedId())
         self.editorWidget.setActiveEffect("PaintEffect")
         self.editorWidget.changePaintEffectRadius(1.5)
+        # Show the paint tools
+        self.editorWidget.editLabelMapsFrame.collapsed = False
 
     ##############
     # Aux methods
@@ -382,9 +384,9 @@ class CIP_CalibrationLogic(ScriptedLoadableModuleLogic):
         specified by air_output and blood_output
         @param scalarNode: MRML Scalar node to be calibrated
         @param labelmapNode: MRML labelmap node
-        @param air_output: min value for the output volume
-        @param blood_output: max value for the output volume
-        @return:
+        @param air_output: value expecte  for air
+        @param blood_output: value expected for blood
+        @return: error message if something goes wrong, or None if everything works fine
         """
         s = slicer.util.array(scalarNode.GetName())
         lm = slicer.util.array(labelmapNode.GetName())
@@ -392,17 +394,25 @@ class CIP_CalibrationLogic(ScriptedLoadableModuleLogic):
         mask = lm == 1
         if not np.any(mask):
             return "Please mark some area corresponding to air in the volume"
-        air = np.mean(s[mask])
+        air_input = np.mean(s[mask])
 
         mask = lm == 2
         if not np.any(mask):
             return "Please mark some area corresponding to blood in the volume"
-        blood = np.mean(s[mask])
+        blood_input = np.mean(s[mask])
 
-        s -= air
-        s /= (blood - air)
-        s *= (blood_output - air_output)
-        s += air_output
+        # Find the line that passes through these points
+        d = float(blood_input - air_input)
+        if d == 0:
+            # Prevent overflow
+            d = 0.0000001
+        m = (blood_output - air_output) / d
+        b = air_output - (m * air_input)
+
+        # Adjust the CT
+        a2 = s * m + b
+        a2 = a2.astype(s.dtype)
+        s[:] = a2[:]
         scalarNode.Modified()
 
 
