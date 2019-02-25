@@ -65,6 +65,7 @@ class CIP_CalciumScoring(ScriptedLoadableModule):
                                     "Brigham and Women's Hospital"]
         self.parent.categories = SlicerUtil.CIP_ModulesCategory
         self.parent.dependencies = [SlicerUtil.CIP_ModuleName]
+        self.parent.helpText = "Compute the Agatston score to measure the level of calcification in the coronary artery"
         self.parent.acknowledgementText = SlicerUtil.ACIL_AcknowledgementText
 
         #Add to help the reference about the method.
