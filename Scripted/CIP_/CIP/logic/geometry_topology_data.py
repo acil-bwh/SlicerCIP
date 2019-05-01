@@ -287,6 +287,11 @@ class GeometryTopologyData(object):
 
 
     def export_to_dataframe(self):
+        """
+        Export this instance info to a Pandas dataframe.
+        Note that this method requires some imports that will fail in 3D Slicer!
+        :return: Pandas dataframe with all the points/bounding boxes info
+        """
         import pandas as pd
         from cip_python.common import ChestConventions
         if len(self.points) > 0 and len(self.bounding_boxes) > 0:
@@ -334,8 +339,8 @@ class GeometryTopologyData(object):
         df.index.name = 'id'
         return df
 
-    @staticmethod
-    def to_xml_vector(array, separator="  ", level=0):
+    @classmethod
+    def to_xml_vector(cls, array, separator="  ", level=0):
         """ Get the xml representation of a vector of coordinates (<value>elem1</value>, <value>elem2</value>...)
         :param array: vector of values
         :param level: number of tabulations that will be inserted
@@ -346,8 +351,8 @@ class GeometryTopologyData(object):
             output = "{0}{1}<value>{2:g}</value>\r\n".format(output, level * separator, i)
         return output
 
-    @staticmethod
-    def __coordinate_system_from_str__(value_str):
+    @classmethod
+    def __coordinate_system_from_str__(cls, value_str):
         """ Get one of the possible coordinate systems allowed from its string representation
         :param value_str: "IJK", "RAS", "LPS"...
         :return: one the allowed coordinates systems
@@ -360,8 +365,8 @@ class GeometryTopologyData(object):
         else:
             return GeometryTopologyData.UNKNOWN
 
-    @staticmethod
-    def __coordinate_system_to_str__(value_int):
+    @classmethod
+    def __coordinate_system_to_str__(cls, value_int):
         """ Get the string representation of one of the coordinates systems
         :param value_int: GeometryTopologyData.IJK, GeometryTopologyData.RAS, GeometryTopologyData.LPS...
         :return: string representing the coordinate system ("IJK", "RAS", "LPS"...)
