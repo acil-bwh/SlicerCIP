@@ -183,10 +183,10 @@
     </Structure>
     <Structure>
         <Id>9</Id>
-        <CodeLabel>LeftCoronoraryArteryAxial</CodeLabel>
+        <CodeLabel>LeftCoronaryArteryAxial</CodeLabel>
         <ChestRegion>50</ChestRegion>
         <ChestType>0</ChestType>
-        <Description>Left Coronorary Artery (Axial)</Description>
+        <Description>Left Coronary Artery (Axial)</Description>
         <WindowWidth>900</WindowWidth>
         <WindowLevel>50</WindowLevel>
         <Plane>A</Plane>
