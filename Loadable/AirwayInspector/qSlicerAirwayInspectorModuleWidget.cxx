@@ -38,17 +38,17 @@
 #include "vtkLookupTable.h"
 #include "vtkMatrix4x4.h"
 #include "vtkImageReader.h"
-#include "vtkNRRDWriter.h"
+#include "vtkTeemNRRDWriter.h"
 #include "vtkPNGWriter.h"
 #include "vtkImageFlip.h"
 #include "vtkImageCast.h"
 #include "vtkReflectionFilter.h"
 #include "vtkTransformPolyDataFilter.h"
 #include "vtkTransform.h"
-
 #include "qpainter.h"
 #include "qmainwindow.h"
-#include "QVTKWidget.h"
+//#include "QVTKWidget.h"
+#include "QVTKOpenGLWidget.h"
 
 #include "vtkMRMLScene.h"
 #include "vtkMRMLScalarVolumeNode.h"
@@ -69,7 +69,7 @@ class qSlicerAirwayInspectorModuleWidgetPrivate: public Ui_qSlicerAirwayInspecto
 {
 public:
 
-  QVTKWidget *qvtkWidget;
+  QVTKOpenGLWidget *qvtkWidget;
 };
 
 //-----------------------------------------------------------------------------
@@ -112,7 +112,7 @@ void qSlicerAirwayInspectorModuleWidget::setup()
   d->ThresholdSpinBox->setRange(-1000, -300);
   d->ThresholdSpinBox->setValue(-850);
   // VTK/Qt
-  d->qvtkWidget = new QVTKWidget;
+  d->qvtkWidget = new QVTKOpenGLWidget;
   d->qvtkWidget->GetRenderWindow()->AddRenderer(this->Renderer);
   d->qvtkWidget->setFixedSize(256,256);
   d->horizontalLayout->addWidget(d->qvtkWidget);
@@ -615,16 +615,14 @@ void qSlicerAirwayInspectorModuleWidget::updateReport(vtkMRMLAirwayNode* airwayN
 	//Add Table items here
   for (int i=0; i<numRows; i++)
     {
-        
-    
     QTableWidgetItem *meanItem = new QTableWidgetItem();
     meanItem->setData(0, airwayNode->GetMean(airwayNode->GetMethod())->GetValue(i));
     d->ReportTable->setItem(i,0,meanItem);
-    
+
     QTableWidgetItem *stdItem = new QTableWidgetItem();
     stdItem->setData(0, airwayNode->GetStd(airwayNode->GetMethod())->GetValue(i));
     d->ReportTable->setItem(i,1,stdItem);
-        
+
     QTableWidgetItem *minItem = new QTableWidgetItem();
     minItem->setData(0, airwayNode->GetMin(airwayNode->GetMethod())->GetValue(i));
 	  d->ReportTable->setItem(i,2,minItem);

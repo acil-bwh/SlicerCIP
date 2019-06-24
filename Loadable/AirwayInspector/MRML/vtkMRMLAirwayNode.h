@@ -30,6 +30,7 @@
 
 // VTK includes
 #include <vtkSmartPointer.h>
+#include <vtkDoubleArray.h>
 
 class  VTK_SLICER_AIRWAYINSPECTOR_MODULE_MRML_EXPORT vtkMRMLAirwayNode : public vtkMRMLNode
 {
