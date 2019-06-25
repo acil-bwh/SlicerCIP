@@ -47,8 +47,8 @@
 #include "vtkTransform.h"
 #include "qpainter.h"
 #include "qmainwindow.h"
-//#include "QVTKWidget.h"
-#include "QVTKOpenGLWidget.h"
+#include <QVTKOpenGLNativeWidget.h>
+#include <QDebug>
 
 #include "vtkMRMLScene.h"
 #include "vtkMRMLScalarVolumeNode.h"
@@ -69,7 +69,7 @@ class qSlicerAirwayInspectorModuleWidgetPrivate: public Ui_qSlicerAirwayInspecto
 {
 public:
 
-  QVTKOpenGLWidget *qvtkWidget;
+  QVTKOpenGLNativeWidget  *qvtkWidget;
 };
 
 //-----------------------------------------------------------------------------
@@ -112,9 +112,9 @@ void qSlicerAirwayInspectorModuleWidget::setup()
   d->ThresholdSpinBox->setRange(-1000, -300);
   d->ThresholdSpinBox->setValue(-850);
   // VTK/Qt
-  d->qvtkWidget = new QVTKOpenGLWidget;
+  d->qvtkWidget = new QVTKOpenGLNativeWidget;
   d->qvtkWidget->GetRenderWindow()->AddRenderer(this->Renderer);
-  d->qvtkWidget->setFixedSize(256,256);
+  d->qvtkWidget->setFixedSize(128,128);
   d->horizontalLayout->addWidget(d->qvtkWidget);
 
   d->ReportTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -286,6 +286,7 @@ void qSlicerAirwayInspectorModuleWidget::onInteractorEvent(vtkRenderWindowIntera
     double x = interactor->GetEventPosition()[0];
     double y = interactor->GetEventPosition()[1];
 
+    interactor->GetRenderWindow();
     double windowWidth = interactor->GetRenderWindow()->GetSize()[0];
     double windowHeight = interactor->GetRenderWindow()->GetSize()[1];
 
@@ -659,7 +660,7 @@ void qSlicerAirwayInspectorModuleWidget::updateViewer(vtkMRMLAirwayNode* airwayN
 
   if (!logic || !airwayNode || !airwayNode->GetAirwayImage())
     {
-    this->Renderer->Render();
+//    this->Renderer->Render();
     d->qvtkWidget->GetRenderWindow()->Render();
     return;
     }
@@ -755,7 +756,7 @@ void qSlicerAirwayInspectorModuleWidget::updateViewer(vtkMRMLAirwayNode* airwayN
       }
     }
 
-  this->Renderer->Render();
+//  this->Renderer->Render();
   d->qvtkWidget->GetRenderWindow()->Render();
 
   flip->Delete();
