@@ -331,7 +331,7 @@ class VolumeProbeLogic(ScriptedLoadableModuleLogic):
       </view></item>
      """
         # use a nice set of colors
-        self.colors = slicer.util.getNode('GenericColors')
+        self.colors = SlicerUtil.getNode('GenericColors')
         self.lookupTable = self.colors.GetLookupTable()
         print "VolumeProbeLogic CREATED"
 

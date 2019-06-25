@@ -7,10 +7,10 @@ from __main__ import qt, slicer, vtk
 from Editor import EditorWidget
 import EditorLib.EditUtil as EditUtil
 from . import CIP_EditBox
+from CIP.logic.SlicerUtil import SlicerUtil
  
 class CIP_EditorWidget(EditorWidget):
     """Customized Slicer Editor which contains just some the tools that we need for the lung segmentation"""
-
     def __init__(self, parent=None, showVolumesFrame=True, activeTools=("DefaultTool", "PaintEffect", "DrawEffect", "LevelTracingEffect", "RectangleEffect", "EraseLabel", "PreviousCheckPoint", "NextCheckPoint")):
         """Constructor. Just invokes the parent's constructor"""         
         self.activeTools = activeTools
@@ -23,7 +23,7 @@ class CIP_EditorWidget(EditorWidget):
 
     @property
     def masterVolume(self):
-        return slicer.util.getNode(self.helper.masterSelector.currentNodeID)
+        return slicer.mrmlScene.GetNodeByID(self.helper.masterSelector.currentNodeID)
 
     @masterVolume.setter
     def masterVolume(self, value):
@@ -33,7 +33,7 @@ class CIP_EditorWidget(EditorWidget):
 
     @property
     def labelmapVolume(self):
-        return slicer.util.getNode(self.helper.mergeSelector.currentNodeID)
+        return slicer.mrmlScene.GetNodeByID(self.helper.mergeSelector.currentNodeID)
 
     @labelmapVolume.setter
     def labelmapVolume(self, value):

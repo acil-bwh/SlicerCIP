@@ -481,7 +481,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
             # There is a Volume loaded. Save state
             try:
                 self.savedVolumeID = activeVolumeId
-                displayNode = slicer.util.getNode(activeVolumeId).GetDisplayNode()
+                displayNode = SlicerUtil.getNode(activeVolumeId).GetDisplayNode()
                 # self.savedContrastLevel = (displayNode.GetWindow(), displayNode.GetLevel())
                 self.savedContrastLevel = (1500, -450)
             except:
@@ -1223,7 +1223,7 @@ class CIP_AVRatioLogic(ScriptedLoadableModuleLogic):
         """
         # Search for the current volume hierarchy node (each volume has its own hierarchy)
         nodeName = volumeId + '_avRulersNode'
-        rulersNode = slicer.util.getNode(nodeName)
+        rulersNode = SlicerUtil.getNode(nodeName)
 
         if rulersNode is None and createIfNotExist:
             # Create the node
@@ -1242,7 +1242,7 @@ class CIP_AVRatioLogic(ScriptedLoadableModuleLogic):
 
     def activateRulersListNode(self, volumeId, createIfNotExist=True):
         nodeName = volumeId + '_avRulersNode'
-        rulersNode = slicer.util.getNode(nodeName)
+        rulersNode = SlicerUtil.getNode(nodeName)
 
         annotationsLogic = slicer.modules.annotations.logic()
 

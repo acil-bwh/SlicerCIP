@@ -1442,7 +1442,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         """
         n = int(checkBox.objectName)
         logic = slicer.modules.markups.logic()
-        fiducialsNode = slicer.util.getNode(logic.GetActiveListID())
+        fiducialsNode = SlicerUtil.getNode(logic.GetActiveListID())
         fiducialsNode.SetNthFiducialSelected(n, checkBox.checked)
         fiducialsNode.SetNthFiducialVisibility(n, checkBox.checked)
         # If selected, go to this markup
@@ -1649,7 +1649,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     # def currentModelNode(self):
     #     if self.currentModelNodeId is None:
     #         return None
-    #     return slicer.util.getNode(self.currentModelNodeId)
+    #     return SlicerUtil.getNode(self.currentModelNodeId)
 
     # @property
     # def currentVolumeArray(self):
@@ -1679,7 +1679,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     #     @param volumeID:
     #     @return:
     #     """
-    #     self.currentVolume = slicer.util.getNode(volumeID)
+    #     self.currentVolume = SlicerUtil.getNode(volumeID)
 
         # Switch the fiducials node
         # fiducialsNode = self.getNthCurrentFiducialsListNode(volumeID)
@@ -1689,10 +1689,10 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         # # Search for preexisting labelmap
         # #labelmapName = self.currentVolume.GetName() + '_nodulelm'
         # labelmapName = self.currentVolume.GetName() + self.__SUFFIX__SEGMENTED_LABELMAP
-        # self.currentLabelmap = slicer.util.getNode(labelmapName)
+        # self.currentLabelmap = SlicerUtil.getNode(labelmapName)
         # #segmentedNodeName = self.currentVolume.GetID() + '_segmentedlm'
         # segmentedNodeName = self.__PREFIX_INPUTVOLUME__ + self.currentVolume.GetID()
-        # self.cliOutputScalarNode = slicer.util.getNode(segmentedNodeName)
+        # self.cliOutputScalarNode = SlicerUtil.getNode(segmentedNodeName)
 
     def getWorkingMode(self, vtkMRMLScalarVolumeNode):
         """
@@ -2152,7 +2152,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         """
         # Try to load preexisting structures
         # self.setActiveVolume(inputVolumeID)
-        inputVolume = slicer.util.getNode(inputVolumeID)
+        inputVolume = SlicerUtil.getNode(inputVolumeID)
         cliOutputScalarNode = self.getNthAlgorithmSegmentationNode(inputVolume, noduleIndex)
 
         if cliOutputScalarNode is None:
@@ -2197,7 +2197,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         # Invalidate distances (the nodule is going to change)
         self.__invalidateDistances__(vtkMRMLScalarVolumeNode, noduleIndex)
         # Refresh 3D view
-        viewNode = slicer.util.getNode('vtkMRMLViewNode*')
+        viewNode = SlicerUtil.getNode('vtkMRMLViewNode*')
         viewNode.Modified()
 
     def getCurrentDistanceMap(self, vtkMRMLScalarVolumeNode, noduleIndex):
@@ -2263,7 +2263,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
     # def getSphereLabelMap(self, radius):
     #     if SlicerUtil.IsDevelopment:
     #         print("DEBUG: get sphere lm ", radius)
-    #     return slicer.util.getNode("{0}_r{1}".format(self.vtkMRMLScalarVolumeNode.GetName(), radius))
+    #     return SlicerUtil.getNode("{0}_r{1}".format(self.vtkMRMLScalarVolumeNode.GetName(), radius))
 
     def removeNthNodule(self, vtkMRMLScalarVolumeNode, noduleIndex):
         """
@@ -2373,7 +2373,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         markupsLogic = slicer.modules.markups.logic()
         fiducialsNodeName="{}_Fiducials_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex)
         fiducialsNodeID = markupsLogic.AddNewFiducialNode(fiducialsNodeName, slicer.mrmlScene)
-        fiducialsNode = slicer.util.getNode(fiducialsNodeID)
+        fiducialsNode = SlicerUtil.getNode(fiducialsNodeID)
         # Make the new fiducials node the active one
         # markupsLogic.SetActiveListID(fiducialsNode)
         # Hide any text from all the fiducials
@@ -2400,7 +2400,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         rootHierarchyNode = SlicerUtil.getRootAnnotationsNode()
         annotationsLogic.SetActiveHierarchyNodeID(rootHierarchyNode.GetID())
         annotationsLogic.AddHierarchy()
-        hierarchyNode = slicer.util.getNode(annotationsLogic.GetActiveHierarchyNodeID())
+        hierarchyNode = SlicerUtil.getNode(annotationsLogic.GetActiveHierarchyNodeID())
         hierarchyNode.SetName("{}_Rulers_{}".format(vtkMRMLScalarVolumeNode.GetName(), noduleIndex))
         return hierarchyNode
 

@@ -799,7 +799,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         """Make a MRML chart of the current stats
         """
         self.setChartLayout()
-        chartViewNode = slicer.util.getNode('ChartView')
+        chartViewNode = SlicerUtil.getNode('ChartView')
 
         arrayNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLDoubleArrayNode())
         array = arrayNode.GetArray()
@@ -854,7 +854,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
     def createHistogram(self):
         self.setHistogramLayout()
 
-        histogramViewNode = slicer.util.getNode('HistogramView')
+        histogramViewNode = SlicerUtil.getNode('HistogramView')
 
         # Show histogram
         self.histogramArrays = {}
@@ -892,7 +892,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         HistNode.SetProperty('default', 'showLegend', 'on')
 
     def AddSelectedHistograms(self, histogramsList):
-        histogramViewNode = slicer.util.getNode('HistogramView')
+        histogramViewNode = SlicerUtil.getNode('HistogramView')
 
         HistNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLChartNode())
 

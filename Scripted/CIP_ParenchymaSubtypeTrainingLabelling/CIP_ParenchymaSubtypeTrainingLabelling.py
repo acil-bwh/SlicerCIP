@@ -322,7 +322,7 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
     @property
     def colorNode(self):
         nodeName =  "{}_colorNode".format(self.moduleName)
-        colorTableNode = slicer.util.getNode(nodeName)
+        colorTableNode = SlicerUtil.getNode(nodeName)
         if colorTableNode is None:
             colorTableNode = self.logic.params.createColormapNode(nodeName)
         return colorTableNode
@@ -375,7 +375,7 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
 
     def getOrCreateLabelmap(self, masterNode):
         labelmapName = "{0}_{1}".format(masterNode.GetName(), self.labelmapNodeNameExtension)
-        labelmapNode = slicer.util.getNode(labelmapName)
+        labelmapNode = SlicerUtil.getNode(labelmapName)
         if labelmapNode is None:
             # Create a labelmap for this scalar
             labelmapNode = slicer.modules.volumes.logic().CreateAndAddLabelVolume(slicer.mrmlScene, masterNode, labelmapName)
@@ -479,7 +479,7 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
             self.checkMasterAndLabelMapNodes()
 
     def _onPreNavigatorLabelmapLoaded_(self, volumeNodeName):
-        self.labelmapToBeRemoved = slicer.util.getNode(volumeNodeName)
+        self.labelmapToBeRemoved = SlicerUtil.getNode(volumeNodeName)
 
 
     def _onNavigatorLabelmapLoaded_(self, volumeNode, region, type):

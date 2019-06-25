@@ -177,7 +177,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
     # def _getColorTable_(self):
     #     """ Color table for this module for a better labelmap visualization.
     #     This must be implemented by child classes"""
-    #     colorTableNode = slicer.util.getNode("CIP_ILDClassification_ColorMap*")
+    #     colorTableNode = SlicerUtil.getNode("CIP_ILDClassification_ColorMap*")
     #     if colorTableNode is None:
     #         # Load the node from disk
     #         p = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -302,7 +302,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(CIP_PointsLabellingLogic):
             else:
                 # Artifact. Add the type of artifact to the node name
                 nodeName = "{}_fiducials_{}_{}_{}".format(volumeNode.GetName(), typeId, regionId, artifactId)
-            fid = slicer.util.getNode(nodeName)
+            fid = SlicerUtil.getNode(nodeName)
             if fid is None and createIfNotExists:
                 SlicerUtil.logDevelop("DEBUG: creating a new fiducials node: " + nodeName)
                 fid = self._createFiducialsListNode_(nodeName, typesList)

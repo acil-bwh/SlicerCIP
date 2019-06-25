@@ -282,7 +282,7 @@ class SlicerUtil:
     #     slicer.mrmlScene.AddNode(volumeNode)
     #     displayNode = slicer.vtkMRMLScalarVolumeDisplayNode()
     #     slicer.mrmlScene.AddNode(displayNode)
-    #     colorNode = slicer.util.getNode('vtkMRMLColorTableNodeLabels') if isLabelmap else slicer.util.getNode('vtkMRMLColorTableNodeGrey')
+    #     colorNode = SlicerUtil.getNode('vtkMRMLColorTableNodeLabels') if isLabelmap else SlicerUtil.getNode('vtkMRMLColorTableNodeGrey')
     #     displayNode.SetAndObserveColorNodeID(colorNode.GetID())
     #     volumeNode.SetAndObserveDisplayNodeID(displayNode.GetID())
     #     volumeNode.CreateDefaultStorageNode()
@@ -392,6 +392,34 @@ class SlicerUtil:
         if nodes.GetNumberOfItems() > 0:
             return nodes.GetItemAsObject(0)
         return None
+
+    @staticmethod
+    def getNode(nodeNameOrID):
+        """
+        Get a node given name. None if it doesn't exist.
+        Developed to fix backwards compatibility broken in Slicer
+        :param nodeName: str. Name or id of the node
+        :return: node or None
+        """
+        node = slicer.mrmlScene.GetNodeByID(nodeNameOrID)
+        if node:
+            return node
+        nodes = slicer.util.getNodes(nodeNameOrID)
+        if len(nodes) == 0:
+            return None
+        return nodes[nodeNameOrID]
+
+    @staticmethod
+    def getNodes(nodeMask):
+        """
+        Get a list of nodes given a name mask.
+        Developed to fix backwards compatibility broken in Slicer
+        :param nodeName: str. "Mask" of the node
+        :return: nodeMask or None
+        """
+        nodes = slicer.util.getNodes(nodeMask)
+        return nodes.keys()
+
 
     @staticmethod
     def isOtherVolumeVisible(volumeId):
@@ -542,7 +570,7 @@ class SlicerUtil:
         by manipulating the scene's singleton crosshair node.
         :param isActive: enable / disable crosshair (boolean value)
         """
-        crosshairNode = slicer.util.getNode('vtkMRMLCrosshairNode*')
+        crosshairNode = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLCrosshairNode')
         if crosshairNode:
             crosshairNode.SetCrosshairMode(int(isActive))
 
@@ -653,7 +681,7 @@ class SlicerUtil:
         :param coord: array/list/tuple that contains a RAS coordinate
         """
         sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
-        for sliceNode in sliceNodes.values():
+        for sliceNode in sliceNodes.itervalues():
             sliceNode.JumpSliceByCentering(coords[0], coords[1], coords[2])
 
     @staticmethod
@@ -855,7 +883,7 @@ class SlicerUtil:
                     cbCache = slicer.util.findChildren(widget, "cbCacheMode")[0]
                     cbCache.setChecked(False)
                 downloadButton.click()
-                volume = slicer.util.getNode(caseId)
+                volume = SlicerUtil.getNode(caseId)
             except Exception as ex:
                 logging.info("Case Navigator failed ({0}). Downloading web case...".format(ex.message))
         if volume is None:

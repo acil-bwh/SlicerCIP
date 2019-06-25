@@ -607,7 +607,7 @@ class MIPViewerWidget(object):
     #     spacing = 0
     #     # Get the spacing of the displayed volume
     #     compNode = slicer.mrmlScene.GetNodeByID("vtkMRMLSliceCompositeNodeRed")
-    #     volume = slicer.util.getNode(compNode.GetBackgroundVolumeID())
+    #     volume = SlicerUtil.getNode(compNode.GetBackgroundVolumeID())
     #     if volume is not None:
     #         spacing = round(volume.GetSpacing()[position] * self.currentSliderValue, 2)
     #         self.currentSpacingLabel.setText(str(spacing) + " mm")

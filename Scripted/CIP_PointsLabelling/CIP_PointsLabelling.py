@@ -362,7 +362,7 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
         """
         if result == Util.OK and additionalFilePaths and os.path.exists(additionalFilePaths[0]):
             # Try to load a previously existing fiducials file downloaded with the ACIL case navigator
-            self.logic.loadFiducialsXml(slicer.util.getNode(id), additionalFilePaths[0])
+            self.logic.loadFiducialsXml(SlicerUtil.getNode(id), additionalFilePaths[0])
 
     def __onRemoveLastFiducialButtonClicked__(self):
        self.logic.removeLastFiducial()

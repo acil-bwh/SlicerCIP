@@ -312,7 +312,7 @@ class CIP_RVLVRatioWidget(ScriptedLoadableModuleWidget):
             # There is a Volume loaded. Save state
             try:
                 self.savedVolumeID = activeVolumeId
-                displayNode = slicer.util.getNode(activeVolumeId).GetDisplayNode()
+                displayNode = SlicerUtil.getNode(activeVolumeId).GetDisplayNode()
                 self.savedContrastLevel = (displayNode.GetWindow(), displayNode.GetLevel())
                 # activeLabelmapId = SlicerUtil.getFirstActiveLabelmapId()
                 # self.savedLabelmapID = activeLabelmapId
@@ -733,7 +733,7 @@ class CIP_RVLVRatioLogic(ScriptedLoadableModuleLogic):
         """
         # Search for the current volume hierarchy node (each volume has its own hierarchy)
         nodeName = volumeId + '_rvlvRulersNode'
-        rulersNode = slicer.util.getNode(nodeName)
+        rulersNode = SlicerUtil.getNode(nodeName)
 
         if rulersNode is None and createIfNotExist:
             # Create the node

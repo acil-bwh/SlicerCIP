@@ -385,7 +385,7 @@ class SlicerCIPExampleTest(unittest.TestCase):
         loader(filePath)
     self.delayDisplay('Finished with download and loading\n')
 
-    volumeNode = slicer.util.getNode(pattern="FA")
+    volumeNode = SlicerUtil.getNode("FA*")
     logic = SlicerCIPExampleLogic()
     self.assertTrue( logic.hasImageData(volumeNode) )
     self.delayDisplay('Test passed!')

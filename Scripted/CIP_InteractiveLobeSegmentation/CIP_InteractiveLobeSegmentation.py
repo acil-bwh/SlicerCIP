@@ -387,7 +387,7 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         red_logic = slicer.app.layoutManager().sliceWidget("Red").sliceLogic()
         red_cn = red_logic.GetSliceCompositeNode()
         volumeID = red_cn.GetBackgroundVolumeID()
-        CTNode = slicer.util.getNode(volumeID)
+        CTNode = SlicerUtil.getNode(volumeID)
         if self.labelSelector.currentNode() == None:
            warning = self.preProcessingWidget.warningMessageForLM()
            if warning == 16384:
@@ -775,7 +775,7 @@ class ILSVisualizationWidget(ILSpqWidget):
         """Rebuild the list of buttons based on current landmarks"""
         fiducialsLogic = slicer.modules.markups.logic()
         originalActiveListID = fiducialsLogic.GetActiveListID()
-        originalActiveList = slicer.util.getNode(originalActiveListID)
+        originalActiveList = SlicerUtil.getNode(originalActiveListID)
 
         if originalActiveList:
             if originalActiveList.GetNumberOfFiducials() > 0:
@@ -802,7 +802,7 @@ class ILSVisualizationWidget(ILSpqWidget):
         self.fiducialsCollapsibleButton.show()
         fiducialsLogic = slicer.modules.markups.logic()
         originalActiveListID = fiducialsLogic.GetActiveListID()
-        originalActiveList = slicer.util.getNode(originalActiveListID)
+        originalActiveList = SlicerUtil.getNode(originalActiveListID)
         self.tableWidget.show()
         self.deleteButton.enabled = True
         self.deleteAllButton.enabled = True
@@ -961,11 +961,11 @@ class CIP_InteractiveLobeSegmentationLogic(ScriptedLoadableModuleLogic):
                     break
             if (createNewList):
                 fiducialListNodeID = fiducialsLogic.AddNewFiducialNode("Fiducial", slicer.mrmlScene)
-                fiducialList = slicer.util.getNode(fiducialListNodeID)
+                fiducialList = SlicerUtil.getNode(fiducialListNodeID)
                 fiducialsLogic.SetActiveListID(fiducialList)
         else:
             fiducialListNodeID = fiducialsLogic.AddNewFiducialNode("Fiducial", slicer.mrmlScene)
-            fiducialList = slicer.util.getNode(fiducialListNodeID)
+            fiducialList = SlicerUtil.getNode(fiducialListNodeID)
             fiducialsLogic.SetActiveListID(fiducialList)
 
     def ModifyList(self):
@@ -976,8 +976,8 @@ class CIP_InteractiveLobeSegmentationLogic(ScriptedLoadableModuleLogic):
         """
         fiducialsLogic = slicer.modules.markups.logic()
         originalActiveListID = fiducialsLogic.GetActiveListID()  # TODO: naming convention?
-        if (slicer.util.getNode(originalActiveListID)):
-            fiducialList = slicer.util.getNode(originalActiveListID)
+        if (SlicerUtil.getNode(originalActiveListID)):
+            fiducialList = SlicerUtil.getNode(originalActiveListID)
             fiducialList.SetName(self.name)
             name = self.name
             fiducialList.SetNthFiducialLabel(0, name + "-1")

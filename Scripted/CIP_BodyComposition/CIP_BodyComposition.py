@@ -348,7 +348,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
             # There is a Volume loaded. Save state
             try:
                 self.savedVolumeID = activeVolumeId
-                displayNode = slicer.util.getNode(activeVolumeId).GetDisplayNode()
+                displayNode = SlicerUtil.getNode(activeVolumeId).GetDisplayNode()
                 self.savedContrastLevel = (displayNode.GetWindow(), displayNode.GetLevel())
 
                 activeLabelmapId = SlicerUtil.getFirstActiveLabelmapId()
@@ -483,16 +483,19 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     #         self.colorTableNode = colorTableNode
     #     else:
     #         # Node already exists (just in development mode)
-    #         self.colorTableNode = slicer.util.getNode("BodyCompositionColorMap")
+    #         self.colorTableNode = SlicerUtil.getNode("BodyCompositionColorMap")
 
     def __loadColormapNode__(self):
         """ Load the colormap node for the bodycomposition structures and set the value to the self.colorTableNode property
         """
-        self.colorTableNode = slicer.util.getNode("CIP_BodyComposition_ColorMap*")
-        if self.colorTableNode is None:
+        colorTableNodes = slicer.util.getNodes("CIP_BodyComposition_ColorMap*")
+
+        if len(colorTableNodes) == 0:
             # Load the node from disk
             p = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Resources/CIP_BodyComposition_ColorMap.ctbl")
             self.colorTableNode = slicer.modules.colors.logic().LoadColorFile(p)
+        else:
+            self.colorTableNode = colorTableNodes.values()[0]
 
 
 

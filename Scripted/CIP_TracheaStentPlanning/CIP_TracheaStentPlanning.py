@@ -699,7 +699,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         :return: MRML model added to the scene
         """
         name = stentType + " Model"
-        model = slicer.util.getNode(name)
+        model = SlicerUtil.getNode(name)
         if model is None:
             # The model has to be created
             if polyData is None:
@@ -743,10 +743,10 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
             nodes = []
             for fiducialType in self.getFiducialList(stentType):
                 name = "{0}_{1}".format(basename, fiducialType)
-                fiducialsNode = slicer.util.getNode(name)
+                fiducialsNode = SlicerUtil.getNode(name)
                 if fiducialsNode is None:
                     fiducialListNodeID = self.markupsLogic.AddNewFiducialNode(name, slicer.mrmlScene)
-                    fiducialsNode = slicer.util.getNode(fiducialListNodeID)
+                    fiducialsNode = SlicerUtil.getNode(fiducialListNodeID)
                     # Hide any text from all the fiducials
                     fiducialsNode.SetMarkupLabelFormat('')
                     # Set color and shape
@@ -820,7 +820,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         f1 = coords[1]
         f2 = coords[2]
 
-        activeNode = slicer.util.getNode(self.currentVolumeId)
+        activeNode = SlicerUtil.getNode(self.currentVolumeId)
         spacing = activeNode.GetSpacing()
 
         pos0 = Util.ras_to_ijk(activeNode, f0, convert_to_int=True)
@@ -1025,7 +1025,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         cylinder_middle_right.SetInputConnection(line_middle_right.GetOutputPort())
         self.cylindersVtkAppendPolyDataFilter[self.STENT_Y].AddInputConnection(cylinder_middle_right.GetOutputPort())
 
-        # model = slicer.util.getNode("Y stent Model")
+        # model = SlicerUtil.getNode("Y stent Model")
         # self.currentCylindersModel[self.STENT_Y] = self.modelsLogic.AddModel(self.cylindersVtkAppendPolyDataFilter.GetOutputPort())
         self.currentCylindersModel[self.STENT_Y] = self.getMRML3DModel(self.STENT_Y,
                                                                        self.cylindersVtkAppendPolyDataFilter[

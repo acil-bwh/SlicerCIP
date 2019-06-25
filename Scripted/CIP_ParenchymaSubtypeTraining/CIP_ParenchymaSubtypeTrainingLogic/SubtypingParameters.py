@@ -335,7 +335,7 @@ class SubtypingParameters(object):
         colorNode.SetColor(0, "Background", 0, 0, 0, 0)
 
         # Get Slicer GenericColors colormap node as a template
-        slicerGenericColors = slicer.util.getNode('GenericColors')
+        slicerGenericColors = SlicerUtil.getNode('GenericColors')
 
         # Add a region and a type/subtype for each allowed combination
         # The regions will not have a special color, the type is the main object
