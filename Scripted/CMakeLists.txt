@@ -7,7 +7,7 @@ set(modules
   CIP_InteractiveLobeSegmentation
   CIP_ParenchymaAnalysis
   CIP_BodyComposition
-  #CIP_CalciumScoring
+  CIP_CalciumScoring
   CIP_LesionModel
   CIP_MIPViewer
   CIP_PAARatio
