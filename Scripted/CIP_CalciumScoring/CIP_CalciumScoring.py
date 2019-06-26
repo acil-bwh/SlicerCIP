@@ -52,7 +52,7 @@ class MouseInteractorActor(vtk.vtkInteractorStyleTrackballCamera):
                 self.lastPickedActor().GetProperty().SetDiffuse(1.0)
                 self.lastPickedActor().GetProperty().SetSpecular(0.0)
             else:
-                print 'No actor get pickered'
+                print ('No actor get pickered')
         #Call parent member
         self.OnLeftButtonUp()
 
@@ -94,7 +94,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
     def __init__(self, parent=None):
         ScriptedLoadableModuleWidget.__init__(self, parent)
         settings = qt.QSettings()
-        self.developerMode = settings.value('Developer/DeveloperMode').lower() == 'false'
+        self.developerMode = SlicerUtil.IsDevelopment
         if not parent:
             self.parent = slicer.qMRMLWidget()
             self.parent.setLayout(qt.QVBoxLayout())
@@ -147,10 +147,10 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             observee.RemoveObserver(tag)
         self.observerTags = []
 
-    def enter(self):
-        print "Enter"
-    def exit(self):
-        print "Exit"
+    # def enter(self):
+    #     print "Enter"
+    # def exit(self):
+    #     print "Exit"
 
     def setup(self):
         # Instantiate and connect widgets ...
@@ -445,21 +445,21 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         self.selectedLabels = {}
 
     def PickProp(self, object, event):  
-        print "PICK"
+        # print "PICK"
         pickedActor = self.propPicker.GetActor()
         poly = pickedActor.GetMapper().GetInput()
         label = self.selectedLabels[poly]
-        print "picked label = ", label
+        print ("picked label = ", label)
 
     def processEvent(self,observee,event):
-        print "PICK EVENT", event
+        # print "PICK EVENT", event
         self.xy = self.iren.GetEventPosition()
         self.propPicker.PickProp(self.xy[0], self.xy[1], self.renderer)
         pickedActor = self.propPicker.GetActor()
         if pickedActor:
             poly = pickedActor.GetMapper().GetInput()
             label = self.selectedLabels[poly]
-            print "picked label = ", label
+            print ("picked label = ", label)
 
     def onSaveReport(self):
         """ Save the current values in a persistent csv file
@@ -467,17 +467,14 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         self.statsAsCSV(self.reportsWidget, self.volumeNode)
 
     def statsAsCSV(self, repWidget, volumeNode):
-        print "Here we are"
         if self.totalScores is None:
             qt.QMessageBox.warning(slicer.util.mainWindow(), "Data not existing", "No statistics calculated")
             return
-
         row={}
         row['CaseID']=volumeNode.GetName()
         for sr in self.summary_reports:
             row[sr.replace(" ","")]=self.totalScores[sr]
 
-        print row
         repWidget.insertRow(**row)
       
         qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
@@ -585,7 +582,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
             for sr in self.summary_reports:
                 self.scoreField[sr].setText(self.totalScores[sr])
         else:
-            print "not implemented"
+            print ("not implemented")
 
 
 #
