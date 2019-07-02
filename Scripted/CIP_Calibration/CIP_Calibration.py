@@ -411,9 +411,9 @@ class CIP_CalibrationLogic(ScriptedLoadableModuleLogic):
 
         # Adjust the CT
         a2 = s * m + b
-        a2 = a2.astype(s.dtype)
-        s[:] = a2[:]
-        scalarNode.Modified()
+        a2 = a2.astype(np.int16)
+        slicer.util.updateVolumeFromArray(scalarNode, a2)
+
 
 
     @staticmethod
