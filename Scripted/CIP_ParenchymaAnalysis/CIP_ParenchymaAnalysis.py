@@ -48,7 +48,9 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         ScriptedLoadableModuleWidget.__init__(self, parent)
 
         self.chartOptions = (
-        "LAA%-950", "LAA%-925", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "HAA%-500", "HAA%-250", "Perc10", "Perc15", "Mean","Std","Kurtosis","Skewness","Ventilation Heterogeneity","Mass", "Volume")
+            "LAA%-950", "LAA%-925", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "HAA%-500", "HAA%-250",
+            "HAA%-600-250", "Perc10", "Perc15", "Mean", "Std", "Kurtosis", "Skewness",
+            "Ventilation Heterogeneity", "Mass", "Volume")
 
         # Build the column keys. Here all the columns are declared, but an alternative could be just:
         #self.columnsDict = CaseReportsWidget.getColumnKeysNormalizedDictionary(["Volume Name", "Region", "LAA%-950", ...])
@@ -63,6 +65,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.columnsDict["HAA600"] = "HAA%-600"
         self.columnsDict["HAA500"] = "HAA%-500"
         self.columnsDict["HAA250"] = "HAA%-250"
+        self.columnsDict["HAA600250"] = "HAA%-600-250"
         self.columnsDict["Perc10"] = "Perc10"
         self.columnsDict["Perc15"] = "Perc15"
         self.columnsDict["Mean"] = "Mean"
@@ -183,12 +186,16 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.HistSection.setStyleSheet('#HistSection {border: 0.5px solid lightGray; }')
         HistSectionTitle = qt.QLabel()
         HistSectionTitle.setText('Histogram Section')
-        # HistSectionTitle.setStyleSheet('border: 1px solid white; color: black')
         self.HistSection.layout().addWidget(HistSectionTitle)
+
+        self.HistogramFreqOption = qt.QCheckBox()
+        self.HistogramFreqOption.setText('Frequency by region volume')
+        self.HistogramFreqOption.setChecked(1)
+        self.HistogramFreqOption.setToolTip('If checked, histogram multiplied by region volume will be displayed.')
+        self.HistogramFreqOption.hide()
 
         self.histogramCheckBoxes = []
         self.histFrame = qt.QFrame()
-        # self.histFrame.setStyleSheet('border: 1px solid white')
         self.histFrame.setLayout(qt.QHBoxLayout())
 
         self.GlobalHistCheckBox = qt.QCheckBox()
@@ -251,6 +258,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
             self.histogramCheckBoxes[i].setText(self.rTags[i])
             self.histogramCheckBoxes[i].hide()
 
+        self.HistSection.layout().addWidget(self.HistogramFreqOption)
         self.HistSection.layout().addWidget(self.histFrame)
         self.HistSection.enabled = False
 
@@ -277,12 +285,6 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.reportsWidget = CaseReportsWidget(self.moduleName, self.columnsDict, parentWidget=self.parent)
         self.reportsWidget.setup()
         self.reportsWidget.showPrintButton(True)
-        # self.reportsWidget.saveButton.enabled = False
-        # self.reportsWidget.openButton.enabled = False
-        # self.reportsWidget.exportButton.enabled = False
-        # self.reportsWidget.removeButton.enabled = False
-        # By default, the Print button is hidden
-        # self.reportsWidget.showPrintButton.enabled = False
 
         # Add vertical spacer
         self.parent.layout().addStretch(1)
@@ -297,6 +299,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.CTSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onCTSelect)
         self.labelSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onLabelSelect)
 
+        self.HistogramFreqOption.connect('clicked()', self.changeHistDisplay)
         self.GlobalHistCheckBox.connect('clicked()', self.onHistogram)
         self.RightHistCheckBox.connect('clicked()', self.onHistogram)
         self.LeftHistCheckBox.connect('clicked()', self.onHistogram)
@@ -343,7 +346,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
             self.preProcessingWidget.filterApplication.setChecked(0)
             self.preProcessingWidget.filterApplication.setEnabled(1)
             for color in ['Red', 'Yellow', 'Green']:
-                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID('None')            
+                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID('None')
 
     def inputVolumesAreValid(self):
         """Verify that volumes are compatible with label calculation
@@ -434,7 +437,10 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         if not self.inputVolumesAreValid():
             return
 
+        self.HistSection.enabled = False
         self.applyButton.enabled = False
+        for i in xrange(len(self.histogramCheckBoxes)):
+            self.histogramCheckBoxes[i].hide()
 
         if self.preProcessingWidget.filterOnRadioButton.checked and self.preProcessingWidget.filterApplication.checked:
             self.filterInputCT()
@@ -444,23 +450,21 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.applyButton.repaint()
         slicer.app.processEvents()
 
-        self.logic = CIP_ParenchymaAnalysisLogic(self.CTNode, self.labelNode)
+        self.logic = CIP_ParenchymaAnalysisLogic(self.CTNode, self.labelNode, self.HistogramFreqOption.checked)
         self.populateStats()
-        self.logic.createHistogram()
+        self.logic.createHistogram(self.labelNode)
         for i in xrange(len(self.histogramCheckBoxes)):
             self.histogramCheckBoxes[i].setChecked(0)
             self.histogramCheckBoxes[i].hide()
 
+        self.HistogramFreqOption.show()
         for tag in self.rTags:
             if tag in self.logic.regionTags:
                 self.histogramCheckBoxes[self.rTags.index(tag)].show()
+                self.histogramCheckBoxes[self.rTags.index(tag)].setChecked(1)
 
         self.HistSection.enabled = True
         self.chartBox.enabled = True
-        # self.reportsWidget.saveButton.enabled = True
-        # self.reportsWidget.openButton.enabled = True
-        # self.reportsWidget.exportButton.enabled = True
-        # self.reportsWidget.removeButton.enabled = True
 
         self.applyButton.enabled = True
         self.applyButton.text = "Apply"
@@ -470,15 +474,22 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
             
         self.labelSelector.setCurrentNode(self.labelNode)
 
+    def changeHistDisplay(self):
+        histList = []
+        for i in xrange(len(self.histogramCheckBoxes)):
+            if self.histogramCheckBoxes[i].checked:
+                histList.append(self.rTags[i])
+        self.logic.ChangeHistogramFrequency(histList, byRegionVolume=self.HistogramFreqOption.checked)
+
     def onHistogram(self):
         """Histogram of the selected region
         """
-        self.histList = []
+        histList = []
         for i in xrange(len(self.histogramCheckBoxes)):
-            if self.histogramCheckBoxes[i].checked == True:
-                self.histList.append(self.rTags[i])
+            if self.histogramCheckBoxes[i].checked:
+                histList.append(self.rTags[i])
 
-        self.logic.AddSelectedHistograms(self.histList)
+        self.logic.AddSelectedHistograms(histList)
 
     def onChart(self):
         """chart the parenchyma analysis
@@ -585,12 +596,13 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
     """
     __preventDialogs__ = False
 
-    def __init__(self, CTNode, labelNode, fileName=None):
-        self.keys = ["LAA%-950", "LAA%-925", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "HAA%-500", "HAA%-250", "Perc10", "Perc15",
-                     "Mean","Std","Kurtosis","Skewness","Ventilation Heterogeneity","Mass", "Volume"]
+    def __init__(self, CTNode, labelNode, freq_by_region_volume=True):
+        self.keys = ["LAA%-950", "LAA%-925", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "HAA%-500", "HAA%-250",
+                     "HAA%-600-250", "Perc10", "Perc15", "Mean", "Std", "Kurtosis", "Skewness",
+                     "Ventilation Heterogeneity", "Mass", "Volume"]
 
-        rTags = ["WholeLung", "RightLung", "RightLung", "RightLung", "LeftLung", "LeftLung", "RUL", "RML", "RLL", "LUL", "LLL", "LUT", "LMT",
-                 "LLT", "RUT", "RMT", "RLT"]
+        rTags = ["WholeLung", "RightLung", "RightLung", "RightLung", "LeftLung", "LeftLung", "RUL", "RML",
+                 "RLL", "LUL", "LLL", "LUT", "LMT", "LLT", "RUT", "RMT", "RLT"]
         self.regionTags = []
         self.regionValues = [(1, 14), (2, 2), (4, 6), (12, 14), (3, 3), (7, 11), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8),
                              (9, 9), (10, 10), (11, 11), (12, 12), (13, 13), (14, 14)]
@@ -622,8 +634,11 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
 
         self.labelStats = {}
 
+        self.regionHists_by_region_volume = {}
         self.regionHists = {}
         self.regionBins = {}
+
+        self.freq_by_region_volume = freq_by_region_volume
 
         datalabel_arr = vtk.util.numpy_support.vtk_to_numpy(labelNode.GetImageData().GetPointData().GetScalars())
         data_arr = vtk.util.numpy_support.vtk_to_numpy(CTNode.GetImageData().GetPointData().GetScalars())
@@ -642,6 +657,8 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
                 self.labelStats['HAA%-600', tag] = 100.0 * (data > -600).sum() / float(data.size)
                 self.labelStats['HAA%-500', tag] = 100.0 * (data > -500).sum() / float(data.size)
                 self.labelStats['HAA%-250', tag] = 100.0 * (data > -250).sum() / float(data.size)
+                self.labelStats['HAA%-600-250', tag] = 100.0 * (numpy.logical_and(data > -600,
+                                                                                  data < -250)).sum() / float(data.size)
                 # self.labelStats[cycle,'Perc10',tag]=self.percentile(data,.1)
                 # self.labelStats[cycle,'Perc15',tag]=self.percentile(data,.15)
                 self.labelStats['Perc10',tag]=numpy.percentile(data,10)
@@ -652,13 +669,16 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
                 self.labelStats['Skewness', tag] = self.skew(data, mean_data, std_data)
                 self.labelStats['Ventilation Heterogeneity', tag] =  self.vh(data)
                 self.labelStats['Mass',tag] = self.mass(data,cubicMMPerVoxel)
-                self.labelStats['Volume', tag] = data.size * cubicMMPerVoxel * litersPerCubicMM;
+                self.labelStats['Volume', tag] = data.size * cubicMMPerVoxel * litersPerCubicMM
 
                 # Compute histograms
                 data = data[data < -350]
                 binContainers = numpy.arange(data.min(), data.max() + 2)
-                histogram, bins = numpy.histogram(data, bins=binContainers, density=False)
+                histogram, bins = numpy.histogram(data, bins=binContainers, density=True)
+                self.regionHists_by_region_volume[
+                    tag] = histogram * data.size * cubicMMPerVoxel * litersPerCubicMM * 1000
                 self.regionHists[tag] = histogram
+
                 self.regionBins[tag] = bins
 
                 self.regionTags.append(tag)
@@ -682,6 +702,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
 
                 # this.InvokeEvent(vtkParenchymaAnalysisLogic::EndLabelStats, (void*)"end label stats")
 
+    @staticmethod
     def percentile(N, percent, key=lambda x: x):
         """
           Find the percentile of a list of values.
@@ -823,12 +844,12 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         chartNode.SetProperty('default', 'title', 'Parenchyma Statistics')
         chartNode.SetProperty('default', 'xAxisLabel', 'Label')
         chartNode.SetProperty('default', 'yAxisLabel', valueToPlot)
-        chartNode.SetProperty('default', 'type', 'Bar');
+        chartNode.SetProperty('default', 'type', 'Bar')
         chartNode.SetProperty('default', 'xAxisType', 'categorical')
         chartNode.SetProperty('default', 'showLegend', 'off')
 
         # series level properties
-        if labelNode.GetDisplayNode() != None and labelNode.GetDisplayNode().GetColorNode() != None:
+        if labelNode.GetDisplayNode() is not None and labelNode.GetDisplayNode().GetColorNode() is not None:
             colorNode = labelNode.GetDisplayNode().GetColorNode()
 
             newDisplayNode = slicer.vtkMRMLLabelMapVolumeDisplayNode()
@@ -848,65 +869,127 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
                 newColorNode.SetColorName(colorNumber, tag)
                 colorNumber += 1
 
-            #      chartNode.SetProperty(valueToPlot, 'lookupTable', labelNode.GetDisplayNode().GetColorNodeID())
             chartNode.SetProperty(valueToPlot, 'lookupTable', newColorNode.GetID())
 
-    def createHistogram(self):
+    def createHistogram(self, labelNode):
         self.setHistogramLayout()
 
         histogramViewNode = SlicerUtil.getNode('HistogramView')
+        histogramViewNode.SetEnablePointMoveAlongX(False)
+        histogramViewNode.SetEnablePointMoveAlongY(False)
+        histogramViewNode.SetInteractionMode(0)
 
         # Show histogram
-        self.histogramArrays = {}
+        plotChartNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotChartNode", 'PlotChartNode')
+        plotChartNode.SetTitle('Histogram')
+        plotChartNode.SetXAxisTitle('Density (HU)')
+        plotChartNode.SetYAxisTitle('Frequency')
+        plotChartNode.SetYAxisRangeAuto(False)
+        plotChartNode.SetYAxisRange(0, 50)
 
-        HistNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLChartNode())
+        colorNode = labelNode.GetDisplayNode().GetColorNode()
+        newDisplayNode = slicer.vtkMRMLLabelMapVolumeDisplayNode()
+        newDisplayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeFileGenericAnatomyColors.txt')
 
         for tag in self.regionTags:
-            arrayDataNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLDoubleArrayNode())
-            arrayData = arrayDataNode.GetArray()
+            if self.freq_by_region_volume:
+                histogram = self.regionHists_by_region_volume[tag]
+            else:
+                histogram = self.regionHists[tag]
 
-            histogram = self.regionHists[tag]
             bins = self.regionBins[tag]
 
+            tableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", 'TableNode_{}'.format(tag))
+            table = tableNode.GetTable()
+
+            arrX = vtk.vtkFloatArray()
+            arrX.SetName("bins".format(tag))
+            table.AddColumn(arrX)
+
+            arrY = vtk.vtkFloatArray()
+            arrY.SetName("freq_{}".format(tag))
+            table.AddColumn(arrY)
+
             dataSamples = histogram.size
-            dataTuples = dataSamples
-            arrayData.SetNumberOfTuples(dataTuples)
-            tuple = 0
+            table.SetNumberOfRows(dataSamples)
 
-            for i in xrange(dataSamples):
-                arrayData.SetComponent(tuple, 0, bins[i])
-                arrayData.SetComponent(tuple, 1, histogram[i])
-                arrayData.SetComponent(tuple, 2, 0)
-                tuple += 1
+            for i in range(dataSamples):
+                table.SetValue(i, 0, float(bins[i]))
+                table.SetValue(i, 1, histogram[i])
 
-            self.histogramArrays[tag] = arrayDataNode
-            HistNode.AddArray(tag, arrayDataNode.GetID())
+            plotSeriesNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotSeriesNode", tag)
+            plotSeriesNode.SetAndObserveTableNodeID(tableNode.GetID())
+            plotSeriesNode.SetXColumnName("bins".format(tag))
+            plotSeriesNode.SetYColumnName("freq_{}".format(tag))
+            plotSeriesNode.SetPlotType(slicer.vtkMRMLPlotSeriesNode.PlotTypeScatter)
+            plotSeriesNode.SetLineStyle(slicer.vtkMRMLPlotSeriesNode.LineStyleSolid)
+            plotSeriesNode.SetLineWidth(2.)
+            plotSeriesNode.SetMarkerStyle(slicer.vtkMRMLPlotSeriesNode.MarkerStyleNone)
+            # plotSeriesNode.SetUniqueColor('vtkMRMLColorTableNodeFileGenericAnatomyColors.txt')
+            c = [0,0,0,0]
+            if tag == 'WholeLung':
+                colorNode.GetColor(0, c)
+            elif tag == 'RightLung':
+                colorNode.GetColor(1, c)
+            elif tag == 'LeftLung':
+                colorNode.GetColor(2, c)
+            else:
+                value = self.valuesDictionary[tag]
+                colorNode.GetColor(value[0], c)
 
-        histogramViewNode.SetChartNodeID(HistNode.GetID())
+            plotSeriesNode.SetColor(c[0], c[1], c[2])
+            plotChartNode.AddAndObservePlotSeriesNodeID(plotSeriesNode.GetID())
 
-        HistNode.SetProperty('default', 'title', 'Lung Density Histogram')
-        HistNode.SetProperty('default', 'xAxisLabel', 'Density (HU)')
-        HistNode.SetProperty('default', 'yAxisLabel', 'Frequency')
-        HistNode.SetProperty('default', 'type', 'Line');
-        HistNode.SetProperty('default', 'xAxisType', 'quantitative')
-        HistNode.SetProperty('default', 'showLegend', 'on')
+        histogramViewNode.SetPlotChartNodeID(plotChartNode.GetID())
+
+    def ChangeHistogramFrequency(self, histogramsList, byRegionVolume=True):
+        plotChartNode = SlicerUtil.getNode('PlotChartNode')
+        plotChartNode.RemoveAllPlotSeriesNodeIDs()
+        for tag in self.regionTags:
+            if byRegionVolume:
+                plotChartNode.SetYAxisRange(0, 50)
+                histogram = self.regionHists_by_region_volume[tag]
+            else:
+                plotChartNode.SetYAxisRange(0, 0.01)
+                histogram = self.regionHists[tag]
+
+            bins = self.regionBins[tag]
+
+            tableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", 'TableNode_{}'.format(tag))
+            table = tableNode.GetTable()
+
+            arrX = vtk.vtkFloatArray()
+            arrX.SetName("bins".format(tag))
+            table.AddColumn(arrX)
+
+            arrY = vtk.vtkFloatArray()
+            arrY.SetName("freq_{}".format(tag))
+            table.AddColumn(arrY)
+
+            dataSamples = histogram.size
+            table.SetNumberOfRows(dataSamples)
+
+            for i in range(dataSamples):
+                table.SetValue(i, 0, float(bins[i]))
+                table.SetValue(i, 1, histogram[i])
+
+            plotSeriesNode = SlicerUtil.getNode(tag)
+            plotSeriesNode.SetAndObserveTableNodeID(tableNode.GetID())
+            plotSeriesNode.SetXColumnName("bins".format(tag))
+            plotSeriesNode.SetYColumnName("freq_{}".format(tag))
+
+        self.AddSelectedHistograms(histogramsList)
 
     def AddSelectedHistograms(self, histogramsList):
         histogramViewNode = SlicerUtil.getNode('HistogramView')
-
-        HistNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLChartNode())
+        plotChartNode = SlicerUtil.getNode('PlotChartNode')
+        plotChartNode.RemoveAllPlotSeriesNodeIDs()
 
         for tag in histogramsList:
-            HistNode.AddArray(tag, self.histogramArrays[tag].GetID())
+            plotSeriesNode = SlicerUtil.getNode(tag)
+            plotChartNode.AddAndObservePlotSeriesNodeID(plotSeriesNode.GetID())
 
-        histogramViewNode.SetChartNodeID(HistNode.GetID())
-
-        HistNode.SetProperty('default', 'title', 'Lung Density Histogram')
-        HistNode.SetProperty('default', 'xAxisLabel', 'Density (HU)')
-        HistNode.SetProperty('default', 'yAxisLabel', 'Frequency')
-        HistNode.SetProperty('default', 'type', 'Line');
-        HistNode.SetProperty('default', 'xAxisType', 'quantitative')
-        HistNode.SetProperty('default', 'showLegend', 'on')
+        histogramViewNode.SetPlotChartNodeID(plotChartNode.GetID())
 
     def setHistogramLayout(self):
         customLayout = ("<layout type=\"vertical\" split=\"false\" >"
@@ -918,7 +1001,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
                         "    </view>"
                         "   </item>"
                         "   <item>"
-                        "    <view class=\"vtkMRMLChartViewNode\" singletontag=\"HistogramView\">"
+                        "    <view class=\"vtkMRMLPlotViewNode\" singletontag=\"HistogramView\">"
                         "     <property name=\"viewlabel\" action=\"default\">HV</property>"
                         "    </view>"
                         "   </item>"
@@ -966,7 +1049,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
                         "    </view>"
                         "   </item>"
                         "   <item>"
-                        "    <view class=\"vtkMRMLChartViewNode\" singletontag=\"HistogramView\">"
+                        "    <view class=\"vtkMRMLPlotViewNode\" singletontag=\"HistogramView\">"
                         "     <property name=\"viewlabel\" action=\"default\">HV</property>"
                         "    </view>"
                         "   </item>"
