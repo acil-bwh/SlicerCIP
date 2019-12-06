@@ -192,16 +192,16 @@ class PreProcessingWidget():
         self.filterOffRadioButton.connect('toggled(bool)', self.hideFilterParams)
         
     def showFilterParams(self):
-        self.showFilterOptions(True)
+        self.hideFilterOptions(False)
     
     def hideFilterParams(self):
-        self.showFilterOptions(False)
+        self.hideFilterOptions(True)
 
-    def showFilteringFrame(self,show):
+    def hideFilteringFrame(self, hide):
         """ Show/Hide the filtering frame 
             param show: True/False
         """
-        self.FilteringFrame.setShown(show)
+        self.FilteringFrame.setHidden(hide)
     
     def enableFilteringFrame(self,enabled):
         """ Enable/Disable the filtering frame 
@@ -209,11 +209,11 @@ class PreProcessingWidget():
         """
         self.FilteringFrame.setEnabled(enabled)
 
-    def showFilterOptions(self,show):
+    def hideFilterOptions(self, hide):
         """ Show/Hide the filtering options 
             param show: True/False
         """
-        self.filterOptionsFrame.setShown(show)
+        self.filterOptionsFrame.setHidden(hide)
  
     def enableFilterOptions(self,enabled):
         """ Enable/Disable the filtering options 
