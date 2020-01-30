@@ -22,6 +22,7 @@ __revision__ = "$Id: AllOrNothing.py,v 1.8 2003/02/28 15:23:20 akuchling Exp $"
 import operator
 import string
 from Crypto.Util.number import bytes_to_long, long_to_bytes
+from functools import reduce
 
 
 
@@ -139,7 +140,7 @@ class AllOrNothing:
         # we convert the blocks to strings since in Python, byte sequences are
         # always represented as strings.  This is more consistent with the
         # model that encryption and hash algorithms always operate on strings.
-        return map(long_to_bytes, blocks)
+        return list(map(long_to_bytes, blocks))
 
 
     def undigest(self, blocks):
@@ -154,11 +155,11 @@ class AllOrNothing:
         # better have at least 2 blocks, for the padbytes package and the hash
         # block accumulator
         if len(blocks) < 2:
-            raise ValueError, "List must be at least length 2."
+            raise ValueError("List must be at least length 2.")
 
         # blocks is a list of strings.  We need to deal with them as long
         # integers
-        blocks = map(bytes_to_long, blocks)
+        blocks = list(map(bytes_to_long, blocks))
 
         # Calculate the well-known key, to which the hash blocks are
         # encrypted, and create the hash cipher.
@@ -193,7 +194,7 @@ class AllOrNothing:
         # of the cipher's block_size.  This number should be small enough that
         # the conversion from long integer to integer should never overflow
         padbytes = int(parts[-1])
-        text = string.join(map(long_to_bytes, parts[:-1]), '')
+        text = string.join(list(map(long_to_bytes, parts[:-1])), '')
         return text[:-padbytes]
 
     def _inventkey(self, key_size):
@@ -247,15 +248,15 @@ Where:
 
     def usage(code, msg=None):
         if msg:
-            print msg
-        print usagemsg % {'program': sys.argv[0],
-                          'ciphermodule': ciphermodule}
+            print(msg)
+        print(usagemsg % {'program': sys.argv[0],
+                          'ciphermodule': ciphermodule})
         sys.exit(code)
 
     try:
         opts, args = getopt.getopt(sys.argv[1:],
                                    'c:l', ['cipher=', 'aslong'])
-    except getopt.error, msg:
+    except getopt.error as msg:
         usage(1, msg)
 
     if args:
@@ -273,23 +274,23 @@ Where:
     module = __import__('Crypto.Cipher.'+ciphermodule, None, None, ['new'])
 
     a = AllOrNothing(module)
-    print 'Original text:\n=========='
-    print __doc__
-    print '=========='
+    print('Original text:\n==========')
+    print(__doc__)
+    print('==========')
     msgblocks = a.digest(__doc__)
-    print 'message blocks:'
-    for i, blk in map(None, range(len(msgblocks)), msgblocks):
+    print('message blocks:')
+    for i, blk in map(None, list(range(len(msgblocks))), msgblocks):
         # base64 adds a trailing newline
-        print '    %3d' % i,
+        print('    %3d' % i, end=' ')
         if aslong:
-            print bytes_to_long(blk)
+            print(bytes_to_long(blk))
         else:
-            print base64.encodestring(blk)[:-1]
+            print(base64.encodestring(blk)[:-1])
     #
     # get a new undigest-only object so there's no leakage
     b = AllOrNothing(module)
     text = b.undigest(msgblocks)
     if text == __doc__:
-        print 'They match!'
+        print('They match!')
     else:
-        print 'They differ!'
+        print('They differ!')

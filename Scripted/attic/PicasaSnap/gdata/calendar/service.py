@@ -28,7 +28,7 @@
 __author__ = 'api.vli (Vivian Li)'
 
 
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import gdata
 import atom.service
 import gdata.service
@@ -452,13 +452,13 @@ class CalendarEventQuery(gdata.service.Query):
                text_query=None, params=None, categories=None):
     gdata.service.Query.__init__(self, 
         feed='http://www.google.com/calendar/feeds/%s/%s/%s' % (
-            urllib.quote(user), 
-            urllib.quote(visibility), 
-            urllib.quote(projection)),
+            urllib.parse.quote(user), 
+            urllib.parse.quote(visibility), 
+            urllib.parse.quote(projection)),
         text_query=text_query, params=params, categories=categories)
     
   def _GetStartMin(self):
-    if 'start-min' in self.keys():
+    if 'start-min' in list(self.keys()):
       return self['start-min']
     else:
       return None
@@ -470,7 +470,7 @@ class CalendarEventQuery(gdata.service.Query):
       doc="""The start-min query parameter""")
 
   def _GetStartMax(self):
-    if 'start-max' in self.keys():
+    if 'start-max' in list(self.keys()):
       return self['start-max']
     else:
       return None
@@ -482,21 +482,21 @@ class CalendarEventQuery(gdata.service.Query):
       doc="""The start-max query parameter""")
 
   def _GetOrderBy(self):
-    if 'orderby' in self.keys():
+    if 'orderby' in list(self.keys()):
       return self['orderby']
     else:
       return None
 
   def _SetOrderBy(self, val):
     if val is not 'lastmodified' and val is not 'starttime':
-      raise Error, "Order By must be either 'lastmodified' or 'starttime'"
+      raise Error("Order By must be either 'lastmodified' or 'starttime'")
     self['orderby'] = val
 
   orderby = property(_GetOrderBy, _SetOrderBy, 
       doc="""The orderby query parameter""")
 
   def _GetSortOrder(self):
-    if 'sortorder' in self.keys():
+    if 'sortorder' in list(self.keys()):
       return self['sortorder']
     else:
       return None
@@ -505,15 +505,15 @@ class CalendarEventQuery(gdata.service.Query):
     if (val is not 'ascending' and val is not 'descending' 
         and val is not 'a' and val is not 'd' and val is not 'ascend'
         and val is not 'descend'):
-      raise Error, "Sort order must be either ascending, ascend, " + (
-          "a or descending, descend, or d")
+      raise Error("Sort order must be either ascending, ascend, " + (
+          "a or descending, descend, or d"))
     self['sortorder'] = val
 
   sortorder = property(_GetSortOrder, _SetSortOrder, 
       doc="""The sortorder query parameter""")
 
   def _GetSingleEvents(self):
-    if 'singleevents' in self.keys():
+    if 'singleevents' in list(self.keys()):
       return self['singleevents']
     else:
       return None
@@ -525,7 +525,7 @@ class CalendarEventQuery(gdata.service.Query):
       doc="""The singleevents query parameter""")
 
   def _GetFutureEvents(self):
-    if 'futureevents' in self.keys():
+    if 'futureevents' in list(self.keys()):
       return self['futureevents']
     else:
       return None
@@ -537,7 +537,7 @@ class CalendarEventQuery(gdata.service.Query):
       doc="""The futureevents query parameter""")
 
   def _GetRecurrenceExpansionStart(self):
-    if 'recurrence-expansion-start' in self.keys():
+    if 'recurrence-expansion-start' in list(self.keys()):
       return self['recurrence-expansion-start']
     else:
       return None
@@ -550,7 +550,7 @@ class CalendarEventQuery(gdata.service.Query):
       doc="""The recurrence-expansion-start query parameter""")
 
   def _GetRecurrenceExpansionEnd(self):
-    if 'recurrence-expansion-end' in self.keys():
+    if 'recurrence-expansion-end' in list(self.keys()):
       return self['recurrence-expansion-end']
     else:
       return None
@@ -566,7 +566,7 @@ class CalendarEventQuery(gdata.service.Query):
     self['ctz'] = val
 
   def _GetTimezone(self):
-    if 'ctz' in self.keys():
+    if 'ctz' in list(self.keys()):
       return self['ctz']
     else:
       return None

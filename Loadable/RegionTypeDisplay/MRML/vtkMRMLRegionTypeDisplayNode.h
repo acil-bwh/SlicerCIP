@@ -33,13 +33,13 @@ class VTK_SLICER_REGIONTYPE_MODULE_MRML_EXPORT vtkMRMLRegionTypeDisplayNode   : 
   public:
   static vtkMRMLRegionTypeDisplayNode *New();
   vtkTypeMacro(vtkMRMLRegionTypeDisplayNode,vtkMRMLVolumeDisplayNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  virtual vtkMRMLNode* CreateNodeInstance() override;
 
   ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "RegionTypeDisplayNode";};
+  virtual const char* GetNodeTagName() override {return "RegionTypeDisplayNode";};
 
   ///
   /// Sets visibility for specific region/type combination.

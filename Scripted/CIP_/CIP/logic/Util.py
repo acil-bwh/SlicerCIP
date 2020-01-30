@@ -10,8 +10,8 @@ import numpy as np
 import SimpleITK as sitk
 import subprocess
 
-import file_conventions
-from geometry_topology_data import *
+from . import file_conventions
+from .geometry_topology_data import *
 
 class Util: 
     # Constants
@@ -38,7 +38,7 @@ class Util:
         @param include_file_extension: include the file extension (ex: .nrrd)
         @return: extension
         """
-        if not Util.file_conventions_extensions.has_key(file_type_key):
+        if file_type_key not in Util.file_conventions_extensions:
             raise Exception("Key not found: " + file_type_key)
         s = Util.file_conventions_extensions[file_type_key]
         if not include_file_extension:
@@ -98,7 +98,7 @@ class Util:
             return False
         os.makedirs(path)
         # Make sure that everybody has write permissions (sometimes there are problems because of umask)
-        os.chmod(path, 0777)
+        os.chmod(path, 0o777)
         return True
 
     @staticmethod

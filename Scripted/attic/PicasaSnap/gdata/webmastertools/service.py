@@ -23,7 +23,7 @@ Google Webmaster Tools operations.
 
 __author__ = 'livibetter (Yu-Jie Lin)'
 
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import gdata
 import atom.service
 import gdata.service
@@ -132,7 +132,7 @@ class GWebmasterToolsService(gdata.service.GDataService):
     """
 
     return self.Delete(
-        uri % urllib.quote_plus(site_uri),
+        uri % urllib.parse.quote_plus(site_uri),
         url_params=url_params, escape_params=escape_params)
 
   def VerifySite(self, site_uri, verification_method, uri=SITE_TEMPLATE,
@@ -169,7 +169,7 @@ class GWebmasterToolsService(gdata.service.GDataService):
         )
     response = self.Put(
         site_entry,
-        uri % urllib.quote_plus(site_uri),
+        uri % urllib.parse.quote_plus(site_uri),
         url_params=url_params,
         escape_params=escape_params, converter=converter)
     if not converter and isinstance(response, atom.Entry):
@@ -210,7 +210,7 @@ class GWebmasterToolsService(gdata.service.GDataService):
         )
     response = self.Put(
         site_entry,
-        uri % urllib.quote_plus(site_uri),
+        uri % urllib.parse.quote_plus(site_uri),
         url_params=url_params,
         escape_params=escape_params, converter=converter)
     if not converter and isinstance(response, atom.Entry):
@@ -250,7 +250,7 @@ class GWebmasterToolsService(gdata.service.GDataService):
         )
     response = self.Put(
         site_entry,
-        uri % urllib.quote_plus(site_uri),
+        uri % urllib.parse.quote_plus(site_uri),
         url_params=url_params,
         escape_params=escape_params, converter=converter)
     if not converter and isinstance(response, atom.Entry):
@@ -293,7 +293,7 @@ class GWebmasterToolsService(gdata.service.GDataService):
         )
     response = self.Put(
         site_entry,
-        uri % urllib.quote_plus(site_uri),
+        uri % urllib.parse.quote_plus(site_uri),
         url_params=url_params,
         escape_params=escape_params, converter=converter)
     if not converter and isinstance(response, atom.Entry):
@@ -334,7 +334,7 @@ class GWebmasterToolsService(gdata.service.GDataService):
         )
     response = self.Put(
         site_entry,
-        uri % urllib.quote_plus(site_uri),
+        uri % urllib.parse.quote_plus(site_uri),
         url_params=url_params,
         escape_params=escape_params, converter=converter)
     if not converter and isinstance(response, atom.Entry):
@@ -357,7 +357,7 @@ class GWebmasterToolsService(gdata.service.GDataService):
       If converter is defined, the results of running converter on the server's
       response. Otherwise, it will be a SitemapsFeed object.
     """
-    return self.Get(uri % {'site_id': urllib.quote_plus(site_uri)},
+    return self.Get(uri % {'site_id': urllib.parse.quote_plus(site_uri)},
         converter=converter)
 
   def AddSitemap(self, site_uri, sitemap_uri, sitemap_type='WEB',
@@ -393,7 +393,7 @@ class GWebmasterToolsService(gdata.service.GDataService):
         sitemap_type=webmastertools.SitemapType(text=sitemap_type))
     response = self.Post(
         sitemap_entry,
-        uri % {'site_id': urllib.quote_plus(site_uri)},
+        uri % {'site_id': urllib.parse.quote_plus(site_uri)},
         url_params=url_params,
         escape_params=escape_params, converter=converter)
     if not converter and isinstance(response, atom.Entry):
@@ -434,10 +434,10 @@ class GWebmasterToolsService(gdata.service.GDataService):
         sitemap_mobile_markup_language=\
             webmastertools.SitemapMobileMarkupLanguage(
                 text=sitemap_mobile_markup_language))
-    print sitemap_entry
+    print(sitemap_entry)
     response = self.Post(
         sitemap_entry,
-        uri % {'site_id': urllib.quote_plus(site_uri)},
+        uri % {'site_id': urllib.parse.quote_plus(site_uri)},
         url_params=url_params,
         escape_params=escape_params, converter=converter)
     if not converter and isinstance(response, atom.Entry):
@@ -482,10 +482,10 @@ class GWebmasterToolsService(gdata.service.GDataService):
     for label in sitemap_news_publication_label:
       sitemap_entry.sitemap_news_publication_label.append(
           webmastertools.SitemapNewsPublicationLabel(text=label))
-    print sitemap_entry
+    print(sitemap_entry)
     response = self.Post(
         sitemap_entry,
-        uri % {'site_id': urllib.quote_plus(site_uri)},
+        uri % {'site_id': urllib.parse.quote_plus(site_uri)},
         url_params=url_params,
         escape_params=escape_params, converter=converter)
     if not converter and isinstance(response, atom.Entry):
@@ -511,6 +511,6 @@ class GWebmasterToolsService(gdata.service.GDataService):
     """
 
     return self.Delete(
-        uri % {'site_id': urllib.quote_plus(site_uri),
-            'sitemap_id': urllib.quote_plus(sitemap_uri)},
+        uri % {'site_id': urllib.parse.quote_plus(site_uri),
+            'sitemap_id': urllib.parse.quote_plus(sitemap_uri)},
         url_params=url_params, escape_params=escape_params)

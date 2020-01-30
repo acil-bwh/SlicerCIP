@@ -3,7 +3,7 @@
 
 import asyncore
 from gdata.tlslite.TLSConnection import TLSConnection
-from AsyncStateMachine import AsyncStateMachine
+from .AsyncStateMachine import AsyncStateMachine
 
 
 class TLSAsyncDispatcherMixIn(AsyncStateMachine):

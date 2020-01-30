@@ -22,7 +22,7 @@
 __author__ = 'google-apps-apis@googlegroups.com'
 
 
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import gdata.apps
 import gdata.apps.service
 import gdata.service
@@ -59,16 +59,16 @@ class GroupsService(gdata.apps.service.PropertyService):
         return GROUP_ID_URL % (domain, group_id)
       elif member_id != '':
         if direct_only:
-          return GROUP_MEMBER_DIRECT_URL % (domain, urllib.quote_plus(member_id),
+          return GROUP_MEMBER_DIRECT_URL % (domain, urllib.parse.quote_plus(member_id),
                                             self._Bool2Str(direct_only))
         else:
-          return GROUP_MEMBER_URL % (domain, urllib.quote_plus(member_id))
+          return GROUP_MEMBER_URL % (domain, urllib.parse.quote_plus(member_id))
       else:
         return BASE_URL % (domain)
 
     if service_type == 'member':
       if member_id != '' and is_existed:
-        return MEMBER_ID_URL % (domain, group_id, urllib.quote_plus(member_id))
+        return MEMBER_ID_URL % (domain, group_id, urllib.parse.quote_plus(member_id))
       elif suspended_users:
         return MEMBER_WITH_SUSPENDED_URL % (domain, group_id,
                                             self._Bool2Str(suspended_users))
@@ -77,7 +77,7 @@ class GroupsService(gdata.apps.service.PropertyService):
 
     if service_type == 'owner':
       if owner_email != '' and is_existed:
-        return OWNER_ID_URL % (domain, group_id, urllib.quote_plus(owner_email))
+        return OWNER_ID_URL % (domain, group_id, urllib.parse.quote_plus(owner_email))
       elif suspended_users:
         return OWNER_WITH_SUSPENDED_URL % (domain, group_id,
                                            self._Bool2Str(suspended_users))
@@ -93,7 +93,7 @@ class GroupsService(gdata.apps.service.PropertyService):
     try:
       self._GetProperties(uri)
       return True
-    except gdata.apps.service.AppsForYourDomainException, e:
+    except gdata.apps.service.AppsForYourDomainException as e:
       if e.error_code == gdata.apps.service.ENTITY_DOES_NOT_EXIST:
         return False
       else:

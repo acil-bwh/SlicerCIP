@@ -32,7 +32,7 @@ run_on_appengine: Function which will modify an existing GDataService object
 __author__ = 'api.jscudder (Jeff Scudder)'
 
 
-import StringIO
+import io
 import pickle
 import atom.http_interface
 import atom.token_store
@@ -173,7 +173,7 @@ class HttpResponse(object):
   """
 
   def __init__(self, urlfetch_response):
-    self.body = StringIO.StringIO(urlfetch_response.content)
+    self.body = io.StringIO(urlfetch_response.content)
     self.headers = urlfetch_response.headers
     self.status = urlfetch_response.status_code
     self.reason = ''
@@ -185,7 +185,7 @@ class HttpResponse(object):
       return self.body.read(length)
 
   def getheader(self, name):
-    if not self.headers.has_key(name):
+    if name not in self.headers:
       return self.headers[name.lower()]
     return self.headers[name]
 
@@ -234,7 +234,7 @@ class AppEngineTokenStore(atom.token_store.TokenStore):
     """
     if url is None:
       return None
-    if isinstance(url, (str, unicode)):
+    if isinstance(url, str):
       url = atom.url.parse_url(url)
     tokens = load_auth_tokens(self.user)
     if url in tokens:
@@ -244,7 +244,7 @@ class AppEngineTokenStore(atom.token_store.TokenStore):
       else:
         del tokens[url]
         save_auth_tokens(tokens, self.user)
-    for scope, token in tokens.iteritems():
+    for scope, token in tokens.items():
       if token.valid_for_scope(url):
         return token
     return atom.http_interface.GenericToken()
@@ -259,7 +259,7 @@ class AppEngineTokenStore(atom.token_store.TokenStore):
     token_found = False
     scopes_to_delete = []
     tokens = load_auth_tokens(self.user)
-    for scope, stored_token in tokens.iteritems():
+    for scope, stored_token in tokens.items():
       if stored_token == token:
         scopes_to_delete.append(scope)
         token_found = True

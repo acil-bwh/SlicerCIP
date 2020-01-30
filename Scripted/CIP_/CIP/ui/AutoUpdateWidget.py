@@ -82,7 +82,7 @@ class AutoUpdateWidget(object):
           shutil.rmtree(self.updateFolder)
     
         os.makedirs(self.updateFolder)
-        os.chmod(self.updateFolder, 0777)
+        os.chmod(self.updateFolder, 0o777)
     
         repo = Repo.clone_from(SlicerUtil.CIP_GIT_REMOTE_URL, self.updateFolder)
         currentCommit = repo.head.commit.hexsha
@@ -93,7 +93,7 @@ class AutoUpdateWidget(object):
             #print("Copy %s in %s" % (src,dst))
             dir_util.copy_tree(src, dst)
     
-          print("CIP updated! Last commit: %s" % currentCommit)
+          print(("CIP updated! Last commit: %s" % currentCommit))
           SlicerUtil.setSetting("CIP", "lastCommit", currentCommit)
     
           # Show informative message

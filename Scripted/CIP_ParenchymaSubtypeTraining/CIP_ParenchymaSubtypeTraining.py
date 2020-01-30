@@ -74,7 +74,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
         typesLabel.setStyleSheet(labelsStyle)
         self.typesLayout.addWidget(typesLabel)
         self.typesRadioButtonGroup = qt.QButtonGroup()
-        for key in self.logic.params.mainTypes.iterkeys():
+        for key in self.logic.params.mainTypes.keys():
             rbitem = qt.QRadioButton(self.logic.params.getMainTypeLabel(key))
             self.typesRadioButtonGroup.addButton(rbitem, key)
             self.typesLayout.addWidget(rbitem)
@@ -91,7 +91,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
         self.subtypesLayout.setAlignment(SlicerUtil.ALIGNMENT_VERTICAL_TOP)
         self.subtypesRadioButtonGroup = qt.QButtonGroup()
         # Add all the subtypes (we will filter later in "updateState" function)
-        for key in self.logic.params.subtypes.iterkeys():
+        for key in self.logic.params.subtypes.keys():
             # Build the description
             rbitem = qt.QRadioButton(self.logic.params.getSubtypeLabel(key))
             self.subtypesRadioButtonGroup.addButton(rbitem, key)
@@ -110,7 +110,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
         self.regionsRadioButtonGroup = qt.QButtonGroup()
         self.regionsFrame = qt.QFrame()
         # Add all the regions
-        for key in self.logic.params.regions.iterkeys():
+        for key in self.logic.params.regions.keys():
             # Build the description
             rbitem = qt.QRadioButton(self.logic.params.getRegionLabel(key))
             self.regionsRadioButtonGroup.addButton(rbitem, key)
@@ -128,7 +128,7 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
         self.artifactsLabel.setStyleSheet(labelsStyle)
         self.typesLayout.addWidget(self.artifactsLabel)
         self.artifactsRadioButtonGroup = qt.QButtonGroup()
-        for artifactId in self.logic.params.artifacts.iterkeys():
+        for artifactId in self.logic.params.artifacts.keys():
             rbitem = qt.QRadioButton(self.logic.params.getArtifactLabel(artifactId))
             self.artifactsRadioButtonGroup.addButton(rbitem, artifactId)
             self.typesLayout.addWidget(rbitem)
@@ -360,7 +360,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(CIP_PointsLabellingLogic):
         :return: tuple (typeId, subtypeId, artifactId)
         """
         subtype = geometryTopologyDataPoint.chest_type
-        if subtype in self.params.mainTypes.keys():
+        if subtype in list(self.params.mainTypes.keys()):
             # Main type. The subtype will be "Any"
             mainType = subtype
             subtype = 0

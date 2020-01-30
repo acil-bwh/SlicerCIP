@@ -37,7 +37,7 @@ class FirstOrderStatistics:
         self.parameterValues = parameterValues
         self.bins = bins
         self.grayLevels = grayLevels
-        self.keys = set(allKeys).intersection(self.firstOrderStatistics.keys())
+        self.keys = set(allKeys).intersection(list(self.firstOrderStatistics.keys()))
 
     def voxelCount(self, parameterArray):
         return (parameterArray.size)

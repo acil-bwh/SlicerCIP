@@ -36,34 +36,34 @@ public:
   static vtkMRMLParticlesNode *New();
   vtkTypeMacro(vtkMRMLParticlesNode,vtkMRMLModelNode);
   //vtkTypeMacro(vtkMRMLParticlesNode,vtkMRMLTransformableNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   //--------------------------------------------------------------------------
   /// MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  virtual vtkMRMLNode* CreateNodeInstance() override;
 
   ///
   /// Copy the node's attributes to this object
-  virtual void Copy ( vtkMRMLNode *node );
+  virtual void Copy ( vtkMRMLNode *node ) override;
 
   ///
   /// alternative method to propagate events generated in Display nodes
   virtual void ProcessMRMLEvents ( vtkObject * /*caller*/,
                                    unsigned long /*event*/,
-                                   void * /*callData*/ );
+                                   void * /*callData*/ ) override;
 
   ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "Particles";};
+  virtual const char* GetNodeTagName() override {return "Particles";};
 
   ///
   /// get associated line display node or NULL if not set
   vtkMRMLParticlesDisplayNode* GetParticlesDisplayNode();
 
   /// Create default display nodes
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode();
+  virtual vtkMRMLStorageNode* CreateDefaultStorageNode() override;
 
   /// Get all point scalar arrays in particles vtkPolyData
   void GetAvailableScalarNames(std::vector<std::string> &names);

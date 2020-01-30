@@ -28,7 +28,7 @@ settings.
 __author__ = 'Claudio Cherubino <ccherubino@google.com>'
 
 
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 import gdata.apps.emailsettings.data
 import gdata.client
@@ -181,7 +181,7 @@ class EmailSettingsClient(gdata.client.GDClient):
     """
     uri = self.MakeEmailSettingsUri(username=username,
                                     setting_id=SETTING_ID_LABEL)
-    uri = '/'.join([uri, urllib.quote_plus(label)])
+    uri = '/'.join([uri, urllib.parse.quote_plus(label)])
     return self.delete(uri, **kwargs)
   
   DeleteLabel = delete_label

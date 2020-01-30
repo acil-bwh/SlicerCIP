@@ -306,7 +306,7 @@ class ListEntry(gdata.data.GDEntry):
     Old values which are already in the entry will not be removed unless
     they are overwritten with new values from the dict.
     """
-    for column, value in values.iteritems():
+    for column, value in values.items():
       self.set_value(column, value)
 
 

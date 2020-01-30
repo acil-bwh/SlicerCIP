@@ -1,4 +1,5 @@
 from __main__ import vtk, qt, ctk, slicer
+from functools import reduce
 
 #
 # EmphysemaSubtypes
@@ -265,7 +266,7 @@ class EmphysemaSubtypesLogic:
     stataccum.Update()
     lo = 1
     hi = 6
-    for i in xrange(lo,hi+1):
+    for i in range(lo,hi+1):
 
       # this->SetProgress((float)i/hi);
       # std::string event_message = "Label "; std::stringstream s; s << i; event_message.append(s.str());
@@ -315,9 +316,9 @@ class EmphysemaSubtypesLogic:
 
     # this.InvokeEvent(vtkEmphysemaSubtypesLogic::EndLabelStats, (void*)"end label stats")
     total=0
-    for i in xrange(lo,hi+1):
+    for i in range(lo,hi+1):
       total = total + self.labelStats[i,"Percentage"]
-    for i in xrange(lo,hi+1):
+    for i in range(lo,hi+1):
       self.labelStats[i,"Percentage"] = float(100.0 * self.labelStats[i,"Percentage"]/total)
     
   def createStatsChart(self, labelNode, valueToPlot, ignoreZero=False):
@@ -342,7 +343,7 @@ class EmphysemaSubtypesLogic:
       tuples -= 1
     array.SetNumberOfTuples(tuples)
     tuple = 0
-    for i in xrange(samples):
+    for i in range(samples):
         index = self.labelStats["Labels"][i]
         if not (ignoreZero and index == 0):
           array.SetComponent(tuple, 0, index)
@@ -433,6 +434,6 @@ if __name__ == "__main__":
   # TODO: ideally command line args should handle --xml
 
   import sys
-  print( sys.argv )
+  print(( sys.argv ))
 
   slicelet = EmphysemaSubtypesSlicelet()

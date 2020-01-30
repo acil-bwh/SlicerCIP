@@ -4,6 +4,7 @@ import numpy
 import math
 import operator
 import collections
+from functools import reduce
 
 
 class GeometricalMeasures:
@@ -22,7 +23,7 @@ class GeometricalMeasures:
         self.parameterMatrix = parameterMatrix
         self.parameterMatrixCoordinates = parameterMatrixCoordinates
         self.parameterValues = parameterValues
-        self.keys = set(allKeys).intersection(self.GeometricalMeasures.keys())
+        self.keys = set(allKeys).intersection(list(self.GeometricalMeasures.keys()))
 
         if self.keys:
             self.cubicMMPerVoxel = reduce(lambda x, y: x * y, labelNodeSpacing)
@@ -49,7 +50,7 @@ class GeometricalMeasures:
 
         # vectorize
         for i, j, k, l_slice in zip(*extrudedMatrixCoordinates):
-            for l in xrange(l_slice.start, l_slice.stop):
+            for l in range(l_slice.start, l_slice.stop):
                 fxy = numpy.array([extrudedMatrix[i + 1, j, k, l], extrudedMatrix[i - 1, j, k, l]]) == 0
                 fyz = numpy.array([extrudedMatrix[i, j + 1, k, l], extrudedMatrix[i, j - 1, k, l]]) == 0
                 fxz = numpy.array([extrudedMatrix[i, j, k + 1, l], extrudedMatrix[i, j, k - 1, l]]) == 0

@@ -76,14 +76,12 @@ class MigrationService(gdata.apps.service.AppsService):
     mail_entry.rfc822_msg = migration.Rfc822Msg(text=(base64.b64encode(
         mail_message)))
     mail_entry.rfc822_msg.encoding = 'base64'
-    mail_entry.mail_item_property = map(
-        lambda x: migration.MailItemProperty(value=x), mail_item_properties)
-    mail_entry.label = map(lambda x: migration.Label(label_name=x),
-                           mail_labels)
+    mail_entry.mail_item_property = [migration.MailItemProperty(value=x) for x in mail_item_properties]
+    mail_entry.label = [migration.Label(label_name=x) for x in mail_labels]
 
     try:
       return migration.MailEntryFromString(str(self.Post(mail_entry, uri)))
-    except gdata.service.RequestError, e:
+    except gdata.service.RequestError as e:
       # Store the number of failed imports when importing several at a time 
       self.exceptions += 1
       raise gdata.apps.service.AppsForYourDomainException(e.args[0])
@@ -107,10 +105,8 @@ class MigrationService(gdata.apps.service.AppsService):
     mail_entry.rfc822_msg = migration.Rfc822Msg(text=(base64.b64encode(
         mail_message)))
     mail_entry.rfc822_msg.encoding = 'base64'
-    mail_entry.mail_item_property = map(
-        lambda x: migration.MailItemProperty(value=x), mail_item_properties)
-    mail_entry.label = map(lambda x: migration.Label(label_name=x),
-                           mail_labels)
+    mail_entry.mail_item_property = [migration.MailItemProperty(value=x) for x in mail_item_properties]
+    mail_entry.label = [migration.Label(label_name=x) for x in mail_labels]
 
     self.mail_batch.AddBatchEntry(mail_entry)
 
@@ -136,7 +132,7 @@ class MigrationService(gdata.apps.service.AppsService):
     try:
       self.result = self.Post(self.mail_batch, uri,
                               converter=migration.BatchMailEventFeedFromString)
-    except gdata.service.RequestError, e:
+    except gdata.service.RequestError as e:
       raise gdata.apps.service.AppsForYourDomainException(e.args[0])
 
     self.mail_batch = migration.BatchMailEventFeed()
@@ -212,7 +208,7 @@ class MigrationService(gdata.apps.service.AppsService):
         batch_min = batch_max
 
       self.mail_entries = []
-    except Exception, e:
+    except Exception as e:
       raise Exception(e.args[0])
     else:
       return num_entries - self.exceptions

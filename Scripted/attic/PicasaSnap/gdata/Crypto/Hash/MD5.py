@@ -3,9 +3,9 @@
 
 __revision__ = "$Id: MD5.py,v 1.4 2002/07/11 14:31:19 akuchling Exp $"
 
-from md5 import *
+from .md5 import *
 
-import md5
+from . import md5
 if hasattr(md5, 'digestsize'):
     digest_size = digestsize
     del digestsize

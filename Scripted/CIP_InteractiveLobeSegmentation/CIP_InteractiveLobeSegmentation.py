@@ -431,7 +431,7 @@ class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
         fissureVolume = None
         try:
             fissureVolume = logic.run(self.labelSelector.currentNode(), outputNode)
-        except Exception, e:
+        except Exception as e:
             import traceback
             traceback.print_exc()
             qt.QMessageBox.warning(slicer.util.mainWindow(),
@@ -507,19 +507,19 @@ class ILSpqWidget(object):
 
     def connect(self, signal, slot):
         """pseudo-connect - signal is arbitrary string and slot if callable"""
-        if not self.connections.has_key(signal):
+        if signal not in self.connections:
             self.connections[signal] = []
         self.connections[signal].append(slot)
 
     def disconnect(self, signal, slot):
         """pseudo-disconnect - remove the connection if it exists"""
-        if self.connections.has_key(signal):
+        if signal in self.connections:
             if slot in self.connections[signal]:
                 self.connections[signal].remove(slot)
 
     def emit(self, signal, args):
         """pseudo-emit - calls any slots connected to signal"""
-        if self.connections.has_key(signal):
+        if signal in self.connections:
             for slot in self.connections[signal]:
                 slot(*args)
 
@@ -637,7 +637,7 @@ class ILSVisualizationWidget(ILSpqWidget):
             name = 'RH'
 
         selectedList = None
-        for selectedList in listsInScene.values():
+        for selectedList in list(listsInScene.values()):
             if selectedList.GetName() == name:
                 selectedList.RemoveMarkup(row)
                 break
@@ -669,7 +669,7 @@ class ILSVisualizationWidget(ILSpqWidget):
         name = ['LO', 'RO', 'RH']
 
         if (listsInScene):
-            for fiducialList in listsInScene.values():
+            for fiducialList in list(listsInScene.values()):
                 if fiducialList.GetName() == name[0] and fiducialList.GetNumberOfFiducials() > 0:
                     self.applyButton.enabled = True
                 elif fiducialList.GetName() == name[1] and fiducialList.GetNumberOfFiducials() > 0:
@@ -734,7 +734,7 @@ class ILSVisualizationWidget(ILSpqWidget):
         mrmlScene = slicer.mrmlScene
         listsInScene = slicer.util.getNodes('vtkMRMLMarkupsFiducialNode*')
         if (listsInScene):
-            for oldList in listsInScene.values():
+            for oldList in list(listsInScene.values()):
                 oldList.RemoveAllMarkups()
                 mrmlScene.RemoveNode(oldList)
 
@@ -757,7 +757,7 @@ class ILSVisualizationWidget(ILSpqWidget):
         listsInScene = slicer.util.getNodes('vtkMRMLMarkupsFiducialNode*')
         if (listsInScene):
             mrmlScene = slicer.mrmlScene
-            for oldList in listsInScene.values():
+            for oldList in list(listsInScene.values()):
                 if oldList.GetName() == 'LO':
                     if self.leftRow == 0:
                         mrmlScene.RemoveNode(oldList)
@@ -788,7 +788,7 @@ class ILSVisualizationWidget(ILSpqWidget):
         so we will know when new markups are added
         """
         self.removeFiducialObservers()
-        for fiducialList in slicer.util.getNodes('vtkMRMLMarkupsFiducialNode*').values():
+        for fiducialList in list(slicer.util.getNodes('vtkMRMLMarkupsFiducialNode*').values()):
             tag = fiducialList.AddObserver(fiducialList.MarkupAddedEvent, self.requestNodeAddedUpdate)
             self.observerTags.append((fiducialList, tag))
 
@@ -871,7 +871,7 @@ class ILSVisualizationWidget(ILSpqWidget):
     def wrappedNodeAddedUpdate(self):
         try:
             self.nodeAddedUpdate()
-        except Exception, e:
+        except Exception as e:
             import traceback
             traceback.print_exc()
             qt.QMessageBox.warning(slicer.util.mainWindow(),
@@ -954,7 +954,7 @@ class CIP_InteractiveLobeSegmentationLogic(ScriptedLoadableModuleLogic):
         listsInScene = slicer.util.getNodes('vtkMRMLMarkupsFiducialNode*')
         createNewList = True
         if (listsInScene):
-            for oldList in listsInScene.values():
+            for oldList in list(listsInScene.values()):
                 if oldList.GetName() == name:
                     fiducialsLogic.SetActiveListID(oldList)
                     createNewList = False
@@ -996,7 +996,7 @@ class CIP_InteractiveLobeSegmentationLogic(ScriptedLoadableModuleLogic):
         name = ['LO', 'RO', 'RH']
 
         if (listsInScene):
-            for fiducialList in listsInScene.values():
+            for fiducialList in list(listsInScene.values()):
                 if fiducialList.GetName() == name[0]:
                     leftObliqueFiducials = fiducialList
                 elif fiducialList.GetName() == name[1]:

@@ -47,7 +47,7 @@ public:
 
   static vtkSlicerParticlesDisplayLogic *New();
   vtkTypeMacro(vtkSlicerParticlesDisplayLogic, vtkSlicerModuleLogic);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   // Description:
   // Create new mrml fiber bundle node and read its polydata from a specified file.
@@ -58,12 +58,12 @@ protected:
   vtkSlicerParticlesDisplayLogic();
   virtual ~vtkSlicerParticlesDisplayLogic();
 
-  virtual void SetMRMLSceneInternal(vtkMRMLScene* newScene);
+  virtual void SetMRMLSceneInternal(vtkMRMLScene* newScene) override;
   /// Register MRML Node classes to Scene. Gets called automatically when the MRMLScene is attached to this logic class.
-  virtual void RegisterNodes();
-  virtual void UpdateFromMRMLScene();
-  virtual void OnMRMLSceneNodeAdded(vtkMRMLNode* node);
-  virtual void OnMRMLSceneNodeRemoved(vtkMRMLNode* node);
+  virtual void RegisterNodes() override;
+  virtual void UpdateFromMRMLScene() override;
+  virtual void OnMRMLSceneNodeAdded(vtkMRMLNode* node) override;
+  virtual void OnMRMLSceneNodeRemoved(vtkMRMLNode* node) override;
 private:
 
   vtkSlicerParticlesDisplayLogic(const vtkSlicerParticlesDisplayLogic&); // Not implemented

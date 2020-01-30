@@ -33,7 +33,7 @@ documentation or live help() system for available methods.
 
   """
 
-__author__ = u'havard@gulldahl.no'# (Håvard Gulldahl)' #BUG: pydoc chokes on non-ascii chars in __author__
+__author__ = 'havard@gulldahl.no'# (Håvard Gulldahl)' #BUG: pydoc chokes on non-ascii chars in __author__
 __license__ = 'Apache License v2'
 __version__ = '$Revision: 164 $'[11:-2]
 

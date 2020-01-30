@@ -159,7 +159,7 @@ class ContactsClient(gdata.client.GDClient):
       for link in calendar_link:
         if not isinstance(link, gdata.contacts.data.CalendarLink):
           if type(link) is not DictionaryType:
-            raise TypeError, "calendar_link Requires dictionary not %s" % type(link)
+            raise TypeError("calendar_link Requires dictionary not %s" % type(link))
 
           link = gdata.contacts.data.CalendarLink(
                                                   rel=link.get("rel", None),

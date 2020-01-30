@@ -629,12 +629,12 @@ class YouTubeService(gdata.service.GDataService):
     #      'reason':'Accepted content types: %s' %
     #          ['video/%s' % (t) for t in YOUTUBE_SUPPORTED_UPLOAD_TYPES]})
 
-    if (isinstance(filename_or_handle, (str, unicode)) 
+    if (isinstance(filename_or_handle, str) 
         and os.path.exists(filename_or_handle)):
       mediasource = gdata.MediaSource()
       mediasource.setFile(filename_or_handle, content_type)
     elif hasattr(filename_or_handle, 'read'):
-      import StringIO
+      import io
       if hasattr(filename_or_handle, 'seek'):
         filename_or_handle.seek(0)
       file_handle = filename_or_handle
@@ -657,7 +657,7 @@ class YouTubeService(gdata.service.GDataService):
       try:
         return self.Post(video_entry, uri=upload_uri, media_source=mediasource,
                          converter=gdata.youtube.YouTubeVideoEntryFromString)
-      except gdata.service.RequestError, e:
+      except gdata.service.RequestError as e:
         raise YouTubeError(e.args[0])
     finally:
       del(self.additional_headers['Slug'])
@@ -717,7 +717,7 @@ class YouTubeService(gdata.service.GDataService):
     """
     try:
       response = self.Post(video_entry, uri)
-    except gdata.service.RequestError, e:
+    except gdata.service.RequestError as e:
       raise YouTubeError(e.args[0])
 
     tree = ElementTree.fromstring(response)

@@ -33,7 +33,7 @@
 __author__ = 'api.jscudder (Jeff Scudder)'
 
 
-import StringIO
+import io
 
 
 USER_AGENT = '%s GData-Python/2.0.18'
@@ -74,7 +74,7 @@ class HttpResponse(object):
       if hasattr(body, 'read'):
         self._body = body
       else:
-        self._body = StringIO.StringIO(body)
+        self._body = io.StringIO(body)
     else:
       self._body = None
     if status is not None:

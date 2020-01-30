@@ -1,16 +1,25 @@
-CMakeCache.txt
-CMakeFiles
-Makefile
-cmake_install.cmake
-install_manifest.txt
-
-# Ignore hidden files and folders
+# Ignore all dotfiles...
 .*
-!/.gitignore
+!.gitattributes
 
+# Ignore all back-up files...
+*~
+*.bak
+
+# except for .gitignore
+!.gitignore
+
+# ... and .circleci
+!.circleci
+
+# Exclude Kdevelop4 files ...
+.kdev*
+
+# Exclude QtCreator files ...
+CMakeLists.txt.user*
+
+# Ignore ctags file
+tags
+
+# Ignore pyc files ...
 *.pyc
-
-*.csv
-
-Scripted/CIP_ParenchymaSubtypeTraining/Results
-Scripted/CIP_LesionModel/Results

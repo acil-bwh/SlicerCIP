@@ -33,7 +33,7 @@ class HMAC:
         digestmod: A module supporting PEP 247. Defaults to the md5 module.
         """
         if digestmod == None:
-            import md5
+            from . import md5
             digestmod = md5
 
         self.digestmod = digestmod

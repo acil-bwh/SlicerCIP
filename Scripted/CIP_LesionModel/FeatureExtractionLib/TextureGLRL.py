@@ -5,6 +5,7 @@ import math
 import operator
 import collections
 import FeatureExtractionLib
+from functools import reduce
 
 
 class TextureGLRL:
@@ -33,7 +34,7 @@ class TextureGLRL:
         self.parameterMatrixCoordinates = parameterMatrixCoordinates
         self.parameterValues = parameterValues
         self.numGrayLevels = numGrayLevels
-        self.keys = set(allKeys).intersection(self.textureFeaturesGLRL.keys())
+        self.keys = set(allKeys).intersection(list(self.textureFeaturesGLRL.keys()))
 
     def CalculateCoefficients(self):
         self.angles = 13
@@ -184,101 +185,101 @@ class TextureGLRL:
 
         # (1,0,0), #(-1,0,0),
         aDiags = reduce(lambda x, y: x + y, [a.tolist() for a in numpy.transpose(matrix, (1, 2, 0))])
-        matrixDiagonals.append(filter(lambda x: numpy.nonzero(x)[0].size > 1, aDiags))
+        matrixDiagonals.append([x for x in aDiags if numpy.nonzero(x)[0].size > 1])
 
         # (0,1,0), #(0,-1,0),
         bDiags = reduce(lambda x, y: x + y, [a.tolist() for a in numpy.transpose(matrix, (0, 2, 1))])
-        matrixDiagonals.append(filter(lambda x: numpy.nonzero(x)[0].size > 1, bDiags))
+        matrixDiagonals.append([x for x in bDiags if numpy.nonzero(x)[0].size > 1])
 
         # (0,0,1), #(0,0,-1), 
         cDiags = reduce(lambda x, y: x + y, [a.tolist() for a in numpy.transpose(matrix, (0, 1, 2))])
-        matrixDiagonals.append(filter(lambda x: numpy.nonzero(x)[0].size > 1, cDiags))
+        matrixDiagonals.append([x for x in cDiags if numpy.nonzero(x)[0].size > 1])
 
         # (1,1,0),#(-1,-1,0),
         lowBound = -matrix.shape[0] + 1
         highBound = matrix.shape[1]
 
-        dDiags = reduce(lambda x, y: x + y, [matrix.diagonal(a, 0, 1).tolist() for a in xrange(lowBound, highBound)])
-        matrixDiagonals.append(filter(lambda x: numpy.nonzero(x)[0].size > 1, dDiags))
+        dDiags = reduce(lambda x, y: x + y, [matrix.diagonal(a, 0, 1).tolist() for a in range(lowBound, highBound)])
+        matrixDiagonals.append([x for x in dDiags if numpy.nonzero(x)[0].size > 1])
 
         # (1,0,1), #(-1,0-1),
         lowBound = -matrix.shape[0] + 1
         highBound = matrix.shape[2]
 
-        eDiags = reduce(lambda x, y: x + y, [matrix.diagonal(a, 0, 2).tolist() for a in xrange(lowBound, highBound)])
-        matrixDiagonals.append(filter(lambda x: numpy.nonzero(x)[0].size > 1, eDiags))
+        eDiags = reduce(lambda x, y: x + y, [matrix.diagonal(a, 0, 2).tolist() for a in range(lowBound, highBound)])
+        matrixDiagonals.append([x for x in eDiags if numpy.nonzero(x)[0].size > 1])
 
         # (0,1,1), #(0,-1,-1),
         lowBound = -matrix.shape[1] + 1
         highBound = matrix.shape[2]
 
-        fDiags = reduce(lambda x, y: x + y, [matrix.diagonal(a, 1, 2).tolist() for a in xrange(lowBound, highBound)])
-        matrixDiagonals.append(filter(lambda x: numpy.nonzero(x)[0].size > 1, fDiags))
+        fDiags = reduce(lambda x, y: x + y, [matrix.diagonal(a, 1, 2).tolist() for a in range(lowBound, highBound)])
+        matrixDiagonals.append([x for x in fDiags if numpy.nonzero(x)[0].size > 1])
 
         # (1,-1,0), #(-1,1,0),    
         lowBound = -matrix.shape[0] + 1
         highBound = matrix.shape[1]
 
         gDiags = reduce(lambda x, y: x + y,
-                        [matrix[:, ::-1, :].diagonal(a, 0, 1).tolist() for a in xrange(lowBound, highBound)])
-        matrixDiagonals.append(filter(lambda x: numpy.nonzero(x)[0].size > 1, gDiags))
+                        [matrix[:, ::-1, :].diagonal(a, 0, 1).tolist() for a in range(lowBound, highBound)])
+        matrixDiagonals.append([x for x in gDiags if numpy.nonzero(x)[0].size > 1])
 
         # (-1,0,1), #(1,0,-1),
         lowBound = -matrix.shape[0] + 1
         highBound = matrix.shape[2]
 
         hDiags = reduce(lambda x, y: x + y,
-                        [matrix[:, :, ::-1].diagonal(a, 0, 2).tolist() for a in xrange(lowBound, highBound)])
-        matrixDiagonals.append(filter(lambda x: numpy.nonzero(x)[0].size > 1, hDiags))
+                        [matrix[:, :, ::-1].diagonal(a, 0, 2).tolist() for a in range(lowBound, highBound)])
+        matrixDiagonals.append([x for x in hDiags if numpy.nonzero(x)[0].size > 1])
 
         # (0,1,-1), #(0,-1,1),
         lowBound = -matrix.shape[1] + 1
         highBound = matrix.shape[2]
 
         iDiags = reduce(lambda x, y: x + y,
-                        [matrix[:, :, ::-1].diagonal(a, 1, 2).tolist() for a in xrange(lowBound, highBound)])
-        matrixDiagonals.append(filter(lambda x: numpy.nonzero(x)[0].size > 1, iDiags))
+                        [matrix[:, :, ::-1].diagonal(a, 1, 2).tolist() for a in range(lowBound, highBound)])
+        matrixDiagonals.append([x for x in iDiags if numpy.nonzero(x)[0].size > 1])
 
         # (1,1,1), #(-1,-1,-1)
         lowBound = -matrix.shape[0] + 1
         highBound = matrix.shape[1]
 
         jDiags = [numpy.diagonal(h, x, 0, 1).tolist() for h in
-                  [matrix.diagonal(a, 0, 1) for a in xrange(lowBound, highBound)] for x in
-                  xrange(-h.shape[0] + 1, h.shape[1])]
-        matrixDiagonals.append(filter(lambda x: numpy.nonzero(x)[0].size > 1, jDiags))
+                  [matrix.diagonal(a, 0, 1) for a in range(lowBound, highBound)] for x in
+                  range(-h.shape[0] + 1, h.shape[1])]
+        matrixDiagonals.append([x for x in jDiags if numpy.nonzero(x)[0].size > 1])
 
         # (-1,1,-1), #(1,-1,1),
         lowBound = -matrix.shape[0] + 1
         highBound = matrix.shape[1]
 
         kDiags = [numpy.diagonal(h, x, 0, 1).tolist() for h in
-                  [matrix[:, ::-1, :].diagonal(a, 0, 1) for a in xrange(lowBound, highBound)] for x in
-                  xrange(-h.shape[0] + 1, h.shape[1])]
-        matrixDiagonals.append(filter(lambda x: numpy.nonzero(x)[0].size > 1, kDiags))
+                  [matrix[:, ::-1, :].diagonal(a, 0, 1) for a in range(lowBound, highBound)] for x in
+                  range(-h.shape[0] + 1, h.shape[1])]
+        matrixDiagonals.append([x for x in kDiags if numpy.nonzero(x)[0].size > 1])
 
         # (1,1,-1), #(-1,-1,1),
         lowBound = -matrix.shape[0] + 1
         highBound = matrix.shape[1]
 
         lDiags = [numpy.diagonal(h, x, 0, 1).tolist() for h in
-                  [matrix[:, :, ::-1].diagonal(a, 0, 1) for a in xrange(lowBound, highBound)] for x in
-                  xrange(-h.shape[0] + 1, h.shape[1])]
-        matrixDiagonals.append(filter(lambda x: numpy.nonzero(x)[0].size > 1, lDiags))
+                  [matrix[:, :, ::-1].diagonal(a, 0, 1) for a in range(lowBound, highBound)] for x in
+                  range(-h.shape[0] + 1, h.shape[1])]
+        matrixDiagonals.append([x for x in lDiags if numpy.nonzero(x)[0].size > 1])
 
         # (-1,1,1), #(1,-1,-1),
         lowBound = -matrix.shape[0] + 1
         highBound = matrix.shape[1]
     
         mDiags = [numpy.diagonal(h, x, 0, 1).tolist() for h in
-                  [matrix[:, ::-1, ::-1].diagonal(a, 0, 1) for a in xrange(lowBound, highBound)] for x in
-                  xrange(-h.shape[0] + 1, h.shape[1])]
-        matrixDiagonals.append(filter(lambda x: numpy.nonzero(x)[0].size > 1, mDiags))
+                  [matrix[:, ::-1, ::-1].diagonal(a, 0, 1) for a in range(lowBound, highBound)] for x in
+                  range(-h.shape[0] + 1, h.shape[1])]
+        matrixDiagonals.append([x for x in mDiags if numpy.nonzero(x)[0].size > 1])
 
         # [n for n in mDiags if numpy.nonzero(n)[0].size>1] instead of filter(lambda x: numpy.nonzero(x)[0].size>1, mDiags)?
 
         # Run-Length Encoding (rle) for the 13 list of diagonals (1 list per 3D direction/angle)
-        for angle in xrange(0, len(matrixDiagonals)):
+        for angle in range(0, len(matrixDiagonals)):
             P = P_out[:, :, angle]
             for diagonal in matrixDiagonals[angle]:
                 diagonal = numpy.array(diagonal, dtype='int')
@@ -288,12 +289,12 @@ class TextureGLRL:
 
                 # a or pos[:-1] = run start #b or pos[1:] = run stop #diagonal[a] is matrix value       
                 # adjust condition for pos[:-1] != padVal = 0 to != padVal = eps or NaN or whatever pad value
-                rle = zip([n for n in diagonal[pos[:-1]] if n != padVal], pos[1:] - pos[:-1])
+                rle = list(zip([n for n in diagonal[pos[:-1]] if n != padVal], pos[1:] - pos[:-1]))
                 rle = [[numpy.where(grayLevels == x)[0][0], y - 1] for x, y in
                        rle]  # rle = map(lambda (x,y): [voxelToIndexDict[x],y-1], rle)
 
                 # Increment GLRL matrix counter at coordinates defined by the run-length encoding               
-                P[zip(*rle)] += 1
+                P[list(zip(*rle))] += 1
 
         return (P_out)
 
@@ -314,7 +315,7 @@ class TextureGLRL:
             import time
             t1 = time.time()
             self.CalculateCoefficients()
-            print("- Time to calculate coefficients in GLRL: {0} seconds".format(time.time() - t1))
+            print(("- Time to calculate coefficients in GLRL: {0} seconds".format(time.time() - t1)))
 
         if not printTiming:
             # Evaluate dictionary elements corresponding to user selected keys

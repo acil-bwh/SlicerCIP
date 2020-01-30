@@ -36,8 +36,8 @@ import atom.http
 import atom.token_store
 
 import os
-import httplib
-import urllib
+import http.client
+import urllib.request, urllib.parse, urllib.error
 import re
 import base64
 import socket
@@ -151,7 +151,7 @@ class AtomService(object):
   #@atom.v1_deprecated('Please use atom.client.AtomPubClient for requests.')
   def request(self, operation, url, data=None, headers=None, 
       url_params=None):
-    if isinstance(url, (str, unicode)):
+    if isinstance(url, str):
       if url.startswith('http:') and self.ssl:
         # Force all requests to be https if self.ssl is True.
         url = atom.url.parse_url('https:' + url[5:])
@@ -163,7 +163,7 @@ class AtomService(object):
         url = atom.url.parse_url(url)
 
     if url_params:
-      for name, value in url_params.iteritems():
+      for name, value in url_params.items():
         url.params[name] = value
 
     all_headers = self.additional_headers.copy()
@@ -347,12 +347,12 @@ class BasicAuthToken(atom.http_interface.GenericToken):
   def valid_for_scope(self, url):
     """Tells the caller if the token authorizes access to the desired URL.
     """
-    if isinstance(url, (str, unicode)):
+    if isinstance(url, str):
       url = atom.url.parse_url(url)
     for scope in self.scopes:
       if scope == atom.token_store.SCOPE_ALL:
         return True
-      if isinstance(scope, (str, unicode)):
+      if isinstance(scope, str):
         scope = atom.url.parse_url(scope)
       if scope == url:
         return True
@@ -430,15 +430,15 @@ def PrepareConnection(service, full_uri):
 
       # Trivial setup for ssl socket.
       ssl = socket.ssl(p_sock, None, None)
-      fake_sock = httplib.FakeSocket(p_sock, ssl)
+      fake_sock = http.client.FakeSocket(p_sock, ssl)
 
       # Initalize httplib and replace with the proxy socket.
-      connection = httplib.HTTPConnection(server)
+      connection = http.client.HTTPConnection(server)
       connection.sock=fake_sock
       full_uri = partial_uri
 
     else:
-      connection = httplib.HTTPSConnection(server, port)
+      connection = http.client.HTTPSConnection(server, port)
       full_uri = partial_uri
 
   else:
@@ -454,14 +454,14 @@ def PrepareConnection(service, full_uri):
         proxy_password = os.environ.get('proxy_password')
       if proxy_username:
         UseBasicAuth(service, proxy_username, proxy_password, True)
-      connection = httplib.HTTPConnection(p_server, p_port)
+      connection = http.client.HTTPConnection(p_server, p_port)
       if not full_uri.startswith("http://"):
         if full_uri.startswith("/"):
           full_uri = "http://%s%s" % (service.server, full_uri)
         else:
           full_uri = "http://%s/%s" % (service.server, full_uri)
     else:
-      connection = httplib.HTTPConnection(server, port)
+      connection = http.client.HTTPConnection(server, port)
       full_uri = partial_uri
 
   return (connection, full_uri)
@@ -544,11 +544,11 @@ def DictionaryToParamList(url_parameters, escape_params=True):
   """
   # Choose which function to use when modifying the query and parameters.
   # Use quote_plus when escape_params is true.
-  transform_op = [str, urllib.quote_plus][bool(escape_params)]
+  transform_op = [str, urllib.parse.quote_plus][bool(escape_params)]
   # Create a list of tuples containing the escaped version of the
   # parameter-value pairs.
   parameter_tuples = [(transform_op(param), transform_op(value))
-                     for param, value in (url_parameters or {}).items()]
+                     for param, value in list((url_parameters or {}).items())]
   # Turn parameter-value tuples into a list of strings in the form
   # 'PARAMETER=VALUE'.
   return ['='.join(x) for x in parameter_tuples]
@@ -658,8 +658,8 @@ def HttpRequest(service, operation, data, uri, extra_headers=None,
 
   # If the list of headers does not include a Content-Length, attempt to 
   # calculate it based on the data object.
-  if (data and not service.additional_headers.has_key('Content-Length') and 
-      not extra_headers.has_key('Content-Length')):
+  if (data and 'Content-Length' not in service.additional_headers and 
+      'Content-Length' not in extra_headers):
     content_length = CalculateDataLength(data)
     if content_length:
       extra_headers['Content-Length'] = str(content_length)

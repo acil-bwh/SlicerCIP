@@ -33,7 +33,7 @@ import re
 import atom
 import gdata.service
 import gdata.docs
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 # XML Namespaces used in Google Documents entities.
 DATA_KIND_SCHEME = gdata.GDATA_NAMESPACE + '#kind'
@@ -123,7 +123,7 @@ class DocsService(gdata.service.GDataService):
     if label == SPREADSHEET_LABEL:
       return ('https://spreadsheets.google.com/feeds/download/spreadsheets/'
               'Export?key=%s' % doc_id)
-    raise ValueError, 'Invalid resource id: %s' % resource_id
+    raise ValueError('Invalid resource id: %s' % resource_id)
 
   def _UploadFile(self, media_source, title, category, folder_or_uri=None):
     """Uploads a file to the Document List feed.
@@ -180,9 +180,9 @@ class DocsService(gdata.service.GDataService):
       response_body = server_response.read()
       timeout -= 1
     if server_response.status != 200:
-      raise gdata.service.RequestError, {'status': server_response.status,
+      raise gdata.service.RequestError({'status': server_response.status,
                                          'reason': server_response.reason,
-                                         'body': response_body}
+                                         'body': response_body})
     f = open(file_path, 'wb')
     f.write(response_body)
     f.flush()
@@ -332,17 +332,17 @@ class DocsService(gdata.service.GDataService):
 
     if export_format is not None:
       if url.find('/Export?') == -1:
-        raise gdata.service.Error, ('This entry cannot be exported '
+        raise gdata.service.Error('This entry cannot be exported '
                                     'as a different format')
       url += '&exportFormat=%s' % export_format
 
     if gid is not None:
       if url.find('spreadsheets') == -1:
-        raise gdata.service.Error, 'grid id param is not valid for this entry'
+        raise gdata.service.Error('grid id param is not valid for this entry')
       url += '&gid=%s' % gid
 
     if extra_params:
-      url += '&' + urllib.urlencode(extra_params)
+      url += '&' + urllib.parse.urlencode(extra_params)
 
     self._DownloadFile(url, file_path)
 

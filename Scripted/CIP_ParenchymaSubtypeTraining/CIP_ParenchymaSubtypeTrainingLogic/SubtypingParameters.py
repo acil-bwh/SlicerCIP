@@ -348,7 +348,7 @@ class SubtypingParameters(object):
             t2 = self.getSubtypeLabel(subtypeId)
 
             typeLabel = "{}-{}".format(t1,t2) if subtypeId != 0 else t1
-            for regionId in self.regions.iterkeys():
+            for regionId in self.regions.keys():
                 label = "{}-{}".format(typeLabel, self.regions[regionId][0]) if regionId != 0 else typeLabel
                 colorId = (t << 8) + regionId
                 colorNode.SetColor(colorId, label, color[0], color[1], color[2])

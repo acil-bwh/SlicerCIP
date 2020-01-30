@@ -442,7 +442,7 @@ class CIP_RVLVRatioWidget(ScriptedLoadableModuleWidget):
         # Get the current slice
         currentSlice = self.getCurrentRedWindowSlice()
 
-        print("Selected: ", selectedStructure)
+        print(("Selected: ", selectedStructure))
         if selectedStructure == self.logic.BOTH:
             structures = [self.logic.LV, self.logic.RV]
         else:

@@ -94,7 +94,7 @@ def v1_deprecated(warning=None):
     # Preserve the original name to avoid masking all decorated functions as
     # 'deprecated_function'
     try:
-      optional_warn_function.func_name = f.func_name
+      optional_warn_function.__name__ = f.__name__
     except TypeError:
       pass # In Python2.3 we can't set the func_name
     return optional_warn_function
@@ -122,7 +122,7 @@ def CreateClassFromXMLString(target_class, xml_string, string_encoding=None):
     match those of the target class.
   """
   encoding = string_encoding or XML_STRING_ENCODING
-  if encoding and isinstance(xml_string, unicode):
+  if encoding and isinstance(xml_string, str):
     xml_string = xml_string.encode(encoding)
   tree = ElementTree.fromstring(xml_string)
   return _CreateClassFromElementTree(target_class, tree)
@@ -184,11 +184,11 @@ class ExtensionContainer(object):
     # Fill in the instance members from the contents of the XML tree.
     for child in tree:
       self._ConvertElementTreeToMember(child)
-    for attribute, value in tree.attrib.iteritems():
+    for attribute, value in tree.attrib.items():
       self._ConvertElementAttributeToMember(attribute, value)
     # Encode the text string according to the desired encoding type. (UTF-8)
     if tree.text:
-      if MEMBER_STRING_ENCODING is unicode:
+      if MEMBER_STRING_ENCODING is str:
         self.text = tree.text
       else:
         self.text = tree.text.encode(MEMBER_STRING_ENCODING)
@@ -200,7 +200,7 @@ class ExtensionContainer(object):
   def _ConvertElementAttributeToMember(self, attribute, value):
     # Encode the attribute value's string with the desired type Default UTF-8
     if value:
-      if MEMBER_STRING_ENCODING is unicode:
+      if MEMBER_STRING_ENCODING is str:
         self.extension_attributes[attribute] = value
       else:
         self.extension_attributes[attribute] = value.encode(
@@ -210,15 +210,15 @@ class ExtensionContainer(object):
   def _AddMembersToElementTree(self, tree):
     for child in self.extension_elements:
       child._BecomeChildElement(tree)
-    for attribute, value in self.extension_attributes.iteritems():
+    for attribute, value in self.extension_attributes.items():
       if value:
-        if isinstance(value, unicode) or MEMBER_STRING_ENCODING is unicode:
+        if isinstance(value, str) or MEMBER_STRING_ENCODING is str:
           tree.attrib[attribute] = value
         else:
           # Decode the value from the desired encoding (default UTF-8).
           tree.attrib[attribute] = value.decode(MEMBER_STRING_ENCODING)
     if self.text:
-      if isinstance(self.text, unicode) or MEMBER_STRING_ENCODING is unicode:
+      if isinstance(self.text, str) or MEMBER_STRING_ENCODING is str:
         tree.text = self.text
       else:
         tree.text = self.text.decode(MEMBER_STRING_ENCODING)
@@ -279,7 +279,7 @@ class AtomBase(ExtensionContainer):
 
   def _ConvertElementTreeToMember(self, child_tree):
     # Find the element's tag in this class's list of child members
-    if self.__class__._children.has_key(child_tree.tag):
+    if child_tree.tag in self.__class__._children:
       member_name = self.__class__._children[child_tree.tag][0]
       member_class = self.__class__._children[child_tree.tag][1]
       # If the class member is supposed to contain a list, make sure the
@@ -298,13 +298,13 @@ class AtomBase(ExtensionContainer):
 
   def _ConvertElementAttributeToMember(self, attribute, value):
     # Find the attribute in this class's list of attributes.
-    if self.__class__._attributes.has_key(attribute):
+    if attribute in self.__class__._attributes:
       # Find the member of this class which corresponds to the XML attribute
       # (lookup in current_class._attributes) and set this member to the
       # desired value (using self.__dict__).
       if value:
         # Encode the string to capture non-ascii characters (default UTF-8)
-        if MEMBER_STRING_ENCODING is unicode:
+        if MEMBER_STRING_ENCODING is str:
           setattr(self, self.__class__._attributes[attribute], value)
         else:
           setattr(self, self.__class__._attributes[attribute],
@@ -319,7 +319,7 @@ class AtomBase(ExtensionContainer):
     # This uses the class's _children dictionary to find the members which
     # should become XML child nodes.
     member_node_names = [values[0] for tag, values in
-                                       self.__class__._children.iteritems()]
+                                       self.__class__._children.items()]
     for member_name in member_node_names:
       member = getattr(self, member_name)
       if member is None:
@@ -330,10 +330,10 @@ class AtomBase(ExtensionContainer):
       else:
         member._BecomeChildElement(tree)
     # Convert the members of this class which are XML attributes.
-    for xml_attribute, member_name in self.__class__._attributes.iteritems():
+    for xml_attribute, member_name in self.__class__._attributes.items():
       member = getattr(self, member_name)
       if member is not None:
-        if isinstance(member, unicode) or MEMBER_STRING_ENCODING is unicode:
+        if isinstance(member, str) or MEMBER_STRING_ENCODING is str:
           tree.attrib[xml_attribute] = member
         else:
           tree.attrib[xml_attribute] = member.decode(MEMBER_STRING_ENCODING)
@@ -1375,7 +1375,7 @@ class ExtensionElement(object):
     else:
       element_tree.tag = self.tag
 
-    for key, value in self.attributes.iteritems():
+    for key, value in self.attributes.items():
       element_tree.attrib[key] = value
 
     for child in self.children:
@@ -1452,7 +1452,7 @@ def _ExtensionElementFromElementTree(element_tree):
     namespace = None
     tag = element_tag
   extension = ExtensionElement(namespace=namespace, tag=tag)
-  for key, value in element_tree.attrib.iteritems():
+  for key, value in element_tree.attrib.items():
     extension.attributes[key] = value
   for child in element_tree:
     extension.children.append(_ExtensionElementFromElementTree(child))
@@ -1476,7 +1476,7 @@ def deprecated(warning=None):
     # Preserve the original name to avoid masking all decorated functions as
     # 'deprecated_function'
     try:
-      deprecated_function.func_name = f.func_name
+      deprecated_function.__name__ = f.__name__
     except TypeError:
       # Setting the func_name is not allowed in Python2.3.
       pass

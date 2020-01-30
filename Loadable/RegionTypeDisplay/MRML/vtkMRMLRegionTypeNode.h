@@ -39,17 +39,17 @@ class VTK_SLICER_REGIONTYPE_MODULE_MRML_EXPORT vtkMRMLRegionTypeNode : public vt
 public:
   static vtkMRMLRegionTypeNode *New();
   vtkTypeMacro(vtkMRMLRegionTypeNode,vtkMRMLLabelMapVolumeNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   //--------------------------------------------------------------------------
   /// MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  virtual vtkMRMLNode* CreateNodeInstance() override;
 
   ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "RegionType";};
+  virtual const char* GetNodeTagName() override {return "RegionType";};
 
   ///
   /// Returns RegionType Display node
@@ -58,13 +58,13 @@ public:
   ///
   /// In addition to Supercalss SetAndObserveImageData also
   /// call UpdateAvailableRegionsAndTypes
-  virtual void SetAndObserveImageData(vtkImageData *ImageData);
+  virtual void SetAndObserveImageData(vtkImageData *ImageData) override;
 
   ///
   /// Call UpdateAvailableRegionsAndTypes when image data changes
   virtual void ProcessMRMLEvents ( vtkObject * /*caller*/,
                                    unsigned long /*event*/,
-                                   void * /*callData*/ );
+                                   void * /*callData*/ ) override;
 
   ///
   /// Returns vector of all regions encoded in ImageData

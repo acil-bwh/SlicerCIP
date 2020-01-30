@@ -21,7 +21,7 @@
 __author__ = 'j.s@google.com (Jeff Scudder)'
 
 
-import StringIO
+import io
 import pickle
 import os.path
 import tempfile
@@ -250,7 +250,7 @@ class EchoHttpClient(object):
                               http_request.headers, http_request._body_parts)
 
   def _http_request(self, uri, method, headers=None, body_parts=None):
-    body = StringIO.StringIO()
+    body = io.StringIO()
     response = atom.http_core.HttpResponse(status=200, reason='OK', body=body)
     if headers is None:
       response._headers = {}
@@ -258,7 +258,7 @@ class EchoHttpClient(object):
       # Copy headers from the request to the response but convert values to
       # strings. Server response headers always come in as strings, so an int
       # should be converted to a corresponding string when echoing.
-      for header, value in headers.iteritems():
+      for header, value in headers.items():
         response._headers[header] = str(value)
     response._headers['Echo-Host'] = '%s:%s' % (uri.host, str(uri.port))
     response._headers['Echo-Uri'] = uri._get_relative_path()

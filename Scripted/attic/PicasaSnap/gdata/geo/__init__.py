@@ -39,7 +39,7 @@ W3C format and plain-GeoRSS (without GML) format.
 #elements mentioned above, but this module will let you seamlessly convert 
 #between the different formats (TODO 2007-10-18 hg)
 
-__author__ = u'havard@gulldahl.no'# (Håvard Gulldahl)' #BUG: api chokes on non-ascii chars in __author__
+__author__ = 'havard@gulldahl.no'# (Håvard Gulldahl)' #BUG: api chokes on non-ascii chars in __author__
 __license__ = 'Apache License v2'
 
 

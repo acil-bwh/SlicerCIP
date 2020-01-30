@@ -197,7 +197,7 @@ class LoadSaveDataWidget(object):
             if len(errors) == 0:
                 # Success. Inform about the number of files loaded
                 numVols = numLabelMaps = 0
-                for item in vols.values():
+                for item in list(vols.values()):
                     if item[0]: numVols += 1
                     if item[1]: numLabelMaps += 1                    
                 qt.QMessageBox.information(slicer.util.mainWindow(), 'Files loaded', "{0} volumes and {1} label maps loaded".format(numVols, numLabelMaps))            
@@ -248,7 +248,7 @@ class LoadSaveDataWidget(object):
 
         if self.__saveLabelMaps__ and currentLabelMapNode:
             try:
-                if self.IsDevelopment: print ("Saving the volume: " + currentLabelMapNode.GetName())
+                if self.IsDevelopment: print(("Saving the volume: " + currentLabelMapNode.GetName()))
                 self.logic.saveLabelMap(currentVolumeNode, currentLabelMapNode)
                 qt.QMessageBox.information(slicer.util.mainWindow(), "ACIL_LoadSaveData", "Labelmap saved succesfully")
 
@@ -267,7 +267,7 @@ class LoadSaveDataWidget(object):
         savedFiles = len(output)
         for item in output:
             if item[1]:
-                print("Error in file {0}: {1}".format(item[0], item[1]))
+                print(("Error in file {0}: {1}".format(item[0], item[1])))
                 savedFiles -= 1
                 error = True
         
@@ -330,10 +330,10 @@ class LoadSaveDataLogic(object):
             m = re.match(pattern, fileName, flags=re.IGNORECASE)
             if m:
                 dictKey = m.group("fileName")
-                if not volumes.has_key(dictKey):
+                if dictKey not in volumes:
                     # Create the new entry in the dictionary when not exists
                     volumes[dictKey] = [None,None]
-                    print dictKey + " added"
+                    print(dictKey + " added")
          
                 if m.group("labelmapExtension"):
                     # File is a label map                    

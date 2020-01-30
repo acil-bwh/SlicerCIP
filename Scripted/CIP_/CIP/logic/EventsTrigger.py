@@ -36,7 +36,7 @@ class EventsTrigger(object):
         """ Remove an observable from the list of callbacks to be invoked when an event is triggered
         :param eventId: internal id that was given when the observable was created
         """
-        if self.__eventsCallbacks__.has_key(eventId):
+        if eventId in self.__eventsCallbacks__:
             self.__eventsCallbacks__.pop(eventId)
 
     def removeAllObservables(self):
@@ -48,10 +48,10 @@ class EventsTrigger(object):
         """ Get a list of (id, tuple) with all the current observables
         :return:
         """
-        return self.__eventsCallbacks__.items()
+        return list(self.__eventsCallbacks__.items())
 
     def triggerEvent(self, eventType, *params):
         """Trigger one of the possible events from the object.
         Ex:    self._triggerEvent_(self.EVENT_BEFORE_NEXT) """
-        for callbackFunction in (item[1] for item in self.__eventsCallbacks__.itervalues() if item[0] == eventType):
+        for callbackFunction in (item[1] for item in self.__eventsCallbacks__.values() if item[0] == eventType):
             callbackFunction(*params)

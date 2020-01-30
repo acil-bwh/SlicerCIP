@@ -38,7 +38,7 @@ public:
   static vtkMRMLAirwayNode *New();
   vtkTypeMacro(vtkMRMLAirwayNode,vtkMRMLNode);
 
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   virtual const char* GetIcon() {return "";};
 
@@ -46,13 +46,13 @@ public:
   // MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  virtual vtkMRMLNode* CreateNodeInstance() override;
 
   /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
+  virtual void ReadXMLAttributes( const char** atts) override;
 
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  virtual void WriteXML(ostream& of, int indent) override;
 
   /// Write this node's information to a vector of strings for passing to a CLI,
   /// precede each datum with the prefix if not an empty string
@@ -63,11 +63,11 @@ public:
                         int multipleFlag = 1);
 
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  virtual void Copy(vtkMRMLNode *node) override;
 
   ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "Airway";};
+  virtual const char* GetNodeTagName() override {return "Airway";};
 
   /// Description:
   /// String ID of the volume MRML node

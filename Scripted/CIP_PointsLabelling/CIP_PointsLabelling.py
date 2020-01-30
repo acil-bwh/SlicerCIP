@@ -170,7 +170,7 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
             # Add a case list navigator
             from ACIL.ui import CaseNavigatorWidget
             self.caseNavigatorWidget = CaseNavigatorWidget(self.moduleName, caseNavigatorAreaCollapsibleButton)
-            for key,value in self.additionalFileTypes.iteritems():
+            for key,value in self.additionalFileTypes.items():
                 self.caseNavigatorWidget.additionalFileTypes[key] = value
             self.caseNavigatorWidget.setup()
             # Listen for the event of loading a new labelmap
@@ -205,7 +205,7 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
                     try:
                         os.makedirs(d)
                         # Make sure that everybody has write permissions (sometimes there are problems because of umask)
-                        os.chmod(d, 0777)
+                        os.chmod(d, 0o777)
                     except:
                         qt.QMessageBox.warning(slicer.util.mainWindow(), 'Directory incorrect',
                             'The folder "{0}" could not be created. Please select a valid directory'.format(d))
@@ -516,7 +516,7 @@ class CIP_PointsLabellingLogic(ScriptedLoadableModuleLogic):
         # Get a timestamp that will be used for all the points
         timestamp = gtd.GeometryTopologyData.get_timestamp()
 
-        for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volume.GetName())).itervalues():
+        for fidListNode in slicer.util.getNodes("{0}_fiducials_*".format(volume.GetName())).values():
             # Get all the markups
             for i in range(fidListNode.GetNumberOfMarkups()):
                 fidListNode.GetNthFiducialPosition(i, pos)
@@ -527,7 +527,7 @@ class CIP_PointsLabellingLogic(ScriptedLoadableModuleLogic):
                 pointMetadata = self.getPointMetadataFromFiducialDescription(desc)
                 p = gtd.Point(pointMetadata[0], pointMetadata[1], pointMetadata[2], lps_coords, description=pointMetadata[3])
                 key = p.get_hash()
-                if hashTable.has_key(key):
+                if key in hashTable:
                     # Add previously existing point
                     geometryTopologyData.add_point(hashTable[key], fill_auto_fields=False)
                 else:
@@ -566,13 +566,13 @@ class CIP_PointsLabellingLogic(ScriptedLoadableModuleLogic):
         :param volumeName:
         :return:
         """
-        if not self.savedVolumes.has_key(volumeName):
+        if volumeName not in self.savedVolumes:
             raise Exception("Volume {0} is not in the list of managed volumes".format(volumeName))
         return self.savedVolumes[volumeName]
 
     def removeMarkupsAndNode(self, volume):
         nodes = slicer.util.getNodes(volume.GetName() + "_*")
-        for node in nodes.itervalues():
+        for node in nodes.values():
             slicer.mrmlScene.RemoveNode(node)
         slicer.mrmlScene.RemoveNode(volume)
         self.currentGeometryTopologyData = None

@@ -74,21 +74,21 @@ class FeatureExtractionLogic:
         # extract voxel coordinates (ijk) and values from self.dataNode within the ROI defined by self.labelmapNode
         self.targetVoxels, self.targetVoxelsCoordinates = self.tumorVoxelsAndCoordinates(self.labelmapROIArray, self.volumeNodeArray)
         if printTiming:
-            print("Time to calculate tumorVoxelsAndCoordinates: {0} seconds".format(time.time() - t1))
+            print(("Time to calculate tumorVoxelsAndCoordinates: {0} seconds".format(time.time() - t1)))
         self.checkStopProcess()
 
         # create a padded, rectangular matrix with shape equal to the shape of the tumor
         t1 = time.time()
         self.matrix, self.matrixCoordinates = self.paddedTumorMatrixAndCoordinates(self.targetVoxels, self.targetVoxelsCoordinates)
         if printTiming:
-            print("Time to calculate paddedTumorMatrixAndCoordinates: {0} seconds".format(time.time() - t1))
+            print(("Time to calculate paddedTumorMatrixAndCoordinates: {0} seconds".format(time.time() - t1)))
         self.checkStopProcess()
 
         # get Histogram data
         t1 = time.time()
         self.bins, self.grayLevels, self.numGrayLevels = self.getHistogramData(self.targetVoxels)
         if printTiming:
-            print("Time to calculate histogram: {0} seconds".format(time.time() - t1))
+            print(("Time to calculate histogram: {0} seconds".format(time.time() - t1)))
         self.checkStopProcess()
 
         ########
@@ -108,7 +108,7 @@ class FeatureExtractionLogic:
             if printTiming:
                 self.__analysisResultsDict__.update(results[0])
                 self.__analysisTimingDict__.update(results[1])
-                print("Time to calculate First Order Statistics: {0} seconds".format(time.time() - t1))
+                print(("Time to calculate First Order Statistics: {0} seconds".format(time.time() - t1)))
             else:
                 self.__analysisResultsDict__.update(results)
 
@@ -129,7 +129,7 @@ class FeatureExtractionLogic:
             if printTiming:
                 self.__analysisResultsDict__.update(results[0])
                 self.__analysisTimingDict__.update(results[1])
-                print("Time to calculate Morphology and Shape: {0} seconds".format(time.time() - t1))
+                print(("Time to calculate Morphology and Shape: {0} seconds".format(time.time() - t1)))
             else:
                 self.__analysisResultsDict__.update(results)
 
@@ -142,7 +142,7 @@ class FeatureExtractionLogic:
             if printTiming:
                 self.__analysisResultsDict__.update(results[0])
                 self.__analysisTimingDict__.update(results[1])
-                print("Time to calculate Texture: GLCM: {0} seconds".format(time.time() - t1))
+                print(("Time to calculate Texture: GLCM: {0} seconds".format(time.time() - t1)))
             else:
                 self.__analysisResultsDict__.update(results)
 
@@ -155,7 +155,7 @@ class FeatureExtractionLogic:
             if printTiming:
                 self.__analysisResultsDict__.update(results[0])
                 self.__analysisTimingDict__.update(results[1])
-                print("Time to calculate Texture: GLRL: {0} seconds".format(time.time() - t1))
+                print(("Time to calculate Texture: GLRL: {0} seconds".format(time.time() - t1)))
             else:
                 self.__analysisResultsDict__.update(results)
 
@@ -168,7 +168,7 @@ class FeatureExtractionLogic:
             if printTiming:
                 self.__analysisResultsDict__.update(results[0])
                 self.__analysisTimingDict__.update(results[1])
-                print("Time to calculate Geometrical Measures: {0} seconds".format(time.time() - t1))
+                print(("Time to calculate Geometrical Measures: {0} seconds".format(time.time() - t1)))
             else:
                 self.__analysisResultsDict__.update(results)
 
@@ -184,7 +184,7 @@ class FeatureExtractionLogic:
             if printTiming:
                 self.__analysisResultsDict__.update(results[0])
                 self.__analysisTimingDict__.update(results[1])
-                print("Time to calculate Renyi Dimensions: {0} seconds".format(time.time() - t1))
+                print(("Time to calculate Renyi Dimensions: {0} seconds".format(time.time() - t1)))
             else:
                 self.__analysisResultsDict__.update(results)
 
@@ -198,7 +198,7 @@ class FeatureExtractionLogic:
             if printTiming:
                 self.__analysisResultsDict__.update(results[0])
                 self.__analysisTimingDict__.update(results[1])
-                print("Time to calculate Parenchymal Volume: {0} seconds".format(time.time() - t1))
+                print(("Time to calculate Parenchymal Volume: {0} seconds".format(time.time() - t1)))
             else:
                 self.__analysisResultsDict__.update(results)
 

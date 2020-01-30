@@ -47,7 +47,7 @@ class TextureGLCM:
         self.parameterMatrixCoordinates = parameterMatrixCoordinates
         self.parameterValues = parameterValues
         self.Ng = numGrayLevels
-        self.keys = set(allKeys).intersection(self.textureFeaturesGLCM.keys())
+        self.keys = set(allKeys).intersection(list(self.textureFeaturesGLCM.keys()))
         # Callback function to stop the process if the user decided so. CalculateCoefficients can take a long time to run...
         self.checkStopProcessFunction = checkStopProcessFunction
 
@@ -67,7 +67,7 @@ class TextureGLCM:
         self.P_glcm = self.calculate_glcm(self.grayLevels, self.parameterMatrix, self.parameterMatrixCoordinates,
                                           distances, directions, self.Ng, self.P_glcm)
         if printTiming:
-            print("- Time to calculate glmc matrix: {0} secs".format(time.time() - t1))
+            print(("- Time to calculate glmc matrix: {0} secs".format(time.time() - t1)))
         # make each GLCM symmetric an optional parameter
         # if symmetric:
         # Pt = numpy.transpose(P, (1, 0, 2, 3))
@@ -116,8 +116,8 @@ class TextureGLCM:
             0)
 
         self.pxy = numpy.zeros(self.P_glcm.shape)  # shape = (self.Ng, self.Ng, distances.size, directions)
-        for a in xrange(directions):
-            for g in xrange(distances.size):
+        for a in range(directions):
+            for g in range(distances.size):
                 self.pxy[:, :, g, a] = numpy.multiply.outer(self.px[:, g, a], self.py[:, g, a])
 
         self.HXY1 = (-1) * numpy.sum(
@@ -127,7 +127,7 @@ class TextureGLCM:
             numpy.sum((self.pxy * numpy.where(self.pxy != 0, numpy.log2(self.pxy), numpy.log2(self.eps))), 0),
             0)  # shape = (distances.size, directions)
         if printTiming:
-            print("- Time to calculate total glmc coefficients: {0} secs".format(time.time() - t1))
+            print(("- Time to calculate total glmc coefficients: {0} secs".format(time.time() - t1)))
 
     def autocorrelationGLCM(self, P_glcm, prodMatrix, meanFlag=True):
         ac = numpy.sum(numpy.sum(P_glcm * prodMatrix[:, :, None, None], 0), 0)
@@ -349,16 +349,16 @@ class TextureGLCM:
                               (1, -1, -1),
                               (-1, -1, -1)])
 
-        indices = zip(*matrixCoordinates)
+        indices = list(zip(*matrixCoordinates))
 
 
         for iteration in range(len(indices)):
         #for h, c, r in indices:
             h, c, r = indices[iteration]
-            for angles_idx in xrange(directions):
+            for angles_idx in range(directions):
                 angle = angles[angles_idx]
 
-                for distances_idx in xrange(distances.size):
+                for distances_idx in range(distances.size):
                     distance = distances[distances_idx]
 
                     i = matrix[h, c, r]

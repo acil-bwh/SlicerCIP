@@ -175,7 +175,7 @@ class PectoralisSegmentationWidget:
     self.applyButton.enabled = self.inputSelector.currentNode() and self.outputSelector.currentNode() 
 
   def onApplyButton(self):
-    print(self.descriptionEdit.text)
+    print((self.descriptionEdit.text))
     logic = PectoralisSegmentationLogic()
     print("Run the algorithm")
     logic.run(self.inputSelector.currentNode(), self.outputSelector.currentNode(), self.descriptionEdit.text)
@@ -192,7 +192,7 @@ class PectoralisSegmentationWidget:
       evalString = 'globals()["%s"].%sTest()' % (moduleName, moduleName)
       tester = eval(evalString)
       tester.runTest()
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       qt.QMessageBox.warning(slicer.util.mainWindow(),
@@ -295,7 +295,7 @@ class PectoralisSegmentationLogic:
     
     outputVolume_temp = np.ones(shape)
     print("input volume shape")
-    print(np.shape(input_array))
+    print((np.shape(input_array)))
     #self.delayDisplay('Running the aglorithm '+str(shape))
 
     #outputArray = slicer.util.array(outputVolume.GetID())
@@ -310,14 +310,14 @@ class PectoralisSegmentationLogic:
         
     outputVolume_temp2 = self.rev(outputVolume_temp, 0)
     print("out volume shape")
-    print(np.shape(outputVolume_temp2))
+    print((np.shape(outputVolume_temp2)))
     outputVolume_temp2 = outputVolume_temp
     shape = list(input_image.GetDimensions())
     
     volumesLogic = slicer.modules.volumes.logic()
     outputVolume = volumesLogic.CloneVolume(slicer.mrmlScene, inputVolume, 'Volume_Out')
     outputArray = slicer.util.array(outputVolume.GetID())
-    print(np.shape(outputArray))
+    print((np.shape(outputArray)))
     outputArray[:]  = outputVolume_temp2.squeeze().reshape()
     outputVolume.GetImageData().Modified()
     #print(outputVolume) #vtkMRMLScalarVolumeNode
@@ -327,8 +327,8 @@ class PectoralisSegmentationLogic:
     #set the vtk volume information
 
     print("output_shape")
-    print(np.shape(outputVolume_temp))
-    print(np.amax(outputVolume_temp))
+    print((np.shape(outputVolume_temp)))
+    print((np.amax(outputVolume_temp)))
     print(shape)
     #create a vtk volume to return
     #dataImporter = vtk.vtkImageImport()
@@ -393,7 +393,7 @@ class PectoralisSegmentationTest(unittest.TestCase):
     #
     # first, get some data
     #
-    import urllib
+    import urllib.request, urllib.parse, urllib.error
     downloads = (
         ('http://slicer.kitware.com/midas3/download?items=5767', 'FA.nrrd', slicer.util.loadVolume),
         )
@@ -401,10 +401,10 @@ class PectoralisSegmentationTest(unittest.TestCase):
     for url,name,loader in downloads:
       filePath = slicer.app.temporaryPath + '/' + name
       if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-        print('Requesting download %s from %s...\n' % (name, url))
-        urllib.urlretrieve(url, filePath)
+        print(('Requesting download %s from %s...\n' % (name, url)))
+        urllib.request.urlretrieve(url, filePath)
       if loader:
-        print('Loading %s...\n' % (name,))
+        print(('Loading %s...\n' % (name,)))
         loader(filePath)
     self.delayDisplay('Finished with download and loading\n')
 

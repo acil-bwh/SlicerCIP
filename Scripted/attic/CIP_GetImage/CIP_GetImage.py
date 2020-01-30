@@ -21,7 +21,7 @@ except Exception as ex:
         # We assume that CIP is a subfolder (Slicer behaviour)
         path = os.path.normpath(currentpath + '/CIP')
     sys.path.append(path)
-    print("The following path was manually added to the PythonPath in CIP_GetImage: " + path)
+    print(("The following path was manually added to the PythonPath in CIP_GetImage: " + path))
     from CIP.logic.SlicerUtil import SlicerUtil
 
 from CIP.logic import Util
@@ -186,7 +186,7 @@ class CIP_GetImageWidget:
         if not os.path.exists(self.localStoragePath):            
             os.makedirs(self.localStoragePath)
             # Make sure that everybody has write permissions (sometimes there are problems because of umask)
-            os.chmod(self.localStoragePath, 0777)
+            os.chmod(self.localStoragePath, 0o777)
             
         self.storagePathButton = ctk.ctkDirectoryButton()
         self.storagePathButton.directory = self.localStoragePath
@@ -284,8 +284,8 @@ class CIP_GetImageWidget:
             
     
             # Get the selected image types and label maps
-            imageTypes = [self.imageTypes[cb.text] for cb in filter(lambda check: check.isChecked(), self.cbsImageTypes)]
-            labelMapExtensions = [self.labelMapTypes[cb.text] for cb in filter(lambda check: check.isChecked(), self.cbsLabelMapTypes)]
+            imageTypes = [self.imageTypes[cb.text] for cb in [check for check in self.cbsImageTypes if check.isChecked()]]
+            labelMapExtensions = [self.labelMapTypes[cb.text] for cb in [check for check in self.cbsLabelMapTypes if check.isChecked()]]
              
             result = self.logic.loadCase(self.txtServer.text, self.txtServerpath.text, self.StudyId, self.txtCaseId.text, imageTypes, labelMapExtensions, self.localStoragePath, self.cbCacheMode.checkState(), self.rbSSH.isChecked(), self.txtPrivateKeySSH.text)
                     
@@ -325,10 +325,10 @@ class CIP_GetImageWidget:
         # Recreate it (this is a safe method for symbolic links)
         os.makedirs(self.localStoragePath)
         # Make sure that everybody has write permissions (sometimes there are problems because of umask)
-        os.chmod(self.localStoragePath, 0777)
+        os.chmod(self.localStoragePath, 0o777)
     
     def onTmpDirChanged(self, d):
-        print ("Temp dir changed. New dir: " + d)
+        print(("Temp dir changed. New dir: " + d))
         self.localStoragePath = d
 
 
@@ -401,15 +401,15 @@ class CIP_GetImageLogic:
             
             for ext in imageTypesExtensions:
                 locPath = self.downloadNrrdFile(server, serverPath, studyId, patientId, caseId, ext, localStoragePath, cacheOn, sshMode, privateKeySSH)             
-                if (SlicerUtil.IsDevelopment): print "Loading volume stored in " + locPath
+                if (SlicerUtil.IsDevelopment): print("Loading volume stored in " + locPath)
                 slicer.util.loadVolume(locPath)            
             for ext in labelMapExtensions:
                 locPath = self.downloadNrrdFile(server, serverPath, studyId, patientId, caseId, ext[1], localStoragePath, cacheOn, sshMode, privateKeySSH)             
-                if (SlicerUtil.IsDevelopment): print "Loading label map stored in " + locPath
+                if (SlicerUtil.IsDevelopment): print("Loading label map stored in " + locPath)
                 (code, vtkLabelmapVolumeNode) = slicer.util.loadLabelVolume(locPath, {}, returnNode=True)     # Braces are needed for Windows compatibility... No comments...
             return Util.OK
         except Exception as exception:
-            print exception
+            print(exception)
             return Util.ERROR
             
     def mustSplit(self, labelMapStructure):
@@ -429,16 +429,16 @@ class CIP_GetImageLogic:
             try:
                 if os.path.isfile(localFile):
                     # Delete file previously to avoid confirmation messages
-                    print "Remove cached files: " + localFile                    
+                    print("Remove cached files: " + localFile)                    
                     try:                                
                         os.clear(localFile)
                         os.clear("{0}/{1}{2}.raw.gz".format(localStoragePath, caseId, ext))
                     except:
-                        print "Error when deleting local files ({0})".format(localFile)
+                        print("Error when deleting local files ({0})".format(localFile))
                 
                 # Make sure that the ssh key has not too many permissions if it is used (otherwise scp will return an error)
                 if privateKeySSH:
-                    os.chmod(privateKeySSH, 0600)
+                    os.chmod(privateKeySSH, 0o600)
                 
                 # Download header
                 if (os.sys.platform == "win32"): 
@@ -466,8 +466,8 @@ class CIP_GetImageLogic:
                 (result, output, error) = self.executeDownloadCommand(params)            
                 
                 if (result == Util.ERROR):
-                    print "Error when executing download command. Params:"
-                    print params
+                    print("Error when executing download command. Params:")
+                    print(params)
                     if (error == None):
                         error = "Unnknown error"
                     raise Exception(error)                         
@@ -506,7 +506,7 @@ class CIP_GetImageLogic:
             except Exception as ex:
                 # There was en error in the preferred method. If we are in a Unix system, we will try the backup method
                 if os.sys.platform != "win32":
-                    print("There was an error when downloading some of the files: " + error)
+                    print(("There was an error when downloading some of the files: " + error))
                     print("Trying alternative method...")
                     self.executeDowloadCommand_Backup(fullStrCommand)                    
                  
@@ -517,12 +517,12 @@ class CIP_GetImageLogic:
                     if missingFiles:
                         raise Exception("After a second attempt, the following files have not been downloaded: " + missingFiles)
                      
-                    print "Apparently it worked!"
+                    print("Apparently it worked!")
                 else:
                     raise ex
                     
         else:
-            print "File {0} already cached".format(localFile)
+            print("File {0} already cached".format(localFile))
          
         # Return path to the Nrrd header file
         return localFile
@@ -555,14 +555,14 @@ class CIP_GetImageLogic:
                 
              
             if SlicerUtil.IsDevelopment:                
-                print "Out: " + out
-                print "Err:" + err
+                print("Out: " + out)
+                print("Err:" + err)
             if err:
-                print "Error returned by system process: " + err
+                print("Error returned by system process: " + err)
              
         except Exception as ex:            
-            print "FATAL ERROR IN COPY PROCESS:"
-            print ex
+            print("FATAL ERROR IN COPY PROCESS:")
+            print(ex)
             # Fatal error
             return (Util.ERROR, out, err)
                         

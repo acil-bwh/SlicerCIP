@@ -258,11 +258,11 @@ class CaseReportsLogic(object):
 
     @property
     def _columnKeys_(self):
-        return self.columnsDict.keys()
+        return list(self.columnsDict.keys())
 
     @property
     def _columnDescriptions_(self):
-        return self.columnsDict.values()
+        return list(self.columnsDict.values())
 
     @property
     def reservedColumnKeys(self):
@@ -292,7 +292,7 @@ class CaseReportsLogic(object):
         If the database already existed, create new columns if necessary
         :param columnsDict:
         """
-        for colKey, colDesc in self.columnsDict.items():
+        for colKey, colDesc in list(self.columnsDict.items()):
             if not colKey.isalnum():
                 raise Exception("Column {} is not alphanumeric. The column keys can contain only letters and numbers."
                                 .format(colKey))
@@ -304,20 +304,20 @@ class CaseReportsLogic(object):
         if self.tableNode.GetNumberOfColumns() == 0:
             # Empty table
             # Add columns
-            for value in self.columnsDict.itervalues():
+            for value in self.columnsDict.values():
                 col = self.tableNode.AddColumn()
                 # We will keep the "friendly" name of the column until the moment we are saving in db
                 col.SetName(value)
             SlicerUtil.logDevelop("Table {} initialized from scratch with the following columns: {}".format(
                 self._dbTableName_, self.columnsDict), includePythonConsole=True)
-            tableColumnKeys = self.columnsDict.keys()
+            tableColumnKeys = list(self.columnsDict.keys())
         else:
             # The table already has previously existing columns. Check if new columns were introduced
             tableColumnKeys = []
             for i in range(self.tableNode.GetNumberOfColumns()):
                 tableColumnKeys.append(table.GetColumnName(i))
 
-            for key in self.columnsDict.iterkeys():
+            for key in self.columnsDict.keys():
                 if key not in tableColumnKeys:
                     # Add a new column to the table
                     col = self.tableNode.AddColumn()
@@ -369,7 +369,7 @@ class CaseReportsLogic(object):
         :param columnKeyOrDescription:
         :return: String or None if the column was not found
         """
-        for key, value in self.columnsDict.iteritems():
+        for key, value in self.columnsDict.items():
             if columnKeyOrDescription in (key, value):
                 return key
         return None
@@ -392,7 +392,7 @@ class CaseReportsLogic(object):
         table = self.tableNode.GetTable()
 
         # Temporarily rename the columns so that the db saves the normalized names columns
-        keys = self.columnsDict.keys()
+        keys = list(self.columnsDict.keys())
         for i in range(table.GetNumberOfColumns()):
             # # Sanity check
             # assert table.GetColumn(i).GetName() == self.columnsDict[keys[i]], "Column mismatch (table=={}; Dict=={})".format(
@@ -402,7 +402,7 @@ class CaseReportsLogic(object):
         table.Modified()
 
         try:
-            for key, value in kwargs.iteritems():
+            for key, value in kwargs.items():
                 if value is not None:
                     for i in range(0, len(self.columnsDict)):
                         colName = table.GetColumnName(i)

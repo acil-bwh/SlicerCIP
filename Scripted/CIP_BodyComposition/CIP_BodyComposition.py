@@ -15,7 +15,7 @@ from slicer.ScriptedLoadableModule import *
 
 from CIP.logic.SlicerUtil import SlicerUtil
 from CIP.logic import Util
-from CIP_BodyComposition_logic import BodyCompositionParameters
+from .CIP_BodyComposition_logic import BodyCompositionParameters
 from CIP.ui import CaseReportsWidget
 import CIP.ui as CIPUI
 
@@ -115,7 +115,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.regionComboBox = qt.QComboBox(self.structuresCollapsibleButton)
         self.regionComboBox.objectName = "regionComboBox"
         index = 0
-        for key, item in self.logic.getRegionTypes().iteritems():
+        for key, item in self.logic.getRegionTypes().items():
             self.regionComboBox.addItem(item[1])  # Add label description
             self.regionComboBox.setItemData(index, key)  # Add string code
             index += 1
@@ -495,7 +495,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
             p = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Resources/CIP_BodyComposition_ColorMap.ctbl")
             self.colorTableNode = slicer.modules.colors.logic().LoadColorFile(p)
         else:
-            self.colorTableNode = colorTableNodes.values()[0]
+            self.colorTableNode = list(colorTableNodes.values())[0]
 
 
 
@@ -609,8 +609,8 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                 masterNode = slicer.mrmlScene.GetNodeByID(bgID)
                 return masterNode
         except Exception as ex:
-            print "Default node could not be loaded"
-            print ex
+            print("Default node could not be loaded")
+            print(ex)
             return None
 
     def __loadTypesComboBox__(self, regionCode):
@@ -618,8 +618,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.typeComboBox.disconnect("currentIndexChanged (int)", self.onCbTypeCurrentIndexChanged)
         self.typeComboBox.clear()
         index = 0
-        combinations = filter(lambda combination: self.logic.getRegionStringCodeItem(combination) == regionCode,
-                            self.logic.getAllowedCombinations())
+        combinations = [combination for combination in self.logic.getAllowedCombinations() if self.logic.getRegionStringCodeItem(combination) == regionCode]
         # Sort elements by name
         combinations = sorted(combinations, key=lambda c:c[2])
         # print "Commbinations for code {}:".format(regionCode)
@@ -654,7 +653,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         color = self.colorTableNode.GetColorIndexByName(label)
 
         if color == -1:
-            print "Color not found for label '{0}'. Default label set".format(label)
+            print("Color not found for label '{0}'. Default label set".format(label))
             color = 0  # Undefined label if not found
 
         self.editorWidget.toolsColor.colorSpin.setValue(color)
@@ -693,7 +692,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         If forceRefresh == false, it will try to return the value from cache"""
         volumeID = labelMapNode.GetID()
 
-        if self.labelMapSlices.has_key(volumeID) and not forceRefresh:
+        if volumeID in self.labelMapSlices and not forceRefresh:
             # The values were already calculated for this volume
             # if SlicerUtil.IsDevelopment: print("Slices for volume {0} already calculated".format(volumeID))
             return
@@ -924,7 +923,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
             # Get a dictionary of [labelCode:array of slices] for the current labelmap volume
             slices = self.labelMapSlices[self.getCurrentLabelMapNode().GetID()]
 
-            if not slices.has_key(labelCode):
+            if labelCode not in slices:
                 # Label not present
                 return None
             # Return the array with the number of slices
@@ -965,7 +964,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
                     qt.QMessageBox.warning(slicer.util.mainWindow(), 'Warning',
                                        'There are no any values in the labelmap. Please press "Refresh labelmap info" button.')
                     return
-            slices = np.unique(np.concatenate([x for x in allLabels.values()]))
+            slices = np.unique(np.concatenate([x for x in list(allLabels.values())]))
 
         # Get the tolerance as an error factor when converting RAS-IJK. The value will depend on
         # the transformation matrix for this node
@@ -1029,8 +1028,8 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         if node:
             nodeName = node.GetName()
             if self.getCurrentGrayscaleNode() and self.getCurrentGrayscaleNode().GetName() != nodeName:
-                if SlicerUtil.IsDevelopment: print "There was a selection of a new master node: {0}. Previous: {1}. We will invoke checkMasterAndLabelMapNodes".format(
-                    node.GetName(), self.editorWidget.masterVolume.GetName())
+                if SlicerUtil.IsDevelopment: print("There was a selection of a new master node: {0}. Previous: {1}. We will invoke checkMasterAndLabelMapNodes".format(
+                    node.GetName(), self.editorWidget.masterVolume.GetName()))
                 # Update Editor Master node to perform the needed actions.
                 # We don't use "setVolumes" function because the interface must not be refeshed yet (it will be in checkMasterAndLabelMapNodes)
                 self.setCurrentGrayscaleNode(node)
@@ -1039,7 +1038,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
                 self.checkMasterAndLabelMapNodes()
         else:
-            if SlicerUtil.IsDevelopment: print "No master node selected. Trying to remove label map"
+            if SlicerUtil.IsDevelopment: print("No master node selected. Trying to remove label map")
             # Disable events temporarily to avoid infinte loops
             # self.disableEvents = True
             self.editorWidget.helper.setVolumes(None, None)
@@ -1076,7 +1075,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
             # There is already an active volume. Take the first one of the ones loaded recently
             # loadedVolumes is a dictionary with this structure:
             # - Fullpath (without extension): [ID Grayscale Volume, ID Labelmap Volume]
-            l = [i for i in loadedVolumes.itervalues() if i[0] != None]
+            l = [i for i in loadedVolumes.values() if i[0] != None]
             if len(l) > 0:
                 # Activate the first volume
                 self.setCurrentGrayscaleNode(slicer.mrmlScene.GetNodeByID(i[0]))
@@ -1235,7 +1234,7 @@ class CIP_BodyCompositionLogic(ScriptedLoadableModuleLogic):
                 callbackStepFunction("Calculating {0}...".format(label))
 
                 # Use just the slices that contain data
-            if self.labelmapSlices.has_key(labelCode):
+            if labelCode in self.labelmapSlices:
                 trimmedIntensityArray = intensityArray[self.labelmapSlices[labelCode], :, :]
                 trimmedLabelmapArray = labelMapArray[self.labelmapSlices[labelCode], :, :]
                 stat = self.performAnalysisForItem(labelCode, trimmedIntensityArray, trimmedLabelmapArray, spacing[0],
@@ -1314,7 +1313,7 @@ class CIP_BodyCompositionLogic(ScriptedLoadableModuleLogic):
         It assumes that "labelmapSlices" has been already calculated (see 'calculateStatistics' function)"""
 
         if preprocessingCode == 1:
-            if self.labelmapSlices.has_key(labelCode):
+            if labelCode in self.labelmapSlices:
                 # Get the slices for this labelCode
                 slices = self.labelmapSlices[labelCode]
 
