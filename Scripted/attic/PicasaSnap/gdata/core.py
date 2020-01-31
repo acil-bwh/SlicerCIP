@@ -51,7 +51,7 @@ def _convert_to_jsonc(x):
     # Recursively transform all members of the dict.
     # When converting a dict, we do not convert _name items into private
     # Jsonc members.
-    for key, value in x.iteritems():
+    for key, value in x.items():
       jsonc_obj._dict[key] = _convert_to_jsonc(value)
     return jsonc_obj
   elif isinstance(x, list):
@@ -112,7 +112,7 @@ def _convert_to_object(jsonc_obj):
 
   if isinstance(jsonc_obj, Jsonc):
     plain = {}
-    for key, value in jsonc_obj._dict.iteritems():
+    for key, value in jsonc_obj._dict.items():
       plain[key] = _convert_to_object(value)
     return plain
   elif isinstance(jsonc_obj, list):
@@ -232,7 +232,7 @@ class Jsonc(object):
 
   def __init__(self, _dict=None, **kwargs):
     json = _dict or {}
-    for key, value in kwargs.iteritems():
+    for key, value in kwargs.items():
       if key.startswith('_'):
         object.__setattr__(self, key, value)
       else:

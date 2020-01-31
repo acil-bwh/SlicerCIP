@@ -39,24 +39,24 @@ class VTK_SLICER_PARTICLESDISPLAY_MODULE_MRML_EXPORT vtkMRMLParticlesDisplayNode
   public:
   static vtkMRMLParticlesDisplayNode *New();
   vtkTypeMacro(vtkMRMLParticlesDisplayNode,vtkMRMLModelDisplayNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  virtual vtkMRMLNode* CreateNodeInstance() override;
 
   ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "ParticlesDisplayNode";};
+  virtual const char* GetNodeTagName() override {return "ParticlesDisplayNode";};
 
   /// Read node attributes from XML file.
   /// \sa vtkMRMLParser
-  virtual void ReadXMLAttributes( const char** atts);
+  virtual void ReadXMLAttributes( const char** atts) override;
 
   /// Write this node's information to a MRML file in XML format.
   /// \sa vtkMRMLScene::Commit()
-  virtual void WriteXML(ostream& of, int indent);
+  virtual void WriteXML(ostream& of, int indent) override;
 
   /// Copy the node's attributes to this object.
-  virtual void Copy(vtkMRMLNode *node);
+  virtual void Copy(vtkMRMLNode *node) override;
 
   /// Update the pipeline based on this node attributes
   virtual void UpdatePolyDataPipeline();
@@ -109,7 +109,7 @@ protected:
   void operator=(const vtkMRMLParticlesDisplayNode&);
 
   /// Gets result in glyph PolyData
-  virtual vtkAlgorithmOutput* GetOutputPolyDataConnection();
+  virtual vtkAlgorithmOutput* GetOutputPolyDataConnection() override;
 
   ///
   /// returns LUT index for a given region and type

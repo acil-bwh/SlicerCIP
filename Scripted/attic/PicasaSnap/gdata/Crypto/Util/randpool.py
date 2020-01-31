@@ -62,7 +62,7 @@ class RandomPool:
         if cipher is not None:
             warnings.warn("'cipher' parameter is no longer used")
 
-        if isinstance(hash, types.StringType):
+        if isinstance(hash, bytes):
             # ugly hack to force __import__ to give us the end-path module
             hash = __import__('Crypto.Hash.'+hash,
                               None, None, ['new'])
@@ -116,8 +116,9 @@ class RandomPool:
                 f=open(devname)
                 data=f.read(nbytes)
                 f.close()
-            except IOError, (num, msg):
-                if num!=2: raise IOError, (num, msg)
+            except IOError as xxx_todo_changeme:
+                (num, msg) = xxx_todo_changeme.args
+                if num!=2: raise IOError(num, msg)
                 # If the file wasn't found, ignore the error
         if data:
             self._addBytes(data)
@@ -137,7 +138,7 @@ class RandomPool:
         """stir_n(N)
         stirs the random pool N times
         """
-        for i in xrange(N):
+        for i in range(N):
             self.stir()
 
     def stir (self, s = ''):
@@ -158,7 +159,7 @@ class RandomPool:
             h = self._hash.new(self._randpool)
             h.update(str(self.__counter) + str(i) + str(self._addPos) + s)
             self._addBytes( h.digest() )
-            self.__counter = (self.__counter + 1) & 0xFFFFffffL
+            self.__counter = (self.__counter + 1) & 0xFFFFffff
 
         self._addPos, self._getPos = 0, self._hash.digest_size
         self.add_event()
@@ -228,10 +229,10 @@ class RandomPool:
         t=time.time()
         delta = (t - self._lastcounter)/self._ticksize*1e6
         self._lastcounter = t
-        self._addBytes(long_to_bytes(long(1000*time.time())))
-        self._addBytes(long_to_bytes(long(1000*time.clock())))
-        self._addBytes(long_to_bytes(long(1000*time.time())))
-        self._addBytes(long_to_bytes(long(delta)))
+        self._addBytes(long_to_bytes(int(1000*time.time())))
+        self._addBytes(long_to_bytes(int(1000*time.clock())))
+        self._addBytes(long_to_bytes(int(1000*time.time())))
+        self._addBytes(long_to_bytes(int(delta)))
 
         # Reduce delta to a maximum of 8 bits so we don't add too much
         # entropy as a result of this call.
@@ -246,16 +247,16 @@ class RandomPool:
         # between measurements, and taking the median of the resulting
         # list.  (We also hash all the times and add them to the pool)
         interval = [None] * 100
-        h = self._hash.new(`(id(self),id(interval))`)
+        h = self._hash.new(repr((id(self),id(interval))))
 
         # Compute 100 differences
         t=time.time()
-        h.update(`t`)
+        h.update(repr(t))
         i = 0
         j = 0
         while i < 100:
             t2=time.time()
-            h.update(`(i,j,t2)`)
+            h.update(repr((i,j,t2)))
             j += 1
             delta=int((t2-t)*1e6)
             if delta:
@@ -266,7 +267,7 @@ class RandomPool:
         # Take the median of the array of intervals
         interval.sort()
         self._ticksize=interval[len(interval)/2]
-        h.update(`(interval,self._ticksize)`)
+        h.update(repr((interval,self._ticksize)))
         # mix in the measurement times and wash the random pool
         self.stir(h.digest())
 
@@ -311,7 +312,7 @@ class PersistentRandomPool (RandomPool):
 
     def save(self):
         if self.filename == "":
-            raise ValueError, "No filename set for this object"
+            raise ValueError("No filename set for this object")
         # wash the random pool before save, provides some forward secrecy for
         # old values of the pool.
         self.stir_n()
@@ -380,8 +381,8 @@ class KeyboardRandomPool (PersistentRandomPool):
             bits = N*8
         if bits == 0:
             return
-        print bits,'bits of entropy are now required.  Please type on the keyboard'
-        print 'until enough randomness has been accumulated.'
+        print(bits,'bits of entropy are now required.  Please type on the keyboard')
+        print('until enough randomness has been accumulated.')
         kb = KeyboardEntry()
         s=''    # We'll save the characters typed and add them to the pool.
         hash = self._hash
@@ -396,26 +397,26 @@ class KeyboardRandomPool (PersistentRandomPool):
             self.add_event(s+hash.new(s).digest() )
         finally:
             kb.close()
-        print '\n\007 Enough.  Please wait a moment.\n'
+        print('\n\007 Enough.  Please wait a moment.\n')
         self.stir_n()   # wash the random pool.
         kb.close(4)
 
 if __name__ == '__main__':
     pool = RandomPool()
-    print 'random pool entropy', pool.entropy, 'bits'
+    print('random pool entropy', pool.entropy, 'bits')
     pool.add_event('something')
-    print `pool.get_bytes(100)`
+    print(repr(pool.get_bytes(100)))
     import tempfile, os
     fname = tempfile.mktemp()
     pool = KeyboardRandomPool(filename=fname)
-    print 'keyboard random pool entropy', pool.entropy, 'bits'
+    print('keyboard random pool entropy', pool.entropy, 'bits')
     pool.randomize()
-    print 'keyboard random pool entropy', pool.entropy, 'bits'
+    print('keyboard random pool entropy', pool.entropy, 'bits')
     pool.randomize(128)
     pool.save()
     saved = open(fname, 'rb').read()
-    print 'saved', `saved`
-    print 'pool ', `pool._randpool.tostring()`
+    print('saved', repr(saved))
+    print('pool ', repr(pool._randpool.tostring()))
     newpool = PersistentRandomPool(fname)
-    print 'persistent random pool entropy', pool.entropy, 'bits'
+    print('persistent random pool entropy', pool.entropy, 'bits')
     os.remove(fname)

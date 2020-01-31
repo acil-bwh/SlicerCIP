@@ -4,6 +4,7 @@ import numpy
 import math
 import operator
 import collections
+from functools import reduce
 
 
 class MorphologyStatistics:
@@ -28,7 +29,7 @@ class MorphologyStatistics:
         self.morphologyStatistics[
             "Sphericity"] = 'self.sphericityValue(self.morphologyStatistics["Surface Area mm^2"], self.morphologyStatistics["Volume mm^3"])'
 
-        self.keys = set(allKeys).intersection(self.morphologyStatistics.keys())
+        self.keys = set(allKeys).intersection(list(self.morphologyStatistics.keys()))
 
         self.labelNodeSpacing = labelNodeSpacing
         self.matrixSA = matrixSA
@@ -60,7 +61,7 @@ class MorphologyStatistics:
 
         i, j, k = 0, 0, 0
         surfaceArea = 0
-        for voxel in xrange(0, matrixSAValues.size):
+        for voxel in range(0, matrixSAValues.size):
             i, j, k = matrixSACoordinates[0][voxel], matrixSACoordinates[1][voxel], matrixSACoordinates[2][voxel]
             fxy = (numpy.array([a[i + 1, j, k], a[i - 1, j, k]]) == 0)  # evaluate to 1 if true, 0 if false
             fyz = (numpy.array([a[i, j + 1, k], a[i, j - 1, k]]) == 0)  # evaluate to 1 if true, 0 if false
@@ -88,7 +89,7 @@ class MorphologyStatistics:
         maxBounds = numpy.array(
             [numpy.max(matrixSACoordinates[0]), numpy.max(matrixSACoordinates[1]), numpy.max(matrixSACoordinates[2])])
 
-        a = numpy.array(zip(*matrixSACoordinates))
+        a = numpy.array(list(zip(*matrixSACoordinates)))
         edgeVoxelsMinCoords = numpy.vstack(
             [a[a[:, 0] == minBounds[0]], a[a[:, 1] == minBounds[1]], a[a[:, 2] == minBounds[2]]]) * [z, y, x]
         edgeVoxelsMaxCoords = numpy.vstack(
@@ -139,7 +140,7 @@ class MorphologyStatistics:
 
             if printTiming:
                 for key in self.keys:
-                    if isinstance(self.morphologyStatistics[key], basestring):
+                    if isinstance(self.morphologyStatistics[key], str):
                         t1 = time.time()
                         self.morphologyStatistics[key] = eval(self.morphologyStatistics[key])
                         self.morphologyStatisticsTiming[key] = time.time() - t1
@@ -148,7 +149,7 @@ class MorphologyStatistics:
                 return self.morphologyStatistics, self.morphologyStatisticsTiming
             else:
                 for key in self.keys:
-                    if isinstance(self.morphologyStatistics[key], basestring):
+                    if isinstance(self.morphologyStatistics[key], str):
                         self.morphologyStatistics[key] = eval(self.morphologyStatistics[key])
                         if checkStopProcessFunction is not None:
                             checkStopProcessFunction()

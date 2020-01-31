@@ -302,7 +302,7 @@ class VolumeProbeWidget(ScriptedLoadableModuleWidget):
             evalString = 'globals()["%s"].%sTest()' % (moduleName, moduleName)
             tester = eval(evalString)
             tester.runTest(scenario=scenario)
-        except Exception, e:
+        except Exception as e:
             import traceback
             traceback.print_exc()
             qt.QMessageBox.warning(slicer.util.mainWindow(),
@@ -333,7 +333,7 @@ class VolumeProbeLogic(ScriptedLoadableModuleLogic):
         # use a nice set of colors
         self.colors = SlicerUtil.getNode('GenericColors')
         self.lookupTable = self.colors.GetLookupTable()
-        print "VolumeProbeLogic CREATED"
+        print("VolumeProbeLogic CREATED")
 
 
 class ViewWatcher(object):
@@ -377,7 +377,7 @@ class ViewWatcher(object):
         self.layerVolumeNodes = {}
         self.savedWidget = None
 
-        print "ViewWatcher CREATED"
+        print("ViewWatcher CREATED")
 
     def __del__(self):
         self.tearDown()
@@ -397,7 +397,7 @@ class ViewWatcher(object):
         # get new slice nodes
         layoutManager = slicer.app.layoutManager()
         sliceNodeCount = slicer.mrmlScene.GetNumberOfNodesByClass('vtkMRMLSliceNode')
-        for nodeIndex in xrange(sliceNodeCount):
+        for nodeIndex in range(sliceNodeCount):
             # find the widget for each node in scene
             sliceNode = slicer.mrmlScene.GetNthNodeByClass(nodeIndex, 'vtkMRMLSliceNode')
             sliceWidget = layoutManager.sliceWidget(sliceNode.GetLayoutName())
@@ -435,7 +435,7 @@ class ViewWatcher(object):
             sliceWidget = layoutManager.sliceWidget(observee.GetLayoutName())
             if sliceWidget and observee.GetLayoutName() == self.currentLayoutName:
                 observee = sliceWidget.sliceView().interactor()
-        if self.sliceWidgetsPerStyle.has_key(observee):
+        if observee in self.sliceWidgetsPerStyle:
             self.sliceWidget = self.sliceWidgetsPerStyle[observee]
             self.sliceView = self.sliceWidget.sliceView()
             self.sliceLogic = self.sliceWidget.sliceLogic()

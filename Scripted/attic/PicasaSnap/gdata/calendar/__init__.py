@@ -337,7 +337,7 @@ class UriEnumElement(atom.AtomBase):
     self.extension_attributes = extension_attributes or {}
 
   def findKey(self, value):
-     res=[item[0] for item in self.enum_map.items() if item[1] == value]
+     res=[item[0] for item in list(self.enum_map.items()) if item[1] == value]
      if res is None or len(res) == 0:
        return None
      return res[0]
@@ -348,7 +348,7 @@ class UriEnumElement(atom.AtomBase):
       self.value = self.enum_map[value]
       return
     # Find the attribute in this class's list of attributes.
-    if self.__class__._attributes.has_key(attribute):
+    if attribute in self.__class__._attributes:
       # Find the member of this class which corresponds to the XML attribute
       # (lookup in current_class._attributes) and set this member to the
       # desired value (using self.__dict__).
@@ -364,7 +364,7 @@ class UriEnumElement(atom.AtomBase):
     # This uses the class's _children dictionary to find the members which
     # should become XML child nodes.
     member_node_names = [values[0] for tag, values in
-                                       self.__class__._children.iteritems()]
+                                       self.__class__._children.items()]
     for member_name in member_node_names:
       member = getattr(self, member_name)
       if member is None:
@@ -379,7 +379,7 @@ class UriEnumElement(atom.AtomBase):
     if key is not None:
       tree.attrib[self.attrib_name]=key
     # Convert the members of this class which are XML attributes.
-    for xml_attribute, member_name in self.__class__._attributes.iteritems():
+    for xml_attribute, member_name in self.__class__._attributes.items():
       member = getattr(self, member_name)
       if member is not None:
         tree.attrib[xml_attribute] = member
@@ -940,7 +940,7 @@ class CalendarEventEntry(gdata.BatchEntry):
                                                         child_tree))
       return
     # Find the element's tag in this class's list of child members
-    if self.__class__._children.has_key(child_tree.tag):
+    if child_tree.tag in self.__class__._children:
       member_name = self.__class__._children[child_tree.tag][0]
       member_class = self.__class__._children[child_tree.tag][1]
       # If the class member is supposed to contain a list, make sure the

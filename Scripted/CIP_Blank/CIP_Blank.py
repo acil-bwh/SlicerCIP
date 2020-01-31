@@ -114,7 +114,7 @@ class CIP_BlankLogic(ScriptedLoadableModuleLogic):
         ScriptedLoadableModuleLogic.__init__(self)
 
     def printMessage(self, message):
-        print("This is your message: ", message)
+        print(("This is your message: ", message))
         return "I have printed this message: " + message
 
 

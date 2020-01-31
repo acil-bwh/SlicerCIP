@@ -124,7 +124,7 @@ class BookService(gdata.service.GDataService):
                     upper bound is exclusive
         """
 
-        for k, v in kwargs.items():
+        for k, v in list(kwargs.items()):
             if not v:
                 continue
             k = k.lower()

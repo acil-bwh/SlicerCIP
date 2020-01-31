@@ -161,9 +161,9 @@ class GeometryTopologyData(object):
 
         # Concatenate points (sort first)
         self.points.sort(key=lambda p: p.__id__)
-        points = "".join(map(lambda i: i.to_xml(), self.points))
+        points = "".join([i.to_xml() for i in self.points])
         # Concatenate bounding boxes
-        bounding_boxes = "".join(map(lambda i: i.to_xml(), self.bounding_boxes))
+        bounding_boxes = "".join([i.to_xml() for i in self.bounding_boxes])
 
         # Final result
         s = output + points + bounding_boxes + "</GeometryTopologyData>\r\n"

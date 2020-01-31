@@ -1,12 +1,12 @@
 """TLS Lite + xmlrpclib."""
 
-import xmlrpclib
-import httplib
+import xmlrpc.client
+import http.client
 from gdata.tlslite.integration.HTTPTLSConnection import HTTPTLSConnection
 from gdata.tlslite.integration.ClientHelper import ClientHelper
 
 
-class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
+class XMLRPCTransport(xmlrpc.client.Transport, ClientHelper):
     """Handles an HTTPS transaction to an XML-RPC server."""
 
     def __init__(self,
@@ -132,6 +132,6 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
                                  self.checker.x509TrustList,
                                  self.checker.x509CommonName,
                                  self.settings)
-        http2 = httplib.HTTP()
+        http2 = http.client.HTTP()
         http2._setup(http)
         return http2

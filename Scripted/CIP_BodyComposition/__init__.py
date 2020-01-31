@@ -1,1 +1,1 @@
-import CIP_BodyComposition_logic
+from . import CIP_BodyComposition_logic

@@ -35,7 +35,7 @@ class MockRequest(object):
   """
   def __init__(self, operation, url, data=None, headers=None):
     self.operation = operation
-    if isinstance(url, (str, unicode)):
+    if isinstance(url, str):
       url = atom.url.parse_url(url)
     self.url = url
     self.data = data
@@ -112,7 +112,7 @@ class MockHttpClient(atom.http_interface.GenericHttpClient):
     If there is no match, a NoRecordingFound error will be raised.
     """
     if self.real_client is None:
-      if isinstance(url, (str, unicode)):
+      if isinstance(url, str):
         url = atom.url.parse_url(url)
       for recording in self.recordings:
         if recording[0].operation == operation and recording[0].url == url:

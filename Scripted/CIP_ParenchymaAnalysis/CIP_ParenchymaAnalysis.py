@@ -12,6 +12,7 @@ from CIP.ui import PdfReporter
 from CIP.logic.SlicerUtil import SlicerUtil
 from CIP.logic.Util import Util
 from CIP.logic.lung_splitter import LungSplitter as lung_splitter
+from functools import reduce
 
 #
 # CIP_ParenchymaAnalysis
@@ -254,7 +255,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.histogramCheckBoxes.append(self.RLTHistCheckBox)
         self.histFrame.layout().addWidget(self.RLTHistCheckBox)
 
-        for i in xrange(len(self.histogramCheckBoxes)):
+        for i in range(len(self.histogramCheckBoxes)):
             self.histogramCheckBoxes[i].setText(self.rTags[i])
             self.histogramCheckBoxes[i].hide()
 
@@ -439,7 +440,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         self.HistSection.enabled = False
         self.applyButton.enabled = False
-        for i in xrange(len(self.histogramCheckBoxes)):
+        for i in range(len(self.histogramCheckBoxes)):
             self.histogramCheckBoxes[i].hide()
 
         if self.preProcessingWidget.filterOnRadioButton.checked and self.preProcessingWidget.filterApplication.checked:
@@ -453,7 +454,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.logic = CIP_ParenchymaAnalysisLogic(self.CTNode, self.labelNode, self.HistogramFreqOption.checked)
         self.populateStats()
         self.logic.createHistogram(self.labelNode)
-        for i in xrange(len(self.histogramCheckBoxes)):
+        for i in range(len(self.histogramCheckBoxes)):
             self.histogramCheckBoxes[i].setChecked(0)
             self.histogramCheckBoxes[i].hide()
 
@@ -476,7 +477,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
     def changeHistDisplay(self):
         histList = []
-        for i in xrange(len(self.histogramCheckBoxes)):
+        for i in range(len(self.histogramCheckBoxes)):
             if self.histogramCheckBoxes[i].checked:
                 histList.append(self.rTags[i])
         self.logic.ChangeHistogramFrequency(histList, byRegionVolume=self.HistogramFreqOption.checked)
@@ -485,7 +486,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         """Histogram of the selected region
         """
         histList = []
-        for i in xrange(len(self.histogramCheckBoxes)):
+        for i in range(len(self.histogramCheckBoxes)):
             if self.histogramCheckBoxes[i].checked:
                 histList.append(self.rTags[i])
 
@@ -829,7 +830,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         array.SetNumberOfTuples(tuples)
         tuple = 0
 
-        for i in xrange(samples):
+        for i in range(samples):
             index = self.regionTags[i]
             array.SetComponent(tuple, 0, i)
             array.SetComponent(tuple, 1, self.labelStats[valueToPlot, index])
@@ -1179,6 +1180,6 @@ if __name__ == "__main__":
 
     import sys
 
-    print(sys.argv)
+    print((sys.argv))
 
     slicelet = ParenchymaAnalysisSlicelet()

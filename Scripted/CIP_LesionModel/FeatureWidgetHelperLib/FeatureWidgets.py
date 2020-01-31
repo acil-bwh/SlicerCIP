@@ -41,7 +41,7 @@ class CheckableTabsWidget(qt.QTabWidget):
 
     def stateChanged(self, checkBox, checkState, featureWidgets):
         # uncheck all checkboxes in QObject # may not need to pass list?
-        index = self.featureClassFeatureWidgets.values().index(checkBox)
+        index = list(self.featureClassFeatureWidgets.values()).index(checkBox)
         if checkState == 0:
             for widget in featureWidgets:
                 widget.checked = False
@@ -53,17 +53,17 @@ class CheckableTabsWidget(qt.QTabWidget):
         # context menu request (right-click) on QTabBar is forwarded to the QCheckBox (FeatureWidget)
         if object == self.tab_bar and event.type() == qt.QEvent.ContextMenu:
             tabIndex = object.tabAt(event.pos())
-            pos = self.featureClassFeatureWidgets.values()[tabIndex].mapFrom(self.tab_bar, event.pos())
+            pos = list(self.featureClassFeatureWidgets.values())[tabIndex].mapFrom(self.tab_bar, event.pos())
 
             if tabIndex > -1:
-                qt.QCoreApplication.sendEvent(self.featureClassFeatureWidgets.values()[tabIndex],
+                qt.QCoreApplication.sendEvent(list(self.featureClassFeatureWidgets.values())[tabIndex],
                                               qt.QContextMenuEvent(0, pos))
 
             return True
         return False
 
     def getFeatureClassWidgets(self):
-        return (self.featureClassFeatureWidgets.values())
+        return (list(self.featureClassFeatureWidgets.values()))
 
     def addParameter(self, featureClass, parameter):
         self.featureClassFeatureWidgets[featureClass].addParameter(parameter)
@@ -98,7 +98,7 @@ class FeatureWidget(qt.QCheckBox):
 
     def getParameterDict(self):
         parameterDict = collections.OrderedDict()
-        for k, v in self.widgetMenu.parameters.items():
+        for k, v in list(self.widgetMenu.parameters.items()):
             value = v['Edit Window'].getValue()
             parameterDict[k] = value
         return (parameterDict)

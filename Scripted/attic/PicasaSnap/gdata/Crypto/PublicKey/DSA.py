@@ -40,9 +40,9 @@ def generateQ(randfunc):
         q=q*256+c
     while (not isPrime(q)):
         q=q+2
-    if pow(2,159L) < q < pow(2,160L):
+    if pow(2,159) < q < pow(2,160):
         return S, q
-    raise error, 'Bad q value generated'
+    raise error('Bad q value generated')
 
 def generate(bits, randfunc, progress_func=None):
     """generate(bits:int, randfunc:callable, progress_func:callable)
@@ -53,7 +53,7 @@ def generate(bits, randfunc, progress_func=None):
     """
 
     if bits<160:
-        raise error, 'Key length <160 bits'
+        raise error('Key length <160 bits')
     obj=DSAobj()
     # Generate string S and prime q
     if progress_func:
@@ -70,7 +70,7 @@ def generate(bits, randfunc, progress_func=None):
                 V[k]=bytes_to_long(SHA.new(S+str(N)+str(k)).digest())
             W=V[n] % powb
             for k in range(n-1, -1, -1):
-                W=(W<<160L)+V[k]
+                W=(W<<160)+V[k]
             X=W+powL1
             p=X-(X%(2*obj.q)-1)
             if powL1<=p and isPrime(p):
@@ -106,7 +106,7 @@ def construct(tuple):
     """
     obj=DSAobj()
     if len(tuple) not in [4,5]:
-        raise error, 'argument for construct() wrong length'
+        raise error('argument for construct() wrong length')
     for i in range(len(tuple)):
         field = obj.keydata[i]
         setattr(obj, field, tuple[i])
@@ -116,14 +116,14 @@ class DSAobj(pubkey):
     keydata=['y', 'g', 'p', 'q', 'x']
 
     def _encrypt(self, s, Kstr):
-        raise error, 'DSA algorithm cannot encrypt data'
+        raise error('DSA algorithm cannot encrypt data')
 
     def _decrypt(self, s):
-        raise error, 'DSA algorithm cannot decrypt data'
+        raise error('DSA algorithm cannot decrypt data')
 
     def _sign(self, M, K):
         if (K<2 or self.q<=K):
-            raise error, 'K is not between 2 and q'
+            raise error('K is not between 2 and q')
         r=pow(self.g, K, self.p) % self.q
         s=(inverse(K, self.q)*(M+self.x*r)) % self.q
         return (r,s)
@@ -181,10 +181,10 @@ class DSAobj_c(pubkey):
         if attr in self.keydata:
             return getattr(self.key, attr)
         else:
-            if self.__dict__.has_key(attr):
+            if attr in self.__dict__:
                 self.__dict__[attr]
             else:
-                raise AttributeError, '%s instance has no attribute %s' % (self.__class__, attr)
+                raise AttributeError('%s instance has no attribute %s' % (self.__class__, attr))
 
     def __getstate__(self):
         d = {}
@@ -195,7 +195,7 @@ class DSAobj_c(pubkey):
 
     def __setstate__(self, state):
         y,g,p,q = state['y'], state['g'], state['p'], state['q']
-        if not state.has_key('x'):
+        if 'x' not in state:
             self.key = _fastmath.dsa_construct(y,g,p,q)
         else:
             x = state['x']
@@ -204,7 +204,8 @@ class DSAobj_c(pubkey):
     def _sign(self, M, K):
         return self.key._sign(M, K)
 
-    def _verify(self, M, (r, s)):
+    def _verify(self, M, xxx_todo_changeme):
+        (r, s) = xxx_todo_changeme
         return self.key._verify(M, r, s)
 
     def size(self):
@@ -228,7 +229,7 @@ def generate_c(bits, randfunc, progress_func=None):
     return construct_c((y,g,p,q,x))
 
 def construct_c(tuple):
-    key = apply(_fastmath.dsa_construct, tuple)
+    key = _fastmath.dsa_construct(*tuple)
     return DSAobj_c(key)
 
 if _fastmath:

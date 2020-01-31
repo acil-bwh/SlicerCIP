@@ -1,7 +1,7 @@
 import vtkSlicerAirwayModuleModuleLogic
 import os
 import slicer
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 lg = vtkSlicerAirwayModuleModuleLogic.vtkSlicerAirwayModuleLogic()
 lg.SetAndObserveMRMLScene(slicer.mrmlScene)
@@ -17,8 +17,8 @@ downloads = (
 for url, name, loader in downloads:
     filePath = slicer.app.temporaryPath + '/' + name
     if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-        print('Requesting download %s from %s...\n' % (name, url))
-    urllib.urlretrieve(url, filePath)
+        print(('Requesting download %s from %s...\n' % (name, url)))
+    urllib.request.urlretrieve(url, filePath)
     if loader:
-        print('Loading %s...\n' % (name,))
+        print(('Loading %s...\n' % (name,)))
     loader(filePath)

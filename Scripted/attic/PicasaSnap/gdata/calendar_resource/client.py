@@ -28,7 +28,7 @@ __author__ = 'Vic Fryzel <vf@google.com>'
 
 import gdata.calendar_resource.data
 import gdata.client
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 
 # Feed URI template.  This must end with a /
@@ -86,7 +86,7 @@ class CalendarResourceClient(gdata.client.GDClient):
     if resource_id:
       uri += resource_id
     if params:
-      uri += '?' + urllib.urlencode(params)
+      uri += '?' + urllib.parse.urlencode(params)
     return uri
 
   MakeResourceFeedUri = make_resource_feed_uri

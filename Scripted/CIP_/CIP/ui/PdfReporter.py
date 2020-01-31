@@ -39,7 +39,7 @@ class PdfReporter(object):
         # Generate the Html
         with open(htmlTemplatePath, "r+b") as f:
             html = f.read()
-        for key, value in values.iteritems():
+        for key, value in values.items():
             html = html.replace(key, value)
 
         # Save the file in the temporary folder

@@ -25,7 +25,7 @@ public:
 
   static vtkSlicerAirwayInspectorModuleLogic *New();
   vtkTypeMacro(vtkSlicerAirwayInspectorModuleLogic,vtkSlicerModuleLogic);
-  virtual void PrintSelf(ostream& os, vtkIndent indent);
+  virtual void PrintSelf(ostream& os, vtkIndent indent) override;
 
   vtkMRMLAirwayNode* AddAirwayNode(char *volumeNodeID,
                                    double x, double y, double z);

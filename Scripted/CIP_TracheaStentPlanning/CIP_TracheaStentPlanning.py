@@ -171,7 +171,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         self.mainAreaLayout.addWidget(self.stentTypesFrame, 1, 1)
         #
         self.stentTypesRadioButtonGroup = qt.QButtonGroup()
-        for stent in self.logic.stentTypes.keys():
+        for stent in list(self.logic.stentTypes.keys()):
             rbitem = qt.QRadioButton(stent)
             self.stentTypesRadioButtonGroup.addButton(rbitem)
             self.stentTypesLayout.addWidget(rbitem)
@@ -389,7 +389,7 @@ class CIP_TracheaStentPlanningWidget(ScriptedLoadableModuleWidget):
         :return:
         """
         modified = False
-        for markupNodeList in self.logic.currentFiducialsListNodes.itervalues():
+        for markupNodeList in self.logic.currentFiducialsListNodes.values():
             for markupNode in markupNodeList:
                 if markupNode.GetNumberOfMarkups() > 1:
                     self.removingInvisibleMarkpus = True
@@ -678,7 +678,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
             self.currentAngles[key] = (0, 0)
 
     def getStentKeys(self):
-        return self.stentTypes.keys()
+        return list(self.stentTypes.keys())
 
     def getFiducialList(self, stentType):
         return self.stentTypes[stentType][0]
@@ -738,7 +738,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         if self.currentVolumeId is None:
             raise Exception("There is no volume loaded")
 
-        for stentType in self.stentTypes.keys():
+        for stentType in list(self.stentTypes.keys()):
             basename = "TracheaSegmentation_fiducialList_{0}".format(stentType)
             nodes = []
             for fiducialType in self.getFiducialList(stentType):
@@ -844,7 +844,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
                ) ** (1.0 / 2)
 
         self.currentDistanceMean = (dd01 + dd02 + dd12) / 3
-        if SlicerUtil.IsDevelopment: print("DEBUG: preprocessing:", time.time() - start)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: preprocessing:", time.time() - start))
         # Build the speed map for Fast Marching thresholding the original volume
         activeVolumeArray = slicer.util.array(activeNode.GetID())
         speedTest = (activeVolumeArray < -800).astype(np.int32)
@@ -867,7 +867,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         self.currentResultsArray = slicer.util.array(self.currentResultsNode.GetID())
         self.currentLabelmapResults = SlicerUtil.getLabelmapFromScalar(self.currentResultsNode,
                                                                        activeNode.GetName() + "_results_lm")
-        if SlicerUtil.IsDevelopment: print("DEBUG: create aux nodes:", time.time() - t1)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: create aux nodes:", time.time() - t1))
         # Create SimpleITK FastMarching filter with the thresholded original image as a speed map
         sitkImage = sitk.GetImageFromArray(speedTest)
         fastMarchingFilter = sitk.FastMarchingImageFilter()
@@ -887,7 +887,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         temp = outputArray <= d
         a01[temp] = d - outputArray[temp]
         # lm01.GetImageData().Modified()
-        if SlicerUtil.IsDevelopment: print("DEBUG: filter 01:", time.time() - t1)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: filter 01:", time.time() - t1))
 
         # Filter 02
         t1 = time.time()
@@ -901,7 +901,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         temp = outputArray <= d
         a02[temp] = d - outputArray[temp]
         # lm02.GetImageData().Modified()
-        if SlicerUtil.IsDevelopment: print("DEBUG: filter 02:", time.time() - t1)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: filter 02:", time.time() - t1))
 
         # Filter 12
         t1 = time.time()
@@ -915,13 +915,13 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         temp = outputArray <= d
         a12[temp] = d - outputArray[temp]
         # lm12.GetImageData().Modified()
-        if SlicerUtil.IsDevelopment: print("DEBUG: filter 12:", time.time() - t1)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: filter 12:", time.time() - t1))
 
         t1 = time.time()
         # Sum the results of the 3 filters
         self.currentResultsArray[:] = a01 + a02 + a12
         self.currentResultsNode.GetImageData().Modified()
-        if SlicerUtil.IsDevelopment: print("DEBUG: processing results:", time.time() - t1)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: processing results:", time.time() - t1))
 
         # Threshold to get the final labelmap
         t1 = time.time()
@@ -933,7 +933,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         self.thresholdFilter.ThresholdByUpper(self.currentDistanceMean)
         self.thresholdFilter.SetOutput(self.currentLabelmapResults.GetImageData())
         self.thresholdFilter.Update()
-        if SlicerUtil.IsDevelopment: print("DEBUG: thresholding:", time.time() - t1)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: thresholding:", time.time() - t1))
 
         # Show the result in slicer
         appLogic = slicer.app.applicationLogic()
@@ -941,7 +941,7 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         selectionNode.SetActiveLabelVolumeID(self.currentLabelmapResults.GetID())
         appLogic.PropagateLabelVolumeSelection()
 
-        if SlicerUtil.IsDevelopment: print("DEBUG: total time: ", time.time() - start)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: total time: ", time.time() - start))
         return True
 
     def tracheaLabelmapThreshold(self, thresholdFactor):
@@ -1146,12 +1146,12 @@ class CIP_TracheaStentPlanningLogic(ScriptedLoadableModuleLogic):
         if self.currentTracheaModel is not None:
             nodesToRemove.append(self.currentTracheaModel)
         # Remove all the cylinder models for every possible stent
-        for node in self.currentCylindersModel.itervalues():
+        for node in self.currentCylindersModel.values():
             if node is not None:
                 nodesToRemove.append(node)
 
         #for node in itertools.chain.from_iterable(self.currentFiducialsListNodes.itervalues()):
-        for value in self.currentFiducialsListNodes.itervalues():
+        for value in self.currentFiducialsListNodes.values():
             if value is not None:
                 for node in value:
                     nodesToRemove.append(node)

@@ -85,7 +85,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         if self.__storedColumnNames__ is None:
             self.__storedColumnNames__ = ["CaseId", "Date", "NoduleId", "SphereRadius", "Threshold", "LesionType", "Seeds_LPS", "Axis"]
             # Create a single features list with all the "child" features
-            self.__storedColumnNames__.extend(itertools.chain.from_iterable(self.featureClasses.itervalues()))
+            self.__storedColumnNames__.extend(itertools.chain.from_iterable(iter(self.featureClasses.values())))
         return self.__storedColumnNames__
 
     @property
@@ -420,7 +420,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         ## RADIOMICS SECTION
         # used to map feature class to a list of auto-generated feature checkbox widgets
         self.featureWidgets = collections.OrderedDict()
-        for key in self.featureClasses.keys():
+        for key in list(self.featureClasses.keys()):
             self.featureWidgets[key] = list()
 
         self.radiomicsCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -494,7 +494,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         self.tabsFeatureClasses.setCurrentIndex(0)
 
         # Convert the ordered dictionary to a flat list that contains all the features
-        self.featureWidgetList = list(itertools.chain.from_iterable(self.featureWidgets.values()))
+        self.featureWidgetList = list(itertools.chain.from_iterable(list(self.featureWidgets.values())))
         self.featureMainCategoriesStringList = list(self.featureWidgets.keys())
 
 
@@ -528,7 +528,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
         # Go over all the possible radius
         r = 1
-        for rad in itertools.chain.from_iterable(self.logic.__spheresDict__.values()):
+        for rad in itertools.chain.from_iterable(list(self.logic.__spheresDict__.values())):
             sp_id = int(rad*10)    # Multiply by 10 to avoid decimals
             sphereCheckBox = qt.QCheckBox()
             sphereCheckBox.setText("{0} mm radius".format(rad))
@@ -955,11 +955,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 logic.run(self.analysisResults[keyName], self.logic.printTiming, self.analysisResultsTiming[keyName])
 
                 # Print analysis results
-                print(self.analysisResults[keyName])
+                print((self.analysisResults[keyName]))
 
                 if self.logic.printTiming:
-                    print("Elapsed time for the nodule analysis (TOTAL={0} seconds:".format(t2 - t1))
-                    print(self.analysisResultsTiming[keyName])
+                    print(("Elapsed time for the nodule analysis (TOTAL={0} seconds:".format(t2 - t1)))
+                    print((self.analysisResultsTiming[keyName]))
 
             # Check in any sphere has been selected for the analysis, because otherwise it's not necessary to calculate the distance map
             anySphereChecked = False
@@ -984,7 +984,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
                 t1 = time.time()
                 self.logic.getCurrentDistanceMap(volume, noduleIndex)
                 if self.logic.printTiming:
-                    print("Time to get the current distance map: {0} seconds".format(time.time() - t1))
+                    print(("Time to get the current distance map: {0} seconds".format(time.time() - t1)))
 
                 for r in self.logic.getPredefinedSpheresDict(self.currentVolume):
                     if self.spheresButtonGroup.button(r*10).isChecked():
@@ -1006,7 +1006,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
 
             t = time.time() - start
             if self.logic.printTiming:
-                print("********* TOTAL ANALYSIS TIME: {0} SECONDS".format(t))
+                print(("********* TOTAL ANALYSIS TIME: {0} SECONDS".format(t)))
 
             # Save the results in the report widget
             qt.QMessageBox.information(slicer.util.mainWindow(), "Process finished",
@@ -1029,7 +1029,7 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
         labelmapArray = self.logic.getSphereLabelMapArray(volume, noduleIndex, radius)
         getSphereTime = time.time() - t1
         if self.logic.printTiming:
-            print("Time elapsed to get a sphere labelmap of radius {0}: {1} seconds".format(radius, getSphereTime))
+            print(("Time elapsed to get a sphere labelmap of radius {0}: {1} seconds".format(radius, getSphereTime)))
         slicer.app.processEvents()
         if labelmapArray.max() == 0:
             # Nothing to analyze
@@ -1046,11 +1046,11 @@ class CIP_LesionModelWidget(ScriptedLoadableModuleWidget):
             logic.run(self.analysisResults[keyName], self.logic.printTiming, self.analysisResultsTiming[keyName])
             t2 = time.time()
 
-            print("********* Results for the sphere of radius {0}:".format(radius))
-            print(self.analysisResults[keyName])
+            print(("********* Results for the sphere of radius {0}:".format(radius)))
+            print((self.analysisResults[keyName]))
             if self.logic.printTiming:
-                print("*** Elapsed time for the sphere radius {0} analysis (TOTAL={1} seconds:".format(radius, t2 - t1))
-                print (self.analysisResultsTiming[keyName])
+                print(("*** Elapsed time for the sphere radius {0} analysis (TOTAL={1} seconds:".format(radius, t2 - t1)))
+                print((self.analysisResultsTiming[keyName]))
 
     # def forceSaveReport(self):
     #     """ If basic report does not exist, it is created "on the fly"
@@ -1798,7 +1798,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         root = shNode.GetItemByDataNode(vtkMRMLScalarVolumeNode)
         children = vtk.vtkIdList()
         shNode.GetItemChildren(root, children)
-        for i in xrange(children.GetNumberOfIds()):
+        for i in range(children.GetNumberOfIds()):
             child = children.GetId(i)
             if shNode.GetItemLevel(child) == "Folder":
                 return child
@@ -1814,7 +1814,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         keys = []
         children = vtk.vtkIdList()
         shNode.GetItemChildren(root, children)
-        for i in xrange(children.GetNumberOfIds()):
+        for i in range(children.GetNumberOfIds()):
             keys.append(int(shNode.GetItemName(children.GetId(i))))
         return keys
 
@@ -1833,8 +1833,8 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         children = vtk.vtkIdList()
         shNode.GetItemChildren(nodulesFolder, children)
         if children.GetNumberOfIds() < noduleIndex:
-            print("WARNING: attempting to access to nodule {} when the total number of children for node {} is {}".format(
-                noduleIndex, shNode.GetItemName(nodulesFolder), children.GetNumberOfIds()))
+            print(("WARNING: attempting to access to nodule {} when the total number of children for node {} is {}".format(
+                noduleIndex, shNode.GetItemName(nodulesFolder), children.GetNumberOfIds())))
             return slicer.vtkMRMLSubjectHierarchyNode.GetInvalidItemID()
         return children.GetId(noduleIndex-1)
 
@@ -1856,7 +1856,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         shNode = self.shSceneNode
         children = vtk.vtkIdList()
         shNode.GetItemChildren(noduleFolder, children)
-        for i in xrange(children.GetNumberOfIds()):
+        for i in range(children.GetNumberOfIds()):
             child = children.GetId(i)
             if shNode.GetItemName(child) == nodeName:
                 #return shNode.GetItemDataNode(child)
@@ -1899,7 +1899,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
         shNode = self.shSceneNode
         children = vtk.vtkIdList()
         shNode.GetItemChildren(noduleFolder, children)
-        for i in xrange(children.GetNumberOfIds()):
+        for i in range(children.GetNumberOfIds()):
             child = children.GetId(i)
             if shNode.GetItemName(child) == nodeName:
                 # Disassociate the Subject Hierarchy Node from the nodule folder
@@ -2101,7 +2101,7 @@ class CIP_LesionModelLogic(ScriptedLoadableModuleLogic):
             noduleChildren = vtk.vtkIdList()
             self.shSceneNode.GetItemChildren(nodules.GetId(i), noduleChildren)
             # Loop over the children to find the Markups nodes
-            for j in xrange(noduleChildren.GetNumberOfIds()):
+            for j in range(noduleChildren.GetNumberOfIds()):
                 node = self.shSceneNode.GetItemDataNode(noduleChildren.GetId(j))
                 if node is not None and isinstance(node, slicer.vtkMRMLMarkupsFiducialNode):
                     fidNodes.append(node)
@@ -2558,7 +2558,7 @@ class CIP_LesionModelTest(ScriptedLoadableModuleTest):
     def test_CIP_LesionModel(self):
         # Download a case with a known nodule
         #
-        import urllib
+        import urllib.request, urllib.parse, urllib.error
         downloads = (
             ('http://midas.chestimagingplatform.org/download/item/667/1001_UVM_CANCER.nrrd', '1001_UVM_CANCER.nrrd', slicer.util.loadVolume),
             )
@@ -2567,7 +2567,7 @@ class CIP_LesionModelTest(ScriptedLoadableModuleTest):
           filePath = slicer.app.temporaryPath + '/' + name
           if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
             logging.info('Requesting download %s from %s...\n' % (name, url))
-            urllib.urlretrieve(url, filePath)
+            urllib.request.urlretrieve(url, filePath)
           if loader:
             logging.info('Loading %s...' % (name,))
             (isLoaded, volume) = loader(filePath)

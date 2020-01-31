@@ -693,7 +693,7 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
         @return:
         """
         sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
-        for sliceNode in sliceNodes.values():
+        for sliceNode in list(sliceNodes.values()):
             sliceNode.SetFieldOfView(self.initialFOV[0], self.initialFOV[1], self.initialFOV[2])
 
         self.zoomed = False

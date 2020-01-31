@@ -175,7 +175,7 @@ class CIP_TracheaStentPlanningOptimizedWidget(ScriptedLoadableModuleWidget):
         self.mainAreaLayout.addWidget(self.stentTypesFrame, 1, 1)
         #
         self.stentTypesRadioButtonGroup = qt.QButtonGroup()
-        for stent in self.logic.stentTypes.keys():
+        for stent in list(self.logic.stentTypes.keys()):
             rbitem = qt.QRadioButton(stent)
             self.stentTypesRadioButtonGroup.addButton(rbitem)
             self.stentTypesLayout.addWidget(rbitem)
@@ -399,7 +399,7 @@ class CIP_TracheaStentPlanningOptimizedWidget(ScriptedLoadableModuleWidget):
         :return:
         """
         modified = False
-        for markupNodeList in self.logic.currentFiducialsListNodes.itervalues():
+        for markupNodeList in self.logic.currentFiducialsListNodes.values():
             for markupNode in markupNodeList:
                 if markupNode.GetNumberOfMarkups() > 1:
                     self.removingInvisibleMarkpus = True
@@ -723,7 +723,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
             self.currentAngles[key] = (0, 0)
 
     def getStentKeys(self):
-        return self.stentTypes.keys()
+        return list(self.stentTypes.keys())
 
     def getFiducialList(self, stentType):
         return self.stentTypes[stentType][0]
@@ -783,7 +783,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         if self.currentVolumeId is None:
             raise Exception("There is no volume loaded")
 
-        for stentType in self.stentTypes.keys():
+        for stentType in list(self.stentTypes.keys()):
             basename = "TracheaSegmentation_fiducialList_{0}".format(stentType)
             nodes = []
             for fiducialType in self.getFiducialList(stentType):
@@ -900,7 +900,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
                ) ** (1.0 / 2)
 
         self.currentDistanceMean = (dd01 + dd02 + dd12) / 3
-        if SlicerUtil.IsDevelopment: print("DEBUG: preprocessing:", time.time() - start)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: preprocessing:", time.time() - start))
         # Build the speed map for Fast Marching thresholding the original volume
         activeVolumeArray = slicer.util.array(activeNode.GetID())
         speedTest = (activeVolumeArray < -800).astype(np.int32)
@@ -923,7 +923,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         self.currentResultsArray = slicer.util.array(self.currentResultsNode.GetID())
         self.currentLabelmapResults = SlicerUtil.getLabelmapFromScalar(self.currentResultsNode,
                                                                        activeNode.GetName() + "_results_lm")
-        if SlicerUtil.IsDevelopment: print("DEBUG: create aux nodes:", time.time() - t1)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: create aux nodes:", time.time() - t1))
         # Create SimpleITK FastMarching filter with the thresholded original image as a speed map
         sitkImage = sitk.GetImageFromArray(speedTest)
         fastMarchingFilter = sitk.FastMarchingImageFilter()
@@ -943,7 +943,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         temp = outputArray <= d
         a01[temp] = d - outputArray[temp]
         # lm01.GetImageData().Modified()
-        if SlicerUtil.IsDevelopment: print("DEBUG: filter 01:", time.time() - t1)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: filter 01:", time.time() - t1))
 
         # Filter 02
         t1 = time.time()
@@ -957,7 +957,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         temp = outputArray <= d
         a02[temp] = d - outputArray[temp]
         # lm02.GetImageData().Modified()
-        if SlicerUtil.IsDevelopment: print("DEBUG: filter 02:", time.time() - t1)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: filter 02:", time.time() - t1))
 
         # Filter 12
         t1 = time.time()
@@ -971,13 +971,13 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         temp = outputArray <= d
         a12[temp] = d - outputArray[temp]
         # lm12.GetImageData().Modified()
-        if SlicerUtil.IsDevelopment: print("DEBUG: filter 12:", time.time() - t1)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: filter 12:", time.time() - t1))
 
         t1 = time.time()
         # Sum the results of the 3 filters
         self.currentResultsArray[:] = a01 + a02 + a12
         self.currentResultsNode.GetImageData().Modified()
-        if SlicerUtil.IsDevelopment: print("DEBUG: processing results:", time.time() - t1)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: processing results:", time.time() - t1))
 
         # Threshold to get the final labelmap
         t1 = time.time()
@@ -989,7 +989,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         self.thresholdFilter.ThresholdByUpper(self.currentDistanceMean)
         self.thresholdFilter.SetOutput(self.currentLabelmapResults.GetImageData())
         self.thresholdFilter.Update()
-        if SlicerUtil.IsDevelopment: print("DEBUG: thresholding:", time.time() - t1)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: thresholding:", time.time() - t1))
 
         # Show the result in slicer
         appLogic = slicer.app.applicationLogic()
@@ -997,7 +997,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         selectionNode.SetActiveLabelVolumeID(self.currentLabelmapResults.GetID())
         appLogic.PropagateLabelVolumeSelection()
 
-        if SlicerUtil.IsDevelopment: print("DEBUG: total time: ", time.time() - start)
+        if SlicerUtil.IsDevelopment: print(("DEBUG: total time: ", time.time() - start))
         return True
 
     def tracheaLabelmapThreshold(self, thresholdFactor):
@@ -1137,17 +1137,17 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
             norm = [1, 0, 1]
             cons = ({'type': 'eq', 'fun': lambda n: np.array(np.sqrt(sum((n[0:3]) ** 2)) - 1),
                      'jac': lambda n: np.array(n[0:3] / np.sqrt(sum((n[0:3]) ** 2)))})
-            print ("DEBUG: automaticOptimizationYStent. Calling optimize with: ", point)
+            print(("DEBUG: automaticOptimizationYStent. Calling optimize with: ", point))
             normal_vector = scipy_opt.minimize(self.cylinderSurfaceArea, norm, args=(point, trachea), constraints=cons,
                                                method='SLSQP',
                                                options={'disp': True})
             inter = self.intersection(trachea, self.plane(normal_vector.x, point), point)
-            print ("DEBUG: automaticOptimizationYStent. Intersection: ", inter)
+            print(("DEBUG: automaticOptimizationYStent. Intersection: ", inter))
             centr = self.centroide(self.polygon(inter))
-            print ("DEBUG: automaticOptimizationYStent. Centroid: ", centr)
+            print(("DEBUG: automaticOptimizationYStent. Centroid: ", centr))
             rad = self.radius(centr, inter)
             #rad = self.radius2(self.cylinderSurfaceArea(normal_vector.x, centr, trachea))
-            print ("DEBUG: automaticOptimizationYStent. Radius: ", rad)
+            print(("DEBUG: automaticOptimizationYStent. Radius: ", rad))
             norm = (normal_vector.x)
             centroids.append(centr)
             norms.append(norm)
@@ -1166,17 +1166,17 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
             norm = [1, 0, 1]
             cons = ({'type': 'eq', 'fun': lambda n: np.array(np.sqrt(sum((n[0:3]) ** 2)) - 1),
                      'jac': lambda n: np.array(n[0:3] / np.sqrt(sum((n[0:3]) ** 2)))})
-            print ("DEBUG: automaticOptimizationYStent. Calling optimize with: ", point)
+            print(("DEBUG: automaticOptimizationYStent. Calling optimize with: ", point))
             normal_vector = scipy_opt.minimize(self.cylinderSurfaceArea, norm, args=(point, trachea), constraints=cons,
                                                method='SLSQP',
                                                options={'disp': True})
             inter = self.intersection(trachea, self.plane(normal_vector.x, point), point)
-            print ("DEBUG: automaticOptimizationYStent. Intersection: ", inter)
+            print(("DEBUG: automaticOptimizationYStent. Intersection: ", inter))
             centr = self.centroide(self.polygon(inter))
-            print ("DEBUG: automaticOptimizationYStent. Centroid: ", centr)
+            print(("DEBUG: automaticOptimizationYStent. Centroid: ", centr))
             rad = self.radius(centr, inter)
             #rad = self.radius2(self.cylinderSurfaceArea(normal_vector.x,centr, trachea))
-            print ("DEBUG: automaticOptimizationYStent. Radius: ", rad)
+            print(("DEBUG: automaticOptimizationYStent. Radius: ", rad))
             norm = (normal_vector.x)
             centroids.append(centr)
             norms.append(norm)
@@ -1184,14 +1184,14 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
             self.updateProgressBar(i)
 
         mediumPoints = self.dist_ort(centroids)
-        print "DEBUG: radios"
-        print rads
+        print("DEBUG: radios")
+        print(rads)
         mediumrads=np.zeros(3)
         mediumrads[0]=(rads[0]+rads[3])/2
         mediumrads[1] = (rads[1] + rads[4]) / 2
         mediumrads[2] = (rads[2] + rads[5]) / 2
-        print "DEBUG: medium rads"
-        print mediumrads
+        print("DEBUG: medium rads")
+        print(mediumrads)
 
         parameters = self.init_values(mediumPoints, mediumrads)
         c1 = centroids[0]
@@ -1422,7 +1422,7 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         """
 
         polygon = np.zeros([intersection.GetOutput().GetNumberOfPoints(), 3])
-        for i in xrange(intersection.GetOutput().GetNumberOfPoints()):
+        for i in range(intersection.GetOutput().GetNumberOfPoints()):
             polygon[i] = intersection.GetOutput().GetPoints().GetPoint(i)
         return polygon
 
@@ -1812,12 +1812,12 @@ class CIP_TracheaStentPlanningOptimizedLogic(ScriptedLoadableModuleLogic):
         if self.currentTracheaModel is not None:
             nodesToRemove.append(self.currentTracheaModel)
         # Remove all the cylinder models for every possible stent
-        for node in self.currentCylindersModel.itervalues():
+        for node in self.currentCylindersModel.values():
             if node is not None:
                 nodesToRemove.append(node)
 
         #for node in itertools.chain.from_iterable(self.currentFiducialsListNodes.itervalues()):
-        for value in self.currentFiducialsListNodes.itervalues():
+        for value in self.currentFiducialsListNodes.values():
             if value is not None:
                 for node in value:
                     nodesToRemove.append(node)

@@ -18,11 +18,11 @@ class ParenchymalVolume:
         self.parenchymalVolumeStatistics = OrderedDict()
         self.parenchymalVolumeStatisticsTiming = OrderedDict()
 
-        allKeys = self.getAllEmphysemaTypes().keys()
+        allKeys = list(self.getAllEmphysemaTypes().keys())
         if keysToAnalyze is not None:
             self.keysToAnalyze = keysToAnalyze.intersection(allKeys)
         else:
-            self.keysToAnalyze = self.getAllEmphysemaTypes().keys()
+            self.keysToAnalyze = list(self.getAllEmphysemaTypes().keys())
 
     @staticmethod
     def getAllEmphysemaTypes():
@@ -44,10 +44,10 @@ class ParenchymalVolume:
 
     @staticmethod
     def getAllEmphysemaDescriptions():
-        return ParenchymalVolume.getAllEmphysemaTypes().keys()
+        return list(ParenchymalVolume.getAllEmphysemaTypes().keys())
 
     def analyzeType(self, code):
-        print("DEBUG: analyze code {0}.".format(code))
+        print(("DEBUG: analyze code {0}.".format(code)))
         # Calculate volume for the studied ROI (tumor)
         totalVolume = np.sum(self.parenchymaLabelmapArray == code)
         if totalVolume == 0:

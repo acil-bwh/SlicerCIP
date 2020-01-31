@@ -63,7 +63,7 @@ class Option(object):
   def get(self):
     value = self.default
     # Check for a command line parameter.
-    for i in xrange(len(sys.argv)):
+    for i in range(len(sys.argv)):
       if sys.argv[i].startswith('--%s=' % self.name):
         value = sys.argv[i].split('=')[1]
       elif sys.argv[i] == '--%s' % self.name:
@@ -77,8 +77,8 @@ class Option(object):
       if self.secret:
         value = getpass.getpass(prompt)
       else:
-        print 'You can specify this on the command line using --%s' % self.name
-        value = raw_input(prompt)
+        print('You can specify this on the command line using --%s' % self.name)
+        value = input(prompt)
     return value
 
 
@@ -107,7 +107,7 @@ class ConfigCollection(object):
 
   def render_usage(self):
     message_parts = []
-    for opt_name, option in self.options.iteritems():
+    for opt_name, option in self.options.items():
       message_parts.append('--%s: %s' % (opt_name, option.description))
     return '\n'.join(message_parts)
 
@@ -395,7 +395,7 @@ def build_suite(classes):
 def check_data_classes(test, classes):
   import inspect
   for data_class in classes:
-    test.assert_(data_class.__doc__ is not None,
+    test.assertTrue(data_class.__doc__ is not None,
                  'The class %s should have a docstring' % data_class)
     if hasattr(data_class, '_qname'):
       qname_versions = None
@@ -404,13 +404,13 @@ def check_data_classes(test, classes):
       else:
         qname_versions = (data_class._qname,)
       for versioned_qname in qname_versions:
-        test.assert_(isinstance(versioned_qname, str),
+        test.assertTrue(isinstance(versioned_qname, str),
                      'The class %s has a non-string _qname' % data_class)
-        test.assert_(not versioned_qname.endswith('}'), 
+        test.assertTrue(not versioned_qname.endswith('}'), 
                      'The _qname for class %s is only a namespace' % (
                          data_class))
 
-    for attribute_name, value in data_class.__dict__.iteritems():
+    for attribute_name, value in data_class.__dict__.items():
       # Ignore all elements that start with _ (private members)
       if not attribute_name.startswith('_'):
         try:
@@ -433,9 +433,9 @@ def check_data_classes(test, classes):
 
 def check_clients_with_auth(test, classes):
   for client_class in classes:
-    test.assert_(hasattr(client_class, 'api_version'))
-    test.assert_(isinstance(client_class.auth_service, (str, unicode, int)))
-    test.assert_(hasattr(client_class, 'auth_service'))
-    test.assert_(isinstance(client_class.auth_service, (str, unicode)))
-    test.assert_(hasattr(client_class, 'auth_scopes'))
-    test.assert_(isinstance(client_class.auth_scopes, (list, tuple)))
+    test.assertTrue(hasattr(client_class, 'api_version'))
+    test.assertTrue(isinstance(client_class.auth_service, (str, int)))
+    test.assertTrue(hasattr(client_class, 'auth_service'))
+    test.assertTrue(isinstance(client_class.auth_service, str))
+    test.assertTrue(hasattr(client_class, 'auth_scopes'))
+    test.assertTrue(isinstance(client_class.auth_scopes, (list, tuple)))

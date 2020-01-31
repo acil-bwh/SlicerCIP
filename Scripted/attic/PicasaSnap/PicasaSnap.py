@@ -55,13 +55,13 @@ class PicasaSnapWidget:
     def onNodeAdded(self, caller, eventId, callData):
       """Node added to the Slicer scene"""
       if callData.GetClassName() == 'vtkMRMLAnnotationSnapshotNode':  
-        if SlicerUtil.IsDevelopment: print "New snapshot node added to scene: {0}".format(callData.GetName())
+        if SlicerUtil.IsDevelopment: print("New snapshot node added to scene: {0}".format(callData.GetName()))
         self.__addNewSnapshot__(callData)
     
     def onNodeRemoved(self, caller, eventId, callData):
       """Node removed from the Slicer scene"""
       if callData.GetClassName() == 'vtkMRMLAnnotationSnapshotNode':      
-        if SlicerUtil.IsDevelopment: print "Snapshot node {0} removed".format(callData.GetName())
+        if SlicerUtil.IsDevelopment: print("Snapshot node {0} removed".format(callData.GetName()))
         self.__removeSnapshot__(callData)
     
     self.onNodeAdded = partial(onNodeAdded, self)
@@ -273,7 +273,7 @@ class PicasaSnapWidget:
   def __addNewSnapshot__(self, snapshotNode):
     """Add a new snapshot node. It adds an entry in self.snapshotsCached and creates a new Checkbox object"""
     nodeID = snapshotNode.GetID()
-    print "Added new node " + nodeID
+    print("Added new node " + nodeID)
     
     name = snapshotNode.GetName()
     description = snapshotNode.GetSnapshotDescription()
@@ -430,7 +430,7 @@ class PicasaSnapWidget:
     ids = []    
      
     # Add to the list of uploads just the ones that are visible, checked and not have been already uploaded
-    for key,value in self.snapshotsCached.iteritems():
+    for key,value in self.snapshotsCached.items():
       cb = value[self.SNAPSHOT_WIDGET]
       if cb.visible and cb.checked and not value[self.SNAPSHOT_UPLOADED]:    
         ids.append(key)
@@ -447,7 +447,7 @@ class PicasaSnapWidget:
       albumId = self.albumNamesComboBox.itemData(self.albumNamesComboBox.currentIndex)
      
       # Get the selected tags (pressed buttons)
-      tags = [b.text for b in filter(lambda btn: btn.checked, self.btnTags)]
+      tags = [b.text for b in [btn for btn in self.btnTags if btn.checked]]
                   
       self.progressBar.setMaximum(self.imagesToUploadCount)
       self.progressBar.setValue(0)        
@@ -534,7 +534,7 @@ class PicasaSnapWidget:
   ##################################
   def onSnapshotNodeModified(self, node, event):    
     nodeID = node.GetID()
-    print ("Node %s modified" % nodeID)
+    print(("Node %s modified" % nodeID))
     print(event)
     name = node.GetName()
     description = node.GetSnapshotDescription()
@@ -563,7 +563,7 @@ class PicasaSnapWidget:
   
   def onbtnReloadSnapsClicked(self):
     # Clean all the current snapshots
-    for item in self.snapshotsCached.itervalues():
+    for item in self.snapshotsCached.values():
       item[self.SNAPSHOT_WIDGET].deleteLater()
     # Remove the Refresh button
     self.btnReloadSnaps.deleteLater()
@@ -637,7 +637,7 @@ class PicasaSnapLogic:
     if not os.path.exists(self.localStoragePath):      
       os.makedirs(self.localStoragePath)
       # Make sure that everybody has write permissions (sometimes there are problems because of umask)
-      os.chmod(self.localStoragePath, 0777)
+      os.chmod(self.localStoragePath, 0o777)
   
   def picasaLogin(self, email, password):
     """Login to Picasa with Gmail credentials (login + password)"""
@@ -649,7 +649,7 @@ class PicasaSnapLogic:
       self.gd_client.ProgrammaticLogin()
       self.isUserLogged = True
       if SlicerUtil.IsDevelopment:
-        print("User {0} logged succesfully".format(email))      
+        print(("User {0} logged succesfully".format(email)))      
     except Exception as ex:
       print(ex)
       self.isUserLogged = False
@@ -755,10 +755,10 @@ class PicasaSnapLogic:
    
     if (SlicerUtil.IsDevelopment):
       print ("Uploading image to Picasa")
-      print ("Id: %s" % snapshotNodeId)
-      print ("Name: %s" % snapshotName)
-      print ("Description: %s" % snapshotDescription)
-      print ("Album: %s" % albumId)
+      print(("Id: %s" % snapshotNodeId))
+      print(("Name: %s" % snapshotName))
+      print(("Description: %s" % snapshotDescription))
+      print(("Album: %s" % albumId))
       print ("Tags:")
       print (tags)    
        

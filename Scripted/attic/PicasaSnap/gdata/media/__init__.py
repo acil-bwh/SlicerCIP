@@ -45,7 +45,7 @@ media:thumbnail
 media:title
 """
 
-__author__ = u'havard@gulldahl.no'# (Håvard Gulldahl)' #BUG: api chokes on non-ascii chars in __author__
+__author__ = 'havard@gulldahl.no'# (Håvard Gulldahl)' #BUG: api chokes on non-ascii chars in __author__
 __license__ = 'Apache License v2'
 
 

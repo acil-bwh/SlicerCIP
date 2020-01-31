@@ -168,7 +168,7 @@ class MockRequest(object):
 
   def ConcealSecrets(self, conceal_func):
     """Conceal secret data in this request."""
-    if self.extra_headers.has_key('Authorization'):
+    if 'Authorization' in self.extra_headers:
       self.extra_headers['Authorization'] = conceal_func(
         self.extra_headers['Authorization'])
 

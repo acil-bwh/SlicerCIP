@@ -7,6 +7,7 @@ __revision__ = "$Id: RFC1751.py,v 1.6 2003/04/04 15:15:10 akuchling Exp $"
 
 
 import string, binascii
+from functools import reduce
 
 binary={0:'0000', 1:'0001', 2:'0010', 3:'0011', 4:'0100', 5:'0101',
         6:'0110', 7:'0111', 8:'1000', 9:'1001', 10:'1010', 11:'1011',
@@ -14,8 +15,8 @@ binary={0:'0000', 1:'0001', 2:'0010', 3:'0011', 4:'0100', 5:'0101',
 
 def _key2bin(s):
     "Convert a key into a string of binary digits"
-    kl=map(lambda x: ord(x), s)
-    kl=map(lambda x: binary[x/16]+binary[x&15], kl)
+    kl=[ord(x) for x in s]
+    kl=[binary[x/16]+binary[x&15] for x in kl]
     return ''.join(kl)
 
 def _extract(key, start, length):
@@ -73,7 +74,7 @@ def english_to_key (str):
         p=0
         for i in range(0, 64, 2): p=p+_extract(skbin, i, 2)
         if (p&3) != _extract(skbin, 64, 2):
-            raise ValueError, "Parity error in resulting key"
+            raise ValueError("Parity error in resulting key")
         key=key+subkey[0:8]
     return key
 
@@ -330,13 +331,13 @@ if __name__=='__main__':
            ]
 
     for key, words in data:
-        print 'Trying key', key
+        print('Trying key', key)
         key=binascii.a2b_hex(key)
         w2=key_to_english(key)
         if w2!=words:
-            print 'key_to_english fails on key', repr(key), ', producing', str(w2)
+            print('key_to_english fails on key', repr(key), ', producing', str(w2))
         k2=english_to_key(words)
         if k2!=key:
-            print 'english_to_key fails on key', repr(key), ', producing', repr(k2)
+            print('english_to_key fails on key', repr(key), ', producing', repr(k2))
 
 

@@ -75,12 +75,12 @@ Example:
 
 """
 
-__author__ = u'havard@gulldahl.no'# (Håvard Gulldahl)' #BUG: pydoc chokes on non-ascii chars in __author__
+__author__ = 'havard@gulldahl.no'# (Håvard Gulldahl)' #BUG: pydoc chokes on non-ascii chars in __author__
 __license__ = 'Apache License v2'
 __version__ = '$Revision: 176 $'[11:-2] 
 
 
-import sys, os.path, StringIO
+import sys, os.path, io
 import time
 import gdata.service
 import gdata
@@ -115,7 +115,7 @@ class GooglePhotosException(Exception):
                       GPHOTOS_INVALID_KIND,
                   
                 }
-    for msg, code in error_map.iteritems():
+    for msg, code in error_map.items():
       if self.body == msg:
         self.error_code = code
         break
@@ -176,7 +176,7 @@ class PhotosService(gdata.service.GDataService):
       uri += '&start-index=%s' % start_index
     try:
       return self.Get(uri, converter=gdata.photos.AnyFeedFromString)
-    except gdata.service.RequestError, e:
+    except gdata.service.RequestError as e:
       raise GooglePhotosException(e.args[0])
 
   def GetEntry(self, uri, limit=None, start_index=None):
@@ -203,7 +203,7 @@ class PhotosService(gdata.service.GDataService):
       uri += '&start-index=%s' % start_index
     try:
       return self.Get(uri, converter=gdata.photos.AnyEntryFromString)
-    except gdata.service.RequestError, e:
+    except gdata.service.RequestError as e:
       raise GooglePhotosException(e.args[0])
       
   def GetUserFeed(self, kind='album', user='default', limit=None):
@@ -354,7 +354,7 @@ class PhotosService(gdata.service.GDataService):
     try:
       return self.Post(album, uri=self.userUri % self.email,
       converter=gdata.photos.AlbumEntryFromString)
-    except gdata.service.RequestError, e:
+    except gdata.service.RequestError as e:
       raise GooglePhotosException(e.args[0])
 
   def InsertPhoto(self, album_or_uri, photo, filename_or_handle,
@@ -395,7 +395,7 @@ class PhotosService(gdata.service.GDataService):
         'reason':'Accepted content types: %s' % \
           ['image/'+t for t in SUPPORTED_UPLOAD_TYPES]
         })
-    if isinstance(filename_or_handle, (str, unicode)) and \
+    if isinstance(filename_or_handle, str) and \
       os.path.exists(filename_or_handle): # it's a file name
       mediasource = gdata.MediaSource()
       mediasource.setFile(filename_or_handle, content_type)
@@ -403,7 +403,7 @@ class PhotosService(gdata.service.GDataService):
       if hasattr(filename_or_handle, 'seek'):
         filename_or_handle.seek(0) # rewind pointer to the start of the file
       # gdata.MediaSource needs the content length, so read the whole image 
-      file_handle = StringIO.StringIO(filename_or_handle.read()) 
+      file_handle = io.StringIO(filename_or_handle.read()) 
       name = 'image'
       if hasattr(filename_or_handle, 'name'):
         name = filename_or_handle.name
@@ -416,7 +416,7 @@ class PhotosService(gdata.service.GDataService):
           filename_or_handle
         })
     
-    if isinstance(album_or_uri, (str, unicode)): # it's a uri
+    if isinstance(album_or_uri, str): # it's a uri
       feed_uri = album_or_uri
     elif hasattr(album_or_uri, 'GetFeedLink'): # it's a AlbumFeed object
       feed_uri = album_or_uri.GetFeedLink().href
@@ -424,7 +424,7 @@ class PhotosService(gdata.service.GDataService):
     try:
       return self.Post(photo, uri=feed_uri, media_source=mediasource,
         converter=gdata.photos.PhotoEntryFromString)
-    except gdata.service.RequestError, e:
+    except gdata.service.RequestError as e:
       raise GooglePhotosException(e.args[0])
   
   def InsertPhotoSimple(self, album_or_uri, title, summary, filename_or_handle,
@@ -502,7 +502,7 @@ class PhotosService(gdata.service.GDataService):
     try:
       return self.Put(data=photo, uri=photo.GetEditLink().href,
       converter=gdata.photos.PhotoEntryFromString)
-    except gdata.service.RequestError, e:
+    except gdata.service.RequestError as e:
       raise GooglePhotosException(e.args[0])
 
   
@@ -547,7 +547,7 @@ class PhotosService(gdata.service.GDataService):
           ['image/'+t for t in SUPPORTED_UPLOAD_TYPES]
         })
     
-    if isinstance(filename_or_handle, (str, unicode)) and \
+    if isinstance(filename_or_handle, str) and \
       os.path.exists(filename_or_handle): # it's a file name
       photoblob = gdata.MediaSource()
       photoblob.setFile(filename_or_handle, content_type)
@@ -555,7 +555,7 @@ class PhotosService(gdata.service.GDataService):
       if hasattr(filename_or_handle, 'seek'):
         filename_or_handle.seek(0) # rewind pointer to the start of the file
       # gdata.MediaSource needs the content length, so read the whole image 
-      file_handle = StringIO.StringIO(filename_or_handle.read()) 
+      file_handle = io.StringIO(filename_or_handle.read()) 
       name = 'image'
       if hasattr(filename_or_handle, 'name'):
         name = filename_or_handle.name
@@ -568,14 +568,14 @@ class PhotosService(gdata.service.GDataService):
           type(filename_or_handle)
         })
     
-    if isinstance(photo_or_uri, (str, unicode)):
+    if isinstance(photo_or_uri, str):
       entry_uri = photo_or_uri # it's a uri
     elif hasattr(photo_or_uri, 'GetEditMediaLink'):
       entry_uri = photo_or_uri.GetEditMediaLink().href
     try:
       return self.Put(photoblob, entry_uri,
           converter=gdata.photos.PhotoEntryFromString)
-    except gdata.service.RequestError, e:
+    except gdata.service.RequestError as e:
       raise GooglePhotosException(e.args[0])
 
   def InsertTag(self, photo_or_uri, tag):
@@ -597,14 +597,14 @@ class PhotosService(gdata.service.GDataService):
 
     """
     tag = gdata.photos.TagEntry(title=atom.Title(text=tag))
-    if isinstance(photo_or_uri, (str, unicode)):
+    if isinstance(photo_or_uri, str):
       post_uri = photo_or_uri # it's a uri
     elif hasattr(photo_or_uri, 'GetEditMediaLink'):
       post_uri = photo_or_uri.GetPostLink().href
     try:
       return self.Post(data=tag, uri=post_uri,
       converter=gdata.photos.TagEntryFromString)
-    except gdata.service.RequestError, e:
+    except gdata.service.RequestError as e:
       raise GooglePhotosException(e.args[0])
 
                   
@@ -628,14 +628,14 @@ class PhotosService(gdata.service.GDataService):
 
     """
     comment = gdata.photos.CommentEntry(content=atom.Content(text=comment))
-    if isinstance(photo_or_uri, (str, unicode)):
+    if isinstance(photo_or_uri, str):
       post_uri = photo_or_uri # it's a uri
     elif hasattr(photo_or_uri, 'GetEditMediaLink'):
       post_uri = photo_or_uri.GetPostLink().href
     try:
       return self.Post(data=comment, uri=post_uri,
         converter=gdata.photos.CommentEntryFromString)
-    except gdata.service.RequestError, e:
+    except gdata.service.RequestError as e:
       raise GooglePhotosException(e.args[0])
 
   def Delete(self, object_or_uri, *args, **kwargs):
@@ -657,7 +657,7 @@ class PhotosService(gdata.service.GDataService):
       uri = object_or_uri
     try:
       return gdata.service.GDataService.Delete(self, uri, *args, **kwargs)
-    except gdata.service.RequestError, e:
+    except gdata.service.RequestError as e:
       raise GooglePhotosException(e.args[0])
 
 def GetSmallestThumbnail(media_thumbnail_list):
@@ -667,7 +667,7 @@ def GetSmallestThumbnail(media_thumbnail_list):
   r = {}
   for thumb in media_thumbnail_list:
       r[int(thumb.width)*int(thumb.height)] = thumb
-  keys = r.keys()
+  keys = list(r.keys())
   keys.sort()
   return r[keys[0]]
 

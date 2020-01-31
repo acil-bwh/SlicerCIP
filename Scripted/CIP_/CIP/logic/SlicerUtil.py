@@ -78,7 +78,7 @@ class SlicerUtil:
 
         if not path.exists(p):
             os.makedirs(p)
-            print ("Created path {} for module {} settings".format(p, moduleName))
+            print(("Created path {} for module {} settings".format(p, moduleName)))
         return p
 
     @staticmethod
@@ -418,7 +418,7 @@ class SlicerUtil:
         :return: nodeMask or None
         """
         nodes = slicer.util.getNodes(nodeMask)
-        return nodes.keys()
+        return list(nodes.keys())
 
 
     @staticmethod
@@ -650,7 +650,7 @@ class SlicerUtil:
         :param level: center of the window
         """
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
-        for compNode in compNodes.itervalues():
+        for compNode in compNodes.values():
             v = compNode.GetBackgroundVolumeID()
             if v is not None and v != "":
                 displayNode = slicer.mrmlScene.GetNodeByID(v).GetDisplayNode()
@@ -681,7 +681,7 @@ class SlicerUtil:
         :param coord: array/list/tuple that contains a RAS coordinate
         """
         sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
-        for sliceNode in sliceNodes.itervalues():
+        for sliceNode in sliceNodes.values():
             sliceNode.JumpSliceByCentering(coords[0], coords[1], coords[2])
 
     @staticmethod
@@ -699,7 +699,7 @@ class SlicerUtil:
         :param volumeNodeId:
         """
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
-        for compNode in compNodes.itervalues():
+        for compNode in compNodes.values():
             compNode.SetBackgroundVolumeID(volumeNodeId)
 
     @staticmethod
@@ -709,7 +709,7 @@ class SlicerUtil:
         :param opacity: 0.0-1.0 value
         """
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
-        for compNode in compNodes.itervalues():
+        for compNode in compNodes.values():
             compNode.SetForegroundVolumeID(volumeNodeId)
             compNode.SetForegroundOpacity(opacity)
 
@@ -719,7 +719,7 @@ class SlicerUtil:
         :param volumeNodeId: labelmap id
         """
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
-        for compNode in compNodes.itervalues():
+        for compNode in compNodes.values():
             compNode.SetLabelVolumeID(labelmapNodeId)
 
 
@@ -730,7 +730,7 @@ class SlicerUtil:
         @return:
         """
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
-        for compNode in compNodes.itervalues():
+        for compNode in compNodes.values():
             compNode.SetLabelOpacity(opacity)
 
     @staticmethod
@@ -888,13 +888,13 @@ class SlicerUtil:
                 logging.info("Case Navigator failed ({0}). Downloading web case...".format(ex.message))
         if volume is None:
             # Load the volume from a Slicer generic testing cases url
-            import urllib
+            import urllib.request, urllib.parse, urllib.error
             url = "http://www.slicer.org/slicerWiki/images/3/31/CT-chest.nrrd"
             name = url.split("/")[-1]
             localFilePath = os.path.join(slicer.app.temporaryPath, name)
             if not os.path.exists(localFilePath) or os.stat(localFilePath).st_size == 0 or downloadWhenCached:
                 logging.info('Requesting download %s from %s...\n' % (name, url))
-                urllib.urlretrieve(url, localFilePath)
+                urllib.request.urlretrieve(url, localFilePath)
             logging.debug("Loading volume in {0}...".format(localFilePath))
             (loaded, volume) = slicer.util.loadVolume(localFilePath, returnNode=True)
         return volume

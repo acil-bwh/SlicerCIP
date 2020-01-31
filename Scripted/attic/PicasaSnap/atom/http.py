@@ -37,7 +37,7 @@ __author__ = 'api.jscudder (Jeff Scudder)'
 
 import types
 import os
-import httplib
+import http.client
 import atom.url
 import atom.http_interface
 import socket
@@ -103,7 +103,7 @@ class HttpClient(atom.http_interface.GenericHttpClient):
     # If the list of headers does not include a Content-Length, attempt to
     # calculate it based on the data object.
     if data and 'Content-Length' not in all_headers:
-      if isinstance(data, types.StringTypes):
+      if isinstance(data, (str,)):
         all_headers['Content-Length'] = str(len(data))
       else:
         raise atom.http_interface.ContentLengthRequired('Unable to calculate '
@@ -123,7 +123,7 @@ class HttpClient(atom.http_interface.GenericHttpClient):
       return self.v2_http_client.request(http_request=http_request)
 
     if not isinstance(url, atom.url.Url):
-      if isinstance(url, types.StringTypes):
+      if isinstance(url, (str,)):
         url = atom.url.parse_url(url)
       else:
         raise atom.http_interface.UnparsableUrlObject('Unable to parse url '
@@ -175,19 +175,19 @@ class HttpClient(atom.http_interface.GenericHttpClient):
     
   def _prepare_connection(self, url, headers):
     if not isinstance(url, atom.url.Url):
-      if isinstance(url, types.StringTypes):
+      if isinstance(url, (str,)):
         url = atom.url.parse_url(url)
       else:
         raise atom.http_interface.UnparsableUrlObject('Unable to parse url '
             'parameter because it was not a string or atom.url.Url')
     if url.protocol == 'https':
       if not url.port:
-        return httplib.HTTPSConnection(url.host)
-      return httplib.HTTPSConnection(url.host, int(url.port))
+        return http.client.HTTPSConnection(url.host)
+      return http.client.HTTPSConnection(url.host, int(url.port))
     else:
       if not url.port:
-        return httplib.HTTPConnection(url.host)
-      return httplib.HTTPConnection(url.host, int(url.port))
+        return http.client.HTTPConnection(url.host)
+      return http.client.HTTPConnection(url.host, int(url.port))
 
   def _get_access_url(self, url):
     return url.to_string()
@@ -259,10 +259,10 @@ class ProxiedHttpClient(HttpClient):
           sslobj = ssl.wrap_socket(p_sock, None, None)
         else:
           sock_ssl = socket.ssl(p_sock, None, None)
-          sslobj = httplib.FakeSocket(p_sock, sock_ssl)
+          sslobj = http.client.FakeSocket(p_sock, sock_ssl)
  
         # Initalize httplib and replace with the proxy socket.
-        connection = httplib.HTTPConnection(proxy_url.host)
+        connection = http.client.HTTPConnection(proxy_url.host)
         connection.sock = sslobj
         return connection
       else:
@@ -275,7 +275,7 @@ class ProxiedHttpClient(HttpClient):
         if proxy_auth:
           headers['Proxy-Authorization'] = proxy_auth.strip()
 
-        return httplib.HTTPConnection(proxy_url.host, int(proxy_url.port))
+        return http.client.HTTPConnection(proxy_url.host, int(proxy_url.port))
 
   def _get_access_url(self, url):
     return url.to_string()
@@ -343,7 +343,7 @@ def _get_proxy_net_location(proxy_settings):
 
 
 def _send_data_part(data, connection):
-  if isinstance(data, types.StringTypes):
+  if isinstance(data, (str,)):
     connection.send(data)
     return
   # Check to see if data is a file-like object that has a read method.

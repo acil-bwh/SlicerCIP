@@ -449,7 +449,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         pickedActor = self.propPicker.GetActor()
         poly = pickedActor.GetMapper().GetInput()
         label = self.selectedLabels[poly]
-        print ("picked label = ", label)
+        print(("picked label = ", label))
 
     def processEvent(self,observee,event):
         # print "PICK EVENT", event
@@ -459,7 +459,7 @@ class CIP_CalciumScoringWidget(ScriptedLoadableModuleWidget):
         if pickedActor:
             poly = pickedActor.GetMapper().GetInput()
             label = self.selectedLabels[poly]
-            print ("picked label = ", label)
+            print(("picked label = ", label))
 
     def onSaveReport(self):
         """ Save the current values in a persistent csv file

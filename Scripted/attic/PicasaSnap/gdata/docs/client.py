@@ -21,7 +21,7 @@ __author__ = 'vicfryzel@google.com (Vic Fryzel)'
 import copy
 import mimetypes
 import re
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import atom.data
 import atom.http_core
 import gdata.client
@@ -60,7 +60,7 @@ class DocsClient(gdata.client.GDClient):
       Result of super(DocsClient, self).request().
     """
     if self.xoauth_requestor_id is not None and uri is not None:
-      if isinstance(uri, (str, unicode)):
+      if isinstance(uri, str):
         uri = atom.http_core.Uri.parse_uri(uri)
       uri.path.replace('/default', '/%s' % self.xoauth_requestor_id)
     return super(DocsClient, self).request(method=method, uri=uri, **kwargs)
@@ -137,7 +137,7 @@ class DocsClient(gdata.client.GDClient):
     if uri is None:
       uri = RESOURCE_FEED_URI
 
-    if isinstance(uri, basestring):
+    if isinstance(uri, str):
       uri = atom.http_core.Uri.parse_uri(uri)
 
     # Add max-results param if it wasn't included in the uri.
@@ -177,7 +177,7 @@ class DocsClient(gdata.client.GDClient):
     if uri is None:
       uri = RESOURCE_FEED_URI
 
-    if isinstance(uri, basestring):
+    if isinstance(uri, str):
       uri = atom.http_core.Uri.parse_uri(uri)
 
     if show_root is not None:
@@ -238,7 +238,7 @@ class DocsClient(gdata.client.GDClient):
     Returns:
       gdata.docs.data.Resource representing the retrieved resource.
     """
-    if isinstance(uri, basestring):
+    if isinstance(uri, str):
       uri = atom.http_core.Uri.parse_uri(uri)
     if show_root is not None:
       uri.query['showroot'] = str(show_root).lower()
@@ -398,13 +398,13 @@ class DocsClient(gdata.client.GDClient):
     uri = base_uri.replace('&amp;', '&')
     if extra_params is not None:
       if 'exportFormat' in extra_params and '/Export?' not in uri:
-        raise gdata.client.Error, ('This entry type cannot be exported '
+        raise gdata.client.Error('This entry type cannot be exported '
                                    'as a different format.')
 
       if 'gid' in extra_params and uri.find('spreadsheets') == -1:
-        raise gdata.client.Error, 'gid param is not valid for this resource type.'
+        raise gdata.client.Error('gid param is not valid for this resource type.')
 
-      uri += '&' + urllib.urlencode(extra_params)
+      uri += '&' + urllib.parse.urlencode(extra_params)
     return uri
 
   def _get_content(self, uri, extra_params=None, auth_token=None, **kwargs):
@@ -445,9 +445,9 @@ class DocsClient(gdata.client.GDClient):
     server_response = self.request(
         'GET', uri, auth_token=token, **kwargs)
     if server_response.status != 200:
-      raise gdata.client.RequestError, {'status': server_response.status,
+      raise gdata.client.RequestError({'status': server_response.status,
                                         'reason': server_response.reason,
-                                        'body': server_response.read()}
+                                        'body': server_response.read()})
     return server_response.read()
 
   def _download_file(self, uri, file_path, **kwargs):
@@ -466,7 +466,7 @@ class DocsClient(gdata.client.GDClient):
     f = open(file_path, 'wb')
     try:
       f.write(self._get_content(uri, **kwargs))
-    except gdata.client.RequestError, e:
+    except gdata.client.RequestError as e:
       f.close()
       raise e
     f.flush()
@@ -518,7 +518,7 @@ class DocsClient(gdata.client.GDClient):
       for current_collection in entry.InCollections():
         uri = '%s/contents/%s' % (
             current_collection.href,
-            urllib.quote(entry.resource_id.text))
+            urllib.parse.quote(entry.resource_id.text))
         self.delete(uri, force=True)
 
     if collection is not None:

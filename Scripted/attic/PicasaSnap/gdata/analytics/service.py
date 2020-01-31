@@ -31,7 +31,7 @@
 __author__ = 'api.suryasev (Sal Uryasev)'
 
 
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import atom
 import gdata.service
 import gdata.analytics
@@ -275,8 +275,8 @@ class DataQuery(gdata.service.Query):
     """
     old_feed = self.feed
     self.feed = '/'.join([old_feed]) + '?' + \
-                urllib.urlencode(dict([(key, value) for key, value in \
-                self.elements.iteritems() if value]))
+                urllib.parse.urlencode(dict([(key, value) for key, value in \
+                self.elements.items() if value]))
     new_feed = gdata.service.Query.ToUri(self)
     self.feed = old_feed
     return new_feed

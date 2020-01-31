@@ -26,7 +26,7 @@ __author__ = 'Alexandre Vivien <alex@simplecode.fr>'
 
 import gdata.marketplace.data
 import gdata.client
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 
 # Feed URI template.  This must end with a /
@@ -76,9 +76,9 @@ class LicensingClient(gdata.client.GDClient):
       Apps domain.
     """
     parameters = '[appid=%s][domain=%s]' % (app_id, self.domain)
-    uri = LICENSE_FEED_TEMPLATE + urllib.quote_plus(parameters)
+    uri = LICENSE_FEED_TEMPLATE + urllib.parse.quote_plus(parameters)
     if params:
-      uri += '&' + urllib.urlencode(params)
+      uri += '&' + urllib.parse.urlencode(params)
     return uri
 
   MakeLicenseFeedUri = make_license_feed_uri
@@ -108,9 +108,9 @@ class LicensingClient(gdata.client.GDClient):
       parameters += '[max-results=%s]' % max_results
     else:
       parameters += '[max-results=100]'
-    uri = LICENSE_NOTIFICATIONS_FEED_TEMPLATE + urllib.quote_plus(parameters)
+    uri = LICENSE_NOTIFICATIONS_FEED_TEMPLATE + urllib.parse.quote_plus(parameters)
     if params:
-      uri += '&' + urllib.urlencode(params)
+      uri += '&' + urllib.parse.urlencode(params)
     return uri
 
   MakeLicenseNotificationsFeedUri = make_license_notifications_feed_uri

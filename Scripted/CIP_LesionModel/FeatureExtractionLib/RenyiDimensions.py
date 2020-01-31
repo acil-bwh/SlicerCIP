@@ -22,7 +22,7 @@ class RenyiDimensions:
              
     def EvaluateFeatures(self, printTiming=False, checkStopProcessFunction=None):
         self.checkStopProcessFunction=checkStopProcessFunction
-        keys = set(self.allKeys).intersection(self.renyiDimensions.keys())
+        keys = set(self.allKeys).intersection(list(self.renyiDimensions.keys()))
 
         # Remove all the keys that must not be evaluated
         for key in set(self.renyiDimensions.keys()).difference(keys):
@@ -72,12 +72,12 @@ class RenyiDimensions:
         else:
             n[p] = numpy.sum(c[matrixCoordinatesPadded]**q)
                     
-        for g in xrange(p-1, -1, -1):
+        for g in range(p-1, -1, -1):
             siz = 2**(p-g)
             siz2 = round(siz/2)
-            for i in xrange(0, maxDim-siz+1, siz):
-                for j in xrange(0, maxDim-siz+1, siz):
-                    for k in xrange(0, maxDim-siz+1, siz):
+            for i in range(0, maxDim-siz+1, siz):
+                for j in range(0, maxDim-siz+1, siz):
+                    for k in range(0, maxDim-siz+1, siz):
                         box = numpy.array([ c[i,j,k], c[i+siz2,j,k], c[i,j+siz2,k], c[i+siz2,j+siz2,k], c[i,j,k+siz2], c[i+siz2,j,k+siz2], c[i,j+siz2,k+siz2], c[i+siz2,j+siz2,k+siz2] ])
                         c[i,j,k] =    numpy.any(box != 0) if (q==0) else numpy.sum(box)**q
                     if self.checkStopProcessFunction is not None:

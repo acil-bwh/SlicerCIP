@@ -3,7 +3,7 @@
 from twisted.protocols.policies import ProtocolWrapper, WrappingFactory
 from twisted.python.failure import Failure
 
-from AsyncStateMachine import AsyncStateMachine
+from .AsyncStateMachine import AsyncStateMachine
 from gdata.tlslite.TLSConnection import TLSConnection
 from gdata.tlslite.errors import *
 
@@ -24,7 +24,7 @@ class _FakeSocket:
 
     def recv(self, numBytes):
         if self.data == "":
-            raise socket.error, (errno.EWOULDBLOCK, "")
+            raise socket.error(errno.EWOULDBLOCK, "")
         returnData = self.data[:numBytes]
         self.data = self.data[numBytes:]
         return returnData
@@ -134,7 +134,7 @@ class TLSTwistedProtocolWrapper(ProtocolWrapper, AsyncStateMachine):
     def connectionMade(self):
         try:
             ProtocolWrapper.connectionMade(self)
-        except TLSError, e:
+        except TLSError as e:
             self.connectionLost(Failure(e))
             ProtocolWrapper.loseConnection(self)
 
@@ -146,7 +146,7 @@ class TLSTwistedProtocolWrapper(ProtocolWrapper, AsyncStateMachine):
                 self.fakeSocket.data += data
                 while self.fakeSocket.data:
                     AsyncStateMachine.inReadEvent(self)
-        except TLSError, e:
+        except TLSError as e:
             self.connectionLost(Failure(e))
             ProtocolWrapper.loseConnection(self)
 

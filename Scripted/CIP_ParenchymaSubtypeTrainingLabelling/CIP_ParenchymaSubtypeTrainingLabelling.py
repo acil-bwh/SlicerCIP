@@ -117,7 +117,7 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
         typesLabel.setStyleSheet(labelsStyle)
         self.typesLayout.addWidget(typesLabel)
         self.typesRadioButtonGroup = qt.QButtonGroup()
-        for key in self.logic.params.mainTypes.iterkeys():
+        for key in self.logic.params.mainTypes.keys():
             rbitem = qt.QRadioButton(self.logic.params.getMainTypeLabel(key))
             self.typesRadioButtonGroup.addButton(rbitem, key)
             self.typesLayout.addWidget(rbitem)
@@ -134,7 +134,7 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
         self.subtypesLayout.setAlignment(SlicerUtil.ALIGNMENT_VERTICAL_TOP)
         self.subtypesRadioButtonGroup = qt.QButtonGroup()
         # Add all the subtypes (we will filter later in "updateState" function)
-        for key in self.logic.params.subtypes.iterkeys():
+        for key in self.logic.params.subtypes.keys():
             # Build the description
             rbitem = qt.QRadioButton(self.logic.params.getSubtypeLabel(key))
             self.subtypesRadioButtonGroup.addButton(rbitem, key)
@@ -153,7 +153,7 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
         self.regionsRadioButtonGroup = qt.QButtonGroup()
         self.regionsFrame = qt.QFrame()
         # Add all the regions
-        for key in self.logic.params.regions.iterkeys():
+        for key in self.logic.params.regions.keys():
             # Build the description
             rbitem = qt.QRadioButton(self.logic.params.getRegionLabel(key))
             self.regionsRadioButtonGroup.addButton(rbitem, key)
@@ -279,7 +279,7 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
                     try:
                         os.makedirs(d)
                         # Make sure that everybody has write permissions (sometimes there are problems because of umask)
-                        os.chmod(d, 0777)
+                        os.chmod(d, 0o777)
                     except:
                         qt.QMessageBox.warning(slicer.util.mainWindow(), 'Directory incorrect',
                                                'The folder "{0}" could not be created. Please select a valid directory'.format(

@@ -1,1 +1,1 @@
-from BodyCompositionParameters import *
+from .BodyCompositionParameters import *

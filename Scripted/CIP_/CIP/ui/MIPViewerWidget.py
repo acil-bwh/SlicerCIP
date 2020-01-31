@@ -135,13 +135,13 @@ class MIPViewerWidget(object):
         ## Context
         self.contextLabel = qt.QLabel("Context")
         self.contextComboBox = qt.QComboBox()
-        for context in self.contexts.itervalues():
+        for context in self.contexts.values():
             self.contextComboBox.addItem(context)
 
         ## Operation
         self.operationLabel = qt.QLabel("Optimization")
         self.operationComboBox = qt.QComboBox()
-        for operation in self.operations.itervalues():
+        for operation in self.operations.values():
             if operation != self.OPERATION_NONE:
                 self.operationComboBox.addItem(operation)
         ## Plane
@@ -309,7 +309,7 @@ class MIPViewerWidget(object):
             self.widgetMainLayout.addWidget(self.resetLabel, 5, 5, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
             # Number of slices
             row = 6
-            for structure in self.spacingSliderItems.itervalues():
+            for structure in self.spacingSliderItems.values():
                 self.widgetMainLayout.addWidget(structure[0], row, 0, 1, 2)
                 self.widgetMainLayout.addWidget(structure[1], row, 2, 1, 3)
                 self.widgetMainLayout.addWidget(structure[2], row, 5)
@@ -332,7 +332,7 @@ class MIPViewerWidget(object):
             self.widgetMainLayout.addWidget(self.threeOverThreeButtonLabel, 1, 4, SlicerUtil.ALIGNMENT_HORIZONTAL_CENTER)
             # Number of slices
             row = 2
-            for structure in self.spacingSliderItems.itervalues():
+            for structure in self.spacingSliderItems.values():
                 self.widgetMainLayout.addWidget(structure[0], row, 0)
                 self.widgetMainLayout.addWidget(structure[1], row, 1, 1, 3)
                 self.widgetMainLayout.addWidget(structure[2], row, 4)
@@ -353,7 +353,7 @@ class MIPViewerWidget(object):
         self.threeOverThreeViewButton.connect("clicked()", self.__onThreeOverThreeViewButtonClicked__)
         self.maxMinCompareViewButton.connect("clicked()", self.__onMaxMinCompareViewButtonClicked__)
         self.resetViewButton.connect("clicked()", self.__onResetViewButtonClicked__)
-        for slicer in (item[1] for item in self.spacingSliderItems.itervalues()):
+        for slicer in (item[1] for item in self.spacingSliderItems.values()):
             slicer.connect('valueChanged(int)', self.__onNumberOfSlicesChanged__)
         self.crosshairCheckbox.connect("stateChanged(int)", self.__onCrosshairCheckChanged__)
         self.centerButton.connect("clicked()", self.__onCenterButtonClicked__)
@@ -399,7 +399,7 @@ class MIPViewerWidget(object):
 
         # Unlink all the controls (the link will be done manually)
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
-        for compNode in compNodes.itervalues():
+        for compNode in compNodes.values():
             compNode.SetLinkedControl(False)
 
         if self.currentOperation == self.OPERATION_MIP_MinIP \
@@ -462,14 +462,14 @@ class MIPViewerWidget(object):
 
         # Make sure that the same volume is displayed in all 2D windows
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
-        for compNode in compNodes.itervalues():
+        for compNode in compNodes.values():
             compNode.SetLabelVolumeID(labelmapVolumeID)
             compNode.SetForegroundVolumeID(foregroundVolumeID)
             compNode.SetBackgroundVolumeID(backgroundVolumeID)
 
         # Relink all the controls
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
-        for compNode in compNodes.itervalues():
+        for compNode in compNodes.values():
             compNode.SetLinkedControl(True)
 
         # Refresh windows to show changes
@@ -492,13 +492,13 @@ class MIPViewerWidget(object):
         """
         # Remove links
         compNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
-        for compNode in compNodes.itervalues():
+        for compNode in compNodes.values():
             compNode.SetLinkedControl(False)
         SlicerUtil.changeLayout(self.originalLayout)
 
         # Remove all possible reslicing and set default planes for default 2D windows
         nodes = slicer.util.getNodes("vtkMRMLSliceNode*")
-        for node in nodes.itervalues():
+        for node in nodes.values():
             self.__resliceNode__(node, self.currentPlane, self.OPERATION_NONE)
             if node.GetID() == "vtkMRMLSliceNodeRed":
                 node.SetOrientationToAxial()
@@ -518,7 +518,7 @@ class MIPViewerWidget(object):
         # Disable operation if we are comparing MIP and MinIP
         self.operationComboBox.enabled = (self.currentLayout != self.LAYOUT_COMPARE)
 
-        for operation, controls in self.spacingSliderItems.iteritems():
+        for operation, controls in self.spacingSliderItems.items():
             for elem in controls:
                 elem.visible = False
         if self.currentOperation in (self.OPERATION_MIP, self.OPERATION_MinIP, self.OPERATION_MEAN):
@@ -721,7 +721,7 @@ class MIPViewerWidget(object):
         """ The slider that control the number of slices was modified
         :param number: value of the slider
         """
-        for row in self.spacingSliderItems.itervalues():
+        for row in self.spacingSliderItems.values():
             row[2].setText("{0} mm".format(row[1].value / 10.0))
         self.executeCurrentSettings()
 
