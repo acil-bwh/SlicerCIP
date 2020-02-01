@@ -124,7 +124,7 @@ vtkMRMLParticlesNode* vtkSlicerParticlesDisplayLogic::AddParticlesNode (const ch
   vtkNew<vtkMRMLModelStorageNode> storageNode;
 
   storageNode->SetFileName(filename);
-  if (!storageNode->ReadData(particlesNode.GetPointer()) != 0)
+  if (storageNode->ReadData(particlesNode.GetPointer()) != 0)
     {
     const std::string fname(filename);
     std::string name = itksys::SystemTools::GetFilenameWithoutExtension(fname);
