@@ -15,7 +15,7 @@ from slicer.ScriptedLoadableModule import *
 
 from CIP.logic.SlicerUtil import SlicerUtil
 from CIP.logic import Util
-from .CIP_BodyComposition_logic import BodyCompositionParameters
+from CIP_BodyComposition_logic import BodyCompositionParameters
 from CIP.ui import CaseReportsWidget
 import CIP.ui as CIPUI
 
