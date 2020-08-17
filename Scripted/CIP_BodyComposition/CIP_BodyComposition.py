@@ -41,10 +41,6 @@ class CIP_BodyComposition(ScriptedLoadableModule):
 #######################################
 class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
     """GUI object"""
-    @property
-    def moduleName(self):
-        return os.path.basename(__file__).replace(".py", "")
-        # return "CIP_BodyComposition"
 
     __preventDialogs__ = False
     # @property

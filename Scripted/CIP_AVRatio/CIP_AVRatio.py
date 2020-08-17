@@ -43,10 +43,6 @@ class CIP_AVRatioWidget(ScriptedLoadableModuleWidget):
     CORONAL = 8
 
     @property
-    def moduleName(self):
-        return os.path.basename(__file__).replace(".py", "")
-
-    @property
     def currentVolumeId(self):
         return self.volumeSelector.currentNodeID
 

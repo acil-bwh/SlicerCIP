@@ -54,10 +54,6 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
         self.pendingChangesIdsList = []
 
     @property
-    def moduleName(self):
-        return 'CIP_ParenchymaSubtypeTrainingLabelling'
-
-    @property
     def labelmapNodeNameExtension(self):
         return "parenchymaTrainingLabelMap"
 

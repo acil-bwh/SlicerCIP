@@ -30,10 +30,6 @@ class CIP_InteractiveLobeSegmentation(ScriptedLoadableModule):
 #
 
 class CIP_InteractiveLobeSegmentationWidget(ScriptedLoadableModuleWidget):
-    @property
-    def moduleName(self):
-        return os.path.basename(__file__).replace(".py", "")    
-    
     def __init__(self, parent=None):
         ScriptedLoadableModuleWidget.__init__(self, parent)
         self.logic = CIP_InteractiveLobeSegmentationLogic()
@@ -789,7 +785,7 @@ class ILSVisualizationWidget(ILSpqWidget):
         """
         self.removeFiducialObservers()
         for fiducialList in list(slicer.util.getNodes('vtkMRMLMarkupsFiducialNode*').values()):
-            tag = fiducialList.AddObserver(fiducialList.MarkupAddedEvent, self.requestNodeAddedUpdate)
+            tag = fiducialList.AddObserver(fiducialList.PointPositionDefinedEvent, self.requestNodeAddedUpdate)
             self.observerTags.append((fiducialList, tag))
 
     def removeFiducialObservers(self):

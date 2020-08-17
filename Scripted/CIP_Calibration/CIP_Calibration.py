@@ -52,10 +52,6 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget):
         self.pendingChangesIdsList = []
 
     @property
-    def moduleName(self):
-        return 'CIP_Calibration'
-
-    @property
     def labelmapNodeNameExtension(self):
         return "calibrationLabelMap"
 

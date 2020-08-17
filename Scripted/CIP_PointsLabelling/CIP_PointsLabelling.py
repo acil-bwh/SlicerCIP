@@ -35,10 +35,6 @@ class CIP_PointsLabellingWidget(ScriptedLoadableModuleWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
-    @property
-    def moduleName(self):
-        # TODO: get it from file name
-        return "CIP_PointsLabelling"
 
     def __init__(self, parent):
         ScriptedLoadableModuleWidget.__init__(self, parent)

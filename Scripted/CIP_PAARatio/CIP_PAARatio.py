@@ -39,9 +39,6 @@ class CIP_PAARatioWidget(ScriptedLoadableModuleWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
-    @property
-    def moduleName(self):
-        return os.path.basename(__file__).replace(".py", "")
 
     @property
     def currentVolumeId(self):
