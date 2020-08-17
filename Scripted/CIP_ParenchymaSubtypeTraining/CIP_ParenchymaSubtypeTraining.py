@@ -45,10 +45,6 @@ class CIP_ParenchymaSubtypeTrainingWidget(CIP_PointsLabellingWidget):
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
-    @property
-    def moduleName(self):
-        return "CIP_ParenchymaSubtypeTraining"
-
     def __init__(self, parent):
         CIP_PointsLabellingWidget.__init__(self, parent)
 
@@ -280,7 +276,7 @@ class CIP_ParenchymaSubtypeTrainingLogic(CIP_PointsLabellingLogic):
         displayNode.SetTextScale(2)
 
         # Add an observer when a new markup is added
-        fidNode.AddObserver(fidNode.MarkupAddedEvent, self.onMarkupAdded)
+        fidNode.AddObserver(fidNode.PointPositionDefinedEvent, self.onMarkupAdded)
 
         return fidNode
 

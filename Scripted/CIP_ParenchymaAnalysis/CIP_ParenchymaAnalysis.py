@@ -41,9 +41,6 @@ See <a href=\"$a/Documentation/$b.$c/Modules/ParenchymaAnalysis\">$a/Documentati
 #
 
 class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
-    @property
-    def moduleName(self):
-        return os.path.basename(__file__).replace(".py", "")
 
     def __init__(self, parent=None):
         ScriptedLoadableModuleWidget.__init__(self, parent)
