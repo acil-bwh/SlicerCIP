@@ -133,13 +133,14 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.CTSelector.setToolTip("Pick the CT image to work on.")
         parametersFormLayout.addRow("Input CT Volume: ", self.CTSelector)
 
+
         #
         # the label map volume selector
         #
         self.labelSelector = slicer.qMRMLNodeComboBox()
         # self.labelSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
         # self.labelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 1 )
-        self.labelSelector.nodeTypes = (("vtkMRMLLabelMapVolumeNode"), "")
+        self.labelSelector.nodeTypes = ("vtkMRMLLabelMapVolumeNode", "vtkMRMLSegmentationNode")
         self.labelSelector.selectNodeUponCreation = True
         self.labelSelector.addEnabled = False
         self.labelSelector.removeEnabled = False
@@ -147,8 +148,9 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.labelSelector.showHidden = False
         self.labelSelector.showChildNodeTypes = False
         self.labelSelector.setMRMLScene(slicer.mrmlScene)
-        self.labelSelector.setToolTip("Pick the label map to the algorithm.")
-        parametersFormLayout.addRow("Label Map Volume: ", self.labelSelector)
+        self.labelSelector.setToolTip("Pick the label map or a mask segmentation to the algorithm.")
+        parametersFormLayout.addRow("Mask Volume: ", self.labelSelector)
+
 
         # Image filtering section
         self.preProcessingWidget = PreProcessingWidget(self.moduleName, parentWidget=self.parent)
@@ -330,22 +332,61 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
                 slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID('None')
 
     def onLabelSelect(self, node):
-        self.labelNode = node
-        self.applyButton.enabled = bool(self.CTNode)  # and bool(self.labelNode)
-        self.preProcessingWidget.enableFilteringFrame(bool(self.CTNode))
-        self.preProcessingWidget.enableLMFrame(bool(not self.labelNode))        
-        SlicerUtil.changeLabelmapOpacity(0.5)
-        if self.labelNode:
-            self.preProcessingWidget.filterApplication.setChecked(1)
-            self.preProcessingWidget.filterApplication.setEnabled(0)
-            for color in ['Red', 'Yellow', 'Green']:
-                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID(self.labelNode.GetID())
-        else:
-            self.preProcessingWidget.filterApplication.setChecked(0)
-            self.preProcessingWidget.filterApplication.setEnabled(1)
-            for color in ['Red', 'Yellow', 'Green']:
-                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID('None')
+        if not node: 
+            # none selected
+            self.labelNode = None
+        else: 
+            print(node.GetClassName())
+            if  node.GetClassName() == "vtkMRMLLabelMapVolumeNode": 
+                self.labelNode = node
+                self.applyButton.enabled = bool(self.CTNode)  # and bool(self.labelNode)
+                self.preProcessingWidget.enableFilteringFrame(bool(self.CTNode))
+                self.preProcessingWidget.enableLMFrame(bool(not self.labelNode))        
+                SlicerUtil.changeLabelmapOpacity(0.5)
+                if self.labelNode:
+                    self.preProcessingWidget.filterApplication.setChecked(1)
+                    self.preProcessingWidget.filterApplication.setEnabled(0)
+                    for color in ['Red', 'Yellow', 'Green']:
+                        slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID(self.labelNode.GetID())
+                else:
+                    self.preProcessingWidget.filterApplication.setChecked(0)
+                    self.preProcessingWidget.filterApplication.setEnabled(1)
+                    for color in ['Red', 'Yellow', 'Green']:
+                        slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID('None')
+            else:   # vtkMRMLSegmentationNode
+                self.segmentationNode = node
+                if self.segmentationNode: 
+                    if self.segmentationNode.GetSegmentation().GetNthSegmentID(0) != "right lung" or \
+                        self.segmentationNode.GetSegmentation().GetNthSegmentID(1) != "left lung" or \
+                            self.segmentationNode.GetSegmentation().GetNthSegmentID(2) != "other":
+                        qt.QMessageBox.warning(slicer.util.mainWindow(),
+                                               "Parenchyma Analysis", "Input segmentation not valid.")
+                        return False
+                    else: 
+                        self.segmentToLabelValueMapping = slicer.util.getFirstNodeByClassByName("vtkMRMLColorTableNode", "chest_region_colors_basic")
+                        if not self.segmentToLabelValueMapping:
+                            self.segmentToLabelValueMapping = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLColorTableNode", "chest_region_colors_basic")
+                            self.segmentToLabelValueMapping.SetTypeToUser()
+                            self.segmentToLabelValueMapping.HideFromEditorsOff()
+                            self.segmentToLabelValueMapping.SetNumberOfColors(69)
+                            self.segmentToLabelValueMapping.SetColor( 0, "background", 0.0, 0.0, 0.0, 0.0)
+                            self.segmentToLabelValueMapping.SetColor( 1, "whole lung", 0.42, 0.38, 0.75, 1.0)
+                            self.segmentToLabelValueMapping.SetColor( 2, "right lung", 0.26, 0.64, 0.10, 1.0)
+                            self.segmentToLabelValueMapping.SetColor( 3, "left lung",  0.80, 0.11, 0.36, 1.0)
+                            self.segmentToLabelValueMapping.SetColor(58, "trachea",    0.49, 0.49, 0.79, 1.0)
+                            self.segmentToLabelValueMapping.NamesInitialisedOn()
 
+                        self.labelNode = slicer.util.getFirstNodeByClassByName("vtkMRMLLabelMapVolumeNode",self.segmentationNode.GetName() + "_LabelMap")
+                        if not self.labelNode:
+                            self.labelNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode",self.segmentationNode.GetName() + "_LabelMap")
+                        segmentIdList = ["right lung", "left lung", "other"]
+                        # Segment ids must be converted into a vtkStringArray to be used in ExportSegmentsToLabelmapNode
+                        segmentIds = vtk.vtkStringArray()
+                        for segmentId in segmentIdList:
+                          segmentIds.InsertNextValue(segmentId)
+                        slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(self.segmentationNode, segmentIds, self.labelNode, \
+                            self.CTNode, slicer.vtkSegmentation.EXTENT_REFERENCE_GEOMETRY, self.segmentToLabelValueMapping)
+                        
     def inputVolumesAreValid(self):
         """Verify that volumes are compatible with label calculation
         algorithm assumptions"""
@@ -469,8 +510,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         
         for color in ['Red', 'Yellow', 'Green']:
             slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(self.CTNode.GetID())
-            
-        self.labelSelector.setCurrentNode(self.labelNode)
+
 
     def changeHistDisplay(self):
         histList = []
