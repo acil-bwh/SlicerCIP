@@ -9,9 +9,6 @@
 #include <vtkMRMLSliceNode.h>
 #include <vtkMRMLScalarVolumeNode.h>
 
-// Logic includes
-#include <vtkSlicerFiducialsLogic.h>
-
 // VTK includes
 #include <vtkImageData.h>
 #include <vtkObjectFactory.h>
