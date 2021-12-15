@@ -1,4 +1,4 @@
-import os
+import logging, os
 from collections import OrderedDict
 
 import vtk, qt, ctk, slicer
@@ -74,8 +74,6 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.columnsDict["Mass"] = "Mass"
         self.columnsDict["Volume"] = "Volume"
 
-        self.rTags = (
-        "WholeLung", "RightLung", "LeftLung", "RUL", "RML", "RLL", "LUL", "LLL", "LUT", "LMT", "LLT", "RUT", "RMT", "RLT")
         if not parent:
             self.parent = slicer.qMRMLWidget()
             self.parent.setLayout(qt.QVBoxLayout())
@@ -84,9 +82,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
             self.parent = parent
         self.logic = None
         self.CTNode = None
-        self.labelNode = None
-        # self.expNode = None
-        # self.explabelNode = None
+        self.lungMaskNode = None  # segmentation node or labelmap volume node of the lung
         self.fileName = None
         self.fileDialog = None
 
@@ -97,25 +93,24 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
             self.labelSelector.setMRMLScene(slicer.mrmlScene)
             # self.explabelSelector.setMRMLScene(slicer.mrmlScene)
             self.parent.show()
-            
+
     def enter(self):
-        if self.labelSelector.currentNode():
-            for color in ['Red', 'Yellow', 'Green']:
-                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID(self.labelSelector.currentNode().GetID())            
+        if self.labelSelector.currentNode() and self.labelSelector.currentNode().GetClassName() == "vtkMRMLLabelMapVolumeNode":
+            slicer.util.setSliceViewerLayers(label=self.labelSelector.currentNode(), labelOpacity=0.5)
+
     def exit(self):
-        for color in ['Red', 'Yellow', 'Green']:
-                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID('None')
+        if self.labelSelector.currentNode() and self.labelSelector.currentNode().GetClassName() == "vtkMRMLLabelMapVolumeNode":
+            slicer.util.setSliceViewerLayers(label=None)
 
     def setup(self):
         ScriptedLoadableModuleWidget.setup(self)
 
         #
-        # the inps volume selector
+        # The input volume selector
         #
         parametersCollapsibleButton = ctk.ctkCollapsibleButton()
         parametersCollapsibleButton.text = "IO Volumes"
         self.parent.layout().addWidget(parametersCollapsibleButton)
-
         # Layout within the dummy collapsible button
         parametersFormLayout = qt.QFormLayout(parametersCollapsibleButton)
         parametersFormLayout.setVerticalSpacing(5)
@@ -132,14 +127,11 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.CTSelector.setMRMLScene(slicer.mrmlScene)
         self.CTSelector.setToolTip("Pick the CT image to work on.")
         parametersFormLayout.addRow("Input CT Volume: ", self.CTSelector)
-
         #
-        # the label map volume selector
+        # The input sgmentation / labelmap  volume selector
         #
         self.labelSelector = slicer.qMRMLNodeComboBox()
-        # self.labelSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-        # self.labelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 1 )
-        self.labelSelector.nodeTypes = (("vtkMRMLLabelMapVolumeNode"), "")
+        self.labelSelector.nodeTypes = ["vtkMRMLLabelMapVolumeNode", "vtkMRMLSegmentationNode"]
         self.labelSelector.selectNodeUponCreation = True
         self.labelSelector.addEnabled = False
         self.labelSelector.removeEnabled = False
@@ -147,10 +139,11 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.labelSelector.showHidden = False
         self.labelSelector.showChildNodeTypes = False
         self.labelSelector.setMRMLScene(slicer.mrmlScene)
-        self.labelSelector.setToolTip("Pick the label map to the algorithm.")
-        parametersFormLayout.addRow("Label Map Volume: ", self.labelSelector)
-
+        self.labelSelector.setToolTip("Pick the lung segmentation or labelmap volume.")
+        parametersFormLayout.addRow("Lung mask: ", self.labelSelector)
+        #
         # Image filtering section
+        #
         self.preProcessingWidget = PreProcessingWidget(self.moduleName, parentWidget=self.parent)
         self.preProcessingWidget.setup()
         #
@@ -158,8 +151,9 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         # self.splitRadioButton.setText('Split Label Map')
         # self.splitRadioButton.setChecked(0)
         # self.parent.layout().addWidget(self.splitRadioButton, 0, 3)
-
+        #
         # Apply button
+        #
         self.applyButton = qt.QPushButton("Apply")
         self.applyButton.toolTip = "Calculate Parenchyma Phenotypes."
         self.applyButton.enabled = False
@@ -253,7 +247,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.histFrame.layout().addWidget(self.RLTHistCheckBox)
 
         for i in range(len(self.histogramCheckBoxes)):
-            self.histogramCheckBoxes[i].setText(self.rTags[i])
+            self.histogramCheckBoxes[i].setText(CIP_ParenchymaAnalysisLogic.allRegionTags[i])
             self.histogramCheckBoxes[i].hide()
 
         self.HistSection.layout().addWidget(self.HistogramFreqOption)
@@ -319,60 +313,65 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
     def onCTSelect(self, node):
         self.CTNode = node
-        self.applyButton.enabled = bool(self.CTNode)  # and bool(self.labelNode)
-        self.preProcessingWidget.enableFilteringFrame(bool(self.CTNode))
-        self.preProcessingWidget.enableLMFrame(bool(not self.labelNode))
-        if self.CTNode:
-            for color in ['Red', 'Yellow', 'Green']:
-                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(self.CTNode.GetID())
-        else:
-            for color in ['Red', 'Yellow', 'Green']:
-                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID('None')
+        slicer.util.setSliceViewerLayers(background=self.CTNode, fit=True)
+        self.updateButtonStates()
 
     def onLabelSelect(self, node):
-        self.labelNode = node
-        self.applyButton.enabled = bool(self.CTNode)  # and bool(self.labelNode)
+
+        self.lungMaskNode = node
+        if (not node) or (node.GetClassName() == "vtkMRMLLabelMapVolumeNode"):
+            slicer.util.setSliceViewerLayers(label=self.lungMaskNode, labelOpacity=0.5)
+
+        self.preProcessingWidget.filterApplication.setChecked(self.lungMaskNode is not None)
+        self.updateButtonStates()
+
+    def updateButtonStates(self):
+        self.applyButton.enabled = bool(self.CTNode)  # and bool(self.lungMaskNode)
         self.preProcessingWidget.enableFilteringFrame(bool(self.CTNode))
-        self.preProcessingWidget.enableLMFrame(bool(not self.labelNode))        
-        SlicerUtil.changeLabelmapOpacity(0.5)
-        if self.labelNode:
-            self.preProcessingWidget.filterApplication.setChecked(1)
-            self.preProcessingWidget.filterApplication.setEnabled(0)
-            for color in ['Red', 'Yellow', 'Green']:
-                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID(self.labelNode.GetID())
-        else:
-            self.preProcessingWidget.filterApplication.setChecked(0)
-            self.preProcessingWidget.filterApplication.setEnabled(1)
-            for color in ['Red', 'Yellow', 'Green']:
-                slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetLabelVolumeID('None')
+        self.preProcessingWidget.enableLMFrame(self.lungMaskNode is None)
+        self.preProcessingWidget.filterApplication.setEnabled(self.lungMaskNode is None)
 
     def inputVolumesAreValid(self):
         """Verify that volumes are compatible with label calculation
         algorithm assumptions"""
-        if not self.CTNode:  # or not self.labelNode:
+
+        # Check input CT
+        if not self.CTNode:
             qt.QMessageBox.warning(slicer.util.mainWindow(),
                                    "Parenchyma Analysis", "Please select a CT Input Volume.")
             return False
-        if not self.CTNode.GetImageData():  # or not self.labelNode.GetImageData():
+        if not self.CTNode.GetImageData():
             qt.QMessageBox.warning(slicer.util.mainWindow(),
                                    "Parenchyma Analysis", "Please select a CT Input Volume.")
-            return False
-        if not self.labelNode or not self.labelNode.GetImageData():
-            warning = self.preProcessingWidget.warningMessageForLM()
-            if warning == 16384:
-                self.createLungLabelMap()
-            else:
-                qt.QMessageBox.warning(slicer.util.mainWindow(),
-                                       "Parenchyma Analysis", "Please select a Lung Label Map.")
-                return False
-            return True
-        if self.CTNode.GetImageData().GetDimensions() != self.labelNode.GetImageData().GetDimensions():
-            qt.QMessageBox.warning(slicer.util.mainWindow(),
-                                   "Parenchyma Analysis", "Input Volumes do not have the same geometry.")
             return False
 
-#        if self.preProcessingWidget.filterOnRadioButton.checked:
-#            self.preProcessingWidget.filterApplication.setChecked(1)
+        # Check input lung mask
+
+        if self.lungMaskNode and self.lungMaskNode.GetClassName() == "vtkMRMLSegmentationNode":
+            # Lung mask is a segmentation node
+            segmentation = self.lungMaskNode.GetSegmentation()
+            validSegmentation = (segmentation.GetSegmentIdBySegmentName('right lung')
+                and segmentation.GetSegmentIdBySegmentName('left lung')
+                and segmentation.GetSegmentIdBySegmentName('other'))
+            if not validSegmentation:
+                qt.QMessageBox.warning(slicer.util.mainWindow(), "Parenchyma Analysis",
+                    "Input segmentation not valid. It must contain segments: right lung, left lung, other.")
+                return False
+
+        else:
+            # Lung mask is a labelmap node (or not set)
+            if not self.lungMaskNode or not self.lungMaskNode.GetImageData():
+                warning = self.preProcessingWidget.warningMessageForLM()
+                if warning == 16384:
+                    self.createLungLabelMap()
+                else:
+                    qt.QMessageBox.warning(slicer.util.mainWindow(), "Parenchyma Analysis", "Please select a Lung Label Map.")
+                    return False
+                return True
+            if self.CTNode.GetImageData().GetDimensions() != self.lungMaskNode.GetImageData().GetDimensions():
+                qt.QMessageBox.warning(slicer.util.mainWindow(), "Parenchyma Analysis", "Input Volumes do not have the same geometry.")
+                return False
+
         return True
 
     def filterInputCT(self):
@@ -398,21 +397,21 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.applyButton.repaint()
         slicer.app.processEvents()
 
-        self.labelNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLLabelMapVolumeNode())
+        self.lungMaskNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLLabelMapVolumeNode())
         name = inputNode.GetName() + '_partialLungLabelMap'
-        self.labelNode.SetName(slicer.mrmlScene.GenerateUniqueName(name))
+        self.lungMaskNode.SetName(slicer.mrmlScene.GenerateUniqueName(name))
 
-        self.preProcessingWidget.createPartialLM(inputNode, self.labelNode)
+        self.preProcessingWidget.createPartialLM(inputNode, self.lungMaskNode)
 
-        label_image = self.labelNode.GetImageData()
+        label_image = self.lungMaskNode.GetImageData()
         shape = list(label_image.GetDimensions())
         input_array = vtk.util.numpy_support.vtk_to_numpy(label_image.GetPointData().GetScalars())
         original_shape = input_array.shape
         input_array = input_array.reshape(shape[2], shape[1], shape[0])  # input_array.transpose([2, 1, 0]) would not work!
 
         input_image = sitk.GetImageFromArray(input_array)
-        input_image.SetSpacing(self.labelNode.GetSpacing())
-        input_image.SetOrigin(self.labelNode.GetOrigin())
+        input_image.SetSpacing(self.lungMaskNode.GetSpacing())
+        input_image.SetOrigin(self.lungMaskNode.GetOrigin())
 
         my_lung_splitter = lung_splitter(split_thirds=True)
         split_lm = my_lung_splitter.execute(input_image)
@@ -423,9 +422,9 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         input_aa[:] = split.reshape(original_shape)
 
-        self.labelNode.StorableModified()
-        self.labelNode.Modified()
-        self.labelNode.InvokeEvent(slicer.vtkMRMLVolumeNode.ImageDataModifiedEvent, self.labelNode)
+        self.lungMaskNode.StorableModified()
+        self.lungMaskNode.Modified()
+        self.lungMaskNode.InvokeEvent(slicer.vtkMRMLVolumeNode.ImageDataModifiedEvent, self.lungMaskNode)
 
         SlicerUtil.changeLabelmapOpacity(0.5)
 
@@ -448,35 +447,38 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.applyButton.repaint()
         slicer.app.processEvents()
 
-        self.logic = CIP_ParenchymaAnalysisLogic(self.CTNode, self.labelNode, self.HistogramFreqOption.checked)
+        self.logic = CIP_ParenchymaAnalysisLogic(self.CTNode, self.lungMaskNode, self.HistogramFreqOption.checked)
         self.populateStats()
-        self.logic.createHistogram(self.labelNode)
+        self.logic.computeEmphysemaOnSlice(self.CTNode, self.logic.labelNode)
+        self.logic.createHistogram(self.logic.labelNode)
         for i in range(len(self.histogramCheckBoxes)):
             self.histogramCheckBoxes[i].setChecked(0)
             self.histogramCheckBoxes[i].hide()
 
         self.HistogramFreqOption.show()
-        for tag in self.rTags:
-            if tag in self.logic.regionTags:
-                self.histogramCheckBoxes[self.rTags.index(tag)].show()
-                self.histogramCheckBoxes[self.rTags.index(tag)].setChecked(1)
+        for regionTag in CIP_ParenchymaAnalysisLogic.allRegionTags:
+            if regionTag in self.logic.regionTags:
+                self.histogramCheckBoxes[CIP_ParenchymaAnalysisLogic.allRegionTags.index(regionTag)].show()
+                self.histogramCheckBoxes[CIP_ParenchymaAnalysisLogic.allRegionTags.index(regionTag)].setChecked(1)
 
         self.HistSection.enabled = True
         self.chartBox.enabled = True
 
         self.applyButton.enabled = True
         self.applyButton.text = "Apply"
-        
-        for color in ['Red', 'Yellow', 'Green']:
-            slicer.app.layoutManager().sliceWidget(color).sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(self.CTNode.GetID())
-            
-        self.labelSelector.setCurrentNode(self.labelNode)
+
+        slicer.util.setSliceViewerLayers(background=self.CTNode)
+
+        if self.lungMaskNode and self.lungMaskNode.GetClassName() != "vtkMRMLSegmentationNode":
+            self.logic.deleteLabelNode()
+        else:
+            self.labelSelector.setCurrentNode(self.logic.labelNode)
 
     def changeHistDisplay(self):
         histList = []
         for i in range(len(self.histogramCheckBoxes)):
             if self.histogramCheckBoxes[i].checked:
-                histList.append(self.rTags[i])
+                histList.append(CIP_ParenchymaAnalysisLogic.allRegionTags[i])
         self.logic.ChangeHistogramFrequency(histList, byRegionVolume=self.HistogramFreqOption.checked)
 
     def onHistogram(self):
@@ -485,7 +487,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         histList = []
         for i in range(len(self.histogramCheckBoxes)):
             if self.histogramCheckBoxes[i].checked:
-                histList.append(self.rTags[i])
+                histList.append(CIP_ParenchymaAnalysisLogic.allRegionTags[i])
 
         self.logic.AddSelectedHistograms(histList)
 
@@ -493,7 +495,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         """chart the parenchyma analysis
         """
         valueToPlot = self.chartOptions[self.chartOption.currentIndex]
-        self.logic.createStatsChart(self.labelNode, valueToPlot)
+        self.logic.createStatsChart(valueToPlot)
 
     def onSaveReport(self):
         """ Save the current values in a persistent csv file
@@ -504,8 +506,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         """
         Print a pdf report
         """
-        emphysema_image_path, ct_slice_path = self.logic.computeEmphysemaOnSlice(self.CTNode, self.labelNode,
-                                                                                 op=0.5)
+        emphysema_image_path, ct_slice_path = self.logic.writeEmphysemaOnSliceToFiles(op=0.5)
         pdfReporter = PdfReporter()
         # Get the values that are going to be inserted in the html template
         caseName = self.CTNode.GetName()
@@ -517,11 +518,11 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         values["@@SUMMARY@@"] = "Emphysema per region: "
 
         pdfRows = """"""
-        for tag in self.logic.regionTags:
+        for regionTag in self.logic.regionTags:
             pdfRows += """<tr>
               <td align="center">{} </td>
               <td align="center">{:.2f} </td>
-            </tr>""".format(tag, self.logic.labelStats['LAA%-950', tag])
+            </tr>""".format(regionTag, self.logic.labelStats['LAA%-950', regionTag])
 
         values["@@TABLE_ROWS@@"] = pdfRows
 
@@ -539,6 +540,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         pdfReporter.printPdf(htmlTemplatePath, values, self.reportPrinted, imagesFileList=imagesFileList)
 
     def reportPrinted(self, reportPath):
+        logging.info(f"PDF report generated: {reportPath}")
         Util.openFile(reportPath)
 
     def onFileSelected(self, fileName):
@@ -547,19 +549,16 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
     def populateStats(self):
         if not self.logic:
             return
-        displayNode = self.labelNode.GetDisplayNode()
-        colorNode = displayNode.GetColorNode()
-        lut = colorNode.GetLookupTable()
         self.items = []
         self.model = qt.QStandardItemModel()
         self.view.setModel(self.model)
         self.view.verticalHeader().visible = False
         row = 0
 
-        for regionTag, regionValue in zip(self.logic.regionTags, self.logic.regionValues):
-            color = qt.QColor()
-            rgb = lut.GetTableValue(regionValue[0])
-            color.setRgb(rgb[0] * 255, rgb[1] * 255, rgb[2] * 255)
+        for regionTag in self.logic.regionTags:
+            rgb = self.logic.regionColors[regionTag]
+            regionValue = self.logic.regionValues[regionTag]
+            color = qt.QColor.fromRgbF(*rgb)
             item = qt.QStandardItem()
             item.setData(color, 1)
             item.setText(str(regionTag))
@@ -569,9 +568,9 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
             self.model.setItem(row, 0, item)
             self.items.append(item)
             col = 1
-            for k in self.logic.keys:
+            for statsColumnKey in CIP_ParenchymaAnalysisLogic.statsColumnKeys:
                 item = qt.QStandardItem()
-                item.setText("%.3f" % self.logic.labelStats[k, regionTag])
+                item.setText("%.3f" % self.logic.labelStats[statsColumnKey, regionTag])
                 item.setTextAlignment(4)
                 self.view.setColumnWidth(col, 15 * len(item.text()))
                 self.model.setItem(row, col, item)
@@ -582,9 +581,9 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.view.setColumnWidth(0, 15 * len('Region'))
         self.model.setHeaderData(0, 1, "Region")
         col = 1
-        for k in self.logic.keys:
-            # self.view.setColumnWidth(col,15*len(k))
-            self.model.setHeaderData(col, 1, k)
+        for statsColumnKey in CIP_ParenchymaAnalysisLogic.statsColumnKeys:
+            # self.view.setColumnWidth(col,15*len(statsColumnKey))
+            self.model.setHeaderData(col, 1, statsColumnKey)
             col += 1
 
 class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
@@ -594,19 +593,78 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
     """
     __preventDialogs__ = False
 
-    def __init__(self, CTNode, labelNode, freq_by_region_volume=True):
-        self.keys = ["LAA%-950", "LAA%-925", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "HAA%-500", "HAA%-250",
+    statsColumnKeys = ["LAA%-950", "LAA%-925", "LAA%-910", "LAA%-856", "HAA%-700", "HAA%-600", "HAA%-500", "HAA%-250",
                      "HAA%-600-250", "Perc10", "Perc15", "Mean", "Std", "Kurtosis", "Skewness",
                      "Ventilation Heterogeneity", "Mass", "Volume"]
 
-        rTags = ["WholeLung", "RightLung", "RightLung", "RightLung", "LeftLung", "LeftLung", "RUL", "RML",
+    # From ChestConventions.xml:
+    #   WHOLELUNG: 1
+    #   RIGHTLUNG: 2
+    #   LEFTLUNG: 3
+    #   RIGHTSUPERIORLOBE: 4
+    #   RIGHTMIDDLELOBE: 5
+    #   RIGHTINFERIORLOBE: 6
+    #   LEFTSUPERIORLOBE: 7
+    #   LEFTINFERIORLOBE: 8
+    #   LEFTUPPERTHIRD: 9
+    #   LEFTMIDDLETHIRD: 10
+    #   LEFTLOWERTHIRD: 11
+    #   RIGHTUPPERTHIRD: 12
+    #   RIGHTMIDDLETHIRD: 13
+    #   RIGHTLOWERTHIRD: 14
+
+    allRegionTags = ["WholeLung", "RightLung", "RightLung", "RightLung", "LeftLung", "LeftLung", "RUL", "RML",
                  "RLL", "LUL", "LLL", "LUT", "LMT", "LLT", "RUT", "RMT", "RLT"]
-        self.regionTags = []
-        self.regionValues = [(1, 14), (2, 2), (4, 6), (12, 14), (3, 3), (7, 11), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8),
-                             (9, 9), (10, 10), (11, 11), (12, 12), (13, 13), (14, 14)]
-        self.valuesDictionary = {}
+
+    allRegionValues = [
+        (1, 14),  # all lung labels
+        (2, 2),   # right lung in one segment
+        (4, 6),   # right lung as 3 lobes
+        (12, 14), # right lung as 3 thirds
+        (3, 3),   # left lung as one segment
+        (7, 11),  # left lung as 2 lobes and 3 thirds
+        # Right lobes
+        (4, 4),   # RUL (RSL)
+        (5, 5),   # RML
+        (6, 6),   # RLL (RIL)
+        # Left lobes
+        (7, 7),   # LUL (LSL)
+        (8, 8),   # LLL (LIL)
+        # Right thirds
+        (9, 9),   # LUT
+        (10, 10), # LMT
+        (11, 11), # LLT
+        # Left thirds
+        (12, 12), # RUT
+        (13, 13), # RMT
+        (14, 14)  # RLT
+        ]
+
+    def __init__(self, CTNode, lungMaskNode, freq_by_region_volume=True):
+
+        self.regionTags = [] # Found regions
+        self.regionColors = {} # map regionTag to RGB color
+        self.regionValues = {}  # map regionTag to label value range
         cubicMMPerVoxel = reduce(lambda x, y: x * y, CTNode.GetSpacing())
         litersPerCubicMM = 0.000001
+
+        # Center slices, can be used for creating images for reporting
+        self.sitk_ct_slice = None
+        self.sitk_emph_slice = None
+
+        if lungMaskNode and lungMaskNode.GetClassName() == "vtkMRMLSegmentationNode":
+            # Got a segmentation node, create a label node from it
+            self.labelNode, self.colorTableNode = self.convertSegmentsToCipLabelmapNode(CTNode, lungMaskNode)
+        else:
+            # Got a label node, use it as is
+            self.labelNode = lungMaskNode
+
+        if not self.labelNode:
+            raise ValueError("Invalid lungMaskNode")
+
+        displayNode = self.labelNode.GetDisplayNode()
+        colorNode = displayNode.GetColorNode()
+        lut = colorNode.GetLookupTable()
 
         # TODO: progress and status updates
         # this->InvokeEvent(vtkParenchymaAnalysisLogic::StartLabelStats, (void*)"start label stats")
@@ -620,7 +678,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         parameters = dict()
         parameters['max'] = 0
         parameters['min'] = -1200
-        parameters['ipl'] = labelNode.GetID()
+        parameters['ipl'] = self.labelNode.GetID()
         parameters['ic'] = CTNode.GetID()
         parameters['op'] = CTPhenoFile
         parameters['oh'] = CTHistoFile
@@ -638,50 +696,53 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
 
         self.freq_by_region_volume = freq_by_region_volume
 
-        datalabel_arr = vtk.util.numpy_support.vtk_to_numpy(labelNode.GetImageData().GetPointData().GetScalars())
+        datalabel_arr = vtk.util.numpy_support.vtk_to_numpy(self.labelNode.GetImageData().GetPointData().GetScalars())
         data_arr = vtk.util.numpy_support.vtk_to_numpy(CTNode.GetImageData().GetPointData().GetScalars())
 
-        for value, tag in zip(self.regionValues, rTags):
+        for value, regionTag in zip(CIP_ParenchymaAnalysisLogic.allRegionValues, CIP_ParenchymaAnalysisLogic.allRegionTags):
             data = data_arr[(datalabel_arr >= value[0]) & (datalabel_arr <= value[1])]
 
             if data.any():
                 mean_data = numpy.mean(data)
                 std_data = numpy.std(data)
-                self.labelStats['LAA%-950', tag] = 100.0 * (data < -950).sum() / float(data.size)
-                self.labelStats['LAA%-925', tag] = 100.0 * (data < -925).sum() / float(data.size)
-                self.labelStats['LAA%-910', tag] = 100.0 * (data < -910).sum() / float(data.size)
-                self.labelStats['LAA%-856', tag] = 100.0 * (data < -856).sum() / float(data.size)
-                self.labelStats['HAA%-700', tag] = 100.0 * (data > -700).sum() / float(data.size)
-                self.labelStats['HAA%-600', tag] = 100.0 * (data > -600).sum() / float(data.size)
-                self.labelStats['HAA%-500', tag] = 100.0 * (data > -500).sum() / float(data.size)
-                self.labelStats['HAA%-250', tag] = 100.0 * (data > -250).sum() / float(data.size)
-                self.labelStats['HAA%-600-250', tag] = 100.0 * (numpy.logical_and(data > -600,
+                self.labelStats['LAA%-950', regionTag] = 100.0 * (data < -950).sum() / float(data.size)
+                self.labelStats['LAA%-925', regionTag] = 100.0 * (data < -925).sum() / float(data.size)
+                self.labelStats['LAA%-910', regionTag] = 100.0 * (data < -910).sum() / float(data.size)
+                self.labelStats['LAA%-856', regionTag] = 100.0 * (data < -856).sum() / float(data.size)
+                self.labelStats['HAA%-700', regionTag] = 100.0 * (data > -700).sum() / float(data.size)
+                self.labelStats['HAA%-600', regionTag] = 100.0 * (data > -600).sum() / float(data.size)
+                self.labelStats['HAA%-500', regionTag] = 100.0 * (data > -500).sum() / float(data.size)
+                self.labelStats['HAA%-250', regionTag] = 100.0 * (data > -250).sum() / float(data.size)
+                self.labelStats['HAA%-600-250', regionTag] = 100.0 * (numpy.logical_and(data > -600,
                                                                                   data < -250)).sum() / float(data.size)
-                # self.labelStats[cycle,'Perc10',tag]=self.percentile(data,.1)
-                # self.labelStats[cycle,'Perc15',tag]=self.percentile(data,.15)
-                self.labelStats['Perc10',tag]=numpy.percentile(data,10)
-                self.labelStats['Perc15',tag]=numpy.percentile(data,15)
-                self.labelStats['Mean', tag] = mean_data
-                self.labelStats['Std', tag] = std_data
-                self.labelStats['Kurtosis', tag] = self.kurt(data, mean_data, std_data)
-                self.labelStats['Skewness', tag] = self.skew(data, mean_data, std_data)
-                self.labelStats['Ventilation Heterogeneity', tag] =  self.vh(data)
-                self.labelStats['Mass',tag] = self.mass(data,cubicMMPerVoxel)
-                self.labelStats['Volume', tag] = data.size * cubicMMPerVoxel * litersPerCubicMM
+                # self.labelStats[cycle,'Perc10',regionTag]=self.percentile(data,.1)
+                # self.labelStats[cycle,'Perc15',regionTag]=self.percentile(data,.15)
+                self.labelStats['Perc10',regionTag]=numpy.percentile(data,10)
+                self.labelStats['Perc15',regionTag]=numpy.percentile(data,15)
+                self.labelStats['Mean', regionTag] = mean_data
+                self.labelStats['Std', regionTag] = std_data
+                self.labelStats['Kurtosis', regionTag] = self.kurt(data, mean_data, std_data)
+                self.labelStats['Skewness', regionTag] = self.skew(data, mean_data, std_data)
+                self.labelStats['Ventilation Heterogeneity', regionTag] =  self.vh(data)
+                self.labelStats['Mass',regionTag] = self.mass(data,cubicMMPerVoxel)
+                self.labelStats['Volume', regionTag] = data.size * cubicMMPerVoxel * litersPerCubicMM
 
                 # Compute histograms
                 data = data[data < -350]
                 binContainers = numpy.arange(data.min(), data.max() + 2)
                 histogram, bins = numpy.histogram(data, bins=binContainers, density=True)
                 self.regionHists_by_region_volume[
-                    tag] = histogram * data.size * cubicMMPerVoxel * litersPerCubicMM * 1000
-                self.regionHists[tag] = histogram
+                    regionTag] = histogram * data.size * cubicMMPerVoxel * litersPerCubicMM * 1000
+                self.regionHists[regionTag] = histogram
 
-                self.regionBins[tag] = bins
+                self.regionBins[regionTag] = bins
 
-                self.regionTags.append(tag)
+                self.regionTags.append(regionTag)
 
-                self.valuesDictionary[tag] = value
+                rgb = lut.GetTableValue(value[0])
+                self.regionColors[regionTag] = [rgb[0], rgb[1], rgb[2]]
+
+                self.regionValues[regionTag] = value
 
                 ## Read files and populate array
 
@@ -802,19 +863,19 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
             qt.QMessageBox.warning(slicer.util.mainWindow(), "Data not existing", "No statistics calculated")
             return
 
-        for tag in self.regionTags:
+        for regionTag in self.regionTags:
             e = {}
             e['Volume Name'] = CTNode.GetName()
-            e['Region'] = tag
-            for k in self.keys:
-                e[k] = self.labelStats[k, tag]
+            e['Region'] = regionTag
+            for statsColumnKey in CIP_ParenchymaAnalysisLogic.statsColumnKeys:
+                e[statsColumnKey] = self.labelStats[statsColumnKey, regionTag]
 
             repWidget.insertRow(**e)
 
         if not self.__preventDialogs__:
             qt.QMessageBox.information(slicer.util.mainWindow(), 'Data saved', 'The data were saved successfully')
 
-    def createStatsChart(self, labelNode, valueToPlot):
+    def createStatsChart(self, valueToPlot):
         """Make a MRML chart of the current stats
         """
         self.setChartLayout()
@@ -822,15 +883,12 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
 
         arrayNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLDoubleArrayNode())
         array = arrayNode.GetArray()
-        samples = len(self.regionTags)
-        tuples = samples
-        array.SetNumberOfTuples(tuples)
+        array.SetNumberOfTuples(len(self.regionTags))
         tuple = 0
 
-        for i in range(samples):
-            index = self.regionTags[i]
+        for i, regionTag in enumerate(self.regionTags):
             array.SetComponent(tuple, 0, i)
-            array.SetComponent(tuple, 1, self.labelStats[valueToPlot, index])
+            array.SetComponent(tuple, 1, self.labelStats[valueToPlot, regionTag])
             array.SetComponent(tuple, 2, 0)
             tuple += 1
 
@@ -847,27 +905,44 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         chartNode.SetProperty('default', 'showLegend', 'off')
 
         # series level properties
-        if labelNode.GetDisplayNode() is not None and labelNode.GetDisplayNode().GetColorNode() is not None:
-            colorNode = labelNode.GetDisplayNode().GetColorNode()
+        colorTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLColorTableNode", "StatsChartColors")
+        colorTableNode.SetTypeToUser()
+        colorTableNode.HideFromEditorsOff()
+        colorTableNode.SetNumberOfColors(len(self.regionTags))
+        for colorIndex, regionTag in enumerate(self.regionTags):
+            color = self.regionColors[regionTag]
+            colorTableNode.SetColor(colorIndex, regionTag, color[0], color[1], color[2], 1.0)
+        colorTableNode.NamesInitialisedOn()
 
-            newDisplayNode = slicer.vtkMRMLLabelMapVolumeDisplayNode()
-            newDisplayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeFileGenericAnatomyColors.txt')
-            slicer.mrmlScene.AddNode(newDisplayNode)
-            newColorNode = newDisplayNode.GetColorNode()
+        chartNode.SetProperty(valueToPlot, 'lookupTable', colorTableNode.GetID())
 
-            colorNumber = 0
-            for tag in self.regionTags:
-                c = [0, 0, 0, 0]
-                value = self.valuesDictionary[tag]
-                if value[0] == value[1]:
-                    colorNode.SetColorName(value[0], tag)
-                    colorNode.GetColor(value[0], c)
-                    newColorNode.SetColor(colorNumber, c[0], c[1], c[2])
+    def convertSegmentsToCipLabelmapNode(self, CTNode, segmentationNode):
+        colorTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLColorTableNode", "__temp__chest_region_colors_basic")
+        colorTableNode.SetTypeToUser()
+        colorTableNode.HideFromEditorsOff()
+        colorTableNode.SetNumberOfColors(69)
+        colorTableNode.SetColor( 0, "background", 0.0, 0.0, 0.0, 0.0)
+        colorTableNode.SetColor( 1, "whole lung", 0.42, 0.38, 0.75, 1.0)
+        colorTableNode.SetColor( 2, "right lung", 0.26, 0.64, 0.10, 1.0)
+        colorTableNode.SetColor( 3, "left lung",  0.80, 0.11, 0.36, 1.0)
+        colorTableNode.SetColor(58, "trachea",    0.49, 0.49, 0.79, 1.0)
+        colorTableNode.NamesInitialisedOn()
+        labelmapNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode", "__temp__" + segmentationNode.GetName() + "_LabelMap")
+        segmentIdList = ["right lung", "left lung", "other"]
+        # Segment ids must be converted into a vtkStringArray to be used in ExportSegmentsToLabelmapNode
+        segmentIds = vtk.vtkStringArray()
+        for segmentId in segmentIdList:
+          segmentIds.InsertNextValue(segmentId)
+        slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(segmentationNode, segmentIds, labelmapNode, \
+            CTNode, slicer.vtkSegmentation.EXTENT_REFERENCE_GEOMETRY, colorTableNode)
+        return labelmapNode, colorTableNode
 
-                newColorNode.SetColorName(colorNumber, tag)
-                colorNumber += 1
-
-            chartNode.SetProperty(valueToPlot, 'lookupTable', newColorNode.GetID())
+    def deleteLabelNode(self):
+        # cleanup
+        if self.labelNode:
+            slicer.mrmlScene.RemoveNode(self.labelNode)
+        if self.colorTableNode: 
+            slicer.mrmlScene.RemoveNode(self.colorTableNode)
 
     def createHistogram(self, labelNode):
         self.setHistogramLayout()
@@ -885,27 +960,23 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         plotChartNode.SetYAxisRangeAuto(False)
         plotChartNode.SetYAxisRange(0, 50)
 
-        colorNode = labelNode.GetDisplayNode().GetColorNode()
-        newDisplayNode = slicer.vtkMRMLLabelMapVolumeDisplayNode()
-        newDisplayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeFileGenericAnatomyColors.txt')
-
-        for tag in self.regionTags:
+        for regionTag in self.regionTags:
             if self.freq_by_region_volume:
-                histogram = self.regionHists_by_region_volume[tag]
+                histogram = self.regionHists_by_region_volume[regionTag]
             else:
-                histogram = self.regionHists[tag]
+                histogram = self.regionHists[regionTag]
 
-            bins = self.regionBins[tag]
+            bins = self.regionBins[regionTag]
 
-            tableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", 'TableNode_{}'.format(tag))
+            tableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", 'TableNode_{}'.format(regionTag))
             table = tableNode.GetTable()
 
             arrX = vtk.vtkFloatArray()
-            arrX.SetName("bins".format(tag))
+            arrX.SetName("bins".format(regionTag))
             table.AddColumn(arrX)
 
             arrY = vtk.vtkFloatArray()
-            arrY.SetName("freq_{}".format(tag))
+            arrY.SetName("freq_{}".format(regionTag))
             table.AddColumn(arrY)
 
             dataSamples = histogram.size
@@ -915,27 +986,17 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
                 table.SetValue(i, 0, float(bins[i]))
                 table.SetValue(i, 1, histogram[i])
 
-            plotSeriesNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotSeriesNode", tag)
+            plotSeriesNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotSeriesNode", regionTag)
             plotSeriesNode.SetAndObserveTableNodeID(tableNode.GetID())
-            plotSeriesNode.SetXColumnName("bins".format(tag))
-            plotSeriesNode.SetYColumnName("freq_{}".format(tag))
+            plotSeriesNode.SetXColumnName("bins".format(regionTag))
+            plotSeriesNode.SetYColumnName("freq_{}".format(regionTag))
             plotSeriesNode.SetPlotType(slicer.vtkMRMLPlotSeriesNode.PlotTypeScatter)
             plotSeriesNode.SetLineStyle(slicer.vtkMRMLPlotSeriesNode.LineStyleSolid)
             plotSeriesNode.SetLineWidth(2.)
             plotSeriesNode.SetMarkerStyle(slicer.vtkMRMLPlotSeriesNode.MarkerStyleNone)
             # plotSeriesNode.SetUniqueColor('vtkMRMLColorTableNodeFileGenericAnatomyColors.txt')
-            c = [0,0,0,0]
-            if tag == 'WholeLung':
-                colorNode.GetColor(0, c)
-            elif tag == 'RightLung':
-                colorNode.GetColor(1, c)
-            elif tag == 'LeftLung':
-                colorNode.GetColor(2, c)
-            else:
-                value = self.valuesDictionary[tag]
-                colorNode.GetColor(value[0], c)
-
-            plotSeriesNode.SetColor(c[0], c[1], c[2])
+            rgb = self.regionColors[regionTag]
+            plotSeriesNode.SetColor(*rgb)
             plotChartNode.AddAndObservePlotSeriesNodeID(plotSeriesNode.GetID())
 
         histogramViewNode.SetPlotChartNodeID(plotChartNode.GetID())
@@ -943,25 +1004,25 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
     def ChangeHistogramFrequency(self, histogramsList, byRegionVolume=True):
         plotChartNode = SlicerUtil.getNode('PlotChartNode')
         plotChartNode.RemoveAllPlotSeriesNodeIDs()
-        for tag in self.regionTags:
+        for regionTag in self.regionTags:
             if byRegionVolume:
                 plotChartNode.SetYAxisRange(0, 50)
-                histogram = self.regionHists_by_region_volume[tag]
+                histogram = self.regionHists_by_region_volume[regionTag]
             else:
                 plotChartNode.SetYAxisRange(0, 0.01)
-                histogram = self.regionHists[tag]
+                histogram = self.regionHists[regionTag]
 
-            bins = self.regionBins[tag]
+            bins = self.regionBins[regionTag]
 
-            tableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", 'TableNode_{}'.format(tag))
+            tableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", 'TableNode_{}'.format(regionTag))
             table = tableNode.GetTable()
 
             arrX = vtk.vtkFloatArray()
-            arrX.SetName("bins".format(tag))
+            arrX.SetName("bins".format(regionTag))
             table.AddColumn(arrX)
 
             arrY = vtk.vtkFloatArray()
-            arrY.SetName("freq_{}".format(tag))
+            arrY.SetName("freq_{}".format(regionTag))
             table.AddColumn(arrY)
 
             dataSamples = histogram.size
@@ -971,10 +1032,10 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
                 table.SetValue(i, 0, float(bins[i]))
                 table.SetValue(i, 1, histogram[i])
 
-            plotSeriesNode = SlicerUtil.getNode(tag)
+            plotSeriesNode = SlicerUtil.getNode(regionTag)
             plotSeriesNode.SetAndObserveTableNodeID(tableNode.GetID())
-            plotSeriesNode.SetXColumnName("bins".format(tag))
-            plotSeriesNode.SetYColumnName("freq_{}".format(tag))
+            plotSeriesNode.SetXColumnName("bins".format(regionTag))
+            plotSeriesNode.SetYColumnName("freq_{}".format(regionTag))
 
         self.AddSelectedHistograms(histogramsList)
 
@@ -983,8 +1044,8 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         plotChartNode = SlicerUtil.getNode('PlotChartNode')
         plotChartNode.RemoveAllPlotSeriesNodeIDs()
 
-        for tag in histogramsList:
-            plotSeriesNode = SlicerUtil.getNode(tag)
+        for regionTag in histogramsList:
+            plotSeriesNode = SlicerUtil.getNode(regionTag)
             plotChartNode.AddAndObservePlotSeriesNodeID(plotSeriesNode.GetID())
 
         histogramViewNode.SetPlotChartNodeID(plotChartNode.GetID())
@@ -1090,8 +1151,11 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         layoutManager.layoutLogic().GetLayoutNode().AddLayoutDescription(customLayoutId, customLayout)
         layoutManager.setLayout(customLayoutId)
 
-    def computeEmphysemaOnSlice(self, CTNode, labelNode, op=0.2):
-        import tempfile
+    def computeEmphysemaOnSlice(self, CTNode, labelNode):
+        """Get a center slice of the CT and the emphysema label and save into
+        self.sitk_ct_slice and self.sitk_emph_slice.
+        """
+
         import numpy as np
         import SimpleITK as sitk
 
@@ -1111,23 +1175,29 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         emph_slice[np.logical_and(emph_slice >= -3000.0, emph_slice < -950.0)] = 1
         emph_slice = emph_slice.astype(np.uint8)
 
-        emph_slice *= slice_label
+        emph_slice[slice_label==0] = 0
 
         sitk_ct_slice = sitk.GetImageFromArray(ct_slice.transpose())
-        sitk_emph_slice = sitk.GetImageFromArray(emph_slice.transpose())
-
-        sitk_ct_slice = sitk.Cast(sitk.IntensityWindowing(sitk_ct_slice, windowMinimum=-1200, windowMaximum=200,
+        self.sitk_ct_slice = sitk.Cast(sitk.IntensityWindowing(sitk_ct_slice, windowMinimum=-1200, windowMaximum=200,
                                                           outputMinimum=0, outputMaximum=255), sitk.sitkUInt8)
 
-        label_overlay = sitk.LabelOverlay(sitk_ct_slice, sitk_emph_slice, opacity=op, colormap=[255, 51, 51])
+        self.sitk_emph_slice = sitk.GetImageFromArray(emph_slice.transpose())
+
+    def writeEmphysemaOnSliceToFiles(self, op=0.2):
+
+        label_overlay = sitk.LabelOverlay(self.sitk_ct_slice, self.sitk_emph_slice, opacity=op, colormap=[255, 51, 51])
         # label_overlay = sitk.LabelOverlay(sitk_ct_slice, sitk_emph_slice, opacity=op)
 
+        label_ovelay_img = sitk.Flip(label_overlay, flipAxes=(False, True))
+        ct_img = sitk.Flip(self.sitk_ct_slice, flipAxes=(False, True))
+
+        import tempfile
         tmpFolder = tempfile.mkdtemp()
         img_path = os.path.join(tmpFolder, "tmpImg__.png")
         img_path_CT = os.path.join(tmpFolder, "tmpImgCT__.png")
 
-        sitk.WriteImage(sitk.Flip(label_overlay, flipAxes=(False, True)), img_path)
-        sitk.WriteImage(sitk.Flip(sitk_ct_slice, flipAxes=(False, True)), img_path_CT)
+        sitk.WriteImage(label_ovelay_img, img_path)
+        sitk.WriteImage(ct_img, img_path_CT)
 
         return img_path, img_path_CT
 

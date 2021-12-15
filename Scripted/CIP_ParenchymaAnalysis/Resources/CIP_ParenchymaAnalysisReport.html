@@ -47,33 +47,33 @@
   </head>
   <body>
     <div  class="page">
-      <div  style="width:100%"> <img  src="ACIL.png"  alt="logo" style="width:64px">
-      </div>
-      <div  style="float:left; font-size: 15px;">
-        <h1>Emphysema Report</h1>
-      </div>
+      <img  src="ACIL.png"  alt="logo" width="30">
+      <h1>Emphysema Report</h1>
       <div  style="float:right; margin: 20px 0 0 30px; font-size: 12px; color: rgb(187, 187, 187);">
         Powered by: <b>Applied Chest Imaging Laboratory (ACIL)</b>
         <br>Brigham and Women's Hospital. Boston (MA). USA
       </div>
-      <div  style="clear: both;">
-        <div style="float: left;">
-          <p style="font-style: oblique">@@SUBJECT@@</p>
-          <span style="font-style: normal">Global Level Of Emphysema: </span>
-          <span style="font-style: normal; font-weight: bold" >@@GLOBAL_LEVEL@@</span>
-          <p>&nbsp;</p>
-          <img style="float: right; width: 25%; height: 25%?" class="rotate180" src="@@EMPHYSEMA_IMAGE@@">
-          <img style="float: right; width: 25%; height: 25%?" class="rotate180" src="@@CT_IMAGE@@">
-          <p style="font-style: normal; float: left">@@SUMMARY@@</p>
-          <table class="u-pull-left">
-            <thead>
-              <th>Region</th>
-              <th>Level of Emphysema (%)</th>
-            </thead>
-            <tbody>
-              @@TABLE_ROWS@@
-            </tbody>
-          </table>
+      <p style="font-style: oblique">@@SUBJECT@@</p>
+      <span style="font-style: normal">Global Level Of Emphysema: </span>
+      <span style="font-style: normal; font-weight: bold" >@@GLOBAL_LEVEL@@</span>
+      <p>&nbsp;</p>
+      <img class="rotate180" src="@@EMPHYSEMA_IMAGE@@" width="300">
+      <p>&nbsp;</p>
+      <img class="rotate180" src="@@CT_IMAGE@@" width="300">
+      <p>&nbsp;</p>
+      <p style="font-style: normal;">@@SUMMARY@@</p>
+      <p>&nbsp;</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Region</th>
+            <th>Level of Emphysema (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @@TABLE_ROWS@@
+        </tbody>
+      </table>
     </div>
   </body>
 </html>

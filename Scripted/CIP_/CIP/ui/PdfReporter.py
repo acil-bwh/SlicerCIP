@@ -31,22 +31,11 @@ class PdfReporter(object):
         self.__pdfOutputPath__ = pdfOutputPath if pdfOutputPath is not None else os.path.join(tempHtmlFolder, "report.pdf")
         self.__callbackFunction__ = callbackFunction
 
-        self.webView = qt.QWebView()
-        self.webView.settings().setAttribute(qt.QWebSettings.DeveloperExtrasEnabled, True)
-        self.webView.connect('loadFinished(bool)', self.__webViewFormLoadedCallback__)
-        self.webView.show()
-
         # Generate the Html
-        with open(htmlTemplatePath, "r+b") as f:
+        with open(htmlTemplatePath, "r") as f:
             html = f.read()
         for key, value in values.items():
             html = html.replace(key, value)
-
-        # Save the file in the temporary folder
-        htmlPath = os.path.join(tempHtmlFolder, "temp__.html")
-        with open(htmlPath, "w") as f:
-            f.write(html)
-        logging.debug("Html generated in {}".format(htmlPath))
 
         # If we need images, copy them to the temporary folder
         if imagesFileList:
@@ -54,10 +43,34 @@ class PdfReporter(object):
                 fileName = os.path.basename(im)
                 shutil.copy(im, os.path.join(tempHtmlFolder, fileName))
 
-        # Assign the html file to the viewer
-        u = qt.QUrl(htmlPath)
-        self.webView.setUrl(u)
+        if hasattr(qt,'QWebView'):
+            # Save the file in the temporary folder
+            htmlPath = os.path.join(tempHtmlFolder, "temp__.html")
+            with open(htmlPath, "w") as f:
+                f.write(html)
+            logging.debug("Html generated in {}".format(htmlPath))
+            # Create a web browser for rendering html
+            self.webView = qt.QWebView()
+            self.webView.settings().setAttribute(qt.QWebSettings.DeveloperExtrasEnabled, True)
+            self.webView.connect('loadFinished(bool)', self.__webViewFormLoadedCallback__)
+            u = qt.QUrl(htmlPath)
+            self.webView.setUrl(u)
+            self.webView.show()
+        else:
+            printer = qt.QPrinter(qt.QPrinter.PrinterResolution)
+            printer.setOutputFormat(qt.QPrinter.PdfFormat)
+            printer.setPaperSize(qt.QPrinter.A4)
+            printer.setOutputFileName(self.__pdfOutputPath__)
 
+            doc = qt.QTextDocument()
+            doc.setHtml(html)
+            doc.baseUrl = qt.QUrl.fromLocalFile(tempHtmlFolder+"/")
+            doc.setPageSize(qt.QSizeF(printer.pageRect().size()))  # hide the page number
+            doc.print(printer)
+
+            # Call the callback
+            self.__callbackFunction__(self.__pdfOutputPath__)
+            self.__callbackFunction__ = None
 
     def __webViewFormLoadedCallback__(self, loaded):
         if loaded:
