@@ -254,8 +254,11 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         self.segmentEditorWidget.setMRMLSegmentEditorNode(self.segmentEditorNode)
         self.segmentEditorWidget.setMasterVolumeNodeSelectorVisible(False)
         self.segmentEditorWidget.setSegmentationNodeSelectorVisible(False)
+        self.segmentEditorWidget.setSwitchToSegmentationsButtonVisible(False)
+        self.segmentEditorWidget.findChild( 'ctkMenuButton', 'Show3DButton' ).hide()
+        self.segmentEditorWidget.findChild( 'QPushButton', 'AddSegmentButton' ).hide()
+        self.segmentEditorWidget.findChild( 'QPushButton', 'RemoveSegmentButton' ).hide()
         self.segmentEditorWidget.show()
-        #self.segmentEditorWidget.setSwitchToSegmentationsButtonVisible(False)
         self.segmentEditorLayout.addWidget(self.segmentEditorWidget)       
 
     def _onCalibrateButtonClicked_(self):
