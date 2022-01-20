@@ -11,6 +11,7 @@ from slicer.ScriptedLoadableModule import *
 
 from CIP.logic.SlicerUtil import SlicerUtil
 import CIP.ui as CIPUI
+from slicer.util import VTKObservationMixin
 
 
 class CIP_Calibration(ScriptedLoadableModule):
@@ -29,27 +30,17 @@ class CIP_Calibration(ScriptedLoadableModule):
 ######################################
 # CIP_StructuresDetectionWidget
 #######################################
-class CIP_CalibrationWidget(ScriptedLoadableModuleWidget):
+class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
     """GUI object"""
     def __init__(self, parent):
         ScriptedLoadableModuleWidget.__init__(self, parent)
-
-        # from functools import partial
-        # def __onNodeAddedObserver__(self, caller, eventId, callData):
-        #     """Node added to the Slicer scene"""
-        #     # if callData.GetClassName() == 'vtkMRMLScalarVolumeNode' \
-        #     #         and slicer.util.mainWindow().moduleSelector().selectedModule == self.moduleName:
-        #     #     self.__onNewVolumeLoaded__(callData)
-        #     #if callData.GetClassName() == 'vtkMRMLLabelMapVolumeNode':
-        #     self._onNewLabelmapLoaded_(callData)
-        #
-        #
-        # self.__onNodeAddedObserver__ = partial(__onNodeAddedObserver__, self)
-        # self.__onNodeAddedObserver__.CallDataType = vtk.VTK_OBJECT
-
+        # needed for event observation
+        VTKObservationMixin.__init__(self)  
         self.firstLoad = True
         self.activeEditorTools = None
-        self.pendingChangesIdsList = []
+        self.inputVolume = None
+        self.outputSegmentation = None
+        self.labelmapVolumeNode = None
 
     @property
     def labelmapNodeNameExtension(self):
@@ -62,10 +53,7 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget):
     def setup(self):
         """Init the widget """
         # self.firstLoad = True
-        ScriptedLoadableModuleWidget.setup(self)
-        self.disableEvents = False
-
-
+        ScriptedLoadableModuleWidget.setup(self) 
         # Create objects that can be used anywhere in the module. Example: in most cases there should be just one
         # object of the logic class
         self._initLogic_()
@@ -75,15 +63,13 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget):
         self.mainAreaCollapsibleButton = ctk.ctkCollapsibleButton()
         self.mainAreaCollapsibleButton.text = "Main area"
         self.layout.addWidget(self.mainAreaCollapsibleButton, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
-        # self.layout.addWidget(self.mainAreaCollapsibleButton)
-        # self.mainLayout = qt.QGridLayout(self.mainAreaCollapsibleButton)
         self.mainLayout = qt.QFormLayout(self.mainAreaCollapsibleButton)
+
         row = 0
 
         # Node selector
         volumeLabel = qt.QLabel("Active volume: ")
         volumeLabel.setStyleSheet("margin-left:5px")
-        # self.mainLayout.addWidget(volumeLabel, row, 0)
 
         self.volumeSelector = slicer.qMRMLNodeComboBox()
         self.volumeSelector.nodeTypes = ("vtkMRMLScalarVolumeNode", "")
@@ -96,17 +82,14 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget):
         self.volumeSelector.showChildNodeTypes = False
         self.volumeSelector.setMRMLScene(slicer.mrmlScene)
         self.volumeSelector.setMinimumWidth(150)
-        # self.volumeSelector.setStyleSheet("margin: 15px 0")
-        # self.volumeSelector.selectNodeUponCreation = False
-        #self.mainLayout.addWidget(self.volumeSelector, row, 1)
         self.mainLayout.addRow(volumeLabel, self.volumeSelector)
         self.volumeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self._onMainVolumeChanged_)
+        self.inputVolume = self.volumeSelector.currentNode()
 
         row += 1
         lb = qt.QLabel("Click to select the calibration type and, if needed, modify the HU value expected for that area")
         lb.setStyleSheet("margin:10px 0 10px 5px")
         self.mainLayout.addRow(lb)
-        #self.mainLayout.addWidget(lb, row, 0, 1, 2)
 
         self.typeRadioButtonGroup = qt.QButtonGroup()
         self.typeRadioButtonGroup.connect("buttonClicked (QAbstractButton*)", self.__onTypeRadioButtonClicked__)
@@ -114,26 +97,23 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget):
         self.rbAir = qt.QRadioButton("Air")
         self.rbAir.setStyleSheet("margin-left:10px; margin-top: 5px")
         self.typeRadioButtonGroup.addButton(self.rbAir, 1)
-        # self.mainLayout.addWidget(self.rbAir, row, 0)
 
         self.txtAir = qt.QLineEdit()
         self.txtAir.setText("-1000")
         self.txtAir.setFixedWidth(80)
         self.txtAir.setValidator(qt.QIntValidator())
         self.mainLayout.addRow(self.rbAir, self.txtAir)
-
+        self.rbAir.setChecked(True)
 
         row += 1
         self.rbBlood = qt.QRadioButton("Blood")
         self.rbBlood.setStyleSheet("margin-left:10px; margin-top: 5px")
         self.typeRadioButtonGroup.addButton(self.rbBlood, 2)
-        # self.mainLayout.addWidget(self.rbBlood, row, 0)
 
         self.txtBlood = qt.QLineEdit()
         self.txtBlood.setText("50")
         self.txtBlood.setFixedWidth(80)
         self.txtBlood.setValidator(qt.QIntValidator())
-        # self.mainLayout.addWidget(self.txtBlood, row, 1)
         self.mainLayout.addRow(self.rbBlood, self.txtBlood)
         row += 1
 
@@ -147,8 +127,16 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget):
         self.mainLayout.addRow(None, self.calibrateButton)
         self.calibrateButton.connect('clicked()', self._onCalibrateButtonClicked_)
 
-        self._createEditorWidget_()
-        self.setEditorValues()
+        # Connect observers to scene events
+        self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
+        self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
+        self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onSceneEndImport)
+
+        # Create the standard segment editor widget
+        self._createSegmentEditorWidget_()
+        # Load master nodes
+        self.checkMasterAndSegmentationNodes()
+
 
 
     @property
@@ -167,86 +155,62 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget):
         """Create a new logic object for the plugin"""
         self.logic = CIP_CalibrationLogic()
 
-    def checkMasterAndLabelMapNodes(self):
-        """Set an appropiate MasterNode LabelMapNode to the Editor.
-        The options are:
-            - There is no masterNode => try to load the one that the user is watching right now, and go on if so.
-            - There is masterNode and there is no label map => create a default label map node with the name "MasterNodeName_structuresDetection" and set the StructuresDetectionColorMap
-            - There is masterNode and there is label map => check if the name of the label map is "MasterNodeName_structuresDetection".
-                - If so: set this one
-                - Otherwise: create a new labelmap with the name 'MasterNodeName_structureslabelMap' """
-        if self.disableEvents: return  # To avoid infinite loops
+    def checkMasterAndSegmentationNodes(self):
+        """Set an appropiate MasterNode Segment to the Segment Editor,"""
 
-        if self.editorWidget.masterVolume:
-            masterNode = self.editorWidget.masterVolume
-            SlicerUtil.logDevelop("Master node in Editor = " + masterNode.GetName(), True)
-        else:
-            SlicerUtil.logDevelop("No master node in Editor. Retrieving it from the selector...", False)
-            masterNode = self.getCurrentGrayscaleNode()
+        if not self.inputVolume:
+            return  
 
-        if not masterNode:
-            # There is no any volume node that the user is watching
-            SlicerUtil.logDevelop("Still not master node. Exit", False)
-            return
+        if not self.outputSegmentation:
+            self.outputSegmentation = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode", self.inputVolume.GetName() + " Lung Calibration")
+            self.outputSegmentation.CreateDefaultDisplayNodes()
+            segmentationDisplayNode = self.outputSegmentation.GetDisplayNode()
+            #segmentationDisplayNode.SetOpacity3D(0.2)
+            segmentationDisplayNode.SetOpacity2DFill(0.5)
+            segmentationDisplayNode.SetOpacity2DOutline(0.2)
 
-        labelmapNode = self.getOrCreateLabelmap(masterNode)
-        displayNode = labelmapNode.GetDisplayNode()
 
-        if displayNode:
-            displayNode.SetAndObserveColorNodeID(self.colorNode.GetID())
-        else:
-            SlicerUtil.logDevelop("There is no DisplayNode for label map " + labelmapNode.GetName(), True)
+            newSegId = self.outputSegmentation.GetSegmentation().AddEmptySegment("Air")
+            newSeg = self.outputSegmentation.GetSegmentation().GetSegment(newSegId)
+            newSeg.SetName("Air")
+            color=(0, 1.0, 0)
+            newSeg.SetColor(color)
 
-        slicer.app.applicationLogic().PropagateVolumeSelection(0)
-        SlicerUtil.changeLabelmapOpacity(0.5)
-
-        # Set the right volumes
-        self.disableEvents = True
-        #self.editorWidget.masterVolume = masterNode
-        #self.editorWidget.labelmapVolume = labelmapNode
-        # trigger editor events
-        self.editorWidget.helper.setVolumes(masterNode, labelmapNode)
-        self.disableEvents = False
-
+            newSegId = self.outputSegmentation.GetSegmentation().AddEmptySegment("Blood")
+            newSeg = self.outputSegmentation.GetSegmentation().GetSegment(newSegId)
+            newSeg.SetName("Blood")
+            color=(1.0, 0, 0)
+            newSeg.SetColor(color)
+        
+        if self.segmentEditorWidget:
+            # Set the right volumes
+            self.segmentEditorWidget.setSegmentationNode(self.outputSegmentation)
+            self.segmentEditorWidget.setMasterVolumeNode(self.inputVolume)
+            # Set paint effect
+            self.segmentEditorWidget.setActiveEffectByName("Paint")
+            effect = self.segmentEditorWidget.activeEffect()
+            effect.setParameter("BrushRelativeDiameter","1")
         slicer.app.applicationLogic().FitSliceToAll()
 
-    def getOrCreateLabelmap(self, masterNode):
-        labelmapName = "{0}_{1}".format(masterNode.GetName(), self.labelmapNodeNameExtension)
-        labelmapNode = SlicerUtil.getNode(labelmapName)
-        if labelmapNode is None:
-            # Create a labelmap for this scalar
-            labelmapNode = slicer.modules.volumes.logic().CreateAndAddLabelVolume(slicer.mrmlScene, masterNode, labelmapName)
-            # Make sure that the labelmap has this name (no suffixes)
-            labelmapNode.SetName(labelmapName)
-            SlicerUtil.logDevelop("New label map node created: " + labelmapName, includePythonConsole=True)
-        else:
-            SlicerUtil.logDevelop("Labelmap loaded", includePythonConsole=True)
-        return labelmapNode
 
     def getCurrentGrayscaleNode(self):
         """Get the grayscale node that is currently active in the widget"""
-        #return self.editorWidget.masterVolume
         return self.volumeSelector.currentNode()
 
-    def getCurrentLabelMapNode(self):
-        """Get the labelmap node that is currently active in the widget"""
-        return self.editorWidget.labelmapVolume
-
     def setCurrentGrayscaleNode(self, node):
-        """Get the grayscale node that is currently active in the widget"""
-        self.editorWidget.masterVolume = node
+        """Set the grayscale node that is currently active in the widget"""
+        self.inputVolume = node
+        self.segmentEditorWidget.setMasterVolumeNode(node)
 
-    def setCurrentLabelMapNode(self, node):
-        """Get the labelmap node that is currently active in the widget"""
-        self.editorWidget.labelmapVolume = node
+    def setCurrentSegmentation(self, node):
+        """Get the segmentation node that is currently active in the widget"""
 
-    def setEditorValues(self):
-        """Set the right color in the editor"""
-        self.editorWidget.toolsColor.colorSpin.setValue(self.typeRadioButtonGroup.checkedId())
-        self.editorWidget.setActiveEffect("PaintEffect")
-        self.editorWidget.changePaintEffectRadius(1.5)
-        # Show the paint tools
-        self.editorWidget.editLabelMapsFrame.collapsed = False
+    def removeOutputSegmentation(self):
+        """remove the output segmentation node """
+        if self.outputSegmentation:
+            slicer.mrmlScene.RemoveNode(self.outputSegmentation)
+            self.outputSegmentation = None
+
 
     ##############
     # Aux methods
@@ -256,13 +220,12 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget):
         :param newVolumeNode:
         :return:
         """
-        if not self.disableEvents:
-            self.setCurrentGrayscaleNode(newVolumeNode)
-            self.checkMasterAndLabelMapNodes()
+        self.inputVolume = newVolumeNode
+        self.removeOutputSegmentation()
+        self.checkMasterAndSegmentationNodes()
 
     def _onPreNavigatorLabelmapLoaded_(self, volumeNodeName):
         self.labelmapToBeRemoved = SlicerUtil.getNode(volumeNodeName)
-
 
     def _onNavigatorLabelmapLoaded_(self, volumeNode, region, type):
         """When a labelmap is loaded in the CaseNavigator, remove possible preexisting nodes"""
@@ -270,89 +233,104 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget):
             slicer.mrmlScene.RemoveNode(self.labelmapToBeRemoved)
             self.labelmapToBeRemoved = None
 
-        self.checkMasterAndLabelMapNodes()
+        self.checkMasterAndSegmentationNodes()
 
-    def _createEditorWidget_(self):
+    def _createSegmentEditorWidget_(self):
         """Create and initialize a customize Slicer Editor which contains just some the tools that we need for the segmentation"""
-        if self.activeEditorTools is None:
-            # We don't want Paint effect by default
-            self.activeEditorTools = (
-                "DefaultTool", "DrawEffect", "PaintEffect", "RectangleEffect", "EraseLabel", "PreviousCheckPoint", "NextCheckPoint")
+        import qSlicerSegmentationsModuleWidgetsPythonQt
 
-        self.editorWidget = CIPUI.CIP_EditorWidget(self.parent, showVolumesFrame=True, activeTools=self.activeEditorTools)
-        self.editorWidget.setup()
-        self.editorWidget.setThresholds(-50000, 50000)  # Remove thresholds
+        # Segment editor area
+        self.segmentEditorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
+        self.segmentEditorAreaCollapsibleButton.text = "Segment editor"
+        self.layout.addWidget(self.segmentEditorAreaCollapsibleButton, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
+        self.segmentEditorLayout = qt.QFormLayout(self.segmentEditorAreaCollapsibleButton)
 
-        # Collapse Volumes selector by default
-        self.editorWidget.volumes.collapsed = True
-
-        # Remove current listeners for helper box and override them
-        self.editorWidget.helper.masterSelector.disconnect("currentNodeChanged(vtkMRMLNode*)")
-        self.editorWidget.helper.mergeSelector.disconnect("currentNodeChanged(vtkMRMLNode*)")
-        # Force to select always a node. It is important to do this at this point, when the events are disconnected,
-        # because otherwise the editor would display the color selector (just noisy for the user)
-        self.editorWidget.helper.masterSelector.noneEnabled = False
-        # Listen to the event when there is a Master Node selected in the HelperBox
-        self.editorWidget.helper.masterSelector.connect("currentNodeChanged(vtkMRMLNode*)", self._onMasterNodeSelect_)
-
-    def _collapseEditorWidget_(self, collapsed=True):
-        """Collapse/expand the items in EditorWidget"""
-        self.editorWidget.volumes.collapsed = collapsed
-        self.editorWidget.editLabelMapsFrame.collapsed = collapsed
+        self.segmentEditorWidget = qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
+        self.segmentEditorWidget.setMaximumNumberOfUndoStates(10)
+        self.segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+        self.segmentEditorWidget.unorderedEffectsVisible = False
+        self.segmentEditorWidget.setEffectNameOrder(['Paint', 'Draw', 'Erase', 'Scissors'])
+        self.segmentEditorNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentEditorNode")
+        self.segmentEditorWidget.setMRMLSegmentEditorNode(self.segmentEditorNode)
+        self.segmentEditorWidget.setMasterVolumeNodeSelectorVisible(False)
+        self.segmentEditorWidget.setSegmentationNodeSelectorVisible(False)
+        self.segmentEditorWidget.show()
+        #self.segmentEditorWidget.setSwitchToSegmentationsButtonVisible(False)
+        self.segmentEditorLayout.addWidget(self.segmentEditorWidget)       
 
     def _onCalibrateButtonClicked_(self):
-        error = self.logic.calibrate(self.currentVolumeLoaded, self.getCurrentLabelMapNode(), int(self.txtAir.text), int(self.txtBlood.text))
+
+        self.labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
+        slicer.modules.segmentations.logic().ExportAllSegmentsToLabelmapNode(self.outputSegmentation, self.labelmapVolumeNode, slicer.vtkSegmentation.EXTENT_REFERENCE_GEOMETRY)
+        error = self.logic.calibrate(self.inputVolume, self.labelmapVolumeNode, int(self.txtAir.text), int(self.txtBlood.text))
+        slicer.mrmlScene.RemoveNode(self.labelmapVolumeNode)
+        self.labelmapVolumeNode = None
         if error:
             slicer.util.warningDisplay(error)
         else:
             slicer.util.infoDisplay("Calibration completed")
 
+
     #########
     # Events
     #########
+
+ 
     def enter(self):
         """Method that is invoked when we switch to the module in slicer user interface"""
-        self.disableEvents = False
         if self.firstLoad:
             self.firstLoad = False
         else:
-            self.checkMasterAndLabelMapNodes()
-            self.editorWidget.helper.masterSelector.connect("currentNodeChanged(vtkMRMLNode*)", self._onMasterNodeSelect_)
-
-    def _onMasterNodeSelect_(self, node):
-        if node:
-            nodeName = node.GetName()
-            if self.getCurrentGrayscaleNode() and self.getCurrentGrayscaleNode().GetName() != nodeName:
-                SlicerUtil.logDevelop(
-                    "There was a selection of a new master node: {0}. Previous: {1}. We will invoke checkMasterAndLabelMapNodes".
-                    format(node.GetName(), self.editorWidget.masterVolume.GetName()), includePythonConsole=True)
-                # Update Editor Master node to perform the needed actions.
-                # We don't use "setVolumes" function because the interface must not be refeshed yet (it will be in checkMasterAndLabelMapNodes)
-                self.setCurrentGrayscaleNode(node)
-                # Remove label node to refresh the values properly
-                self.setCurrentLabelMapNode(None)
-                self.checkMasterAndLabelMapNodes()
-        else:
-            SlicerUtil.logDevelop("No master node selected. Trying to remove label map", False)
-            self.editorWidget.cleanVolumes()
-        self.setEditorValues()
+            self.checkMasterAndSegmentationNodes()
 
     def __onTypeRadioButtonClicked__(self, button):
         """ One of the radio buttons has been pressed
         :param button:
         :return:
         """
-        self.setEditorValues()
+        self.segmentEditorNode.SetSelectedSegmentID(button.text)
+    
+    def onSceneStartClose(self, caller, event):
+        """
+        Called just before the scene is closed.
+        """
+        if self.inputVolume:
+            slicer.mrmlScene.RemoveNode(self.inputVolume)
+            self.inputVolume = None
+        if self.outputSegmentation:
+            slicer.mrmlScene.RemoveNode(self.outputSegmentation)
+            self.outputSegmentation = None
+        if self.labelmapVolumeNode:
+            slicer.mrmlScene.RemoveNode(self.labelmapVolumeNode)
+            self.labelmapVolumeNode = None
+ 
+    def onSceneEndClose(self, caller, event):
+        """
+        Called just before the scene is closed.
+        """
 
-    def __onSceneClosed__(self, arg1, arg2):
-        self.pendingChangesIdsList = []
-        self.logic = CIP_CalibrationLogic()
+    def onSceneEndImport(self, caller, event):
+        """
+        Called just before the scene is closed.
+        """
+        #self.checkMasterAndSegmentationNodes()
 
     def exit(self):
-        self.editorWidget.helper.masterSelector.disconnect("currentNodeChanged(vtkMRMLNode*)")
-        self.disableEvents = True
+        """
+        Called each time the user opens a different module.
+        """
+        #self.segmentEditorWidget = None
 
     def cleanup(self):
+        if self.segmentEditorNode: 
+            slicer.mrmlScene.RemoveNode(self.segmentEditorNode)
+            self.segmentEditorNode = None
+        if self.outputSegmentation:
+            slicer.mrmlScene.RemoveNode(self.outputSegmentation)
+            self.outputSegmentation = None
+        if self.labelmapVolumeNode:
+            slicer.mrmlScene.RemoveNode(self.labelmapVolumeNode)
+            self.labelmapVolumeNode = None
         pass
 
 # CIP_StructuresDetectionLogic

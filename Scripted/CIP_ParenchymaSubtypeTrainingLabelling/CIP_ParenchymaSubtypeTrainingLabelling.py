@@ -204,7 +204,7 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
         self.mainLayout.addWidget(self.saveResultsDirectoryButton, 4, 1, 1, 2)
         self.saveResultsDirectoryButton.connect("directoryChanged (QString)", self._onSaveResultsDirectoryChanged_)
 
-        self._createEditorWidget_()
+        self._createSegmentEditorWidget_()
 
         # MIP viewer (by default it will be hidden)
         self.mipCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -487,29 +487,29 @@ class CIP_ParenchymaSubtypeTrainingLabellingWidget(ScriptedLoadableModuleWidget)
         self.checkMasterAndLabelMapNodes()
 
 
-    def _createEditorWidget_(self):
+
+    def _createSegmentEditorWidget_(self):
         """Create and initialize a customize Slicer Editor which contains just some the tools that we need for the segmentation"""
-        if self.activeEditorTools is None:
-            # We don't want Paint effect by default
-            self.activeEditorTools = (
-                "DefaultTool", "DrawEffect", "PaintEffect", "RectangleEffect", "EraseLabel", "PreviousCheckPoint", "NextCheckPoint")
-
-        self.editorWidget = CIPUI.CIP_EditorWidget(self.parent, showVolumesFrame=True, activeTools=self.activeEditorTools)
-
-        self.editorWidget.setup()
-        self.editorWidget.setThresholds(-50000, 50000)  # Remove thresholds
+        
+        import qSlicerSegmentationsModuleWidgetsPythonQt
+        self.segmentEditorWidget = qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
+        self.segmentEditorWidget.setMaximumNumberOfUndoStates(10)
+        self.segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+        self.segmentEditorWidget.unorderedEffectsVisible = False
+        self.segmentEditorWidget.setEffectNameOrder(['Paint', 'Draw', 'Erase', 'Threshold', 'Grow from seeds',  'Scissors'])
+        self.layout.addWidget(self.segmentEditorWidget)       
 
         # Collapse Volumes selector by default
-        self.editorWidget.volumes.collapsed = True
+        #self.editorWidget.volumes.collapsed = True
 
         # Remove current listeners for helper box and override them
-        self.editorWidget.helper.masterSelector.disconnect("currentNodeChanged(vtkMRMLNode*)")
-        self.editorWidget.helper.mergeSelector.disconnect("currentNodeChanged(vtkMRMLNode*)")
+        #self.editorWidget.helper.masterSelector.disconnect("currentNodeChanged(vtkMRMLNode*)")
+        #self.editorWidget.helper.mergeSelector.disconnect("currentNodeChanged(vtkMRMLNode*)")
         # Force to select always a node. It is important to do this at this point, when the events are disconnected,
         # because otherwise the editor would display the color selector (just noisy for the user)
-        self.editorWidget.helper.masterSelector.noneEnabled = False
+        #self.editorWidget.helper.masterSelector.noneEnabled = False
         # Listen to the event when there is a Master Node selected in the HelperBox
-        self.editorWidget.helper.masterSelector.connect("currentNodeChanged(vtkMRMLNode*)", self._onMasterNodeSelect_)
+        #self.editorWidget.helper.masterSelector.connect("currentNodeChanged(vtkMRMLNode*)", self._onMasterNodeSelect_)
 
     def _collapseEditorWidget_(self, collapsed=True):
         """Collapse/expand the items in EditorWidget"""
