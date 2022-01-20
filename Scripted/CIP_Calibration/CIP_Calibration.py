@@ -34,7 +34,7 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
     """GUI object"""
     def __init__(self, parent):
         ScriptedLoadableModuleWidget.__init__(self, parent)
-        # needed for event observation
+        # needed for event observation:
         VTKObservationMixin.__init__(self)  
         self.firstLoad = True
         self.activeEditorTools = None
@@ -52,7 +52,7 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
     ################
     def setup(self):
         """Init the widget """
-        # self.firstLoad = True
+        self.firstLoad = True
         ScriptedLoadableModuleWidget.setup(self) 
         # Create objects that can be used anywhere in the module. Example: in most cases there should be just one
         # object of the logic class
@@ -62,7 +62,8 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         # Main area
         self.mainAreaCollapsibleButton = ctk.ctkCollapsibleButton()
         self.mainAreaCollapsibleButton.text = "Main area"
-        self.layout.addWidget(self.mainAreaCollapsibleButton, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
+        #self.layout.addWidget(self.mainAreaCollapsibleButton, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
+        self.layout.addWidget(self.mainAreaCollapsibleButton)
         self.mainLayout = qt.QFormLayout(self.mainAreaCollapsibleButton)
 
         row = 0
@@ -117,27 +118,29 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         self.mainLayout.addRow(self.rbBlood, self.txtBlood)
         row += 1
 
+        # Create the standard segment editor widget
+        self._createSegmentEditorWidget_()
+        # Load master nodes
+        self.checkMasterAndSegmentationNodes()
+
         # Calibrate button
         self.calibrateButton = ctk.ctkPushButton()
         self.calibrateButton.setText("Calibrate")
         self.calibrateButton.toolTip = "Run the calibration"
         self.calibrateButton.setIcon(qt.QIcon("{0}/scale.png".format(SlicerUtil.CIP_ICON_DIR)))
         self.calibrateButton.setIconSize(qt.QSize(20, 20))
-        self.calibrateButton.setFixedWidth(135)
-        self.mainLayout.addRow(None, self.calibrateButton)
+        #self.calibrateButton.setFixedWidth(135)
+        self.layout.addWidget(self.calibrateButton)
         self.calibrateButton.connect('clicked()', self._onCalibrateButtonClicked_)
+
+        # Add stretch to align the calibrate button and the layout to the top 
+        self.layout.addStretch()
+
 
         # Connect observers to scene events
         self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
         self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
         self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onSceneEndImport)
-
-        # Create the standard segment editor widget
-        self._createSegmentEditorWidget_()
-        # Load master nodes
-        self.checkMasterAndSegmentationNodes()
-
-
 
     @property
     def currentVolumeLoaded(self):
@@ -232,7 +235,6 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         if self.labelmapToBeRemoved:
             slicer.mrmlScene.RemoveNode(self.labelmapToBeRemoved)
             self.labelmapToBeRemoved = None
-
         self.checkMasterAndSegmentationNodes()
 
     def _createSegmentEditorWidget_(self):
@@ -251,6 +253,7 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         self.segmentEditorWidget.unorderedEffectsVisible = False
         self.segmentEditorWidget.setEffectNameOrder(['Paint', 'Draw', 'Erase', 'Scissors'])
         self.segmentEditorNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentEditorNode")
+        self.segmentEditorNode.SetSingletonTag("CIP_Calibration")
         self.segmentEditorWidget.setMRMLSegmentEditorNode(self.segmentEditorNode)
         self.segmentEditorWidget.setMasterVolumeNodeSelectorVisible(False)
         self.segmentEditorWidget.setSegmentationNodeSelectorVisible(False)
@@ -262,6 +265,7 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         self.segmentEditorLayout.addWidget(self.segmentEditorWidget)       
 
     def _onCalibrateButtonClicked_(self):
+        """ The calibrate button has been pressed"""
 
         self.labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
         slicer.modules.segmentations.logic().ExportAllSegmentsToLabelmapNode(self.outputSegmentation, self.labelmapVolumeNode, slicer.vtkSegmentation.EXTENT_REFERENCE_GEOMETRY)
@@ -314,7 +318,7 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
 
     def onSceneEndImport(self, caller, event):
         """
-        Called just before the scene is closed.
+        Called when a scene has been imported.
         """
         #self.checkMasterAndSegmentationNodes()
 
@@ -325,6 +329,9 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         #self.segmentEditorWidget = None
 
     def cleanup(self):
+        """
+        Called when the application closes and the module widget is destroyed.
+        """
         if self.segmentEditorNode: 
             slicer.mrmlScene.RemoveNode(self.segmentEditorNode)
             self.segmentEditorNode = None
