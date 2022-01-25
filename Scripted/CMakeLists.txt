@@ -6,7 +6,7 @@ set(modules
   CIP_AVRatio
   CIP_InteractiveLobeSegmentation
   CIP_ParenchymaAnalysis
-  # incompatible with Slicer 5
+  #  incompatible with Slicer 5
   #CIP_BodyComposition
   CIP_CalciumScoring
   CIP_LesionModel
