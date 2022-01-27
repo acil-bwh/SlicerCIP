@@ -6,15 +6,16 @@ set(modules
   CIP_AVRatio
   CIP_InteractiveLobeSegmentation
   CIP_ParenchymaAnalysis
-  CIP_BodyComposition
+  #  incompatible with Slicer 5
+  #CIP_BodyComposition
   CIP_CalciumScoring
   CIP_LesionModel
   CIP_MIPViewer
   CIP_PAARatio
   CIP_PointsLabelling
-  CIP_ParenchymaSubtypeTraining
-  CIP_TracheaStentPlanning
-  CIP_ParenchymaSubtypeTrainingLabelling
+  #CIP_ParenchymaSubtypeTraining
+  #CIP_TracheaStentPlanning
+  #CIP_ParenchymaSubtypeTrainingLabelling
   CIP_RVLVRatio
   CIP_Calibration
   )
@@ -22,6 +23,5 @@ set(modules
 foreach (module ${modules})
   add_subdirectory(${module})
 endforeach()
-
 
 

@@ -186,7 +186,7 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         self.structuresLayout.addWidget(self.analysisButton, 3, 2)
 
         # Create and embed the Slicer Editor
-        self.__createEditorWidget__()
+        self.__createSegmentEditorWidget__()
 
         # Statistics table
         self.statisticsCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -407,17 +407,22 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
 
         slicer.app.applicationLogic().PropagateVolumeSelection(0)
 
-    def __createEditorWidget__(self):
+    def __createSegmentEditorWidget__(self):
         """Create and initialize a customize Slicer Editor which contains just some the tools that we need for the segmentation"""
-        self.editorWidget = CIPUI.CIP_EditorWidget(self.parent, False)
+        
+        import qSlicerSegmentationsModuleWidgetsPythonQt
+        self.segmentEditorWidget = qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
+        self.segmentEditorWidget.setMaximumNumberOfUndoStates(10)
+        self.segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+        self.segmentEditorWidget.unorderedEffectsVisible = False
+        self.segmentEditorWidget.setEffectNameOrder(['Paint', 'Draw', 'Erase', 'Threshold', 'Grow from seeds',  'Scissors'])
+        self.layout.addWidget(self.segmentEditorWidget)       
 
-        self.editorWidget.showVolumesFrame = True
-        self.editorWidget.setup()
         # Hide label selector by default
-        self.editorWidget.toolsColor.frame.visible = False
+        #self.editorWidget.toolsColor.frame.visible = False
         # Uncollapse Volumes selector by default
-        self.editorWidget.volumes.collapsed = False
-        self.editorWidget.changePaintEffectRadius(5)
+        #self.editorWidget.volumes.collapsed = False
+        #self.editorWidget.changePaintEffectRadius(5)
 
         # Refresh labelmap info button
         # self.btnRefresh = ctk.ctkPushButton()
@@ -429,15 +434,15 @@ class CIP_BodyCompositionWidget(ScriptedLoadableModuleWidget):
         # self.btnRefresh.setFixedWidth(200)
 
         # Remove structures frame ("Per-Structure Volumes section)
-        self.editorWidget.helper.structuresFrame.visible = False
+        #self.editorWidget.helper.structuresFrame.visible = False
         # self.editorWidget.helper.masterSelectorFrame.layout().addWidget(self.btnRefresh)
         # Remove current listeners for helper box and override them
-        self.editorWidget.helper.masterSelector.disconnect("currentNodeChanged(vtkMRMLNode*)")
+        #self.editorWidget.helper.masterSelector.disconnect("currentNodeChanged(vtkMRMLNode*)")
         # Force to select always a node. It is important to do this at this point, when the events are disconnected,
         # because otherwise the editor would display the color selector (just noisy for the user)
-        self.editorWidget.helper.masterSelector.noneEnabled = False
+        #self.editorWidget.helper.masterSelector.noneEnabled = False
         # Listen to the event when there is a Master Node selected in the HelperBox
-        self.editorWidget.helper.masterSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onMasterNodeSelect)
+        #self.editorWidget.helper.masterSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onMasterNodeSelect)
 
     def __collapseEditorWidget__(self, collapsed=True):
         """Collapse/expand the items in EditorWidget"""
