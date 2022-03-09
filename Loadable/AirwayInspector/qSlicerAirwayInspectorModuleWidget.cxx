@@ -113,7 +113,11 @@ void qSlicerAirwayInspectorModuleWidget::setup()
   d->ThresholdSpinBox->setValue(-850);
   // VTK/Qt
   d->qvtkWidget = new QVTKOpenGLNativeWidget;
+#if (VTK_MAJOR_VERSION >= 9) 
+  d->qvtkWidget->renderWindow()->AddRenderer(this->Renderer);
+#else
   d->qvtkWidget->GetRenderWindow()->AddRenderer(this->Renderer);
+#endif
   d->qvtkWidget->setFixedSize(128,128);
   d->horizontalLayout->addWidget(d->qvtkWidget);
 
@@ -661,7 +665,11 @@ void qSlicerAirwayInspectorModuleWidget::updateViewer(vtkMRMLAirwayNode* airwayN
   if (!logic || !airwayNode || !airwayNode->GetAirwayImage())
     {
 //    this->Renderer->Render();
+#if (VTK_MAJOR_VERSION >= 9) 
+    d->qvtkWidget->renderWindow()->Render();
+#else
     d->qvtkWidget->GetRenderWindow()->Render();
+#endif
     return;
     }
 
@@ -757,7 +765,11 @@ void qSlicerAirwayInspectorModuleWidget::updateViewer(vtkMRMLAirwayNode* airwayN
     }
 
 //  this->Renderer->Render();
+#if (VTK_MAJOR_VERSION >= 9) 
+  d->qvtkWidget->renderWindow()->Render();
+#else
   d->qvtkWidget->GetRenderWindow()->Render();
+#endif
 
   flip->Delete();
   colorImage->Delete();
