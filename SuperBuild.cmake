@@ -2,11 +2,11 @@
 #-----------------------------------------------------------------------------
 # Git protocol option
 #-----------------------------------------------------------------------------
-option(Slicer_USE_GIT_PROTOCOL "If behind a firewall turn this off to use http instead." ON)
+option(Slicer_USE_GIT_PROTOCOL "Unencrypted Git protocol is no longer supported, so set this off." OFF)
 
-set(git_protocol "git")
-if(NOT Slicer_USE_GIT_PROTOCOL)
-  set(git_protocol "http")
+set(git_protocol "https")
+if(Slicer_USE_GIT_PROTOCOL)
+  set(git_protocol "git")
 endif()
 
 #-----------------------------------------------------------------------------
