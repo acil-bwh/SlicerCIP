@@ -4,7 +4,7 @@ SlicerCIP
 Slicer extension for the Chest Imaging Platform
 
 
-Non-Windows Compilation
+Compilation (Linux and Mac) 
 ===========
 
 1. set the SLICER_FOLDER variable, for instance to $HOME/slicer/Slicer4-SuperBuild/Slicer-build
@@ -13,7 +13,7 @@ Non-Windows Compilation
 4. cmake -DSlicer_DIR=${SLICER_FOLDER}/Slicer4-SuperBuild/Slicer-build ../SlicerCIP
 5. make
 
-Windows Compilation
+Compilation (Windows)
 ===========
 
 For a Windows compilation of SlicerCIP you need to fork and compile 3D Slicer locally. This has to be done only once.  
