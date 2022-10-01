@@ -26,9 +26,6 @@ endif()
 
 if(NOT DEFINED ${proj}_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
 
-  if(NOT DEFINED git_protocol)
-    set(git_protocol "git")
-  endif()
   message(STATUS ${VTK_DIR})
 
   ExternalProject_Add(${proj}
