@@ -36,7 +36,7 @@ then
 
 		timeout /t 10
 
-		' must run this two times for unknown reasons
+		' must run this two times for unknown reasons to create SlicerCIP.sln
 
 		cmake -DSlicer_DIR="D:\D\S5R\Slicer-build" "C:\Users\yourname\Documents\MySlicerExtensions\SlicerCIP"
 
