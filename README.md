@@ -18,7 +18,7 @@ Compilation (Windows)
 
 For a Windows compilation of SlicerCIP you need to fork and compile 3D Slicer locally. This has to be done only once.  
 
-Example usage: 
+Example: 
 
 1. Fork 3D Slicer into "C:\D\S5\"
 2. Build 3D Slicer into "C:\D\S5R\" 
