@@ -182,76 +182,79 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         self.HistogramFreqOption = qt.QCheckBox()
         self.HistogramFreqOption.setText('Frequency by region volume')
-        self.HistogramFreqOption.setChecked(1)
+        self.HistogramFreqOption.setChecked(True)
         self.HistogramFreqOption.setToolTip('If checked, histogram multiplied by region volume will be displayed.')
         self.HistogramFreqOption.hide()
 
         self.histogramCheckBoxes = []
-        self.histFrame = qt.QFrame()
-        self.histFrame.setLayout(qt.QHBoxLayout())
+        self.histFrame1 = qt.QFrame()
+        self.histFrame1.setLayout(qt.QHBoxLayout())
+        self.histFrame2 = qt.QFrame()
+        self.histFrame2.setLayout(qt.QHBoxLayout())
 
         self.GlobalHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.GlobalHistCheckBox)
-        self.histFrame.layout().addWidget(self.GlobalHistCheckBox)
+        self.histFrame1.layout().addWidget(self.GlobalHistCheckBox)
 
         self.RightHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.RightHistCheckBox)
-        self.histFrame.layout().addWidget(self.RightHistCheckBox)
+        self.histFrame1.layout().addWidget(self.RightHistCheckBox)
 
         self.LeftHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.LeftHistCheckBox)
-        self.histFrame.layout().addWidget(self.LeftHistCheckBox)
+        self.histFrame1.layout().addWidget(self.LeftHistCheckBox)
 
         self.RULHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.RULHistCheckBox)
-        self.histFrame.layout().addWidget(self.RULHistCheckBox)
+        self.histFrame1.layout().addWidget(self.RULHistCheckBox)
 
         self.RLLHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.RLLHistCheckBox)
-        self.histFrame.layout().addWidget(self.RLLHistCheckBox)
+        self.histFrame1.layout().addWidget(self.RLLHistCheckBox)
 
         self.RMLHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.RMLHistCheckBox)
-        self.histFrame.layout().addWidget(self.RMLHistCheckBox)
+        self.histFrame1.layout().addWidget(self.RMLHistCheckBox)
 
         self.LULHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.LULHistCheckBox)
-        self.histFrame.layout().addWidget(self.LULHistCheckBox)
+        self.histFrame1.layout().addWidget(self.LULHistCheckBox)
 
         self.LLLHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.LLLHistCheckBox)
-        self.histFrame.layout().addWidget(self.LLLHistCheckBox)
+        self.histFrame2.layout().addWidget(self.LLLHistCheckBox)
 
         self.LUTHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.LUTHistCheckBox)
-        self.histFrame.layout().addWidget(self.LUTHistCheckBox)
+        self.histFrame2.layout().addWidget(self.LUTHistCheckBox)
 
         self.LMTHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.LMTHistCheckBox)
-        self.histFrame.layout().addWidget(self.LMTHistCheckBox)
+        self.histFrame2.layout().addWidget(self.LMTHistCheckBox)
 
         self.LLTHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.LLTHistCheckBox)
-        self.histFrame.layout().addWidget(self.LLTHistCheckBox)
+        self.histFrame2.layout().addWidget(self.LLTHistCheckBox)
 
         self.RUTHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.RUTHistCheckBox)
-        self.histFrame.layout().addWidget(self.RUTHistCheckBox)
+        self.histFrame2.layout().addWidget(self.RUTHistCheckBox)
 
         self.RMTHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.RMTHistCheckBox)
-        self.histFrame.layout().addWidget(self.RMTHistCheckBox)
+        self.histFrame2.layout().addWidget(self.RMTHistCheckBox)
 
         self.RLTHistCheckBox = qt.QCheckBox()
         self.histogramCheckBoxes.append(self.RLTHistCheckBox)
-        self.histFrame.layout().addWidget(self.RLTHistCheckBox)
+        self.histFrame2.layout().addWidget(self.RLTHistCheckBox)
 
         for i in range(len(self.histogramCheckBoxes)):
-            self.histogramCheckBoxes[i].setText(CIP_ParenchymaAnalysisLogic.allRegionTags[i])
+            self.histogramCheckBoxes[i].setText(CIP_ParenchymaAnalysisLogic.allUniqueRegionTags[i])
             self.histogramCheckBoxes[i].hide()
 
         self.HistSection.layout().addWidget(self.HistogramFreqOption)
-        self.HistSection.layout().addWidget(self.histFrame)
+        self.HistSection.layout().addWidget(self.histFrame1)
+        self.HistSection.layout().addWidget(self.histFrame2)
         self.HistSection.enabled = False
 
         # Chart button
@@ -452,18 +455,17 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         self.logic.computeEmphysemaOnSlice(self.CTNode, self.logic.labelNode)
         self.logic.createHistogram(self.logic.labelNode)
         for i in range(len(self.histogramCheckBoxes)):
-            self.histogramCheckBoxes[i].setChecked(0)
+            self.histogramCheckBoxes[i].setChecked(False)
             self.histogramCheckBoxes[i].hide()
 
         self.HistogramFreqOption.show()
-        for regionTag in CIP_ParenchymaAnalysisLogic.allRegionTags:
+        for regionTag in CIP_ParenchymaAnalysisLogic.allUniqueRegionTags:
             if regionTag in self.logic.regionTags:
-                self.histogramCheckBoxes[CIP_ParenchymaAnalysisLogic.allRegionTags.index(regionTag)].show()
-                self.histogramCheckBoxes[CIP_ParenchymaAnalysisLogic.allRegionTags.index(regionTag)].setChecked(1)
+                self.histogramCheckBoxes[CIP_ParenchymaAnalysisLogic.allUniqueRegionTags.index(regionTag)].show()
+                self.histogramCheckBoxes[CIP_ParenchymaAnalysisLogic.allUniqueRegionTags.index(regionTag)].setChecked(True)
 
         self.HistSection.enabled = True
         self.chartBox.enabled = True
-
         self.applyButton.enabled = True
         self.applyButton.text = "Apply"
 
@@ -471,6 +473,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         if self.lungMaskNode and self.lungMaskNode.GetClassName() != "vtkMRMLSegmentationNode":
             self.logic.deleteLabelNode()
+            self.lungMaskNode = None
         else:
             self.labelSelector.setCurrentNode(self.logic.labelNode)
 
@@ -478,7 +481,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         histList = []
         for i in range(len(self.histogramCheckBoxes)):
             if self.histogramCheckBoxes[i].checked:
-                histList.append(CIP_ParenchymaAnalysisLogic.allRegionTags[i])
+                histList.append(CIP_ParenchymaAnalysisLogic.allUniqueRegionTags[i])
         self.logic.ChangeHistogramFrequency(histList, byRegionVolume=self.HistogramFreqOption.checked)
 
     def onHistogram(self):
@@ -487,7 +490,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
         histList = []
         for i in range(len(self.histogramCheckBoxes)):
             if self.histogramCheckBoxes[i].checked:
-                histList.append(CIP_ParenchymaAnalysisLogic.allRegionTags[i])
+                histList.append(CIP_ParenchymaAnalysisLogic.allUniqueRegionTags[i])
 
         self.logic.AddSelectedHistograms(histList)
 
@@ -616,6 +619,9 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
     allRegionTags = ["WholeLung", "RightLung", "RightLung", "RightLung", "LeftLung", "LeftLung", "RUL", "RML",
                  "RLL", "LUL", "LLL", "LUT", "LMT", "LLT", "RUT", "RMT", "RLT"]
 
+    allUniqueRegionTags = ["WholeLung", "RightLung", "LeftLung", "RUL", "RML",
+                 "RLL", "LUL", "LLL", "LUT", "LMT", "LLT", "RUT", "RMT", "RLT"]
+
     allRegionValues = [
         (1, 14),  # all lung labels
         (2, 2),   # right lung in one segment
@@ -651,6 +657,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         # Center slices, can be used for creating images for reporting
         self.sitk_ct_slice = None
         self.sitk_emph_slice = None
+        self.colorTableNode = None
 
         if lungMaskNode and lungMaskNode.GetClassName() == "vtkMRMLSegmentationNode":
             # Got a segmentation node, create a label node from it

@@ -16,7 +16,7 @@ Compilation (Linux and Mac)
 Compilation (Windows)
 ===========
 
-For a Windows compilation of SlicerCIP you need to fork and compile 3D Slicer locally. This has to be done only once.  
+For a compilation of SlicerCIP you need to fork and compile 3D Slicer locally. This has to be done only once.  
 
 Example: 
 
