@@ -885,43 +885,80 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
     def createStatsChart(self, valueToPlot):
         """Make a MRML chart of the current stats
         """
-        self.setChartLayout()
-        chartViewNode = SlicerUtil.getNode('ChartView')
+        # self.setChartLayout()
+        #chartViewNode = SlicerUtil.getNode('ChartView')
 
-        arrayNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLDoubleArrayNode())
-        array = arrayNode.GetArray()
-        array.SetNumberOfTuples(len(self.regionTags))
-        tuple = 0
-
+        tableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", valueToPlot +" data")
+        col1=tableNode.AddColumn()
+        col1.SetName("Label")
+        col2=tableNode.AddColumn()
+        col2.SetName("Value")
+        
+        tableNode.SetColumnType("Label",vtk.VTK_STRING)
+        tableNode.SetColumnType("Value",vtk.VTK_FLOAT)
+                      
         for i, regionTag in enumerate(self.regionTags):
-            array.SetComponent(tuple, 0, i)
-            array.SetComponent(tuple, 1, self.labelStats[valueToPlot, regionTag])
-            array.SetComponent(tuple, 2, 0)
-            tuple += 1
+            tableNode.AddEmptyRow()
+            tableNode.SetCellText(i,0,regionTag)
+            tableNode.SetCellText(i,1,str(self.labelStats[valueToPlot, regionTag]))
 
-        chartNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLChartNode())
-        chartNode.AddArray(valueToPlot, arrayNode.GetID())
+        barPlotSeries = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotSeriesNode", valueToPlot + " bar plot")
+        barPlotSeries.SetAndObserveTableNodeID(tableNode.GetID())
+        barPlotSeries.SetPlotType(slicer.vtkMRMLPlotSeriesNode.PlotTypeBar)
+        barPlotSeries.SetLabelColumnName("Label") #displayed when hovering mouse
+        barPlotSeries.SetYColumnName("Value") # for bar plots, index is the x-value
+        barPlotSeries.SetColor(0, 0.6, 1.0)
+        
+        chartNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotChartNode", valueToPlot + " chart")
+        chartNode.SetTitle("Parenchyma Statistics")
+        chartNode.SetLegendVisibility(False)
+        chartNode.SetYAxisTitle(valueToPlot)
+        chartNode.SetXAxisTitle("Label")
+        chartNode.AddAndObservePlotSeriesNodeID(barPlotSeries.GetID())
+    
+        # Show plot in layout
+        slicer.modules.plots.logic().ShowChartInLayout(chartNode)
 
-        chartViewNode.SetChartNodeID(chartNode.GetID())
+        # Create plot
+        #plotSeriesNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLChartNode", "Bar chart")
+        #plotSeriesNode.SetAndObserveTableNodeID(tableNode.GetID())
+        #plotSeriesNode.SetXColumnName("Regions")
+        #plotSeriesNode.SetYColumnName("Values")
+        #plotSeriesNode.SetPlotType(plotSeriesNode.PlotTypeBar)
+        #plotSeriesNode.SetColor(0, 0.6, 1.0)
 
-        chartNode.SetProperty('default', 'title', 'Parenchyma Statistics')
-        chartNode.SetProperty('default', 'xAxisLabel', 'Label')
-        chartNode.SetProperty('default', 'yAxisLabel', valueToPlot)
-        chartNode.SetProperty('default', 'type', 'Bar')
-        chartNode.SetProperty('default', 'xAxisType', 'categorical')
-        chartNode.SetProperty('default', 'showLegend', 'off')
+        # Create chart and add plot
+        #plotChartNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotChartNode")
+        #plotChartNode.AddAndObservePlotSeriesNodeID(plotSeriesNode.GetID())
+        #plotChartNode.YAxisRangeAutoOff()
+        #plotChartNode.SetYAxisRange(0, 500000)
+
+        # Show plot in layout
+        #slicer.modules.plots.logic().ShowChartInLayout(plotChartNode)
+
+        #chartNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotChartNode", 'PlotChartNode') 
+        #chartNode.AddArray(valueToPlot, arrayNode.GetID())
+
+        #chartViewNode.SetChartNodeID(chartNode.GetID())
+
+        #chartNode.SetProperty('default', 'title', 'Parenchyma Statistics')
+        #chartNode.SetProperty('default', 'xAxisLabel', 'Label')
+        #chartNode.SetProperty('default', 'yAxisLabel', valueToPlot)
+        #chartNode.SetProperty('default', 'type', 'Bar')
+        #chartNode.SetProperty('default', 'xAxisType', 'categorical')
+        #chartNode.SetProperty('default', 'showLegend', 'off')
 
         # series level properties
-        colorTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLColorTableNode", "StatsChartColors")
-        colorTableNode.SetTypeToUser()
-        colorTableNode.HideFromEditorsOff()
-        colorTableNode.SetNumberOfColors(len(self.regionTags))
-        for colorIndex, regionTag in enumerate(self.regionTags):
-            color = self.regionColors[regionTag]
-            colorTableNode.SetColor(colorIndex, regionTag, color[0], color[1], color[2], 1.0)
-        colorTableNode.NamesInitialisedOn()
+        #colorTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLColorTableNode", "StatsChartColors")
+        #colorTableNode.SetTypeToUser()
+        #colorTableNode.HideFromEditorsOff()
+        #colorTableNode.SetNumberOfColors(len(self.regionTags))
+        #for colorIndex, regionTag in enumerate(self.regionTags):
+        #    color = self.regionColors[regionTag]
+        #    colorTableNode.SetColor(colorIndex, regionTag, color[0], color[1], color[2], 1.0)
+        #colorTableNode.NamesInitialisedOn()
 
-        chartNode.SetProperty(valueToPlot, 'lookupTable', colorTableNode.GetID())
+        #chartNode.SetProperty(valueToPlot, 'lookupTable', colorTableNode.GetID())
 
     def convertSegmentsToCipLabelmapNode(self, CTNode, segmentationNode):
         colorTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLColorTableNode", "__temp__chest_region_colors_basic")
