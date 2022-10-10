@@ -893,7 +893,6 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         
         tableNode.SetColumnType("Label",vtk.VTK_STRING)
         tableNode.SetColumnType("Value",vtk.VTK_FLOAT)
-                      
         for i, regionTag in enumerate(self.regionTags):
             tableNode.AddEmptyRow()
             tableNode.SetCellText(i,0,regionTag)
@@ -903,14 +902,16 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         barPlotSeries.SetAndObserveTableNodeID(tableNode.GetID())
         barPlotSeries.SetPlotType(slicer.vtkMRMLPlotSeriesNode.PlotTypeBar)
         barPlotSeries.SetLabelColumnName("Label") #displayed when hovering mouse
-        barPlotSeries.SetYColumnName("Value") # for bar plots, index is the x-value
+        barPlotSeries.SetYColumnName("Value") # for bar plots, index is an x-value, strings are not shown in plot
+        
         barPlotSeries.SetColor(0, 0.6, 1.0)
         
         chartNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotChartNode", valueToPlot + " chart")
         chartNode.SetTitle("Parenchyma Statistics")
         chartNode.SetLegendVisibility(False)
         chartNode.SetYAxisTitle(valueToPlot)
-        chartNode.SetXAxisTitle("Label")
+        xLabelStr = "WholeLung RightLung LeftLung  LUT    LMT    LLT    RUT    RMT    RLT"
+        chartNode.SetXAxisTitle(xLabelStr)
         chartNode.AddAndObservePlotSeriesNodeID(barPlotSeries.GetID())
     
         # Show plot in layout
@@ -933,7 +934,7 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         # Show plot in layout
         #slicer.modules.plots.logic().ShowChartInLayout(plotChartNode)
 
-        #chartNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotChartNode", 'PlotChartNode') 
+        #chartNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLChartNode", 'PlotChartNode') 
         #chartNode.AddArray(valueToPlot, arrayNode.GetID())
 
         #chartViewNode.SetChartNodeID(chartNode.GetID())
