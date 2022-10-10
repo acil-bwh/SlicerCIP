@@ -471,10 +471,7 @@ class CIP_ParenchymaAnalysisWidget(ScriptedLoadableModuleWidget):
 
         slicer.util.setSliceViewerLayers(background=self.CTNode)
 
-        if self.lungMaskNode and self.lungMaskNode.GetClassName() != "vtkMRMLSegmentationNode":
-            self.logic.deleteLabelNode()
-            self.lungMaskNode = None
-        else:
+        if self.lungMaskNode:
             self.labelSelector.setCurrentNode(self.logic.labelNode)
 
     def changeHistDisplay(self):
