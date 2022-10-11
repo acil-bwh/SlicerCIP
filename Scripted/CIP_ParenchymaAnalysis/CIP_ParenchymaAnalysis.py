@@ -901,8 +901,10 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         barPlotSeries = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotSeriesNode", valueToPlot + " bar plot")
         barPlotSeries.SetAndObserveTableNodeID(tableNode.GetID())
         barPlotSeries.SetPlotType(slicer.vtkMRMLPlotSeriesNode.PlotTypeBar)
-        barPlotSeries.SetLabelColumnName("Label") #displayed when hovering mouse
-        barPlotSeries.SetYColumnName("Value") # for bar plots, index is an x-value, strings are not shown in plot
+        # displayed when hovering mouse
+        barPlotSeries.SetLabelColumnName("Label")
+        # for bar plots, index is an x-value, strings are not shown in plot
+        barPlotSeries.SetYColumnName("Value")
         
         barPlotSeries.SetColor(0, 0.6, 1.0)
         
@@ -910,41 +912,12 @@ class CIP_ParenchymaAnalysisLogic(ScriptedLoadableModuleLogic):
         chartNode.SetTitle("Parenchyma Statistics")
         chartNode.SetLegendVisibility(False)
         chartNode.SetYAxisTitle(valueToPlot)
-        xLabelStr = "WholeLung RightLung LeftLung  LUT    LMT    LLT    RUT    RMT    RLT"
+        xLabelStr = "Lung area"
         chartNode.SetXAxisTitle(xLabelStr)
         chartNode.AddAndObservePlotSeriesNodeID(barPlotSeries.GetID())
     
         # Show plot in layout
         slicer.modules.plots.logic().ShowChartInLayout(chartNode)
-
-        # Create plot
-        #plotSeriesNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLChartNode", "Bar chart")
-        #plotSeriesNode.SetAndObserveTableNodeID(tableNode.GetID())
-        #plotSeriesNode.SetXColumnName("Regions")
-        #plotSeriesNode.SetYColumnName("Values")
-        #plotSeriesNode.SetPlotType(plotSeriesNode.PlotTypeBar)
-        #plotSeriesNode.SetColor(0, 0.6, 1.0)
-
-        # Create chart and add plot
-        #plotChartNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotChartNode")
-        #plotChartNode.AddAndObservePlotSeriesNodeID(plotSeriesNode.GetID())
-        #plotChartNode.YAxisRangeAutoOff()
-        #plotChartNode.SetYAxisRange(0, 500000)
-
-        # Show plot in layout
-        #slicer.modules.plots.logic().ShowChartInLayout(plotChartNode)
-
-        #chartNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLChartNode", 'PlotChartNode') 
-        #chartNode.AddArray(valueToPlot, arrayNode.GetID())
-
-        #chartViewNode.SetChartNodeID(chartNode.GetID())
-
-        #chartNode.SetProperty('default', 'title', 'Parenchyma Statistics')
-        #chartNode.SetProperty('default', 'xAxisLabel', 'Label')
-        #chartNode.SetProperty('default', 'yAxisLabel', valueToPlot)
-        #chartNode.SetProperty('default', 'type', 'Bar')
-        #chartNode.SetProperty('default', 'xAxisType', 'categorical')
-        #chartNode.SetProperty('default', 'showLegend', 'off')
 
         # series level properties
         #colorTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLColorTableNode", "StatsChartColors")
