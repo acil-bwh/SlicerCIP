@@ -240,7 +240,6 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
     def _createSegmentEditorWidget_(self):
         """Create and initialize a customize Slicer Editor which contains just some the tools that we need for the segmentation"""
         import qSlicerSegmentationsModuleWidgetsPythonQt
-
         # Segment editor area
         self.segmentEditorAreaCollapsibleButton = ctk.ctkCollapsibleButton()
         self.segmentEditorAreaCollapsibleButton.text = "Segment editor"

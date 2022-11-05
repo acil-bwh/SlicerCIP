@@ -26,7 +26,7 @@ Example:
 
 then 
 
-1. Fork this repository into "C:\D\MySlicerExtensions" as "SlicerCIP"
+1. Fork this repository into "C:\D\" as "SlicerCIP"
 2. Create a file "make_slicercip.bat" in "C:\D" folder with the following content: 
 
     set startTime=%time%
@@ -50,6 +50,17 @@ then
 4. Open Visual Studio 2022
 5. load "C:\D\SlicerCIP-build\SlicerCIP.sln"
 6. build "ALL_BUILD"
+
+### How to run you tests: 
+
+Start 3D Slicer go -> "Edit" -> "Application settings" -> "Modules" -> "Additional module paths"
+
+Include the following paths: 
+C:/D/SlicerCIP-build/inner-build/lib/Slicer-5.1/cli-modules/Release
+C:/D/SlicerCIP-build/inner-build/lib/Slicer-5.1/qt-scripted-modules
+C:/D/SlicerCIP-build/inner-build/lib/Slicer-5.1/qt-loadable-modules/Release
+
+Restart Slicer and test. 
 
 ### Run Example
 
