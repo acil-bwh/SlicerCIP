@@ -29,22 +29,24 @@ then
 1. Fork this repository into "C:\D\" as "SlicerCIP"
 2. Create a file "make_slicercip.bat" in "C:\D" folder with the following content: 
 
-    set startTime=%time%
+```
+set startTime=%time%
 
-    mkdir "C:\D\SlicerCIP-build"
-    cd "C:\D\SlicerCIP-build"
-    cmake -DSlicer_DIR="C:\D\S5R\Slicer-build" "C:\D\SlicerCIP"
+mkdir "C:\D\SlicerCIP-build"
+cd "C:\D\SlicerCIP-build"
+cmake -DSlicer_DIR="C:\D\S5R\Slicer-build" "C:\D\SlicerCIP"
 
-    timeout /t 10
+timeout /t 10
 
-    ' must run this two times for unknown reasons to create SlicerCIP.sln
+' must run this two times for unknown reasons to create SlicerCIP.sln
 
-    cmake -DSlicer_DIR="C:\D\S5R\Slicer-build" "C:\D\SlicerCIP"
+cmake -DSlicer_DIR="C:\D\S5R\Slicer-build" "C:\D\SlicerCIP"
 
-    echo Start Time: %startTime%
-    echo Finish Time: %time%
+echo Start Time: %startTime%
+echo Finish Time: %time%
 
-    pause
+pause
+```
 
 3. Run "make_slicercip.bat" by double-clicking it
 4. Open Visual Studio 2022
