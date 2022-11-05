@@ -36,11 +36,15 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         ScriptedLoadableModuleWidget.__init__(self, parent)
         # needed for event observation:
         VTKObservationMixin.__init__(self)  
-        self.firstLoad = True
         self.activeEditorTools = None
         self.inputVolume = None
         self.outputSegmentation = None
         self.labelmapVolumeNode = None
+        self.segmentEditorNode = None
+        self.segmentEditorWidget = None
+        self.logic = None
+        self._parameterNode = None
+        self._updatingGUIFromParameterNode = False
 
     @property
     def labelmapNodeNameExtension(self):
@@ -52,11 +56,10 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
     ################
     def setup(self):
         """Init the widget """
-        self.firstLoad = True
         ScriptedLoadableModuleWidget.setup(self) 
-        # Create objects that can be used anywhere in the module. Example: in most cases there should be just one
-        # object of the logic class
-        self._initLogic_()
+
+        # creale logic 
+        self.logic = CIP_CalibrationLogic()
 
         ##########
         # Main area
@@ -120,8 +123,6 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
 
         # Create the standard segment editor widget
         self._createSegmentEditorWidget_()
-        # Load master nodes
-        self.checkMasterAndSegmentationNodes()
 
         # Calibrate button
         self.calibrateButton = ctk.ctkPushButton()
@@ -133,9 +134,20 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         self.layout.addWidget(self.calibrateButton)
         self.calibrateButton.connect('clicked()', self._onCalibrateButtonClicked_)
 
+        # Reset button
+        self.resetButton = ctk.ctkPushButton()
+        self.resetButton.setText("Reset")
+        self.resetButton.toolTip = "Reset module: Create new empty region segments and reset all parameters."
+        self.calibrateButton.setIcon(qt.QIcon("{0}/scale.png".format(SlicerUtil.CIP_ICON_DIR)))
+        self.calibrateButton.setIconSize(qt.QSize(20, 20))
+        self.layout.addWidget(self.resetButton)
+        self.resetButton.connect('clicked()', self._onResetButtonClicked_)
+
         # Add stretch to align the calibrate button and the layout to the top 
         self.layout.addStretch()
 
+        # Make sure parameter node exists and observed
+        self.initializeParameterNode()
 
         # Connect observers to scene events
         self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
@@ -154,15 +166,14 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
             colorTableNode = self.logic.createColormapNode(nodeName)
         return colorTableNode
 
-    def _initLogic_(self):
-        """Create a new logic object for the plugin"""
-        self.logic = CIP_CalibrationLogic()
-
     def checkMasterAndSegmentationNodes(self):
         """Set an appropiate MasterNode Segment to the Segment Editor,"""
 
+        # Select default input nodes if nothing is selected yet to save a few clicks for the user
         if not self.inputVolume:
-            return  
+            firstVolumeNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")
+            if firstVolumeNode:
+                self.inputVolume = firstVolumeNode
 
         if not self.outputSegmentation:
             self.outputSegmentation = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode", self.inputVolume.GetName() + " Lung Calibration")
@@ -194,6 +205,56 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
             effect = self.segmentEditorWidget.activeEffect()
             effect.setParameter("BrushRelativeDiameter","1")
         slicer.app.applicationLogic().FitSliceToAll()
+
+    def setParameterNode(self, inputParameterNode):
+        """
+        Set and observe parameter node.
+        Observation is needed because when the parameter node is changed then the GUI must be updated immediately.
+        """
+        if inputParameterNode:
+          self.logic.setDefaultParameters(inputParameterNode)
+
+        # Unobserve previously selected parameter node and add an observer to the newly selected.
+        # Changes of parameter node are observed so that whenever parameters are changed by a script or any other module
+        # those are reflected immediately in the GUI.
+        if self._parameterNode is not None:
+            self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
+        self._parameterNode = inputParameterNode
+        if self._parameterNode is not None:
+            self.addObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
+
+        # Initial GUI update
+        self.updateGUIFromParameterNode()
+
+    def updateGUIFromParameterNode(self, caller=None, event=None):
+        """
+        This method is called whenever parameter node is changed.
+        The module GUI is updated to show the current state of the parameter node.
+        """
+
+        if self._parameterNode is None or self._updatingGUIFromParameterNode:
+            return
+
+        # Make sure GUI changes do not call updateParameterNodeFromGUI (it could cause infinite loop)
+        self._updatingGUIFromParameterNode = True
+
+        # All the GUI updates are done
+        self._updatingGUIFromParameterNode = False
+
+
+    def initializeParameterNode(self):
+        """
+        Ensure parameter node exists and observed.
+        """
+        # Parameter node stores all user choices in parameter values, node selections, etc.
+        # so that when the scene is saved and reloaded, these settings are restored.
+
+
+        self.setParameterNode(self.logic.getParameterNode())
+
+
+        # Load master nodes
+        self.checkMasterAndSegmentationNodes()
 
 
     def getCurrentGrayscaleNode(self):
@@ -246,12 +307,14 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         self.layout.addWidget(self.segmentEditorAreaCollapsibleButton, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
         self.segmentEditorLayout = qt.QFormLayout(self.segmentEditorAreaCollapsibleButton)
 
-        self.segmentEditorWidget = qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
+        if not self.segmentEditorWidget:
+            self.segmentEditorWidget = qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
         self.segmentEditorWidget.setMaximumNumberOfUndoStates(10)
         self.segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
         self.segmentEditorWidget.unorderedEffectsVisible = False
         self.segmentEditorWidget.setEffectNameOrder(['Paint', 'Draw', 'Erase', 'Scissors'])
-        self.segmentEditorNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentEditorNode")
+        if not self.segmentEditorNode:
+            self.segmentEditorNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentEditorNode")
         self.segmentEditorNode.SetSingletonTag("CIP_Calibration")
         self.segmentEditorWidget.setMRMLSegmentEditorNode(self.segmentEditorNode)
         self.segmentEditorWidget.setMasterVolumeNodeSelectorVisible(False)
@@ -276,6 +339,17 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         else:
             slicer.util.infoDisplay("Calibration completed")
 
+    def _onResetButtonClicked_(self):
+        """ The reset button has been pressed"""
+        if self.outputSegmentation:
+            slicer.mrmlScene.RemoveNode(self.outputSegmentation)
+            self.outputSegmentation = None
+        # Load master nodes
+        self.checkMasterAndSegmentationNodes()
+        self.txtAir.setText("-1000")
+        self.txtBlood.setText("50")
+
+        slicer.util.infoDisplay("Module reset complete.")
 
     #########
     # Events
@@ -284,10 +358,9 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
  
     def enter(self):
         """Method that is invoked when we switch to the module in slicer user interface"""
-        if self.firstLoad:
-            self.firstLoad = False
-        else:
-            self.checkMasterAndSegmentationNodes()
+
+        # Make sure parameter node exists and observed
+        self.initializeParameterNode()
 
     def __onTypeRadioButtonClicked__(self, button):
         """ One of the radio buttons has been pressed
@@ -300,20 +373,17 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         """
         Called just before the scene is closed.
         """
-        if self.inputVolume:
-            slicer.mrmlScene.RemoveNode(self.inputVolume)
-            self.inputVolume = None
+        self.inputVolume = None
         if self.outputSegmentation:
             slicer.mrmlScene.RemoveNode(self.outputSegmentation)
             self.outputSegmentation = None
-        if self.labelmapVolumeNode:
-            slicer.mrmlScene.RemoveNode(self.labelmapVolumeNode)
-            self.labelmapVolumeNode = None
  
     def onSceneEndClose(self, caller, event):
         """
         Called just before the scene is closed.
         """
+        if self.parent.isEntered:
+            self.initializeParameterNode()
 
     def onSceneEndImport(self, caller, event):
         """
@@ -325,12 +395,16 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         """
         Called each time the user opens a different module.
         """
-        #self.segmentEditorWidget = None
+        # Do not react to parameter node changes (GUI wlil be updated when the user enters into the module)
+        self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
 
     def cleanup(self):
         """
         Called when the application closes and the module widget is destroyed.
         """
+        self.removeObservers()
+
+        self.inputVolume = None
         if self.segmentEditorNode: 
             slicer.mrmlScene.RemoveNode(self.segmentEditorNode)
             self.segmentEditorNode = None
@@ -349,6 +423,11 @@ class CIP_CalibrationLogic(ScriptedLoadableModuleLogic):
     def __init__(self):
         """Constructor. """
         ScriptedLoadableModuleLogic.__init__(self)
+
+    def setDefaultParameters(self, parameterNode):
+        """
+        Initialize parameter node with default settings.
+        """
 
     def createColormapNode(self, nodeName):
         """
