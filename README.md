@@ -56,9 +56,12 @@ then
 Start 3D Slicer go -> "Edit" -> "Application settings" -> "Modules" -> "Additional module paths"
 
 Include the following paths: 
+
+```
 C:/D/SlicerCIP-build/inner-build/lib/Slicer-5.1/cli-modules/Release
 C:/D/SlicerCIP-build/inner-build/lib/Slicer-5.1/qt-scripted-modules
 C:/D/SlicerCIP-build/inner-build/lib/Slicer-5.1/qt-loadable-modules/Release
+```
 
 Restart Slicer and test. 
 
