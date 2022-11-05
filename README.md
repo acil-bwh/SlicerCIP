@@ -56,7 +56,7 @@ pause
 5. load "C:\D\SlicerCIP-build\SlicerCIP.sln"
 6. build "ALL_BUILD"
 
-### How to run you tests: 
+### How to run your tests: 
 
 Start 3D Slicer go -> "Edit" -> "Application settings" -> "Modules" -> "Additional module paths"
 
