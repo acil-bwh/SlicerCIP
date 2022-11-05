@@ -307,15 +307,19 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         self.layout.addWidget(self.segmentEditorAreaCollapsibleButton, SlicerUtil.ALIGNMENT_VERTICAL_TOP)
         self.segmentEditorLayout = qt.QFormLayout(self.segmentEditorAreaCollapsibleButton)
 
-        if not self.segmentEditorWidget:
-            self.segmentEditorWidget = qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
+        self.segmentEditorWidget = qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
         self.segmentEditorWidget.setMaximumNumberOfUndoStates(10)
         self.segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
         self.segmentEditorWidget.unorderedEffectsVisible = False
         self.segmentEditorWidget.setEffectNameOrder(['Paint', 'Draw', 'Erase', 'Scissors'])
-        if not self.segmentEditorNode:
-            self.segmentEditorNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentEditorNode")
-        self.segmentEditorNode.SetSingletonTag("CIP_Calibration")
+        # Select parameter set node if one is found in the scene, and create one otherwise
+        segmentEditorSingletonTag = "CIP_Calibration"
+        self.segmentEditorNode = slicer.mrmlScene.GetSingletonNode(segmentEditorSingletonTag, "vtkMRMLSegmentEditorNode")
+        if self.segmentEditorNode is None:
+            self.segmentEditorNode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLSegmentEditorNode")
+            self.segmentEditorNode.UnRegister(None)
+            self.segmentEditorNode.SetSingletonTag(segmentEditorSingletonTag)
+            self.segmentEditorNode = slicer.mrmlScene.AddNode(self.segmentEditorNode)
         self.segmentEditorWidget.setMRMLSegmentEditorNode(self.segmentEditorNode)
         self.segmentEditorWidget.setMasterVolumeNodeSelectorVisible(False)
         self.segmentEditorWidget.setSegmentationNodeSelectorVisible(False)
@@ -405,9 +409,6 @@ class CIP_CalibrationWidget(ScriptedLoadableModuleWidget,VTKObservationMixin):
         self.removeObservers()
 
         self.inputVolume = None
-        if self.segmentEditorNode: 
-            slicer.mrmlScene.RemoveNode(self.segmentEditorNode)
-            self.segmentEditorNode = None
         if self.outputSegmentation:
             slicer.mrmlScene.RemoveNode(self.outputSegmentation)
             self.outputSegmentation = None
