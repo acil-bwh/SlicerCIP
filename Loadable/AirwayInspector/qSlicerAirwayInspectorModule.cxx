@@ -22,6 +22,9 @@
 #include <QDebug>
 #include <QtPlugin>
 
+// Slicer includes
+#include <vtkSlicerVersionConfigure.h>
+
 // SlicerQt includes
 #include <qSlicerCoreApplication.h>
 #include <qSlicerIOManager.h>
