@@ -19,13 +19,13 @@ project(SlicerCIP)
 #-----------------------------------------------------------------------------
 # Extension meta-information
 set(EXTENSION_NAME "Chest_Imaging_Platform")
-set(EXTENSION_HOMEPAGE "http://www.chestimagingplatform.org")
+set(EXTENSION_HOMEPAGE "https://chestimagingplatform.org/")
 set(EXTENSION_CATEGORY "Chest Imaging Platform")
 set(EXTENSION_STATUS "Alpha")
 set(EXTENSION_CONTRIBUTORS "Applied Chest Imaging Laboratory, Brigham and Women's Hospital")
 set(EXTENSION_DESCRIPTION "Chest Imaging Platform is an extension for quantitative CT imaging biomarkers for lung diseases. This work is funded by the National Heart, Lung, And Blood Institute of the National  Institutes of Health under Award Number R01HL116931. The content is solely the responsibility of the authors and does not necessarily represent the official views of the National Institutes of Health.")
-set(EXTENSION_ICONURL "https://raw.githubusercontent.com/acil-bwh/SlicerCIP/4.5/Resources/SlicerCIPLogo.png")
-set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/acil-bwh/SlicerCIP/4.5/Resources/Screenshot1.png https://raw.githubusercontent.com/acil-bwh/SlicerCIP/4.5/Resources/Screenshot2.png")
+set(EXTENSION_ICONURL "https://raw.githubusercontent.com/acil-bwh/SlicerCIP/master/Resources/SlicerCIPLogo.png")
+set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/acil-bwh/SlicerCIP/master/Resources/Screenshot1.png https://raw.githubusercontent.com/acil-bwh/SlicerCIP/master/Resources/Screenshot2.png")
 set(EXTENSION_DEPENDS "NA") # Specified as a space separated list or 'NA' if any
 set(EXTENSION_BUILD_SUBDIRECTORY inner-build)
 
