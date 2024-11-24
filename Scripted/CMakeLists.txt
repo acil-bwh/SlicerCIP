@@ -9,7 +9,7 @@ set(modules
   #  incompatible with Slicer 5
   #CIP_BodyComposition
   CIP_CalciumScoring
-  CIP_LesionModel
+  #CIP_LesionModel
   CIP_MIPViewer
   CIP_PAARatio
   CIP_PointsLabelling
