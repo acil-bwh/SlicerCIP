@@ -11,12 +11,12 @@ For a compilation of SlicerCIP you need to fork and compile 3D Slicer locally. T
 
 #### Linux and Mac
 
-set the SLICER_FOLDER variable, for instance to $HOME/slicer/Slicer4-SuperBuild/Slicer-build
+set the SLICER_FOLDER variable, for instance to $HOME/slicer/SlicerRelease/Slicer-build
 
 ```
 mkdir ../SlicerCIP-build
 cd ../SlicerCIP-build
-cmake -DSlicer_DIR=${SLICER_FOLDER}/Slicer4-SuperBuild/Slicer-build ../SlicerCIP
+cmake -DCMAKE_CXX_STANDARD:STRING=17 -DCMAKE_BUILD_TYPE:STRING=Release -DSlicer_DIR=${SLICER_FOLDER}/SlicerRelease/Slicer-build ../SlicerCIP
 make
 ```
 
